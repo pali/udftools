@@ -12,24 +12,31 @@
 .SUFFIXES:
 .SUFFIXES: .c .o .h .a
 
-  CC		= gcc
-  CFLAGS	= -DDEBUG \
-	-O2 -Wall -Wstrict-prototypes -I.. -fomit-frame-pointer 
-  CONFIG=../config/udf.h
-  UDFINC=../linux/udf_fs.h
-  LD		= ld
-  LD_RFLAGS	=
-  TOPDIR 	= .
+# KERNH=-I/usr/src/linux-2.1.129/include
+UDF_INC = ../include
 
-EXE=dump taglist
+CC		= gcc
+CFLAGS	= -DDEBUG $(KERNH) -I$(UDF_INC)\
+	-O2 -Wall -Wstrict-prototypes -I..  -g
+LD		= ld
+LD_RFLAGS	=
+LIBS		= ../lib/libudf.a
+
+EXE=dump dumpfe taglist mkudf
 
 all: $(EXE)
 
 dump: 	dump.c
-	$(CC) dump.c -o $@
+	$(CC) dump.c $(CFLAGS) -o $@
+
+dumpfe:	dumpfe.c
+	$(CC) dumpfe.c $(CFLAGS) -o $@
 
 taglist:	taglist.c
-	$(CC) taglist.c -o $@
+	$(CC) -I.. taglist.c $(CFLAGS) -o $@
+
+mkudf:	mkudf.c $(LIBS)
+	$(CC) -I.. mkudf.c $(CFLAGS) $(LIBS) -o $@
 
 clean:
 	/bin/rm -f *.o $(EXE)

@@ -27,6 +27,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <ctype.h>
@@ -39,7 +40,9 @@ Uint8 sector[2048];
 
 int main(int argc, char **argv)
 {
-	int fd, retval;
+	int fd;
+	long retval;
+	unsigned long fp;
 	unsigned long sec = 0;
 
 	if (argc < 2) {
@@ -47,22 +50,29 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	fd = open(argv[1], O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
+		perror(argv[1]);
 		return -1;
+	}
 
 	if (argc == 3)
 		sec = strtoul(argv[2], NULL, 0);
 
-	retval = lseek(fd, sec << 11, SEEK_SET);
-	if (retval < 0) 
+	fp= sec << 11L;
+	retval = lseek(fd, fp, SEEK_SET);
+	if (retval < 0) {
+		perror(argv[1]);
 		return -1;
+	} else
+		printf("%ld: seek to %ld ok, retval %lu\n", 
+			sec, fp, retval);
 
 	retval = read(fd, sector, 2048);
-	/*while (retval > 0) {*/
-	{
+	if ( retval > 0 ) {
 		int i, j;
+		printf("retval= %ld\n", retval);
 		for (i = 0; i < retval; i += 16) {
-			printf("%08x-%03x: ", sec, i);
+			printf("%08lx-%03x: ", sec, i);
 			for (j = 0; j < 16; j++)
 				printf((j == 7) ? "%02x-": "%02x ",
 					sector[i + j]);
@@ -76,15 +86,9 @@ int main(int argc, char **argv)
 		}
 		/*retval = read(fd, sector, 2048);*/
 		sec++;
-	}
-	/*
-	if (!retval)
-		printf("**** EOF ****\n");
-	else {
+	} else {
 		printf("**** errno=%d ****", errno);
-		perror("msg -");
 	}
-	*/
 	
 	close(fd);
 	return 0;
