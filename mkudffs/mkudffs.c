@@ -285,15 +285,17 @@ void dump_space(struct udf_disc *disc)
 	}
 }
 
-void write_disc(struct udf_disc *disc)
+int write_disc(struct udf_disc *disc)
 {
 	struct udf_extent *start_ext;
+	int ret;
 
 	start_ext = disc->head;
 
 	while (start_ext != NULL)
 	{
-		disc->write(disc, start_ext);
+		if ((ret = disc->write(disc, start_ext)) < 0)
+			return ret;
 		start_ext = start_ext->next;
 	}
 }

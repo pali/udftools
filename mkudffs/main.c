@@ -103,7 +103,7 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 	return blocks;
 }
 
-void write_func(struct udf_disc *disc, struct udf_extent *ext)
+int write_func(struct udf_disc *disc, struct udf_extent *ext)
 {
 	static char *buffer = NULL;
 	static int bufferlen = 0, length, offset;
@@ -140,10 +140,12 @@ void write_func(struct udf_disc *disc, struct udf_extent *ext)
 			length = (offset + disc->blocksize - 1) & ~(disc->blocksize - 1);
 			if (offset != length)
 				memset(buffer + offset, 0x00, length - offset);
-			write(fd, buffer, length);
+			if (write(fd, buffer, length) != length)
+				return -1;
 			desc = desc->next;
 		}
 	}
+	return 0;
 }
 	
 int main(int argc, char *argv[])
@@ -173,7 +175,8 @@ int main(int argc, char *argv[])
 
 	dump_space(&disc);
 
-	write_disc(&disc);
-
-	return 0;
+	if (write_disc(&disc) < 0)
+		return -1;
+	else
+		return 0;
 }

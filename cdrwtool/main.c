@@ -37,7 +37,7 @@
 #include "../mkudffs/mkudffs.h"
 #include "options.h"
 
-void write_func(struct udf_disc *disc, struct udf_extent *ext)
+int write_func(struct udf_disc *disc, struct udf_extent *ext)
 {
 	static char *buffer = NULL;
 	static int bufferlen = 0, lastpacket = -1;
@@ -55,7 +55,10 @@ void write_func(struct udf_disc *disc, struct udf_extent *ext)
 	if (ext == NULL)
 	{
 		if (lastpacket != -1)
-			write_blocks(fd, buffer, lastpacket * 32, 32);
+		{
+			if (write_blocks(fd, buffer, lastpacket * 32, 32) < 0)
+				return -1;
+		}
 	}
 	else if (!(ext->space_type & (USPACE|RESERVED)))
 	{
@@ -65,8 +68,9 @@ void write_func(struct udf_disc *disc, struct udf_extent *ext)
 			packet = (uint64_t)(ext->start + desc->offset) / 32;
 			if (lastpacket != -1 && packet != lastpacket)
 			{
-					write_blocks(fd, buffer, lastpacket * 32, 32);
-					memset(buffer, 0x00, bufferlen);
+				if (write_blocks(fd, buffer, lastpacket * 32, 32) < 0)
+					return -1;
+				memset(buffer, 0x00, bufferlen);
 			}
 			data = desc->data;
 			offset = ((uint64_t)(ext->start + desc->offset) - (packet * 32)) << disc->blocksize_bits;
@@ -75,7 +79,8 @@ void write_func(struct udf_disc *disc, struct udf_extent *ext)
 				if (data->length + offset > bufferlen)
 				{
 					memcpy(buffer + offset, data->buffer, bufferlen - offset);
-					write_blocks(fd, buffer, packet * 32, 32);
+					if (write_blocks(fd, buffer, packet * 32, 32) < 0)
+						return -1;
 					memset(buffer, 0x00, bufferlen);
 					lastpacket = ++ packet;
 
@@ -91,7 +96,8 @@ void write_func(struct udf_disc *disc, struct udf_extent *ext)
 
 				if (offset == disc->blocksize * 32)
 				{
-					write_blocks(fd, buffer, packet * 32, 32);
+					if (write_blocks(fd, buffer, packet * 32, 32) < 0)
+						return -1;
 					memset(buffer, 0x00, bufferlen);
 					lastpacket = -1;
 					offset = 0;
@@ -102,6 +108,7 @@ void write_func(struct udf_disc *disc, struct udf_extent *ext)
 			desc = desc->next;
 		}
 	}
+	return 0;
 }
 
 int quick_setup(int fd, struct cdrw_disc *disc, char *device)

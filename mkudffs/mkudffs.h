@@ -56,7 +56,7 @@ void udf_init_disc(struct udf_disc *);
 int udf_set_version(struct udf_disc *, int);
 void split_space(struct udf_disc *);
 void dump_space(struct udf_disc *);
-void write_disc(struct udf_disc *);
+int write_disc(struct udf_disc *);
 void setup_vrs(struct udf_disc *);
 void setup_anchor(struct udf_disc *);
 void setup_partition(struct udf_disc *);

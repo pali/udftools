@@ -96,7 +96,7 @@ struct udf_disc
 
 	struct udf_sizing		sizing[UDF_ALLOC_TYPE_SIZE];
 
-	void				(*write)(struct udf_disc *, struct udf_extent *);
+	int				(*write)(struct udf_disc *, struct udf_extent *);
 	void				*write_data;
 
 	struct volStructDesc		*udf_vrs[3];
