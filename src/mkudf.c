@@ -26,6 +26,12 @@
  *	License (GPL) version 2.0. Copies of the GPL can be obtained from:
  *		ftp://prep.ai.mit.edu/pub/gnu/GPL
  *	Each contributing author retains all rights to their own work.
+ *
+ * HISTORY
+ *
+ * 11/20/98 blf  Took skeleton and started adding code to create a very simple,
+ *               but legal udf filesystem
+ *
  */
 
 #include <fcntl.h>
@@ -752,7 +758,7 @@ void write_fileentry1(int loc, int sloc, int snum)
 	struct timeval tv;
 	struct timezone tz;
 	Uint32 leattr = 0;
-	Uint32 filelen2 = 12;
+	Uint32 filelen2 = 11;
 	Uint32 filelen3 = 5;
 	Uint32 ladesc1 = compute_ident_length(sizeof(struct FileIdentDesc));
 	Uint32 ladesc2 = compute_ident_length(sizeof(struct FileIdentDesc) + filelen2);
@@ -841,7 +847,7 @@ void write_fileentry2(int loc, int sloc, int snum)
 	struct timeval tv;
 	struct timezone tz;
 	Uint32 leattr = 0;
-	Uint32 filelen2 = 6;
+	Uint32 filelen2 = 5;
 	Uint32 ladesc1 = compute_ident_length(sizeof(struct FileIdentDesc));
 	Uint32 ladesc2 = compute_ident_length(sizeof(struct FileIdentDesc) + filelen2);
 
@@ -1016,7 +1022,7 @@ void write_fileentry4(int loc, int sloc, int snum)
 
 	fe->uid = htofsl(0);
 	fe->gid = htofsl(0);
-	fe->permissions = htofsl(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_G_READ|PERM_O_READ);
+	fe->permissions = htofsl(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_G_READ);
 	fe->fileLinkCount = htofss(1);
 	fe->recordFormat = 0;
 	fe->recordDisplayAttr = 0;

@@ -14,7 +14,7 @@ int checkICB(struct FileEntry *fe, struct long_ad FE, int dir)
 {
   if (fe) {
     if (!CheckTag((struct tag *)fe, FE.Location_LBN, TAGID_FILE_ENTRY, 16, blocksize)) {
-      printf("(%10d) ", fe->InfoLengthL);
+      printf("(%10d) ", U_endian32(fe->InfoLengthL));
     }
 
     if (dir && fe->sICBTag.FileType != FILE_TYPE_DIRECTORY) {
@@ -26,7 +26,7 @@ int checkICB(struct FileEntry *fe, struct long_ad FE, int dir)
     }
   } else {
     Error.Code = ERR_READ;
-    Error.Sector = FE.Location_LBN;
+    Error.Sector = U_endian32(FE.Location_LBN);
   }
 
 /* Verify that the information length is consistent with the descriptors.

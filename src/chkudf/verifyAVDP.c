@@ -29,17 +29,17 @@ void VerifyAVDP(void)
           DumpError();
           track_volspace(SS + front_avdp[i], 1, "Front AVDP");
           if (!avdp_count) {
-            VDS_Loc = AVDPtr->sMainVDSAdr.Location;
-            VDS_Len = AVDPtr->sMainVDSAdr.Length;
-            RVDS_Loc = AVDPtr->sReserveVDSAdr.Location;
-            RVDS_Len = AVDPtr->sReserveVDSAdr.Length;
+            VDS_Loc = U_endian32(AVDPtr->sMainVDSAdr.Location);
+            VDS_Len = U_endian32(AVDPtr->sMainVDSAdr.Length);
+            RVDS_Loc = U_endian32(AVDPtr->sReserveVDSAdr.Location);
+            RVDS_Len = U_endian32(AVDPtr->sReserveVDSAdr.Length);
             track_volspace(VDS_Loc, VDS_Len >> sdivshift, "Main VDS (Front AVDP)");
             track_volspace(RVDS_Loc, RVDS_Len >> sdivshift, "Reserve VDS (Front AVDP)");
           } else {
-            if (VDS_Loc != AVDPtr->sMainVDSAdr.Location ||
-                VDS_Len != AVDPtr->sMainVDSAdr.Length ||
-                RVDS_Loc != AVDPtr->sReserveVDSAdr.Location ||
-                RVDS_Len != AVDPtr->sReserveVDSAdr.Length) {
+            if (VDS_Loc != U_endian32(AVDPtr->sMainVDSAdr.Location) ||
+                VDS_Len != U_endian32(AVDPtr->sMainVDSAdr.Length) ||
+                RVDS_Loc != U_endian32(AVDPtr->sReserveVDSAdr.Location) ||
+                RVDS_Len != U_endian32(AVDPtr->sReserveVDSAdr.Length)) {
               Error.Code = ERR_VDS_NOT_EQUIVALENT;
               Error.Sector = SS + front_avdp[i];
               DumpError();
@@ -67,17 +67,17 @@ void VerifyAVDP(void)
           DumpError();
           track_volspace(LastSector - back_avdp[i], 1, "Back AVDP");
           if (!avdp_count) {
-            VDS_Loc = AVDPtr->sMainVDSAdr.Location;
-            VDS_Len = AVDPtr->sMainVDSAdr.Length;
-            RVDS_Loc = AVDPtr->sReserveVDSAdr.Location;
-            RVDS_Len = AVDPtr->sReserveVDSAdr.Length;
+            VDS_Loc = U_endian32(AVDPtr->sMainVDSAdr.Location);
+            VDS_Len = U_endian32(AVDPtr->sMainVDSAdr.Length);
+            RVDS_Loc = U_endian32(AVDPtr->sReserveVDSAdr.Location);
+            RVDS_Len = U_endian32(AVDPtr->sReserveVDSAdr.Length);
             track_volspace(VDS_Loc, VDS_Len >> sdivshift, "Main VDS (Back AVDP)");
             track_volspace(RVDS_Loc, RVDS_Len >> sdivshift, "Reserve VDS (Back AVDP)");
           } else {
-            if (VDS_Loc != AVDPtr->sMainVDSAdr.Location ||
-                VDS_Len != AVDPtr->sMainVDSAdr.Length ||
-                RVDS_Loc != AVDPtr->sReserveVDSAdr.Location ||
-                RVDS_Len != AVDPtr->sReserveVDSAdr.Length) {
+            if (VDS_Loc != U_endian32(AVDPtr->sMainVDSAdr.Location) ||
+                VDS_Len != U_endian32(AVDPtr->sMainVDSAdr.Length) ||
+                RVDS_Loc != U_endian32(AVDPtr->sReserveVDSAdr.Location) ||
+                RVDS_Len != U_endian32(AVDPtr->sReserveVDSAdr.Length)) {
               Error.Code = ERR_VDS_NOT_EQUIVALENT;
               Error.Sector = LastSector - back_avdp[i];
               DumpError();

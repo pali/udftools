@@ -25,62 +25,62 @@ int CheckTag(struct tag *TagPtr, UINT32 uTagLoc, UINT16 TagID,
   }
 
   if (!Error.Code) {
-    if ((TagID != (UINT16)-1) && (TagID != TagPtr->uTagID)) {
+    if ((TagID != (UINT16)-1) && (TagID != U_endian16(TagPtr->uTagID))) {
       Error.Code = ERR_TAGID;
       Error.Sector = uTagLoc;
       Error.Expected = TagID;
-      Error.Found = TagPtr->uTagID;
+      Error.Found = U_endian16(TagPtr->uTagID);
       result = CHECKTAG_WRONG_TAG;
     }
   }
 
   if (!Error.Code) {
-    if ((TagPtr->uCRCLen >= crc_min) && (TagPtr->uCRCLen <= crc_max)) {
-      CRC = doCRC((UINT8 *)TagPtr + 16, TagPtr->uCRCLen);
-      if (CRC != TagPtr->uDescriptorCRC) {
+    if ((U_endian16(TagPtr->uCRCLen) >= crc_min) && (U_endian16(TagPtr->uCRCLen) <= crc_max)) {
+      CRC = doCRC((UINT8 *)TagPtr + 16, U_endian16(TagPtr->uCRCLen));
+      if (CRC != U_endian16(TagPtr->uDescriptorCRC)) {
         Error.Code = ERR_TAGCRC;
         Error.Sector = uTagLoc;
         Error.Expected = CRC;
-        Error.Found = TagPtr->uDescriptorCRC;
+        Error.Found = U_endian16(TagPtr->uDescriptorCRC);
         result = CHECKTAG_NOT_TAG;
       }
     } else {
       Error.Code = ERR_CRC_LENGTH;
       Error.Sector = uTagLoc;
       Error.Expected = crc_min;
-      Error.Found = TagPtr->uCRCLen;
+      Error.Found = U_endian16(TagPtr->uCRCLen);
       result = CHECKTAG_TAG_DAMAGED;
     }
   }
  
   if (!Error.Code) {
-    if (uTagLoc != TagPtr->uTagLoc) {
+    if (uTagLoc != U_endian32(TagPtr->uTagLoc)) {
       Error.Code = ERR_TAGLOC;
       Error.Sector = uTagLoc;
       Error.Expected = uTagLoc;
-      Error.Found = TagPtr->uTagLoc;
+      Error.Found = U_endian32(TagPtr->uTagLoc);
       result = CHECKTAG_TAG_DAMAGED;
     }
   }
 
   if (!Error.Code) {
-    if (Version_OK && (TagPtr->uDescriptorVersion != UDF_Version)) {
+    if (Version_OK && (U_endian16(TagPtr->uDescriptorVersion) != UDF_Version)) {
       Version_OK = FALSE;
       Error.Code = ERR_NSR_VERSION;
       Error.Sector = uTagLoc;
       Error.Expected = UDF_Version;
-      Error.Found = TagPtr->uDescriptorVersion;
+      Error.Found = U_endian16(TagPtr->uDescriptorVersion);
       result = CHECKTAG_TAG_DAMAGED;
     }
   }
 
   if (!Error.Code) {
-    if (Serial_OK && (TagPtr->uTagSerialNum != Serial_No)) {
+    if (Serial_OK && (U_endian16(TagPtr->uTagSerialNum != Serial_No))) {
       Version_OK = FALSE;
       Error.Code = ERR_SERIAL;
       Error.Sector = uTagLoc;
       Error.Expected = Serial_No;
-      Error.Found = TagPtr->uDescriptorVersion;
+      Error.Found = U_endian16(TagPtr->uTagSerialNum);
       result = CHECKTAG_TAG_DAMAGED;
     }
   }

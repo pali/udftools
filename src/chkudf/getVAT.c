@@ -54,9 +54,9 @@ void GetVAT(void)
             printf("%sVAT Identifier is: ", CheckRegid((struct udfEntityId *)(Part_Info[VirtPart].Extra + (VATICB->InfoLengthL >> 2) - 9), E_REGID_VAT) ? "**" : "  ");
             DisplayRegIDID((struct regid *)(Part_Info[VirtPart].Extra + (VATICB->InfoLengthL >> 2) - 9));
             printf("\n");
-//            for (i = 0; (i < 50) && (i < Part_Info[VirtPart].Len); i++) {
-//              printf("%02x: %08x\n", i, Part_Info[VirtPart].Extra[i]);
-//            }
+            for (i = 0; (i < 50) && (i < Part_Info[VirtPart].Len); i++) {
+              printf("%02x: %08x\n", i, Part_Info[VirtPart].Extra[i]);
+            }
           } else {
             Error.Code = ERR_NOVATMEM;
             Error.Sector = LastSector - Part_Info[VirtPart].Offs;

@@ -128,8 +128,9 @@ void printDchars( char *start, UINT8 length)
 
 void printExtentAD(struct extent_ad extent)
 {
-  printf("%u [0x%08x] @ %u [0x%08x]\n", extent.Length, extent.Length,
-         extent.Location, extent.Location);
+  printf("%u [0x%08x] @ %u [0x%08x]\n",
+	 U_endian32(extent.Length), U_endian32(extent.Length),
+	 U_endian32(extent.Location), U_endian32(extent.Location));
 }
 
 void printCharSpec(struct charspec chars)
@@ -176,13 +177,13 @@ void printTimestamp( struct timestamp Time)
 {
     /* assumes character is positioned, ends with newline */
 
-    int tp = GetTSTP(Time.uTypeAndTimeZone);
-    int tz = GetTSTZ(Time.uTypeAndTimeZone);
+    int tp = GetTSTP(U_endian16(Time.uTypeAndTimeZone));
+    int tz = GetTSTZ(U_endian16(Time.uTypeAndTimeZone));
 
 
 
     printf("%4.4d/%2.2d/%2.2d ",
-           Time.iYear, Time.uMonth, Time.uDay);
+           U_endian16(Time.iYear), Time.uMonth, Time.uDay);
     printf("%2.2d:%2.2d:%2.2d.",
            Time.uHour, Time.uMinute, Time.uSecond);
     printf("%2.2d%2.2d%2.2d",
@@ -202,7 +203,7 @@ void printTimestamp( struct timestamp Time)
 /********************************************************************/
 void printLongAd(struct long_ad *longad)
 {
-  printf("%d bytes @ %d:%d\n", longad->ExtentLength.bf.Length, 
-         longad->Location_PartNo, longad->Location_LBN);
+  printf("%d bytes @ %d:%d\n", U_endian32(longad->ExtentLength.Length32) & 0x3FFFFFFF, 
+         U_endian16(longad->Location_PartNo), U_endian32(longad->Location_LBN));
 }
 

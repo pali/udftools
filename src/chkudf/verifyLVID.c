@@ -31,7 +31,7 @@ int verifyLVID(UINT32 loc, UINT32 len)
       if (!Error.Code) {
         printf("  LVID at %08x: recorded at ", loc + i);
         printTimestamp(LVID->sRecordingTime);
-        switch (LVID->integrityType) {
+        switch (U_endian32(LVID->integrityType)) {
           case 0:
                    printf(" [Open]\n");
                    break;
@@ -39,29 +39,29 @@ int verifyLVID(UINT32 loc, UINT32 len)
                    printf(" [Close]\n");
                    break;
           default:
-                   printf(" Illegal! (%d)\n", LVID->integrityType);
+                   printf(" Illegal! (%d)\n", U_endian32(LVID->integrityType));
                    break;
         }
-        ID_UID = LVID->UniqueIdL;
-        LVIDIU = (struct LVIDImplUse *)(buffer + 80 + LVID->N_P * 8);
-        ID_Files = LVIDIU->numFiles;
-        ID_Dirs = LVIDIU->numDirectories;
+        ID_UID = U_endian32(LVID->UniqueIdL);
+        LVIDIU = (struct LVIDImplUse *)(buffer + 80 + U_endian32(LVID->N_P) * 8);
+        ID_Files = U_endian32(LVIDIU->numFiles);
+        ID_Dirs = U_endian32(LVIDIU->numDirectories);
         printf("  %d directories, %d files, highest UniqueID is %d.\n",
                ID_Dirs, ID_Files, ID_UID);
         printf("  Min read ver. %x, min write ver. %x, max write ver %x.\n",
-               LVIDIU->MinUDFRead, LVIDIU->MinUDFWrite, LVIDIU->MaxUDFWrite);
+               U_endian16(LVIDIU->MinUDFRead), U_endian16(LVIDIU->MinUDFWrite), U_endian16(LVIDIU->MaxUDFWrite));
         printf("  Recorded by: ");
         DisplayImplID(&(LVIDIU->implementationID));
         Table = (UINT32 *)(buffer + 80);
-        for (j = 0; j < LVID->N_P; j++) {
+        for (j = 0; j < U_endian32(LVID->N_P); j++) {
           printf("  Partition reference %d has %d of %d blocks available.\n",
-                 j, Table[j], Table[j + LVID->N_P]);
+                 j, U_endian32(Table[j]), U_endian32(Table[j + U_endian32(LVID->N_P)]));
         }
-        printf("%sLength of Implementation use is %d.\n", LVID->L_IU == 
-               46 ? "  " : "**", LVID->L_IU);
-        if (LVID->nextIntegrityExtent.Length) {
-          len = LVID->nextIntegrityExtent.Length;
-          loc = LVID->nextIntegrityExtent.Location;
+        printf("%sLength of Implementation use is %d.\n", U_endian32(LVID->L_IU) == 
+               46 ? "  " : "**", U_endian32(LVID->L_IU));
+        if (U_endian32(LVID->nextIntegrityExtent.Length)) {
+          len = U_endian32(LVID->nextIntegrityExtent.Length);
+          loc = U_endian32(LVID->nextIntegrityExtent.Location);
           i = -1;
           printf("  Next extent is %d bytes at %d.\n", len, loc);
           track_volspace(loc, len >> sdivshift, "Integrity Sequence Extension");

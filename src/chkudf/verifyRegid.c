@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "chkudf.h"
+#include "protos.h"
 
 int CheckRegid(struct udfEntityId *reg, char *ID)
 {
@@ -21,7 +22,7 @@ int CheckRegid(struct udfEntityId *reg, char *ID)
   if (reg->uOSClass > 6) {
     error = 1;
   }
-  if ((reg->uUDFRevision < 0x100) || (reg->uUDFRevision > 0x200)) {
+  if ((U_endian16(reg->uUDFRevision) < 0x100) || (U_endian16(reg->uUDFRevision) > 0x200)) {
     error = 1;
   }
   return error;
@@ -68,6 +69,9 @@ void printOSInfo( UINT8 osClass, UINT8 osIdentifier )
         case OSID_SUN_SOLARIS: printf(" Solaris");      break;
         case OSID_HPUX:        printf(" HPUX"); break;
         case OSID_SGI_IRIX:    printf(" SGI_Irix");      break;
+	case OSID_LINUX:       printf(" Linux"); break;
+	case OSID_MKLINUX:     printf(" MkLinux"); break;
+	case OSID_FREEBSD:     printf(" FreeBSD"); break;
         default:               printf(" (Unknown) ** NON-UDF1.50 **");
         }
     } else if (osClass == OSCLASS_WIN95) {
@@ -93,9 +97,9 @@ void DisplayUdfID(struct udfEntityId * ueip)
 
   /* Then display the suffix */
   printf(", UDF Ver.: %02x.%02x",
-         (ueip->uUDFRevision & 0xff00) >> 8, ueip->uUDFRevision & 0xff);
+         (U_endian16(ueip->uUDFRevision) & 0xff00) >> 8, U_endian16(ueip->uUDFRevision) & 0xff);
   printOSInfo(ueip->uOSClass,ueip->uOSIdentifier);
-  if (*(UINT32 *)(ueip->aReserved) != 0) {
+  if (*(ueip->aReserved) != 0) {
     printf(", Reserved: ");
     for (i = 0; i < 4; i++) {
       printf("%02x ", ueip->aReserved[i]);
@@ -116,7 +120,7 @@ void DisplayImplID(struct implEntityId * ieip)
 
   /* Then display the suffix */
   printOSInfo(ieip->uOSClass,ieip->uOSIdentifier);
-  if (*(UINT32 *)(ieip->uImplUse) != 0) {
+  if (*(ieip->uImplUse) != 0) {
     printf(", Impl. use: ");
     for (i = 0; i < 6; i++) {
       printf("%02x ", ieip->uImplUse[i]);

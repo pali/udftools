@@ -36,17 +36,17 @@ int ReadSpaceMap(void)
         if (!Error.Code) {
           printf("  Partition is %d blocks long, requiring %d bytes.\n",
                  Part_Info[i].Len, (Part_Info[i].Len + 7) >> 3);
-          if (BMD->N_Bits != Part_Info[i].Len) {
+          if (U_endian32(BMD->N_Bits) != Part_Info[i].Len) {
             printf("**Partition is %d blocks long and is described by %d bits.\n",
-                   Part_Info[i].Len, BMD->N_Bits);
+                   Part_Info[i].Len, U_endian32(BMD->N_Bits));
           }
-          if ((BMD->N_Bits + 7) >> 3 != BMD->N_Bytes) {
+          if ((U_endian32(BMD->N_Bits) + 7) >> 3 != U_endian32(BMD->N_Bytes)) {
             printf("**Bitmap descriptor requires %d bytes to hold %d bits.\n",
-                   BMD->N_Bytes, BMD->N_Bits);
+                   U_endian32(BMD->N_Bytes), U_endian32(BMD->N_Bits));
           }
-          if (Part_Info[i].SpMap && (BMD->N_Bytes < Part_Info[i].SpLen)) {
+          if (Part_Info[i].SpMap && (U_endian32(BMD->N_Bytes) < Part_Info[i].SpLen)) {
             memcpy(Part_Info[i].SpMap, 
-                   (UINT8 *)BMD + sizeof(struct SpaceBitmapHdr), BMD->N_Bytes);
+                   (UINT8 *)BMD + sizeof(struct SpaceBitmapHdr), U_endian32(BMD->N_Bytes));
             printf("  Read the space bitmap for partition reference %d.\n", i);
           }
         } else {

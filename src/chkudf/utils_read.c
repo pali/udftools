@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 #include "../nsrHdrs/nsr.h"
 #include "chkudf.h"
 #include "protos.h"
 
 /* Cache everything in units of packet_size.  packet_size will be filled
  * in for all media, packet or not. */
-extern int errno;
 
 int ReadSectors(void *buffer, UINT32 address, UINT8 Count)
 {
@@ -176,41 +176,41 @@ int ReadFileData(void *buffer, struct FileEntry *fe, UINT16 part, int offset_0, 
   while (count_im > 0 && !error) {
     offset = offset_im;
     count  = count_im;
-    if (offset < fe->InfoLengthL) {
-      switch(fe->sICBTag.Flags & ADTYPEMASK) {
+    if (offset < U_endian32(fe->InfoLengthL)) {
+      switch(U_endian16(fe->sICBTag.Flags) & ADTYPEMASK) {
         case ADSHORT:
-          exts_ptr = (struct short_ad *)((char *)fe + sizeof(struct FileEntry) + fe->L_EA);
-          exts_end = (struct short_ad *)((char *)exts_ptr + fe->L_AD);
+          exts_ptr = (struct short_ad *)((char *)fe + sizeof(struct FileEntry) + U_endian32(fe->L_EA));
+          exts_end = (struct short_ad *)((char *)exts_ptr + U_endian32(fe->L_AD));
           // The following while loop "eats" all unneeded extents.
-          while (((offset >= exts_ptr->ExtentLength.bf.Length) || 
-                 (exts_ptr->ExtentLength.bf.Type == E_ALLOCEXTENT)) &&
+          while (((offset >= (U_endian32(exts_ptr->ExtentLength.Length32) & 0x3FFFFFFF)) || 
+                 ((U_endian32(exts_ptr->ExtentLength.Length32) >> 30) == E_ALLOCEXTENT)) &&
                  (exts_ptr < exts_end)) {
-            if (exts_ptr->ExtentLength.bf.Type == E_ALLOCEXTENT) {
+            if ((U_endian32(exts_ptr->ExtentLength.Length32) >> 30) == E_ALLOCEXTENT) {
               if (!AED) {
                 AED = (struct AllocationExtentDesc *)malloc(blocksize);
               }
               if (AED) {
-                error = ReadLBlocks(AED, exts_ptr->Location, part, 1);
+                error = ReadLBlocks(AED, U_endian32(exts_ptr->Location), part, 1);
                 if (!error) {
-                  error = CheckTag((struct tag *)AED, exts_ptr->Location, TAGID_ALLOC_EXTENT, 8, blocksize - 16);
+                  error = CheckTag((struct tag *)AED, U_endian32(exts_ptr->Location), TAGID_ALLOC_EXTENT, 8, blocksize - 16);
                 }
               } else {
                 error = 1;
               }
               if (!error) {
                 exts_ptr = (struct short_ad *)(AED + 1);
-                exts_end = exts_ptr + (AED->L_AD >> 3);
+                exts_end = exts_ptr + (U_endian32(AED->L_AD) >> 3);
               } else {
                 exts_ptr = exts_end;
               }
             } else {
-              offset -= exts_ptr->ExtentLength.bf.Length;
+              offset -= U_endian32(exts_ptr->ExtentLength.Length32) & 0x3FFFFFFF;
               exts_ptr++;
             }
           }
           //Now to read from the right extent
-          if ((exts_ptr < exts_end) && (offset < exts_ptr->ExtentLength.bf.Length)) {
-            sector = exts_ptr->Location + (offset >> bdivshift);
+          if ((exts_ptr < exts_end) && (offset < (U_endian32(exts_ptr->ExtentLength.Length32) & 0x3FFFFFFF))) {
+            sector = U_endian32(exts_ptr->Location) + (offset >> bdivshift);
             error = ReadLBlocks(t_buffer, sector, part, 1);
             if (firstpass) {
               *data_start_loc = sector;
@@ -227,38 +227,38 @@ int ReadFileData(void *buffer, struct FileEntry *fe, UINT16 part, int offset_0, 
           break;
 
         case ADLONG:
-          extl_ptr = (struct long_ad *)((char *)fe + sizeof(struct FileEntry) + fe->L_EA);
-          extl_end = (struct long_ad *)((char *)extl_ptr + fe->L_AD);
+          extl_ptr = (struct long_ad *)((char *)fe + sizeof(struct FileEntry) + U_endian32(fe->L_EA));
+          extl_end = (struct long_ad *)((char *)extl_ptr + U_endian32(fe->L_AD));
           // The following while loop "eats" all unneeded extents.
-          while (((offset >= extl_ptr->ExtentLength.bf.Length) || 
-                 (extl_ptr->ExtentLength.bf.Type == E_ALLOCEXTENT)) &&
+          while (((offset >= (U_endian32(extl_ptr->ExtentLength.Length32) & 0x3FFFFFFF)) || 
+                 ((U_endian32(extl_ptr->ExtentLength.Length32) >> 30) == E_ALLOCEXTENT)) &&
                  (extl_ptr < extl_end)) {
-            if (extl_ptr->ExtentLength.bf.Type == E_ALLOCEXTENT) {
+            if ((U_endian32(extl_ptr->ExtentLength.Length32) >> 30) == E_ALLOCEXTENT) {
               if (!AED) {
                 AED = (struct AllocationExtentDesc *)malloc(blocksize);
               }
               if (AED) {
-                error = ReadLBlocks(AED, extl_ptr->Location_LBN, extl_ptr->Location_PartNo, 1);
+                error = ReadLBlocks(AED, U_endian32(extl_ptr->Location_LBN), U_endian16(extl_ptr->Location_PartNo), 1);
                 if (!error) {
-                  error = CheckTag((struct tag *)AED, extl_ptr->Location_LBN, TAGID_ALLOC_EXTENT, 8, blocksize - 16);
+                  error = CheckTag((struct tag *)AED, U_endian32(extl_ptr->Location_LBN), TAGID_ALLOC_EXTENT, 8, blocksize - 16);
                 }
               } else {
                 error = 1;
               }
               if (!error) {
                 extl_ptr = (struct long_ad *)(AED + 1);
-                extl_end = extl_ptr + (AED->L_AD >> 4);
+                extl_end = extl_ptr + (U_endian32(AED->L_AD) >> 4);
               } else {
                 extl_ptr = extl_end;
               }
             } else {
-              offset -= extl_ptr->ExtentLength.bf.Length;
+              offset -= U_endian32(extl_ptr->ExtentLength.Length32) & 0x3FFFFFFF;
               extl_ptr++;
             }
           }
-          if ((extl_ptr < extl_end) && (offset < extl_ptr->ExtentLength.bf.Length)) {
-            sector = extl_ptr->Location_LBN + (offset >> bdivshift);
-            ReadLBlocks(t_buffer, sector, extl_ptr->Location_PartNo, 1);
+          if ((extl_ptr < extl_end) && (offset < (U_endian32(extl_ptr->ExtentLength.Length32) & 0x3FFFFFFF))) {
+            sector = U_endian32(extl_ptr->Location_LBN) + (offset >> bdivshift);
+            ReadLBlocks(t_buffer, sector, U_endian16(extl_ptr->Location_PartNo), 1);
             if (firstpass) {
               *data_start_loc = sector;
             }
@@ -274,14 +274,14 @@ int ReadFileData(void *buffer, struct FileEntry *fe, UINT16 part, int offset_0, 
           break;
     
         case ADNONE:
-          if ((fe->L_AD != fe->InfoLengthL) && !offset) {
+          if ((U_endian32(fe->L_AD) != U_endian32(fe->InfoLengthL)) && !offset) {
             printf("**Embedded data error: L_AD = %d, Information Length = %d\n",
-                   fe->L_AD, fe->InfoLengthL);
+                   U_endian32(fe->L_AD), U_endian32(fe->InfoLengthL));
           }
-          ADlength = MAX(fe->L_AD, fe->InfoLengthL);
+          ADlength = MAX(U_endian32(fe->L_AD), U_endian32(fe->InfoLengthL));
           if (offset < ADlength) {
-            *data_start_loc = fe->sTag.uTagLoc;
-            memcpy(buffer, (char *)(fe + 1) + fe->L_EA, ADlength);
+            *data_start_loc = U_endian32(fe->sTag.uTagLoc);
+            memcpy(buffer, (char *)(fe + 1) + U_endian32(fe->L_EA), ADlength);
             count_im -= ADlength - offset_im;
             offset_im += ADlength - offset_im;
           } else {

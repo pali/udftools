@@ -5,16 +5,14 @@ OBJS=chkudf.o read_udf.o errors.o utils.o verifyVRS.o verifyAVDP.o \
         readSpMap.o filespace.o icbspace.o linkcount.o setSectorSize.o \
         setFirstSector.o do_scsi.o verifyLVID.o
 
-CFLAGS = -Wall -ggdb
-
 chkudf: $(OBJS)
-	$(CC) -o $@ -ggdb $(OBJS)
+	gcc -o chkudf -ggdb $(OBJS)
 
-#.c.o:
-#	$(CC) -Wall -ggdb -c $*.c
+.c.o:
+	gcc -I../../../linux/include -Wall -ggdb -c $*.c
 
 clean:
-	-rm chkudf *.o
+	rm chkudf *.o
 
 chkudf.o: chkudf.c chkudf.h
 

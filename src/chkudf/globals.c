@@ -1,6 +1,7 @@
 #include "../nsrHdrs/nsr.h"
 #include "chkudf.h"
 #include <malloc.h>
+#include <stdio.h>
 
 /*****************************************************************************
  * Device operating parameters

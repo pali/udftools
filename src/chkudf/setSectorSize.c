@@ -5,11 +5,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <memory.h>
+#include <errno.h>
 #include "../nsrHdrs/nsr.h"
 #include "chkudf.h"
 #include "protos.h"
-
-extern int errno;
 
 void SetSectorSize(void)
 {
@@ -74,7 +73,7 @@ void SetSectorSize(void)
     }
   }
   if (secsize == 0) {                 /* Block size still not set */
-    secsize = 0x100; /* Try 0x200 byte sectors first */
+    secsize = 0x800; /* Try 0x200 byte sectors first */
     found = FALSE;
     avdpbuf = malloc(MAX_SECTOR_SIZE);
     if (avdpbuf) {

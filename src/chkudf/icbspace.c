@@ -39,58 +39,58 @@ int track_file_allocation(struct FileEntry *FE, UINT16 ptn)
   Next_ptn = 0;    //The partition ref no of the previous AD
   Next_LBN = 0;    //The LBN of the sector after the previous AD
   Prev_Typ = -1;   //The type of the previous AD
-  ADlength = FE->L_AD;
-  switch(FE->sICBTag.Flags & ADTYPEMASK) {
+  ADlength = U_endian32(FE->L_AD);
+  switch(U_endian16(FE->sICBTag.Flags) & ADTYPEMASK) {
     case ADSHORT:
     case ADLONG:
-             isLAD = (FE->sICBTag.Flags & ADTYPEMASK) == ADLONG;
+             isLAD = (U_endian16(FE->sICBTag.Flags) & ADTYPEMASK) == ADLONG;
              sizeAD = isLAD ?  sizeof(struct long_ad) : sizeof(struct short_ad);
              file_length = 0;
-             ad_start = (UINT8 *)(FE + 1) + FE->L_EA;
+             ad_start = (UINT8 *)(FE + 1) + U_endian32(FE->L_EA);
              while (ad_offset < ADlength) {
                sad = (struct short_ad *)(ad_start + ad_offset);
                lad = (struct long_ad *)(ad_start + ad_offset);
                if (isLAD) {
-                  ptn = lad->Location_PartNo;
+                  ptn = U_endian16(lad->Location_PartNo);
                }
-               if (sad->ExtentLength.bf.Length) {
-                 switch(sad->ExtentLength.bf.Type) {
+               if (U_endian32(sad->ExtentLength.Length32) & 0x3FFFFFFF) {
+                 switch(U_endian32(sad->ExtentLength.Length32) >> 30) {
                    case E_RECORDED:
                    case E_ALLOCATED:
-                                   track_filespace(ptn, sad->Location, sad->ExtentLength.bf.Length);
-                                   if ((ptn == Next_ptn) && (sad->Location == Next_LBN) && 
-                                       (sad->ExtentLength.bf.Type == Prev_Typ)) {
+                                   track_filespace(ptn, U_endian32(sad->Location), U_endian32(sad->ExtentLength.Length32) & 0x3FFFFFFF);
+                                   if ((ptn == Next_ptn) && (U_endian32(sad->Location) == Next_LBN) && 
+                                       ((U_endian32(sad->ExtentLength.Length32) >> 30) == Prev_Typ)) {
                                      Error.Code = ERR_SEQ_ALLOC;
                                      Error.Sector = FE->sTag.uTagLoc;
                                      Error.Expected = Next_LBN;
                                      DumpError();
                                    }
                                    Next_ptn = ptn;
-                                   Next_LBN = sad->Location + (sad->ExtentLength.bf.Length >> bdivshift);
-                                   Prev_Typ = sad->ExtentLength.bf.Type;
-                                   if (file_length >= FE->InfoLengthL) {
+                                   Next_LBN = U_endian32(sad->Location) + ((U_endian32(sad->ExtentLength.Length32) && 0x3FFFFFFF) >> bdivshift);
+                                   Prev_Typ = U_endian32(sad->ExtentLength.Length32) >> 30;
+                                   if (file_length >= U_endian32(FE->InfoLengthL)) {
                                      printf(" (Tail)");
                                    } else {
-                                     file_length += sad->ExtentLength.bf.Length;
+                                     file_length += U_endian32(sad->ExtentLength.Length32) & 0x3FFFFFFF;
                                    }
                                    ad_offset += sizeAD;
                                    break;
                    case E_UNALLOCATED:
-                                   if (file_length >= FE->InfoLengthL) {
+                                   if (file_length >= U_endian32(FE->InfoLengthL)) {
                                      printf(" (ILLEGAL TAIL)");
                                    } else {
-                                     file_length += sad->ExtentLength.bf.Length;
+                                     file_length += U_endian32(sad->ExtentLength.Length32) & 0x3FFFFFFF;
                                    }
                                    ad_offset += sizeAD;
                                    printf(" --Unallocated Extent--");
                                    break;
                    case E_ALLOCEXTENT:
-                                   track_filespace(ptn, sad->Location, sad->ExtentLength.bf.Length);
+                                   track_filespace(ptn, U_endian32(sad->Location), U_endian32(sad->ExtentLength.Length32) & 0x3FFFFFFF);
                                    if (!AED) {
                                      AED = (struct AllocationExtentDesc *)malloc(blocksize);
                                    }
                                    if (AED) {
-                                     Location_AEDP = sad->Location;
+                                     Location_AEDP = U_endian32(sad->Location);
                                      error = ReadLBlocks(AED, Location_AEDP, ptn, 1);
                                      if (!error) {
                                        error = CheckTag((struct tag *)AED, Location_AEDP, TAGID_ALLOC_EXTENT, 8, blocksize - 16);
@@ -99,7 +99,7 @@ int track_file_allocation(struct FileEntry *FE, UINT16 ptn)
                                      error = 1;
                                    }
                                    if (error == 2) {
-                                     if (AED->sTag.uTagLoc == 0xffffffff) {
+                                     if (U_endian32(AED->sTag.uTagLoc) == 0xffffffff) {
                                        error = 0;
                                        Error.Code = 0;
                                      } else {
@@ -109,7 +109,7 @@ int track_file_allocation(struct FileEntry *FE, UINT16 ptn)
                                    }
                                    if (!error) {
                                      ad_start = (UINT8 *)(AED + 1);
-                                     ADlength = AED->L_AD;
+                                     ADlength = U_endian32(AED->L_AD);
                                      ad_offset = 0;
                                    } else {
                                      ad_offset = ADlength;
@@ -120,14 +120,14 @@ int track_file_allocation(struct FileEntry *FE, UINT16 ptn)
                  ad_offset = ADlength;
                }
              }
-             if (file_length != FE->InfoLengthL) {
+             if (file_length != U_endian32(FE->InfoLengthL)) {
                if (((FE->InfoLengthL + blocksize - 1) & ~(blocksize - 1)) == 
                    file_length) {
                  printf(" **ADs rounded up");
                } else {
                  Error.Code = ERR_BAD_AD;
-                 Error.Sector = FE->sTag.uTagLoc;
-                 Error.Expected = FE->InfoLengthL;
+                 Error.Sector = U_endian32(FE->sTag.uTagLoc);
+                 Error.Expected = U_endian32(FE->InfoLengthL);
                  Error.Found = file_length;
                }
              }
@@ -135,11 +135,11 @@ int track_file_allocation(struct FileEntry *FE, UINT16 ptn)
              break;
 
     case ADNONE:
-             if (FE->InfoLengthL != FE->L_AD) {
+             if (U_endian32(FE->InfoLengthL) != U_endian32(FE->L_AD)) {
                Error.Code = ERR_BAD_AD;
-               Error.Sector = FE->sTag.uTagLoc;
-               Error.Expected = FE->InfoLengthL;
-               Error.Found = FE->L_AD;
+               Error.Sector = U_endian32(FE->sTag.uTagLoc);
+               Error.Expected = U_endian32(FE->InfoLengthL);
+               Error.Found = U_endian32(FE->L_AD);
              }
              break;
   }
@@ -173,8 +173,8 @@ int walk_icb_hierarchy(struct FileEntry *FE, UINT16 ptn, UINT32 Location,
     error = ReadLBlocks(FE, Location + i, ptn, 1);
     if (!error) {
       if (!CheckTag((struct tag *)FE, Location + i, TAGID_FILE_ENTRY, 16, Length)) {
-        ICBlist[ICB_offs].LinkRec = FE->LinkCount;
-        ICBlist[ICB_offs].UniqueID_L = FE->UniqueIdL;
+        ICBlist[ICB_offs].LinkRec = U_endian16(FE->LinkCount);
+        ICBlist[ICB_offs].UniqueID_L = U_endian32(FE->UniqueIdL);
         ICBlist[ICB_offs].FE_LBN = Location + i;
         ICBlist[ICB_offs].FE_Ptn = ptn;
         track_file_allocation(FE, ptn);
@@ -184,9 +184,9 @@ int walk_icb_hierarchy(struct FileEntry *FE, UINT16 ptn, UINT32 Location,
          */
         ClearError();
         if (!CheckTag((struct tag *)FE, Location + i, TAGID_INDIRECT, 16, Length)) {
-          walk_icb_hierarchy(FE, ((struct IndirectEntry *)FE)->sIndirectICB.Location_LBN,
-                       ((struct IndirectEntry *)FE)->sIndirectICB.Location_PartNo,
-                       ((struct IndirectEntry *)FE)->sIndirectICB.ExtentLength.bf.Length,
+          walk_icb_hierarchy(FE, U_endian32(((struct IndirectEntry *)FE)->sIndirectICB.Location_LBN),
+                       U_endian16(((struct IndirectEntry *)FE)->sIndirectICB.Location_PartNo),
+                       U_endian32(((struct IndirectEntry *)FE)->sIndirectICB.ExtentLength.Length32) & 0x3FFFFFFF,
                        ICB_offs);
         } else {
           DumpError();  // Wasn't a file entry, but should have been.
@@ -320,14 +320,14 @@ int read_icb(struct FileEntry *FE, UINT16 ptn, UINT32 Location, UINT32 Length,
                            Num_Files++;
                            break;
       }
-      if (FE->sExtAttrICB.ExtentLength.bf.Length) {
+      if (U_endian32(FE->sExtAttrICB.ExtentLength.Length32) & 0x3FFFFFFF) {
         EA = (struct FileEntry *)malloc(blocksize);
         if (EA) {
-          if (EA->sExtAttrICB.Location_PartNo < PTN_no) {
-            printf(" EA: [%x:%08x]", FE->sExtAttrICB.Location_PartNo, 
-                   FE->sExtAttrICB.Location_LBN);
-            read_icb(EA, FE->sExtAttrICB.Location_PartNo, FE->sExtAttrICB.Location_LBN,
-                  FE->sExtAttrICB.ExtentLength.bf.Length, 0);
+          if (U_endian16(EA->sExtAttrICB.Location_PartNo) < PTN_no) {
+            printf(" EA: [%x:%08x]", U_endian16(FE->sExtAttrICB.Location_PartNo), 
+                   U_endian32(FE->sExtAttrICB.Location_LBN));
+            read_icb(EA, U_endian16(FE->sExtAttrICB.Location_PartNo), U_endian32(FE->sExtAttrICB.Location_LBN),
+                  U_endian32(FE->sExtAttrICB.ExtentLength.Length32) & 0x3FFFFFFF, 0);
           } else {
             printf("\n**EA field contains illegal partition reference number.\n");
           }

@@ -45,6 +45,9 @@
 #define OSID_SUN_SOLARIS 2
 #define OSID_HPUX        3
 #define OSID_SGI_IRIX    4
+#define OSID_LINUX       5
+#define OSID_MKLINUX     6
+#define OSID_FREEBSD     7
 
 /* UDF 2.2.11 Sparing Table for CD-RW --------------------------*/
 struct SparingTable {
