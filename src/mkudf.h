@@ -34,7 +34,9 @@
 /* These should be changed if you make any code changes */
 #define VERSION_MAJOR	1
 #define VERSION_MINOR	4
-#define VERSION_BUILD	5
+#define VERSION_BUILD	6
+
+#define EMAIL_STRING	"<linux_udf@hootie.lvld.hp.com>"
 
 #include <sys/time.h>
 #include <udfdecl.h>
@@ -74,7 +76,7 @@ typedef void (*write_func)(mkudf_options *,int,void *,int,char *);
 
 void write_anchor(write_func, mkudf_options *, int, int, int, int, int);
 void write_primaryvoldesc(write_func, mkudf_options *, int, int, timestamp);
-void write_logicalvoldesc(write_func, mkudf_options *, int, int, int, int, int, int, int, int);
+void write_logicalvoldesc(write_func, mkudf_options *, int, int, int, int, int, int, int, int, int);
 timestamp query_timestamp(struct timeval *, struct timezone *);
 tag query_tag(Uint16, Uint16, Uint16, Uint32, void *, size_t);
 icbtag query_icbtag(Uint32, Uint16, Uint16, Uint16, Uint8, Uint32, Uint16, Uint16);

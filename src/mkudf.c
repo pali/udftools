@@ -151,7 +151,7 @@ write_primaryvoldesc(write_func udf_write_data, mkudf_options *opt, int loc, int
 }
 
 void
-write_logicalvoldesc(write_func udf_write_data, mkudf_options *opt, int loc, int snum, int start, int len, int filesetpart, int filesetblock, int spartable, int sparnum)
+write_logicalvoldesc(write_func udf_write_data, mkudf_options *opt, int loc, int snum, int start, int len, int filesetpart, int filesetblock, int spartable1, int spartable2, int sparnum)
 {
 	struct LogicalVolDesc *lvd;
 	struct GenericPartitionMap1 *gpm1;
@@ -191,9 +191,10 @@ write_logicalvoldesc(write_func udf_write_data, mkudf_options *opt, int loc, int
 		spm->volSeqNum = le16_to_cpu(1);
 		spm->partitionNum = le16_to_cpu(0);
 		spm->packetLength = le16_to_cpu(32);
-		spm->numSparingTables = 1;
+		spm->numSparingTables = 2;
 		spm->sizeSparingTable = sizeof(struct SparingTable) + sparnum * sizeof(SparingEntry);
-		spm->locSparingTable[0] = spartable;
+		spm->locSparingTable[0] = spartable1;
+		spm->locSparingTable[1] = spartable2;
 	}
 
 	totmaplen = maplen;
@@ -361,18 +362,20 @@ void write_impusevoldesc(write_func udf_write_data, mkudf_options *opt, int loc,
 	memcpy(iuvdiu->logicalVolIdent, opt->lvol_id, sizeof(opt->lvol_id));
 
 	memset(&instr, 0, sizeof(struct ustr));
-	sprintf(instr.u_name, "mkudf (Linux UDF tools) %d.%d (%d)",
+	snprintf(instr.u_name, 34, "mkudf (Linux UDF tools) %d.%d (%d)",
 		VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
 	instr.u_len = strlen(instr.u_name) + 1;
 	udf_UTF8toCS0(iuvdiu->LVInfo1, &instr, 36);
 
 	memset(&instr, 0, sizeof(struct ustr));
-	sprintf(instr.u_name, "Linux UDF %s", UDF_VERSION_NOTICE);
+	snprintf(instr.u_name, 34, "Linux UDF %s (%s)",
+		UDFFS_VERSION, UDFFS_DATE);
 	instr.u_len = strlen(instr.u_name) + 1;
 	udf_UTF8toCS0(iuvdiu->LVInfo2, &instr, 36);
 
 	memset(&instr, 0, sizeof(struct ustr));
-	strncpy(instr.u_name, "<linux_udf@hootie.lvld.hp.com>", 34);
+	snprintf(instr.u_name, 34, "%s",
+		EMAIL_STRING);
 	instr.u_len = strlen(instr.u_name) + 1;
 	udf_UTF8toCS0(iuvdiu->LVInfo3, &instr, 36);
 
@@ -710,7 +713,7 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 {
 	Uint32 pvd, pvd_len, rvd, rvd_len, snum, lvd, lvd_len;
 	Uint32 filesetpart, filesetblock, part0start;
-	Uint32 sparstart = 0, spartable = 0, sparnum = 0;
+	Uint32 sparstart = 0, spartable1 = 0, spartable2 = 0, sparnum = 0;
 	Uint32 min_blocks = 0;
 	struct timeval tv;
 	struct timezone tz;
@@ -737,8 +740,9 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 		}
 		part0start = 2464;
 		sparstart = 1408;
-		spartable = 2432;
 		sparnum = 32;
+		spartable1 = 2432;
+		spartable2 = opt->blocks-256;
 		min_blocks = 2818;
 	}
 	else if (opt->partition == PT_VAT)
@@ -771,7 +775,7 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 
 	write_primaryvoldesc(udf_write_data, opt, pvd, ++snum, crtime);
 	write_logicalvoldesc(udf_write_data, opt, pvd+1, ++snum, lvd, lvd_len, filesetpart,
-		filesetblock, spartable, sparnum);
+		filesetblock, spartable1, spartable2, sparnum);
 	write_partitionvoldesc(udf_write_data, opt, pvd+2, ++snum, part0start, (opt->blocks-1)-288, part0start);
 	if (opt->partition == PT_SPARING || opt->partition == PT_NORMAL)
 		write_unallocatedspacedesc(udf_write_data, opt, pvd+3, ++snum, 32, 255, 384, 1407);
@@ -782,7 +786,7 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 
 	write_primaryvoldesc(udf_write_data, opt, rvd, snum, crtime);
 	write_logicalvoldesc(udf_write_data, opt, rvd+1, snum, lvd, lvd_len, filesetpart,
-		filesetblock, spartable, sparnum);
+		filesetblock, spartable1, spartable2, sparnum);
 	write_partitionvoldesc(udf_write_data, opt, rvd+2, snum, part0start, (opt->blocks-1)-288, part0start);
 	if (opt->partition == PT_SPARING || opt->partition == PT_NORMAL)
 		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, snum, 32, 255, 384, 1407);
@@ -795,12 +799,14 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 	write_termvoldesc(udf_write_data, opt, lvd+1);
 
 	if (opt->partition == PT_SPARING)
-		write_spartable(udf_write_data, opt, spartable, 1, sparstart, sparnum);
+		write_spartable(udf_write_data, opt, spartable1, 1, sparstart, sparnum);
 	write_spacebitmapdesc(udf_write_data, opt, part0start, part0start, 1, part0start, (opt->blocks-1)-288, filesetblock);
 	write_filesetdesc(udf_write_data, opt, part0start+filesetblock, part0start, 1, 0, filesetblock+32, crtime);
 	write_fileentry1(udf_write_data, opt, part0start+filesetblock+32, part0start, 1, 0, filesetblock+32, crtime);
 	write_fileentry2(udf_write_data, opt, part0start+filesetblock+33, part0start, 1, 0, filesetblock+32, crtime);
 	write_anchor(udf_write_data, opt, (opt->blocks-1)-256, pvd, pvd_len, rvd, rvd_len);
+	if (opt->partition == PT_SPARING)
+		write_spartable(udf_write_data, opt, spartable2, 1, sparstart, sparnum);
 	write_anchor(udf_write_data, opt, (opt->blocks-1), pvd, pvd_len, rvd, rvd_len);
 	return 0;
 }
