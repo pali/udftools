@@ -22,21 +22,41 @@ LD		= ld
 LD_RFLAGS	=
 LIBS		= ../lib/libudf.a
 
-EXE=dump dumpfe taglist mkudf
+CHKUDFDIR	= src/chkudf
+CHKUDFDEP	= $(CHKUDFDIR)/chkudf
+
+EXE=dump dumpfe taglist cdinfo mkudf chkudf
 
 all: $(EXE)
 
-dump: 	dump.c
-	$(CC) dump.c $(CFLAGS) -o $@
+dump: 	src/dump.c
+	$(CC) $< $(CFLAGS) -o $@
 
-dumpfe:	dumpfe.c
-	$(CC) dumpfe.c $(CFLAGS) -o $@
+dumpfe:	src/dumpfe.c
+	$(CC) $< $(CFLAGS) -o $@
 
-taglist:	taglist.c
-	$(CC) -I.. taglist.c $(CFLAGS) -o $@
+cdinfo: src/cdinfo.c
+	$(CC) $< $(CFLAGS) -o $@
 
-mkudf:	mkudf.c $(LIBS)
-	$(CC) -I.. mkudf.c $(CFLAGS) $(LIBS) -o $@
+taglist: src/taglist.c
+	$(CC) -I.. $< $(CFLAGS) -o $@
+
+mkudf:	src/mkudf.c $(LIBS)
+	@echo "* ------------------------------ *"
+	@echo "* Making Ben Fennema's mkudf ... *"
+	@echo "* ------------------------------ *"
+	$(CC) -I.. $< $(CFLAGS) $(LIBS) -o $@
+
+chkudf: $(CHKUDFDEP)
+	cp $(CHKUDFDEP) .
+
+$(CHKUDFDEP):
+	@echo "* ---------------------------- *"
+	@echo "* Making Rob Simm's chkudf ... *"
+	@echo "* ---------------------------- *"
+	$(MAKE) -C $(CHKUDFDIR)
 
 clean:
-	/bin/rm -f *.o $(EXE)
+	@-/bin/rm -f *.o $(EXE)
+	@-make -C $(CHKUDFDIR) clean
+	@echo "cleaned."

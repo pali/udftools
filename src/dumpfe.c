@@ -36,7 +36,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#include <linux/udf_fs.h>
+#include <linux/udf_udf.h>
 
 Uint8 sector[2048];
 
@@ -63,11 +63,13 @@ void dump_tag(tag * descTag) {
 void dump_icbtag(icbtag * icbTag)
 {
 	printf("PRE: %d ", icbTag->priorRecordedNumDirectEntries);
-	printf("STR(TYPE: %d ", icbTag->strategyType);
-	printf("PARM: %d) ", icbTag->strategyParameter);
-	printf("MAE: %d ", icbTag->numEntries);
-	printf("FTY: %s ", icbTag->fileType == 4 ? "DIR" : "OTHER");
-	printf("ICB(LBN: %d ", icbTag->parentICBLocation.logicalBlockNum);
+	printf("Strat: %d ", icbTag->strategyType);
+	/*printf("PARM: %d) ", icbTag->strategyParameter);*/
+	printf("numE: %d ", icbTag->numEntries);
+	printf("ICB(FileType: %s (%u) ", 
+		icbTag->fileType == 4 ? "DIR" : "OTHER",
+		icbTag->fileType);
+	printf("Par(LBN: %d ", icbTag->parentICBLocation.logicalBlockNum);
 	printf("PRN: %d) ", icbTag->parentICBLocation.partitionReferenceNum);
 	switch (icbTag->flags & 0x7) {
 		case 0: printf("Alloc: short "); break;
@@ -75,7 +77,7 @@ void dump_icbtag(icbtag * icbTag)
 		case 2: printf("Alloc: extended "); break;
 		case 3: printf("Alloc: in_icb "); break;
 	}
-	printf("FLG: %x\n", icbTag->flags & 0xFFF8);
+	printf("FLG: %x)\n", icbTag->flags & 0xFFF8);
 }
 
 void dump_hex(unsigned char * p, int len, char * prefix)

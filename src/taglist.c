@@ -36,7 +36,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#include <linux/udf_fs.h>
+#include <linux/udf_udf.h>
 
 Uint8 sector[2048];
 
@@ -147,11 +147,37 @@ int main(int argc, char **argv)
 			    case 6:  
 			    {
 				struct LogicalVolDesc *p;
+				struct GenericPartitionMap *mp;
+				struct VirtualPartitionMap *vp;
+				Uint8 * gp;
 				long_ad * la;
+				int i;
+
 				p=(struct LogicalVolDesc *)sector;
 				la=(long_ad *)p->logicalVolContentsUse;
 			    	printf("LogicalVolDesc\n"); 
-				printf("\tFileSetDesc block: %lu extLen: %u\n",
+				printf("\tmapTableLength: %u Partitions: %u\n", 
+					p->mapTableLength,
+					p->numPartitionMaps);
+				gp=(Uint8 *)p->partitionMaps;
+				for (i=0; i<p->numPartitionMaps; i++) {
+					mp=(struct GenericPartitionMap *)gp;
+					printf("\tPart(%u) [%04Xh]: type: %u len: %u",
+					    i,  (Uint32)gp - (Uint32)p,
+					    mp->partitionMapType,
+					    mp->partitionMapLength);
+					if ( ( mp->partitionMapType == 2 ) &&
+					     ( mp->partitionMapLength == 64 )) {
+					    vp=(struct VirtualPartitionMap *)gp;
+					    printf(" Seq: %u Ref: %u %s\n", 
+						vp->volSeqNum, vp->partitionNum,
+						vp->partIdent.ident);
+					} else
+					    printf("\n");
+					gp += mp->partitionMapLength;
+				}
+				printf("\tFileSetDesc partRef: %u block: %lu extLen: %u\n",
+					(int)la->extLocation.partitionReferenceNum,
 				 	(long unsigned)la->extLocation.logicalBlockNum,
 					la->extLength);
 				break;
@@ -271,14 +297,14 @@ int main(int argc, char **argv)
 				    printf("PRE: %d ", fe->icbTag.priorRecordedNumDirectEntries);
 				    printf("STR(TYPE: %d ", fe->icbTag.strategyType);
 				    printf("PARM: %d) ", fe->icbTag.strategyParameter);
-				    printf("MAE: %d ", fe->icbTag.numEntries);
-				    printf("FTY: %s (%u)", 
+				    printf("numE: %d ", fe->icbTag.numEntries);
+				    printf("ICB(FileType: %s (%u) ", 
 				fe->icbTag.fileType == 4 ? "DIR" : "OTHER",
 				fe->icbTag.fileType);
-				    printf("ICB(LBN: %d ", fe->icbTag.parentICBLocation.logicalBlockNum);
+				    printf("Par(LBN: %d ", fe->icbTag.parentICBLocation.logicalBlockNum);
 				    printf("PRN: %d) ", fe->icbTag.parentICBLocation.partitionReferenceNum);
 				    printf("ALL: %s ", (fe->icbTag.flags & 0x7) == 0 ? "short" : (fe->icbTag.flags & 0x7) == 1 ? "long" : "extended");
-				    printf("FLG: %x ", fe->icbTag.flags & 0xFFF8);
+				    printf("FLG: %x) ", fe->icbTag.flags & 0xFFF8);
 				    printf("UID: %d ", fe->uid);
 				    printf("GID: %d ", fe->gid);
 				    printf("PER: %x ", fe->permissions);
