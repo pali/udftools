@@ -266,6 +266,7 @@ void get_blocksize()
 			blocksize_bits = 11;
 			break;
 	}
+	fprintf(stderr,"blocksize=%d bits=%d\n", blocksize, blocksize_bits);
 }
 
 void get_blocks()
@@ -274,6 +275,7 @@ void get_blocks()
 	if (opt_blocks && opt_blocks < blocks)
 		blocks = opt_blocks;
 	lastblock = blocks-1;
+	fprintf(stderr,"blocks=%d opt_blocks=%d lastblock=%d\n", blocks, opt_blocks, lastblock);
 }
 		
 
@@ -1141,9 +1143,13 @@ int compute_ident_length(int len)
 int
 main(int argc, char *argv[])
 {
+	if ( argc < 2 ) {
+		usage();
+		return 0;
+	}
 	parse_args(argc, argv);
 
-	fs_img = open(argv[optind], O_WRONLY);
+	fs_img = open(argv[optind], O_WRONLY, 0660);
 	if (fs_img == -1) {
 		perror("error opening image file");
 		return -1;

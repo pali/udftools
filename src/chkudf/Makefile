@@ -12,7 +12,7 @@ chkudf: $(OBJS)
 	gcc -I../../../../linux/include -Wall -g -c $*.c
 
 clean:
-	rm chkudf *.o
+	@-/bin/rm -f chkudf *.o *~ *.bak
 
 chkudf.o: chkudf.c chkudf.h
 

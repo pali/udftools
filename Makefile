@@ -12,27 +12,33 @@
 .SUFFIXES:
 .SUFFIXES: .c .o .h .a
 
+include ../Make.conf
+
 # KERNH=-I/usr/src/linux-2.1.129/include
 UDF_INC = -I../include -I../src
 
-CC		= gcc
 CFLAGS	= -DDEBUG $(KERNH) $(UDF_INC)\
 	-O2 -Wall -Wstrict-prototypes -I..  -g
-LD		= ld
-LD_RFLAGS	=
 LIBS		= ../lib/libudf.a
 
 CHKUDFDIR	= src/chkudf
 CHKUDFDEP	= $(CHKUDFDIR)/chkudf
 
-EXE=dump dumpfe taglist cdinfo mkudf chkudf
+EXE=dumpsect dumpfe taglist cdinfo mkudf chkudf dumpea
 
 all: $(EXE)
 
-dump: 	src/dump.c
+install: $(EXE)
+	@echo "TDEST= $(TOOLS_DEST)"
+	$(INSTALL) $^ $(TOOLS_DEST)
+
+dumpsect: 	src/dumpsect.c
 	$(CC) $< $(CFLAGS) -o $@
 
 dumpfe:	src/dumpfe.c
+	$(CC) $< $(CFLAGS) -o $@
+
+dumpea: src/dumpea.c
 	$(CC) $< $(CFLAGS) -o $@
 
 cdinfo: src/cdinfo.c
@@ -41,6 +47,10 @@ cdinfo: src/cdinfo.c
 taglist: src/taglist.c
 	$(CC) -I.. $< $(CFLAGS) -o $@
 
+#
+# to use the loop device:
+# mount -t udf <filename> /mnt -o loop
+#
 mkudf:	src/mkudf.c $(LIBS)
 	@echo "* ------------------------------ *"
 	@echo "* Making Ben Fennema's mkudf ... *"
@@ -57,6 +67,6 @@ $(CHKUDFDEP):
 	$(MAKE) -C $(CHKUDFDIR)
 
 clean:
-	@-/bin/rm -f *.o $(EXE)
+	@-/bin/rm -f *.o $(EXE) *~ *.bak
 	@-make -C $(CHKUDFDIR) clean
-	@echo "cleaned."
+	@echo "tools cleaned."
