@@ -23,7 +23,7 @@ LIBS		= ../lib/libudf.a
 CHKUDFDIR	= src/chkudf
 CHKUDFDEP	= $(CHKUDFDIR)/chkudf
 
-EXE=dumpsect dumpfe taglist cdinfo mkudf chkudf dumpea checkdisk bmap
+EXE=dumpsect dumpfe taglist cdinfo mkudf chkudf dumpea checkdisk bmap cdrwtool
 
 all: ../.prereq.ok $(EXE)
 
@@ -61,6 +61,9 @@ mkudf:	src/mkudf_main.c src/mkudf.c $(LIBS)
 	@echo "* Making Ben Fennema's mkudf ... *"
 	@echo "* ------------------------------ *"
 	$(CC) -I.. src/mkudf_main.c src/mkudf.c $(CFLAGS) $(LIBS) -o $@
+
+cdrwtool:	src/mkudf.c src/cdrwtool.c $(LIBS)
+	$(CC) -I.. src/mkudf.c src/cdrwtool.c $(CFLAGS) $(LIBS) -o $@
 
 chkudf: $(CHKUDFDEP)
 	cp $(CHKUDFDEP) .
