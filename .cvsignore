@@ -5,3 +5,4 @@ configure
 libtool
 Makefile
 Makefile.in
+autom4te.cache
