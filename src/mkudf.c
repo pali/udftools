@@ -529,7 +529,7 @@ void write_fileentry1(write_func udf_write_data, mkudf_options *opt, int loc, in
 	fid->icb.extLength = le32_to_cpu(opt->blocksize);
 	fid->icb.extLocation.logicalBlockNum = cpu_to_le32(block);
 	fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(part);
-	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(16);
+	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(0);
 	fid->lengthOfImpUse = le16_to_cpu(0);
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc1);
 
@@ -540,7 +540,7 @@ void write_fileentry1(write_func udf_write_data, mkudf_options *opt, int loc, in
 	fid->icb.extLength = le32_to_cpu(opt->blocksize);
 	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(block+1);
 	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(part);
-	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(17);
+	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(0);
 	fid->lengthOfImpUse = le16_to_cpu(0);
 #if 1
 	strcpy(&fid->fileIdent[0], " lost+found");
@@ -601,7 +601,7 @@ void write_fileentry2(write_func udf_write_data, mkudf_options *opt, int loc, in
 	fid->icb.extLength = le32_to_cpu(opt->blocksize);
 	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(block);
 	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(part);
-	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(17);
+	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(0);
 	fid->lengthOfImpUse = le16_to_cpu(0);
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc1);
 
