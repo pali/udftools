@@ -68,24 +68,29 @@ write_vrs(write_func udf_write_data, mkudf_options *opt, int start)
 #if 0
 	vd.structType = 0x01U;
 	memcpy(vd.stdIdent, STD_ID_CD001, STD_ID_LEN);
-	udf_write_data(opt, start++, &vd, opt->blocksize, "CD001 descriptor");
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "CD001 descriptor");
+	start += 2048;
 
 	vd.structType = 0xFFU;
 	memcpy(vd.stdIdent, STD_ID_CD001, STD_ID_LEN);
-	udf_write_data(opt, start++, &vd, opt->blocksize, "CD001 descriptor");
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "CD001 descriptor");
+ 	start += 2048;
 #endif
 
 	vd.structType = 0x00U;
 	vd.structVersion = 0x01U;
 
 	memcpy(vd.stdIdent, STD_ID_BEA01, STD_ID_LEN);
-	udf_write_data(opt, start++, &vd, opt->blocksize, "BEA01 descriptor");
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "BEA01 descriptor");
+	start += 2048;
 
 	memcpy(vd.stdIdent, STD_ID_NSR02, STD_ID_LEN);
-	udf_write_data(opt, start++, &vd, opt->blocksize, "NSR002 descriptor");
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "NSR002 descriptor");
+	start += 2048;
 
 	memcpy(vd.stdIdent, STD_ID_TEA01, STD_ID_LEN);
-	udf_write_data(opt, start++, &vd, opt->blocksize, "TEA01 descriptor");
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "TEA01 descriptor");
+	start += 2048;
 }
 
 void
@@ -769,7 +774,7 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 	if (opt->partition == PT_SPARING || opt->partition == PT_NORMAL)
 		filesetblock = ((filesetblock + 31) / 32) * 32;
 
-	write_vrs(udf_write_data, opt, 32768 >> opt->blocksize_bits );
+	write_vrs(udf_write_data, opt, 32768 );
 	write_anchor(udf_write_data, opt, 256, pvd, pvd_len, rvd, rvd_len);
 
 	write_primaryvoldesc(udf_write_data, opt, pvd, ++snum, crtime);
@@ -777,9 +782,9 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 		filesetblock, spartable1, spartable2, sparnum);
 	write_partitionvoldesc(udf_write_data, opt, pvd+2, ++snum, part0start, (opt->blocks-1)-288, part0start);
 	if (opt->partition == PT_SPARING || opt->partition == PT_NORMAL)
-		write_unallocatedspacedesc(udf_write_data, opt, pvd+3, ++snum, 32, 255, 384, 1407);
+		write_unallocatedspacedesc(udf_write_data, opt, pvd+3, ++snum, 64, 255, 384, 1407);
 	else
-		write_unallocatedspacedesc(udf_write_data, opt, pvd+3, ++snum, 32, 255, 0, 0);
+		write_unallocatedspacedesc(udf_write_data, opt, pvd+3, ++snum, 64, 255, 0, 0);
 	write_impusevoldesc(udf_write_data, opt, pvd+4, ++snum);
 	write_termvoldesc(udf_write_data, opt, pvd+5);
 
@@ -788,9 +793,9 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 		filesetblock, spartable1, spartable2, sparnum);
 	write_partitionvoldesc(udf_write_data, opt, rvd+2, snum, part0start, (opt->blocks-1)-288, part0start);
 	if (opt->partition == PT_SPARING || opt->partition == PT_NORMAL)
-		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, snum, 32, 255, 384, 1407);
+		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, snum, 64, 255, 384, 1407);
 	else
-		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, snum, 32, 255, 0, 0);
+		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, snum, 64, 255, 0, 0);
 	write_impusevoldesc(udf_write_data, opt, rvd+4, snum);
 	write_termvoldesc(udf_write_data, opt, rvd+5);
 
