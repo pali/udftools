@@ -844,7 +844,7 @@ int get_options(int argc, char *argv[], options_t *o)
 	o->set_settings		= 0;
 	o->fpacket 		= 1;
 	o->packet_size 		= 32;
-	o->link_size 		= 7;
+	o->link_size 		= 0; /* jens 7 */
 	o->write_type	 	= 1;
 	o->blank	 	= 0;
 	o->offset	 	= 0;

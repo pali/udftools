@@ -38,7 +38,6 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/ioctl.h>
-#include <linux/fs.h>
 
 #include <udfdecl.h>
 #include "mkudf.h"
