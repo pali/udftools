@@ -459,9 +459,9 @@ void write_spartable(write_func udf_write_data, mkudf_options *opt, int loc, int
 	st = calloc(1, totsize);
 	st->sparingIdent.flags = 0;
 	strncpy(st->sparingIdent.ident, UDF_ID_SPARING, strlen(UDF_ID_SPARING));
-    ((Uint16 *)st->sparingIdent.identSuffix)[0] = le16_to_cpu(0x0150);
-    st->sparingIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
-    st->sparingIdent.identSuffix[3] = UDF_OS_ID_LINUX;
+	((Uint16 *)st->sparingIdent.identSuffix)[0] = le16_to_cpu(0x0150);
+	st->sparingIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
+	st->sparingIdent.identSuffix[3] = UDF_OS_ID_LINUX;
 	st->reallocationTableLen = le16_to_cpu(32);
 	st->sequenceNum = le32_to_cpu(0);
 	for (i=0; i<num; i++)
