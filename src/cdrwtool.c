@@ -670,7 +670,7 @@ int quick_setup(options_t *o)
 		return ret;
 
 	blocks = be32_to_cpu(ti.track_size);
-	if (o->fpacket && ti.packet && !ti.fp)
+	if (o->fpacket && (!ti.fp || (ti.packet && ti.fp)))
 	{
 			/* fixed packets format usable blocks */
 		blocks = ((blocks + 7) / (o->packet_size + 7)) * o->packet_size;
