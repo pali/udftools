@@ -132,10 +132,11 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 
 	if (disc->udf_rev == udf_rev)
 		return 0;
-	else if (disc->udf_rev != 0x0102 &&
-		disc->udf_rev != 0x0150 &&
-		disc->udf_rev != 0x0200 &&
-		disc->udf_rev != 0x0201)
+	else if (udf_rev != 0x0102 &&
+		udf_rev != 0x0150 &&
+		udf_rev != 0x0200 &&
+		udf_rev != 0x0201 &&
+		udf_rev != 0x0250)
 	{
 		return 1;
 	}
