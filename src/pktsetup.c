@@ -52,7 +52,7 @@ int init_cdrom(int fd)
 
 void setup_dev(char *pkt_device, char *device, int rem)
 {
-	int pkt_fd = open(pkt_device, O_RDONLY), dev_fd = 0;
+	int pkt_fd = open(pkt_device, O_RDONLY | O_CREAT), dev_fd = 0;
 	unsigned int cmd = rem ? PACKET_TEARDOWN_DEV : PACKET_SETUP_DEV;
 
 	if (pkt_fd < 0) {
