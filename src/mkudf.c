@@ -43,7 +43,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include <../../src/udfdecl.h>
+#include <udfdecl.h>
 #include <asm/page.h>
 
 /* These should be changed if you make any code changes */
@@ -122,6 +122,7 @@ timestamp query_timestamp(struct timeval *, struct timezone *);
 tag query_tag(Uint16, Uint16, Uint16, Uint32, void *, size_t);
 icbtag query_icbtag(Uint32, Uint16, Uint16, Uint16, Uint8, Uint32, Uint16, Uint16);
 
+int compute_ident_length(int);
 
 /*
  * usage
@@ -371,10 +372,10 @@ write_anchor(int loc, int start, int len, int rstart, int rlen)
 	totsize = sizeof(struct AnchorVolDescPtr);
 	avdp = calloc(1, totsize);
 
-	avdp->mainVolDescSeqExt.extLocation = htofsl(start);
-	avdp->mainVolDescSeqExt.extLength = htofsl(len * blocksize);
-	avdp->reserveVolDescSeqExt.extLocation = htofsl(rstart);
-	avdp->reserveVolDescSeqExt.extLength = htofsl(rlen * blocksize);
+	avdp->mainVolDescSeqExt.extLocation = le32_to_cpu(start);
+	avdp->mainVolDescSeqExt.extLength = le32_to_cpu(len * blocksize);
+	avdp->reserveVolDescSeqExt.extLocation = le32_to_cpu(rstart);
+	avdp->reserveVolDescSeqExt.extLength = le32_to_cpu(rlen * blocksize);
 	avdp->descTag = query_tag(TID_ANCHOR_VOL_DESC_PTR, 2, 1, loc, avdp, totsize);
 
 	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
@@ -397,25 +398,25 @@ write_primaryvoldesc(int loc, int snum)
 	totsize = sizeof(struct PrimaryVolDesc);
 	pvd = calloc(1, totsize);
 
-	pvd->volDescSeqNum = htofsl(snum);
-	pvd->primaryVolDescNum = htofsl(0);
+	pvd->volDescSeqNum = le32_to_cpu(snum);
+	pvd->primaryVolDescNum = le32_to_cpu(0);
 	memcpy(pvd->volIdent, vol_id, sizeof(vol_id));
-	pvd->volSeqNum = htofss(1);
-	pvd->maxVolSeqNum = htofss(1);
-	pvd->interchangeLvl = htofss(2);
-	pvd->maxInterchangeLvl = htofss(3);
-	pvd->charSetList = htofsl(0x00000001);
-	pvd->maxCharSetList = htofsl(0x00000001);
+	pvd->volSeqNum = le16_to_cpu(1);
+	pvd->maxVolSeqNum = le16_to_cpu(1);
+	pvd->interchangeLvl = le16_to_cpu(2);
+	pvd->maxInterchangeLvl = le16_to_cpu(3);
+	pvd->charSetList = le32_to_cpu(0x00000001);
+	pvd->maxCharSetList = le32_to_cpu(0x00000001);
 	/* first 8 chars == 32-bit time value */ /* next 8 imp use */
 	memcpy(pvd->volSetIdent, set_id, sizeof(set_id));
 	pvd->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
 	strcpy(pvd->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 	pvd->explanatoryCharSet.charSetType = UDF_CHAR_SET_TYPE;
 	strcpy(pvd->explanatoryCharSet.charSetInfo, UDF_CHAR_SET_INFO);
-	pvd->volAbstract.extLocation = htofsl(0);
-	pvd->volAbstract.extLength = htofsl(0);
-	pvd->volCopyrightNotice.extLocation = htofsl(0);
-	pvd->volCopyrightNotice.extLength = htofsl(0);
+	pvd->volAbstract.extLocation = le32_to_cpu(0);
+	pvd->volAbstract.extLength = le32_to_cpu(0);
+	pvd->volCopyrightNotice.extLocation = le32_to_cpu(0);
+	pvd->volCopyrightNotice.extLength = le32_to_cpu(0);
 /*
 	pvd.appIdent // Application Identifier
 */
@@ -425,8 +426,8 @@ write_primaryvoldesc(int loc, int snum)
 	strcpy(pvd->impIdent.ident, UDF_ID_DEVELOPER);
 	pvd->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	pvd->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
-	pvd->predecessorVolDescSeqLocation = htofsl(19);
-	pvd->flags = htofss(0x0001);
+	pvd->predecessorVolDescSeqLocation = le32_to_cpu(19);
+	pvd->flags = le16_to_cpu(0x0001);
 	pvd->descTag = query_tag(TID_PRIMARY_VOL_DESC, 2, 1, loc, pvd, totsize);
 
 	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
@@ -455,38 +456,38 @@ write_logicalvoldesc(int loc, int snum, int start, int len)
 	gpm1->partitionMapType = 1;
 	gpm1->partitionMapLength = 6;
 	maplen = gpm1->partitionMapLength;
-	gpm1->volSeqNum = htofss(1);
-	gpm1->partitionNum = htofss(0);
+	gpm1->volSeqNum = le16_to_cpu(1);
+	gpm1->partitionNum = le16_to_cpu(0);
 
-	lvd->volDescSeqNum = htofsl(snum);
+	lvd->volDescSeqNum = le32_to_cpu(snum);
 
 	lvd->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
 	strcpy(lvd->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 
 	memcpy(&lvd->logicalVolIdent, lvol_id, sizeof(lvol_id));
 
-	lvd->logicalBlockSize = htofsl(blocksize);
+	lvd->logicalBlockSize = le32_to_cpu(blocksize);
 
 	lvd->domainIdent.flags = 0;
 	strcpy(lvd->domainIdent.ident, UDF_ID_COMPLIANT);
-	((Uint16 *)lvd->domainIdent.identSuffix)[0] = htofss(0x0200);
+	((Uint16 *)lvd->domainIdent.identSuffix)[0] = le16_to_cpu(0x0200);
 	lvd->domainIdent.identSuffix[2] = 0x00;
 
 	fsd = (long_ad *)lvd->logicalVolContentsUse;
-	fsd->extLength = htofsl(blocksize);
-	fsd->extLocation.logicalBlockNum = htofsl(0);
-	fsd->extLocation.partitionReferenceNum = htofss(0);
+	fsd->extLength = le32_to_cpu(blocksize);
+	fsd->extLocation.logicalBlockNum = le32_to_cpu(0);
+	fsd->extLocation.partitionReferenceNum = le16_to_cpu(0);
 
-	lvd->mapTableLength = htofsl(maplen);
-	lvd->numPartitionMaps = htofsl(1);
+	lvd->mapTableLength = le32_to_cpu(maplen);
+	lvd->numPartitionMaps = le32_to_cpu(1);
 
 	lvd->impIdent.flags = 0;
 	strcpy(lvd->impIdent.ident, UDF_ID_DEVELOPER);
 	lvd->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	lvd->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
-	lvd->integritySeqExt.extLocation = htofsl(start);
-	lvd->integritySeqExt.extLength = htofsl(len * blocksize);
+	lvd->integritySeqExt.extLocation = le32_to_cpu(start);
+	lvd->integritySeqExt.extLength = le32_to_cpu(len * blocksize);
 
 	lvd->descTag = query_tag(TID_LOGICAL_VOL_DESC, 2, 1, loc, lvd, totsize);
 	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
@@ -512,9 +513,9 @@ void write_logicalvolintdesc(int loc)
 	lvid = calloc(1, totsize);
 
 	for (i=0; i<npart; i++)
-		lvid->freeSpaceTable[i] = htofsl(196);
+		lvid->freeSpaceTable[i] = le32_to_cpu(196);
 	for (i=0; i<npart; i++)
-		lvid->sizeTable[i+npart] = htofsl(201);
+		lvid->sizeTable[i+npart] = le32_to_cpu(201);
 	lvidiu = (struct LogicalVolIntegrityDescImpUse *)&(lvid->impUse[npart*2*sizeof(Uint32)/sizeof(Uint8)]);
 
 	lvidiu->impIdent.flags = 0;
@@ -522,20 +523,20 @@ void write_logicalvolintdesc(int loc)
 	lvidiu->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	lvidiu->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
-	lvidiu->numFiles = htofsl(1);
-	lvidiu->numDirs = htofsl(3);
-	lvidiu->minUDFReadRev = htofss(0x0150);
-	lvidiu->minUDFWriteRev = htofss(0x0150);
-	lvidiu->maxUDFWriteRev = htofss(0x0200);
+	lvidiu->numFiles = le32_to_cpu(1);
+	lvidiu->numDirs = le32_to_cpu(3);
+	lvidiu->minUDFReadRev = le16_to_cpu(0x0150);
+	lvidiu->minUDFWriteRev = le16_to_cpu(0x0150);
+	lvidiu->maxUDFWriteRev = le16_to_cpu(0x0200);
 
 	gettimeofday(&tv, &tz);
 	lvid->recordingDateAndTime = query_timestamp(&tv, &tz);
-	lvid->integrityType = htofsl(INTEGRITY_TYPE_OPEN);
-	lvid->nextIntegrityExt.extLocation = htofsl(0);
-	lvid->nextIntegrityExt.extLength = htofsl(0);
-	((Uint64 *)lvid->logicalVolContentsUse)[0] = htofsll(3); /* Max Unique ID */
-	lvid->numOfPartitions = htofsl(npart);
-	lvid->lengthOfImpUse = htofsl(sizeof(struct LogicalVolIntegrityDescImpUse));
+	lvid->integrityType = le32_to_cpu(INTEGRITY_TYPE_OPEN);
+	lvid->nextIntegrityExt.extLocation = le32_to_cpu(0);
+	lvid->nextIntegrityExt.extLength = le32_to_cpu(0);
+	((Uint64 *)lvid->logicalVolContentsUse)[0] = le64_to_cpu(3); /* Max Unique ID */
+	lvid->numOfPartitions = le32_to_cpu(npart);
+	lvid->lengthOfImpUse = le32_to_cpu(sizeof(struct LogicalVolIntegrityDescImpUse));
 
 	lvid->descTag = query_tag(TID_LOGICAL_VOL_INTEGRITY_DESC, 2, 1, loc, lvid, totsize);
 	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
@@ -556,24 +557,24 @@ void write_partitionvoldesc(int loc, int snum)
 	totsize = sizeof(struct PartitionDesc);
 	pd = calloc(1, totsize);
 
-	pd->volDescSeqNum = htofsl(snum);
-	pd->partitionFlags = htofss(0x0001);
-	pd->partitionNumber = htofss(0);
+	pd->volDescSeqNum = le32_to_cpu(snum);
+	pd->partitionFlags = le16_to_cpu(0x0001);
+	pd->partitionNumber = le16_to_cpu(0);
 
 	pd->partitionContents.flags = 0;
 	strcpy(pd->partitionContents.ident, PARTITION_CONTENTS_NSR02);
 
 	phd = (struct PartitionHeaderDesc *)&(pd->partitionContentsUse[0]);
-	phd->unallocatedSpaceTable.extLength = htofsl(0);
-	phd->unallocatedSpaceBitmap.extLength = htofsl(blocksize | 0x40000000);
-	phd->unallocatedSpaceBitmap.extPosition = htofsl(1);
-	phd->partitionIntegrityTable.extLength = htofsl(0);
-	phd->freedSpaceTable.extLength = htofsl(0);
-	phd->freedSpaceBitmap.extLength = htofsl(0);
+	phd->unallocatedSpaceTable.extLength = le32_to_cpu(0);
+	phd->unallocatedSpaceBitmap.extLength = le32_to_cpu(blocksize | 0x40000000);
+	phd->unallocatedSpaceBitmap.extPosition = le32_to_cpu(1);
+	phd->partitionIntegrityTable.extLength = le32_to_cpu(0);
+	phd->freedSpaceTable.extLength = le32_to_cpu(0);
+	phd->freedSpaceBitmap.extLength = le32_to_cpu(0);
 
-	pd->accessType = htofsl(PARTITION_ACCESS_OW);
-	pd->partitionStartingLocation = htofsl(55);
-	pd->partitionLength = htofsl(201);
+	pd->accessType = le32_to_cpu(PARTITION_ACCESS_OW);
+	pd->partitionStartingLocation = le32_to_cpu(55);
+	pd->partitionLength = le32_to_cpu(201);
 
 	pd->impIdent.flags = 0;
 	strcpy(pd->impIdent.ident, UDF_ID_DEVELOPER);
@@ -602,11 +603,11 @@ void write_unallocatedspacedesc(int loc, int snum, int start, int end)
 	usd = calloc(1, totsize);
 
 	ead = (extent_ad *)&(usd->allocDescs[0]);
-	ead->extLength = htofsl((1 + end - start) * blocksize);
-	ead->extLocation = htofsl(start);
+	ead->extLength = le32_to_cpu((1 + end - start) * blocksize);
+	ead->extLocation = le32_to_cpu(start);
  
-	usd->volDescSeqNum = htofsl(snum);
-	usd->numAllocDescs = htofsl(ndesc);
+	usd->volDescSeqNum = le32_to_cpu(snum);
+	usd->numAllocDescs = le32_to_cpu(ndesc);
 
 	usd->descTag = query_tag(TID_UNALLOC_SPACE_DESC, 2, 1, loc, usd, totsize);
 	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
@@ -639,11 +640,11 @@ void write_impusevoldesc(int loc, int snum)
 	iuvdiu->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	iuvdiu->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
-	iuvd->volDescSeqNum = htofsl(snum);
+	iuvd->volDescSeqNum = le32_to_cpu(snum);
 
 	iuvd->impIdent.flags = 0;
 	strcpy(iuvd->impIdent.ident, UDF_ID_LV_INFO);
-	((Uint16 *)iuvd->impIdent.identSuffix)[0] = htofss(0x0200);
+	((Uint16 *)iuvd->impIdent.identSuffix)[0] = le16_to_cpu(0x0200);
 	iuvd->impIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
 	iuvd->impIdent.identSuffix[3] = UDF_OS_ID_LINUX;
 
@@ -687,10 +688,10 @@ void write_filesetdesc(int loc, int sloc, int snum)
 
 	gettimeofday(&tv, &tz);
 	fsd->recordingDateAndTime = query_timestamp(&tv, &tz);
-	fsd->interchangeLvl = htofss(3);
-	fsd->maxInterchangeLvl = htofss(3);
-	fsd->charSetList = htofsl(0x00000001);
-	fsd->maxCharSetList = htofsl(0x00000001);
+	fsd->interchangeLvl = le16_to_cpu(3);
+	fsd->maxInterchangeLvl = le16_to_cpu(3);
+	fsd->charSetList = le32_to_cpu(0x00000001);
+	fsd->maxCharSetList = le32_to_cpu(0x00000001);
 	fsd->fileSetNum = 0;
 	fsd->fileSetDescNum = 0;
 	fsd->logicalVolIdentCharSet.charSetType = UDF_CHAR_SET_TYPE;
@@ -703,9 +704,9 @@ void write_filesetdesc(int loc, int sloc, int snum)
 	copyrightFileIdent[32]
 	abstractFileIdent
 */
-	fsd->rootDirectoryICB.extLength = htofsl(blocksize);
-	fsd->rootDirectoryICB.extLocation.logicalBlockNum = htofsl(2);
-	fsd->rootDirectoryICB.extLocation.partitionReferenceNum = htofss(0);
+	fsd->rootDirectoryICB.extLength = le32_to_cpu(blocksize);
+	fsd->rootDirectoryICB.extLocation.logicalBlockNum = le32_to_cpu(2);
+	fsd->rootDirectoryICB.extLocation.partitionReferenceNum = le16_to_cpu(0);
 	fsd->domainIdent.flags = 0;
 	strcpy(fsd->domainIdent.ident, UDF_ID_COMPLIANT);
 /*
@@ -733,8 +734,8 @@ void write_spacebitmapdesc(int loc, int sloc, int snum)
 	totsize = sizeof(struct SpaceBitmapDesc) + sizeof(Uint8) * nbytes;
 	sbd = calloc(1, totsize);
 	
-	sbd->numOfBits = htofsl(201);
-	sbd->numOfBytes = htofsl(nbytes);
+	sbd->numOfBits = le32_to_cpu(201);
+	sbd->numOfBytes = le32_to_cpu(nbytes);
 	memset(sbd->bitmap, 0xFF, sizeof(Uint8) * nbytes);
 	sbd->bitmap[0] = 0x80;
 	sbd->bitmap[1] = 0xFE;
@@ -768,65 +769,65 @@ void write_fileentry1(int loc, int sloc, int snum)
 	fe = calloc(1, totsize);
 
 	fid = (struct FileIdentDesc *)&(fe->allocDescs[leattr]);
-	fid->fileVersionNum = htofss(1);
+	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x0A; /* 0000 1010 */
 	fid->lengthFileIdent = 0;
-	fid->icb.extLength = htofsl(blocksize);
-	fid->icb.extLocation.logicalBlockNum = htofsl(2);
-	fid->icb.extLocation.partitionReferenceNum = htofss(0);
-	fid->lengthOfImpUse = htofss(0);
+	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(2);
+	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(0);
+	fid->lengthOfImpUse = le16_to_cpu(0);
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc1);
 
 	fid = (struct FileIdentDesc *)&(fe->allocDescs[leattr + ladesc1]);
-	fid->fileVersionNum = htofss(1);
+	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x02; /* 0000 0010 */
 	fid->lengthFileIdent = filelen2;
-	fid->icb.extLength = htofsl(blocksize);
-	fid->icb.extLocation.logicalBlockNum = htofsl(3);
-	fid->icb.extLocation.partitionReferenceNum = htofss(0);
-	fid->lengthOfImpUse = htofss(0);
+	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(3);
+	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(0);
+	fid->lengthOfImpUse = le16_to_cpu(0);
 	strcpy(&fid->fileIdent[0], " lost+found");
 	fid->fileIdent[0] = 8;
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc2);
 
 	fid = (struct FileIdentDesc *)&(fe->allocDescs[leattr + ladesc1 + ladesc2]);
-	fid->fileVersionNum = htofss(1);
+	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x02; /* 0000 0010 */
 	fid->lengthFileIdent = filelen3;
-	fid->icb.extLength = htofsl(blocksize);
-	fid->icb.extLocation.logicalBlockNum = htofsl(4);
-	fid->icb.extLocation.partitionReferenceNum = htofss(0);
-	fid->lengthOfImpUse = htofss(0);
+	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(4);
+	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(0);
+	fid->lengthOfImpUse = le16_to_cpu(0);
 	strcpy(&fid->fileIdent[0], " test");
 	fid->fileIdent[0] = 8;
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc3);
 
-	fe->uid = htofsl(0);
-	fe->gid = htofsl(0);
-	fe->permissions = htofsl(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_U_EXEC|PERM_G_READ|PERM_G_EXEC|PERM_O_READ|PERM_O_EXEC);
-	fe->fileLinkCount = htofss(3);
+	fe->uid = le32_to_cpu(0);
+	fe->gid = le32_to_cpu(0);
+	fe->permissions = le32_to_cpu(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_U_EXEC|PERM_G_READ|PERM_G_EXEC|PERM_O_READ|PERM_O_EXEC);
+	fe->fileLinkCount = le16_to_cpu(3);
 	fe->recordFormat = 0;
 	fe->recordDisplayAttr = 0;
-	fe->recordLength = htofsl(0);
-	fe->informationLength = htofsll(ladesc1 + ladesc2 + ladesc3 + leattr);
-	fe->logicalBlocksRecorded = htofsll(1);
+	fe->recordLength = le32_to_cpu(0);
+	fe->informationLength = le64_to_cpu(ladesc1 + ladesc2 + ladesc3 + leattr);
+	fe->logicalBlocksRecorded = le64_to_cpu(1);
 	gettimeofday(&tv, &tz);
 	fe->accessTime = query_timestamp(&tv, &tz);
 	fe->modificationTime = fe->accessTime;
 	fe->attrTime = fe->accessTime;
 	fe->checkpoint = 0;
-	fe->extendedAttrICB.extLength = htofsl(0);
-	fe->extendedAttrICB.extLocation.logicalBlockNum = htofsl(0);
-	fe->extendedAttrICB.extLocation.partitionReferenceNum = htofss(0);
+	fe->extendedAttrICB.extLength = le32_to_cpu(0);
+	fe->extendedAttrICB.extLocation.logicalBlockNum = le32_to_cpu(0);
+	fe->extendedAttrICB.extLocation.partitionReferenceNum = le16_to_cpu(0);
 
 	fe->impIdent.flags = 0;
 	strcpy(fe->impIdent.ident, UDF_ID_DEVELOPER);
 	fe->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	fe->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
-	fe->uniqueID = htofsll(0);
-	fe->lengthExtendedAttr = htofsl(0);
-	fe->lengthAllocDescs = htofsl(ladesc1 + ladesc2 + ladesc3);
+	fe->uniqueID = le64_to_cpu(0);
+	fe->lengthExtendedAttr = le32_to_cpu(0);
+	fe->lengthAllocDescs = le32_to_cpu(ladesc1 + ladesc2 + ladesc3);
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_DIRECTORY, 0, 0, ICB_FLAG_AD_IN_ICB);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
@@ -855,53 +856,53 @@ void write_fileentry2(int loc, int sloc, int snum)
 	fe = calloc(1, totsize);
 
 	fid = (struct FileIdentDesc *)&(fe->allocDescs[leattr]);
-	fid->fileVersionNum = htofss(1);
+	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x0A; /* 0000 1010 */
 	fid->lengthFileIdent = 0;
-	fid->icb.extLength = htofsl(blocksize);
-	fid->icb.extLocation.logicalBlockNum = htofsl(2);
-	fid->icb.extLocation.partitionReferenceNum = htofss(0);
-	fid->lengthOfImpUse = htofss(0);
+	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(2);
+	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(0);
+	fid->lengthOfImpUse = le16_to_cpu(0);
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc1);
 
 	fid = (struct FileIdentDesc *)&(fe->allocDescs[leattr + ladesc1]);
-	fid->fileVersionNum = htofss(1);
+	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x00; /* 0000 0000 */
 	fid->lengthFileIdent = filelen2;
-	fid->icb.extLength = htofsl(blocksize);
-	fid->icb.extLocation.logicalBlockNum = htofsl(5);
-	fid->icb.extLocation.partitionReferenceNum = htofss(0);
-	fid->lengthOfImpUse = htofss(0);
+	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(5);
+	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(0);
+	fid->lengthOfImpUse = le16_to_cpu(0);
 	strcpy(&fid->fileIdent[0], " temp");
 	fid->fileIdent[0] = 8;
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc2);
 
-	fe->uid = htofsl(0);
-	fe->gid = htofsl(0);
-	fe->permissions = htofsl(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_U_EXEC|PERM_G_READ|PERM_G_EXEC|PERM_O_READ|PERM_O_EXEC);
-	fe->fileLinkCount = htofss(1);
+	fe->uid = le32_to_cpu(0);
+	fe->gid = le32_to_cpu(0);
+	fe->permissions = le32_to_cpu(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_U_EXEC|PERM_G_READ|PERM_G_EXEC|PERM_O_READ|PERM_O_EXEC);
+	fe->fileLinkCount = le16_to_cpu(1);
 	fe->recordFormat = 0;
 	fe->recordDisplayAttr = 0;
-	fe->recordLength = htofsl(0);
-	fe->informationLength = htofsll(ladesc1 + ladesc2 + leattr);
-	fe->logicalBlocksRecorded = htofsll(1);
+	fe->recordLength = le32_to_cpu(0);
+	fe->informationLength = le64_to_cpu(ladesc1 + ladesc2 + leattr);
+	fe->logicalBlocksRecorded = le64_to_cpu(1);
 	gettimeofday(&tv, &tz);
 	fe->accessTime = query_timestamp(&tv, &tz);
 	fe->modificationTime = fe->accessTime;
 	fe->attrTime = fe->accessTime;
 	fe->checkpoint = 0;
-	fe->extendedAttrICB.extLength = htofsl(0);
-	fe->extendedAttrICB.extLocation.logicalBlockNum = htofsl(0);
-	fe->extendedAttrICB.extLocation.partitionReferenceNum = htofss(0);
+	fe->extendedAttrICB.extLength = le32_to_cpu(0);
+	fe->extendedAttrICB.extLocation.logicalBlockNum = le32_to_cpu(0);
+	fe->extendedAttrICB.extLocation.partitionReferenceNum = le16_to_cpu(0);
 
 	fe->impIdent.flags = 0;
 	strcpy(fe->impIdent.ident, UDF_ID_DEVELOPER);
 	fe->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	fe->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
-	fe->uniqueID = htofsll(1);
-	fe->lengthExtendedAttr = htofsl(0);
-	fe->lengthAllocDescs = htofsl(ladesc1 + ladesc2);
+	fe->uniqueID = le64_to_cpu(1);
+	fe->lengthExtendedAttr = le32_to_cpu(0);
+	fe->lengthAllocDescs = le32_to_cpu(ladesc1 + ladesc2);
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_DIRECTORY, 2, 0, ICB_FLAG_AD_IN_ICB);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
@@ -928,41 +929,41 @@ void write_fileentry3(int loc, int sloc, int snum)
 	fe = calloc(1, totsize);
 
 	fid = (struct FileIdentDesc *)&(fe->allocDescs[leattr]);
-	fid->fileVersionNum = htofss(1);
+	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x0A; /* 0000 1010 */
 	fid->lengthFileIdent = 0;
-	fid->icb.extLength = htofsl(blocksize);
-	fid->icb.extLocation.logicalBlockNum = htofsl(2);
-	fid->icb.extLocation.partitionReferenceNum = htofss(0);
-	fid->lengthOfImpUse = htofss(0);
+	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(2);
+	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(0);
+	fid->lengthOfImpUse = le16_to_cpu(0);
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc1);
 
-	fe->uid = htofsl(0);
-	fe->gid = htofsl(0);
-	fe->permissions = htofsl(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_U_EXEC|PERM_G_READ|PERM_G_EXEC|PERM_O_READ|PERM_O_EXEC);
-	fe->fileLinkCount = htofss(1);
+	fe->uid = le32_to_cpu(0);
+	fe->gid = le32_to_cpu(0);
+	fe->permissions = le32_to_cpu(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_U_EXEC|PERM_G_READ|PERM_G_EXEC|PERM_O_READ|PERM_O_EXEC);
+	fe->fileLinkCount = le16_to_cpu(1);
 	fe->recordFormat = 0;
 	fe->recordDisplayAttr = 0;
-	fe->recordLength = htofsl(0);
-	fe->informationLength = htofsll(ladesc1 + leattr);
-	fe->logicalBlocksRecorded = htofsll(1);
+	fe->recordLength = le32_to_cpu(0);
+	fe->informationLength = le64_to_cpu(ladesc1 + leattr);
+	fe->logicalBlocksRecorded = le64_to_cpu(1);
 	gettimeofday(&tv, &tz);
 	fe->accessTime = query_timestamp(&tv, &tz);
 	fe->modificationTime = fe->accessTime;
 	fe->attrTime = fe->accessTime;
 	fe->checkpoint = 0;
-	fe->extendedAttrICB.extLength = htofsl(0);
-	fe->extendedAttrICB.extLocation.logicalBlockNum = htofsl(0);
-	fe->extendedAttrICB.extLocation.partitionReferenceNum = htofss(0);
+	fe->extendedAttrICB.extLength = le32_to_cpu(0);
+	fe->extendedAttrICB.extLocation.logicalBlockNum = le32_to_cpu(0);
+	fe->extendedAttrICB.extLocation.partitionReferenceNum = le16_to_cpu(0);
 
 	fe->impIdent.flags = 0;
 	strcpy(fe->impIdent.ident, UDF_ID_DEVELOPER);
 	fe->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	fe->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
-	fe->uniqueID = htofsll(2);
-	fe->lengthExtendedAttr = htofsl(0);
-	fe->lengthAllocDescs = htofsl(ladesc1);
+	fe->uniqueID = le64_to_cpu(2);
+	fe->lengthExtendedAttr = le32_to_cpu(0);
+	fe->lengthAllocDescs = le32_to_cpu(ladesc1);
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_DIRECTORY, 2, 0, ICB_FLAG_AD_IN_ICB);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
@@ -997,55 +998,55 @@ void write_fileentry4(int loc, int sloc, int snum)
 
 #if 0
 	fid = (struct FileIdentDesc *)&(fe->allocDescs[leattr]);
-	fid->fileVersionNum = htofss(1);
+	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x08; /* 0000 1000 */
 	fid->lengthFileIdent = 0;
-	fid->icb.extLength = htofsl(blocksize);
-	fid->icb.extLocation.logicalBlockNum = htofsl(5);
-	fid->icb.extLocation.partitionReferenceNum = htofss(0);
-	fid->lengthOfImpUse = htofss(0);
+	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(5);
+	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(0);
+	fid->lengthOfImpUse = le16_to_cpu(0);
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc1)
 #endif
 #if 1
 	sad = (short_ad *)(&(fe->allocDescs[leattr]));
-	sad->extLength = htofsl(blocksize);
-	sad->extPosition = htofsl(6);
+	sad->extLength = le32_to_cpu(blocksize);
+	sad->extPosition = le32_to_cpu(6);
 	sad = (short_ad *)(&(fe->allocDescs[leattr + ladesc1]));
-	sad->extLength = htofsl(blocksize/2);
-	sad->extPosition = htofsl(8);
+	sad->extLength = le32_to_cpu(blocksize/2);
+	sad->extPosition = le32_to_cpu(8);
 #else
 	lad = (long_ad *)(&(fe->allocDescs[leattr]));
-	lad->extLength = htofsl(blocksize);
-	lad->extLocation.logicalBlockNum = htofsl(5);
-	lad->extLocation.partitionReferenceNum = htofss(0);
+	lad->extLength = le32_to_cpu(blocksize);
+	lad->extLocation.logicalBlockNum = le32_to_cpu(5);
+	lad->extLocation.partitionReferenceNum = le16_to_cpu(0);
 #endif
 
-	fe->uid = htofsl(0);
-	fe->gid = htofsl(0);
-	fe->permissions = htofsl(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_G_READ);
-	fe->fileLinkCount = htofss(1);
+	fe->uid = le32_to_cpu(0);
+	fe->gid = le32_to_cpu(0);
+	fe->permissions = le32_to_cpu(PERM_U_DELETE|PERM_U_CHATTR|PERM_U_READ|PERM_U_WRITE|PERM_G_READ);
+	fe->fileLinkCount = le16_to_cpu(1);
 	fe->recordFormat = 0;
 	fe->recordDisplayAttr = 0;
-	fe->recordLength = htofsl(0);
-	fe->informationLength = htofsll(blocksize + blocksize/2);
-	fe->logicalBlocksRecorded = htofsll(2);
+	fe->recordLength = le32_to_cpu(0);
+	fe->informationLength = le64_to_cpu(blocksize + blocksize/2);
+	fe->logicalBlocksRecorded = le64_to_cpu(2);
 	gettimeofday(&tv, &tz);
 	fe->accessTime = query_timestamp(&tv, &tz);
 	fe->modificationTime = fe->accessTime;
 	fe->attrTime = fe->accessTime;
 	fe->checkpoint = 0;
-	fe->extendedAttrICB.extLength = htofsl(0);
-	fe->extendedAttrICB.extLocation.logicalBlockNum = htofsl(0);
-	fe->extendedAttrICB.extLocation.partitionReferenceNum = htofss(0);
+	fe->extendedAttrICB.extLength = le32_to_cpu(0);
+	fe->extendedAttrICB.extLocation.logicalBlockNum = le32_to_cpu(0);
+	fe->extendedAttrICB.extLocation.partitionReferenceNum = le16_to_cpu(0);
 
 	fe->impIdent.flags = 0;
 	strcpy(fe->impIdent.ident, UDF_ID_DEVELOPER);
 	fe->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	fe->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
-	fe->uniqueID = htofsll(3);
-	fe->lengthExtendedAttr = htofsl(0);
-	fe->lengthAllocDescs = htofsl(ladesc1 + ladesc2);
+	fe->uniqueID = le64_to_cpu(3);
+	fe->lengthExtendedAttr = le32_to_cpu(0);
+	fe->lengthAllocDescs = le32_to_cpu(ladesc1 + ladesc2);
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_REGULAR, 4, 0, ICB_FLAG_AD_SHORT);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
@@ -1076,8 +1077,8 @@ timestamp query_timestamp(struct timeval *tv, struct timezone *tz)
 
 	tm = localtime(&tv->tv_sec);
 
-	ret.typeAndTimezone = htofss(((-tz->tz_minuteswest) & 0x0FFF) | 0x1000);
-	ret.year = htofss(1900 + tm->tm_year);
+	ret.typeAndTimezone = le16_to_cpu(((-tz->tz_minuteswest) & 0x0FFF) | 0x1000);
+	ret.year = le16_to_cpu(1900 + tm->tm_year);
 	ret.month = 1 + tm->tm_mon;
 	ret.day = tm->tm_mday;
 	ret.hour = tm->tm_hour;
@@ -1098,14 +1099,14 @@ tag query_tag(Uint16 Ident, Uint16 descVersion, Uint16 SerialNum,
 	tag ret;
 	int i;
 
-	ret.tagIdent = htofss(Ident);
-	ret.descVersion = htofss(descVersion);
+	ret.tagIdent = le16_to_cpu(Ident);
+	ret.descVersion = le16_to_cpu(descVersion);
 	ret.tagChecksum = 0;
 	ret.reserved = 0;
-	ret.tagSerialNum = htofss(SerialNum);
-	ret.descCRCLength = htofss(len - sizeof(tag));
-	ret.descCRC = htofss(udf_crc((char *)ptr + sizeof(tag), fstohs(ret.descCRCLength)));
-	ret.tagLocation = htofsl(Location);
+	ret.tagSerialNum = le16_to_cpu(SerialNum);
+	ret.descCRCLength = le16_to_cpu(len - sizeof(tag));
+	ret.descCRC = le16_to_cpu(udf_crc((char *)ptr + sizeof(tag), fstohs(ret.descCRCLength)));
+	ret.tagLocation = le32_to_cpu(Location);
 	for (i=0; i<16; i++)
 		if (i != 4)
 			ret.tagChecksum += (Uint8)(((char *)&ret)[i]);
@@ -1119,15 +1120,15 @@ icbtag query_icbtag(Uint32 priorEntries, Uint16 strategyType,
 {
 	icbtag ret;
 
-	ret.priorRecordedNumDirectEntries = htofsl(priorEntries);
-	ret.strategyType = htofss(strategyType);
-	ret.strategyParameter = htofss(strategyParm);
-	ret.numEntries = htofss(numEntries);
+	ret.priorRecordedNumDirectEntries = le32_to_cpu(priorEntries);
+	ret.strategyType = le16_to_cpu(strategyType);
+	ret.strategyParameter = le16_to_cpu(strategyParm);
+	ret.numEntries = le16_to_cpu(numEntries);
 	ret.reserved = 0;
 	ret.fileType = fileType;
-	ret.parentICBLocation.logicalBlockNum = htofsl(parBlockNum);
-	ret.parentICBLocation.partitionReferenceNum = htofss(parRefNum);
-	ret.flags = htofss(flags);
+	ret.parentICBLocation.logicalBlockNum = le32_to_cpu(parBlockNum);
+	ret.parentICBLocation.partitionReferenceNum = le16_to_cpu(parRefNum);
+	ret.flags = le16_to_cpu(flags);
 
 	return ret;
 }

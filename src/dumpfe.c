@@ -276,7 +276,12 @@ int main(int argc, char **argv)
 				    } /* end type 4 */	
 				    break;
 				    default:
-				    break;
+						if ( (verbose) && (fe->lengthExtendedAttr) )
+						{
+							printf("\t\tFileIdentDesc: EA\n");
+							dump_hex(&fe->extendedAttr[0], fe->lengthExtendedAttr, "\t\t");
+						}
+						break;
 				}
 				break;
 			    }

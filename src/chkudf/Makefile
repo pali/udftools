@@ -6,10 +6,10 @@ OBJS=chkudf.o read_udf.o errors.o utils.o verifyVRS.o verifyAVDP.o \
         setFirstSector.o do_scsi.o verifyLVID.o
 
 chkudf: $(OBJS)
-	gcc -o chkudf -ggdb $(OBJS)
+	gcc -o chkudf -g $(OBJS)
 
 .c.o:
-	gcc -I../../../../linux/include -Wall -ggdb -c $*.c
+	gcc -I../../../../linux/include -Wall -g -c $*.c
 
 clean:
 	rm chkudf *.o

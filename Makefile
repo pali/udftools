@@ -13,10 +13,10 @@
 .SUFFIXES: .c .o .h .a
 
 # KERNH=-I/usr/src/linux-2.1.129/include
-UDF_INC = ../include
+UDF_INC = -I../include -I../src
 
 CC		= gcc
-CFLAGS	= -DDEBUG $(KERNH) -I$(UDF_INC)\
+CFLAGS	= -DDEBUG $(KERNH) $(UDF_INC)\
 	-O2 -Wall -Wstrict-prototypes -I..  -g
 LD		= ld
 LD_RFLAGS	=
