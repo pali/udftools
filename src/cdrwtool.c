@@ -68,7 +68,7 @@
  * the drive has verified the command -- this can be used for polling
  * the device for completion.
  */
-#define NONBLOCKING_OP
+#undef NONBLOCKING_OP
 
 static char cdrom_device[NAME_MAX];
 static int progress;
@@ -670,9 +670,13 @@ int quick_setup(options_t *o)
 		return ret;
 
 	blocks = be32_to_cpu(ti.track_size);
-	if (o->fpacket) /* fixed packets format usable blocks */
+	if (o->fpacket && ti.packet && !ti.fp)
+	{
+			/* fixed packets format usable blocks */
 		blocks = ((blocks + 7) / (o->packet_size + 7)) * o->packet_size;
-	printf("Disc capacity is %u blocks (%uKB)\n", blocks, blocks * 2);
+	}
+	printf("Disc capacity is %u blocks (%uKB/%uMB)\n",
+		blocks, blocks * 2, blocks / 512);
 
 	memset(&opt, 0x00, sizeof(mkudf_options));
 	if (o->fpacket)
