@@ -109,7 +109,9 @@ int main(int argc, char **argv)
 	unsigned long endsec = 0;
 	struct VolDesc *vd;
 	struct VolStructDesc *vs;
+#if 0
 	int partstart = 0;
+#endif
 	int verbose=0;
 
 	if (argc < 3) {

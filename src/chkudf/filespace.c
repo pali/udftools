@@ -93,9 +93,9 @@ int check_uniqueid(void)
     }
   }
   printf("  The maximum Unique ID is %d.\n", Max);
-  if (Max != ID_UID) {
+  if (Max != (ID_UID-1)) {
     printf("**The Integrity Descriptor indicated a maximum Unique ID of %d.\n",
-           ID_UID);
+           (ID_UID-1));
   }
   return 0;
 }

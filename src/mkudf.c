@@ -854,9 +854,9 @@ void write_spacebitmapdesc(int loc, int sloc, int snum, int start, int end)
 	sbd->numOfBits = le32_to_cpu(end-start+1);
 	sbd->numOfBytes = le32_to_cpu(nbytes);
 	memset(sbd->bitmap, 0xFF, sizeof(Uint8) * nbytes);
-	sbd->bitmap[0] = 0x00;
-	sbd->bitmap[1] = 0x00;
-	sbd->bitmap[2] = 0xfc;
+	sbd->bitmap[0] = 0xfe;
+	sbd->bitmap[1] = 0xff;
+	sbd->bitmap[2] = 0xfd;
     sbd->bitmap[4] = 0xfe;
     sbd->bitmap[8] = 0xfe;
 
