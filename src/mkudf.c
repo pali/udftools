@@ -501,15 +501,19 @@ void write_spacebitmapdesc(write_func udf_write_data, mkudf_options *opt, int lo
 
 void write_fileentry1(write_func udf_write_data, mkudf_options *opt, int loc, int sloc, int snum, int part, int block, timestamp crtime)
 {
-	char foo[] = {	0x10,\
-					0x65, 0xE5, 0x67, 0x2C, 0x8A, 0x9E, 0x30, 0xC7,\
-					0x30, 0xA3, 0x30, 0xEC, 0x30, 0xEC, 0x30, 0xAF,\
-					0x30, 0xAF };
 	struct FileEntry *fe;
 	struct FileIdentDesc *fid;
 	size_t totsize;
 	Uint32 leattr = 0;
-	Uint32 filelen2 = /* 11 */ sizeof(foo);
+#if 1
+	Uint32 filelen2 = 11;
+#else
+	char foo[] = {	0x10,\
+					0x65, 0xE5, 0x67, 0x2C, 0x8A, 0x9E, 0x30, 0xC7,\
+					0x30, 0xA3, 0x30, 0xEC, 0x30, 0xEC, 0x30, 0xAF,\
+					0x30, 0xAF };
+	Uint32 filelen2 = sizeof(foo);
+#endif
 	Uint32 ladesc1 = compute_ident_length(sizeof(struct FileIdentDesc));
 	Uint32 ladesc2 = compute_ident_length(sizeof(struct FileIdentDesc) + filelen2);
 
@@ -536,7 +540,7 @@ void write_fileentry1(write_func udf_write_data, mkudf_options *opt, int loc, in
 	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(part);
 	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(17);
 	fid->lengthOfImpUse = le16_to_cpu(0);
-#if 0
+#if 1
 	strcpy(&fid->fileIdent[0], " lost+found");
 	fid->fileIdent[0] = 8;
 #else
