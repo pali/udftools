@@ -77,7 +77,7 @@ pktsetup:	src/pktsetup.c
 	@echo "* ftp.kernel.org/pub/linux/kernel/people/axboe/packet/ ... *"
 	@echo "* -------------------------------------------------------- *"
 	$(CC) $< $(CFLAGS) -o $@
-	@if [ ! -f /dev/pktcdvd0 ]; then mknod /dev/pktcdvd0 b 97 0; fi
+	@if [ ! -b /dev/pktcdvd0 ]; then mknod /dev/pktcdvd0 b 97 0; fi
 
 chkudf: $(CHKUDFDEP)
 	cp $(CHKUDFDEP) .
