@@ -56,11 +56,11 @@ bmap: src/bmap.c
 # to use the loop device:
 # mount -t udf <filename> /mnt -o loop
 #
-mkudf:	src/mkudf.c $(LIBS)
+mkudf:	src/mkudf_main.c src/mkudf.c $(LIBS)
 	@echo "* ------------------------------ *"
 	@echo "* Making Ben Fennema's mkudf ... *"
 	@echo "* ------------------------------ *"
-	$(CC) -I.. $< $(CFLAGS) $(LIBS) -o $@
+	$(CC) -I.. src/mkudf_main.c src/mkudf.c $(CFLAGS) $(LIBS) -o $@
 
 chkudf: $(CHKUDFDEP)
 	cp $(CHKUDFDEP) .
