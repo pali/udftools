@@ -56,9 +56,10 @@ int main(int argc, char **argv)
 	Sint64 retval;
 	Sint64 fp;
 	Uint64 sec = 0;
+	Uint32 bytes = 2048;
 
 	if (argc < 2) {
-		printf("usage: dump <device> <sector>\n");
+		printf("usage: dump <device> <sector> <bytes>\n");
 		return -1;
 	}
 	fd = open(argv[1], O_RDONLY);
@@ -67,10 +68,12 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	if (argc == 3)
+	if (argc > 2)
 		sec = strtoul(argv[2], NULL, 0);
+	if (argc > 3)
+		bytes = strtoul(argv[3], NULL, 0);
 
-	fp = sec << 11L;
+	fp = sec * bytes;
 	retval = udf_lseek64(fd, fp, SEEK_SET);
 	if (retval < 0) {
 		perror(argv[1]);
@@ -79,7 +82,7 @@ int main(int argc, char **argv)
 		printf("%Lu: seek to %Ld ok, retval %Ld\n", 
 			sec, fp, retval);
 
-	retval = read(fd, sector, 2048);
+	retval = read(fd, sector, bytes);
 	if ( retval > 0 ) {
 		int i, j;
 		printf("retval= %Ld\n", retval);
