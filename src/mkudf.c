@@ -41,381 +41,7 @@
 #include <linux/fs.h>
 
 #include <udfdecl.h>
-
-#ifndef HAVE_LLSEEK_PROTOTYPE
-extern Sint64 llseek (int fd, Sint64 offset, int origin);
-#endif
-
-/* These should be changed if you make any code changes */
-#define VERSION_MAJOR	1
-#define VERSION_MINOR	3
-#define VERSION_BUILD	3
-
-/*
- * Command line option token values.
- *	0x0000-0x00ff	Single characters
- *	0x1000-0x1fff	Long switches (no arg)
- *	0x2000-0x2fff	Long settings (arg required)
- */
-#define OPT_HELP		0x1000
-#define OPT_VERBOSE		0x1001
-#define OPT_VERSION		0x1002
-
-#define OPT_BLOCKS		0x2000
-#define OPT_MEDIA		0x2001
-#define OPT_PARTITION	0x2002
-
-#define OPT_BLK_SIZE	0x2010
-#define OPT_LVOL_ID		0x2011
-
-#define OPT_VOL_ID		0x2020
-#define OPT_SET_ID		0x2021
-#define OPT_ABSTRACT	0x2022
-#define OPT_COPYRIGHT	0x2023
-#define OPT_VOL_NUM		0x2024
-#define OPT_VOL_MAX_NUM	0x2025
-#define OPT_VOL_ICHANGE	0x2026
-#define OPT_VOL_MAX_ICHANGE	0x2027
-
-#define OPT_FILE_SET_ID	0x2030
-#define OPT_FILE_SET_COPYRIGHT	0x2031
-#define OPT_FILE_SET_ABSTRACT	0x2032
-
-/* Long command line options */
-struct option long_options[] = {
-	{ "help", no_argument, NULL, OPT_HELP },
-	{ "verbose", no_argument, NULL, OPT_VERBOSE },
-	{ "version", no_argument, NULL, OPT_VERSION },
-	/* Media Data */
-	{ "blocks", required_argument, NULL, OPT_BLOCKS },
-	{ "media-type", required_argument, NULL, OPT_MEDIA },
-	{ "partition-type", required_argument, NULL, OPT_PARTITION },
-	/* Logical Volume Descriptor */
-	{ "blocksize", required_argument, NULL, OPT_BLK_SIZE },
-	{ "logical-volume-id", required_argument, NULL, OPT_LVOL_ID },
-	/* Primary Volume Descriptor */
-	{ "volume-id", required_argument, NULL, OPT_VOL_ID },
-	{ "volume-set-id", required_argument, NULL, OPT_SET_ID },
-	{ "volume-abstract", required_argument, NULL, OPT_ABSTRACT },
-	{ "volume-copyright", required_argument, NULL, OPT_COPYRIGHT },
-	{ "volume-number", required_argument, NULL, OPT_VOL_NUM },
-	{ "volume-max-number", required_argument, NULL, OPT_VOL_MAX_NUM },
-	{ "volume-ichange", required_argument, NULL, OPT_VOL_ICHANGE },
-	{ "volume-max-ichange", required_argument, NULL, OPT_VOL_MAX_ICHANGE },
-	/* File Set Descriptor */
-	{ "file-set-id", required_argument, NULL, OPT_FILE_SET_ID },
-	{ "file-set-copyright", required_argument, NULL, OPT_FILE_SET_COPYRIGHT },
-	{ "file-set-abstract", required_argument, NULL, OPT_FILE_SET_ABSTRACT }
-};
-
-typedef enum media_types
-{
-	MT_HD,
-	MT_CDR,
-	MT_CDRW,
-	MT_DVDR,
-	MT_DVDRW,
-	MT_DVDRAM
-} media_types;
-
-typedef enum partition_types
-{
-	PT_NORMAL,
-	PT_SPARING,
-	PT_VAT
-} partition_types;
-
-/* Command line globals */
-char *opt_filename;
-unsigned opt_blocks = 0U;
-media_types opt_media = MT_HD;
-partition_types opt_partition = PT_NORMAL;
-
-unsigned opt_blocksize = 0U;
-
-/* Generic globals */
-int fs_img;
-
-unsigned long blocks;
-
-unsigned blocksize;
-unsigned blocksize_bits;
-unsigned long lastblock;
-dstring vol_id[32];
-dstring lvol_id[128];
-dstring set_id[128];
-dstring file_set_id[32];
-
-void write_system_area(void);
-void get_blocksize(void);
-void get_blocks(void);
-void write_anchor(int, int, int, int, int);
-void write_primaryvoldesc(int, int, timestamp);
-void write_logicalvoldesc(int, int, int, int, int, int, int, int);
-timestamp query_timestamp(struct timeval *, struct timezone *);
-tag query_tag(Uint16, Uint16, Uint16, Uint32, void *, size_t);
-icbtag query_icbtag(Uint32, Uint16, Uint16, Uint16, Uint8, Uint32, Uint16, Uint16);
-
-int compute_ident_length(int);
-
-/*
- * usage
- *
- * DESCRIPTION
- *	Output a usage message to stderr, and exit.
- *
- * HISTORY
- *	December 2, 1997 - Andrew E. Mileski
- *	Written, tested, and released.
- */
-void
-usage(void)
-{
-	fprintf(stderr, "usage:\n"
-		"\tmkudf [options] FILE\n"
-		"Switches:\n"
-		"\t--help\n"
-		"\t--verbose\n"
-		"\t--version\n"
-		"Settings:\n"
-		"\t--blocks=NUMBER\n"
-		"\t--media-type=hd|cdr|cdrw|dvdr|dvdrw|dvdram\n"
-		"\t--partition-type=normal|sparing|vat\n"
-
-		"\t--blocksize=NUMBER\n"
-		"\t--logical-volume-id=STRING\n"
-
-		"\t--volume-id=STRING\n"
-		"\t--volume-set-id=STRING\n"
-		"\t--volume-abstract=FILE\n"
-		"\t--volume-copyright=FILE\n"
-		"\t--volume-number=NUMBER\n"
-		"\t--volume-max-number=NUMBER\n"
-		"\t--volume-ichange=NUMBER\n"
-		"\t--volume-max-ichange=NUMBER\n"
-
-		"\t--file-set-id=STRING\n"
-		"\t--file-set-copyright=STRING\n"
-		"\t--file-set-abstract=STRING\n"
-	);
-	exit(0);
-}
-
-/*
- * parse_args
- *
- * PURPOSE
- *	Parse the command line args.
- *
- * HISTORY
- *	December 2, 1997 - Andrew E. Mileski
- *	Written, tested, and released
- */
-void
-parse_args(int argc, char *argv[])
-{
-	int retval;
-	struct ustr instr;
-	while (argc > 1) {
-		retval = getopt_long(argc, argv, "V", long_options, NULL);
-		switch (retval)
-		{
-			case OPT_HELP:
-				usage();
-				break;
-			case OPT_VERBOSE:
-				break;
-			case 'V':
-			case OPT_VERSION:
-				fprintf(stderr, "mkudf (Linux UDF tools) "
-					"%d.%d (%d)\n", VERSION_MAJOR,
-					VERSION_MINOR, VERSION_BUILD);
-				exit(0);
-
-			case OPT_BLOCKS:
-				opt_blocks = strtoul(optarg, 0, 0);
-				break;
-			case OPT_MEDIA:
-				break;
-			case OPT_PARTITION:
-				if (strlen(optarg) == 6 && !strncmp(optarg, "normal", 6))
-					opt_partition = PT_NORMAL;
-				else if (strlen(optarg) == 7 && !strncmp(optarg, "sparing", 7))
-					opt_partition = PT_SPARING;
-				else if (strlen(optarg) == 3 && !strncmp(optarg, "vat", 3))
-					opt_partition = PT_VAT;
-				else
-				{
-					fprintf(stderr, "%s --partition-type=normal|sparing|vat\n",
-						argv[0]);
-					exit(-1);
-				}
-
-			case OPT_BLK_SIZE:
-				opt_blocksize = strtoul(optarg, 0, 0);
-				break;
-			case OPT_LVOL_ID:
-				memset(&instr, 0, sizeof(struct ustr));
-				strncpy(instr.u_name, optarg, 126);
-				instr.u_len = strlen(instr.u_name) + 1;
-				udf_UTF8toCS0(lvol_id, &instr, 128);
-				break;
-
-			case OPT_VOL_ID:
-				memset(&instr, 0, sizeof(struct ustr));
-				strncpy(instr.u_name, optarg, 30);
-				instr.u_len = strlen(instr.u_name) + 1;
-				udf_UTF8toCS0(vol_id, &instr, 32);
-				break;
-			case OPT_SET_ID:
-				memset(&instr, 0, sizeof(struct ustr));
-				strncpy(instr.u_name, optarg, 126);
-				instr.u_len = strlen(instr.u_name) + 1;
-				udf_UTF8toCS0(set_id, &instr, 128);
-				break;
-			case OPT_ABSTRACT:
-			case OPT_COPYRIGHT:
-			case OPT_VOL_NUM:
-			case OPT_VOL_MAX_NUM:
-			case OPT_VOL_ICHANGE:
-			case OPT_VOL_MAX_ICHANGE:
-
-			case OPT_FILE_SET_ID:
-				memset(&instr, 0, sizeof(struct ustr));
-				strncpy(instr.u_name, optarg, 30);
-				instr.u_len = strlen(instr.u_name) + 1;
-				udf_UTF8toCS0(file_set_id, &instr, 32);
-			case OPT_FILE_SET_COPYRIGHT:
-			case OPT_FILE_SET_ABSTRACT:
-				break;
-
-			case EOF:
-				return;
-
-			default:
-				fprintf(stderr, "Try `mkudf --help' "
-					"for more information\n");
-				exit(-1);
-		}
-	}
-
-	if (optind == argc)
-		opt_filename = argv[optind];
-	else {
-		fprintf(stderr, "Try `mkudf --help' for more information\n");
-		exit(-1);
-	}
-}
-
-static Sint64 udf_lseek64(int fd, Sint64 offset, int whence)
-{
-#ifdef __USE_LARGEFILE64
-	return lseek64(fd, offset, whence);
-#else
-	return llseek(fd, offset, whence);
-#endif /* __USE_LARGEFILE64 */
-}
-
-static void udf_write_data(int block, void *buffer, int size, char *type)
-{
-	static int last = 0;
-	ssize_t retval;
-
-	if (block > last)
-		last = block;
-	else
-		printf("seeking back! last was %d, want %d (%s)\n", last, block, type);
-
-	udf_lseek64(fs_img, (Sint64)block << blocksize_bits, SEEK_SET);
-	retval = write(fs_img, buffer, size);
-	if (retval == -1) {
-		printf("error writing %s: %s\n", type, sys_errlist[errno]);
-		exit(-1);
-	}
-}
-
-void get_blocksize()
-{
-	switch (opt_blocksize)
-	{
-		case 512:
-			blocksize = 512;
-			blocksize_bits = 9;
-			break;
-		case 1024:
-			blocksize = 1024;
-			blocksize_bits = 10;
-			break;
-		case 4096:
-			blocksize = 4096;
-			blocksize_bits = 12;
-			break;
-		case 2048:
-		default:
-			blocksize = 2048;
-			blocksize_bits = 11;
-			break;
-	}
-	fprintf(stderr,"blocksize=%d bits=%d\n", blocksize, blocksize_bits);
-}
-
-static int valid_offset(int fd, Sint64 offset)
-{
-	char ch;
-
-	if (udf_lseek64(fd, offset, SEEK_SET) < 0)
-		return 0;
-	if (read(fd, &ch, 1) < 1)
-		return 0;
-	return 1;
-}
-
-void get_blocks()
-{
-#ifdef BLKGETSIZE
-	long size;
-#endif
-#ifdef FDGETPRM
-	struct floppy_struct this_floppy;
-#endif
-
-#ifdef BLKGETSIZE
-	if (ioctl(fs_img, BLKGETSIZE, &size) >= 0)
-		blocks = size / (blocksize / 512);
-	else 
-#endif
-#ifdef FDGETPRM
-	if (ioctl(fs_img, FDGETPRM, &this_floppy) >= 0)
-		blocks = this_floppy.size / (blocksize / 512);
-	else
-#endif
-	{
-		Sint64 high, low;
-
-		for (low=0, high = 1024; valid_offset(fs_img, high); high *= 2)
-			low = high;
-		while (low < high - 1)
-		{
-			const Sint64 mid = (low + high) / 2;
-
-			if (valid_offset(fs_img, mid))
-				low = mid;
-			else
-				high = mid;
-		}
-
-		valid_offset(fs_img, 0);
-		blocks = (low + 1) / blocksize;
-	}
-
-	if (opt_blocks)
-		blocks = opt_blocks;
-	lastblock = blocks-1;
-	fprintf(stderr,"blocks=%ld opt_blocks=%d lastblock=%ld\n", blocks, opt_blocks, lastblock);
-	if (!blocks)
-		exit(0);
-}
-		
+#include "mkudf.h"
 
 /*
  * write_vrs
@@ -433,7 +59,7 @@ void get_blocks()
  *	Written, tested, and released.
  */
 void
-write_vrs(int start)
+write_vrs(write_func udf_write_data, mkudf_options *opt, int start)
 {
 	struct VolStructDesc vd;
 
@@ -443,47 +69,47 @@ write_vrs(int start)
 #if 0
 	vd.structType = 0x01U;
 	memcpy(vd.stdIdent, STD_ID_CD001, STD_ID_LEN);
-	udf_write_data(start++, &vd, blocksize, "CD001 descriptor");
+	udf_write_data(opt, start++, &vd, opt->blocksize, "CD001 descriptor");
 
 	vd.structType = 0xFFU;
 	memcpy(vd.stdIdent, STD_ID_CD001, STD_ID_LEN);
-	udf_write_data(start++, &vd, blocksize, "CD001 descriptor");
+	udf_write_data(opt, start++, &vd, opt->blocksize, "CD001 descriptor");
 #endif
 
 	vd.structType = 0x00U;
 	vd.structVersion = 0x01U;
 
 	memcpy(vd.stdIdent, STD_ID_BEA01, STD_ID_LEN);
-	udf_write_data(start++, &vd, blocksize, "BEA01 descriptor");
+	udf_write_data(opt, start++, &vd, opt->blocksize, "BEA01 descriptor");
 
 	memcpy(vd.stdIdent, STD_ID_NSR02, STD_ID_LEN);
-	udf_write_data(start++, &vd, blocksize, "NSR002 descriptor");
+	udf_write_data(opt, start++, &vd, opt->blocksize, "NSR002 descriptor");
 
 	memcpy(vd.stdIdent, STD_ID_TEA01, STD_ID_LEN);
-	udf_write_data(start++, &vd, blocksize, "TEA01 descriptor");
+	udf_write_data(opt, start++, &vd, opt->blocksize, "TEA01 descriptor");
 }
 
 void
-write_anchor(int loc, int start, int len, int rstart, int rlen)
+write_anchor(write_func udf_write_data, mkudf_options *opt, int loc, int start, int len, int rstart, int rlen)
 {
 	struct AnchorVolDescPtr *avdp;
 	size_t totsize;
 
 	totsize = sizeof(struct AnchorVolDescPtr);
-	avdp = calloc(1, blocksize);
+	avdp = calloc(1, opt->blocksize);
 
 	avdp->mainVolDescSeqExt.extLocation = le32_to_cpu(start);
-	avdp->mainVolDescSeqExt.extLength = le32_to_cpu(len * blocksize);
+	avdp->mainVolDescSeqExt.extLength = le32_to_cpu(len * opt->blocksize);
 	avdp->reserveVolDescSeqExt.extLocation = le32_to_cpu(rstart);
-	avdp->reserveVolDescSeqExt.extLength = le32_to_cpu(rlen * blocksize);
+	avdp->reserveVolDescSeqExt.extLength = le32_to_cpu(rlen * opt->blocksize);
 	avdp->descTag = query_tag(TID_ANCHOR_VOL_DESC_PTR, 2, 1, loc, avdp, totsize);
 
-	udf_write_data(loc, avdp, blocksize, "Anchor descriptor");
+	udf_write_data(opt, loc, avdp, opt->blocksize, "Anchor descriptor");
 	free(avdp);
 }
 
 void
-write_primaryvoldesc(int loc, int snum, timestamp crtime)
+write_primaryvoldesc(write_func udf_write_data, mkudf_options *opt, int loc, int snum, timestamp crtime)
 {
 	struct PrimaryVolDesc *pvd;
 	size_t totsize;
@@ -493,7 +119,7 @@ write_primaryvoldesc(int loc, int snum, timestamp crtime)
 
 	pvd->volDescSeqNum = le32_to_cpu(snum);
 	pvd->primaryVolDescNum = le32_to_cpu(0);
-	memcpy(pvd->volIdent, vol_id, sizeof(vol_id));
+	memcpy(pvd->volIdent, opt->vol_id, sizeof(opt->vol_id));
 	pvd->volSeqNum = le16_to_cpu(1);
 	pvd->maxVolSeqNum = le16_to_cpu(1);
 	pvd->interchangeLvl = le16_to_cpu(2);
@@ -501,7 +127,7 @@ write_primaryvoldesc(int loc, int snum, timestamp crtime)
 	pvd->charSetList = le32_to_cpu(0x00000001);
 	pvd->maxCharSetList = le32_to_cpu(0x00000001);
 	/* first 8 chars == 32-bit time value */ /* next 8 imp use */
-	memcpy(pvd->volSetIdent, set_id, sizeof(set_id));
+	memcpy(pvd->volSetIdent, opt->set_id, sizeof(opt->set_id));
 	pvd->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
 	strcpy(pvd->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 	pvd->explanatoryCharSet.charSetType = UDF_CHAR_SET_TYPE;
@@ -522,12 +148,12 @@ write_primaryvoldesc(int loc, int snum, timestamp crtime)
 	pvd->flags = le16_to_cpu(0x0001);
 	pvd->descTag = query_tag(TID_PRIMARY_VOL_DESC, 2, 1, loc, pvd, totsize);
 
-	udf_write_data(loc, pvd, sizeof(struct PrimaryVolDesc), "Primary Volume descriptor");
+	udf_write_data(opt, loc, pvd, sizeof(struct PrimaryVolDesc), "Primary Volume descriptor");
 	free(pvd);
 }
 
 void
-write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int filesetblock, int spartable, int sparnum)
+write_logicalvoldesc(write_func udf_write_data, mkudf_options *opt, int loc, int snum, int start, int len, int filesetpart, int filesetblock, int spartable, int sparnum)
 {
 	struct LogicalVolDesc *lvd;
 	struct GenericPartitionMap1 *gpm1;
@@ -537,15 +163,15 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 	Uint8 maplen = 0;
 	Uint32 totmaplen;
 
-	if (opt_partition == PT_NORMAL)
+	if (opt->partition == PT_NORMAL)
 		maplen = 6;
-	else if (opt_partition == PT_SPARING)
+	else if (opt->partition == PT_SPARING)
 		maplen = 64;
 
 	totsize = sizeof(struct LogicalVolDesc) + maplen;
 	lvd = calloc(1, totsize);
 
-	if (opt_partition == PT_NORMAL)
+	if (opt->partition == PT_NORMAL)
 	{
 		gpm1 = (struct GenericPartitionMap1 *)&(lvd->partitionMaps[0]);
 		/* type 1 only */ /* 2 2.2.8, 2.2.9 */
@@ -579,9 +205,9 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 	lvd->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
 	strcpy(lvd->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 
-	memcpy(&lvd->logicalVolIdent, lvol_id, sizeof(lvol_id));
+	memcpy(&lvd->logicalVolIdent, opt->lvol_id, sizeof(opt->lvol_id));
 
-	lvd->logicalBlockSize = le32_to_cpu(blocksize);
+	lvd->logicalBlockSize = le32_to_cpu(opt->blocksize);
 
 	lvd->domainIdent.flags = 0;
 	strcpy(lvd->domainIdent.ident, UDF_ID_COMPLIANT);
@@ -589,7 +215,7 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 	lvd->domainIdent.identSuffix[2] = 0x00;
 
 	fsd = (long_ad *)lvd->logicalVolContentsUse;
-	fsd->extLength = le32_to_cpu(blocksize);
+	fsd->extLength = le32_to_cpu(opt->blocksize);
 	fsd->extLocation.logicalBlockNum = le32_to_cpu(filesetblock);
 	fsd->extLocation.partitionReferenceNum = le16_to_cpu(filesetpart);
 
@@ -602,14 +228,14 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 	lvd->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
 	lvd->integritySeqExt.extLocation = le32_to_cpu(start);
-	lvd->integritySeqExt.extLength = le32_to_cpu(len * blocksize);
+	lvd->integritySeqExt.extLength = le32_to_cpu(len * opt->blocksize);
 
 	lvd->descTag = query_tag(TID_LOGICAL_VOL_DESC, 2, 1, loc, lvd, totsize);
-	udf_write_data(loc, lvd, totsize, "Logical Volume descriptor");
+	udf_write_data(opt, loc, lvd, totsize, "Logical Volume descriptor");
 	free(lvd);
 }
 
-void write_logicalvolintdesc(int loc, timestamp crtime, int part0start)
+void write_logicalvolintdesc(write_func udf_write_data, mkudf_options *opt, int loc, timestamp crtime, int part0start)
 {
 	int i;
 	struct LogicalVolIntegrityDesc *lvid;
@@ -617,16 +243,16 @@ void write_logicalvolintdesc(int loc, timestamp crtime, int part0start)
 	size_t totsize;
 	Uint32 npart = 1;
 	Uint32 spaceused = ((sizeof(struct SpaceBitmapDesc) +
-		((lastblock-288-part0start)/8 + 1) * sizeof(Uint8) + blocksize - 1) >>
-		blocksize_bits) + 3;
+		(((opt->blocks-1)-288-part0start)/8 + 1) * sizeof(Uint8) + opt->blocksize - 1) >>
+		opt->blocksize_bits) + 3;
 
 	totsize = sizeof(struct LogicalVolIntegrityDesc) + sizeof(Uint32) * npart + sizeof(Uint32) * npart + sizeof(struct LogicalVolIntegrityDescImpUse);
 	lvid = calloc(1, totsize);
 
 	for (i=0; i<npart; i++)
-		lvid->freeSpaceTable[i] = le32_to_cpu(1+lastblock-288-part0start-spaceused);
+		lvid->freeSpaceTable[i] = le32_to_cpu(1+(opt->blocks-1)-288-part0start-spaceused);
 	for (i=0; i<npart; i++)
-		lvid->sizeTable[i+npart] = le32_to_cpu(1+lastblock-288-part0start);
+		lvid->sizeTable[i+npart] = le32_to_cpu(1+(opt->blocks-1)-288-part0start);
 	lvidiu = (struct LogicalVolIntegrityDescImpUse *)&(lvid->impUse[npart*2*sizeof(Uint32)/sizeof(Uint8)]);
 
 	lvidiu->impIdent.flags = 0;
@@ -649,11 +275,11 @@ void write_logicalvolintdesc(int loc, timestamp crtime, int part0start)
 	lvid->lengthOfImpUse = le32_to_cpu(sizeof(struct LogicalVolIntegrityDescImpUse));
 
 	lvid->descTag = query_tag(TID_LOGICAL_VOL_INTEGRITY_DESC, 2, 1, loc, lvid, totsize);
-	udf_write_data(loc, lvid, totsize, "Logical Volume Integrity descriptor");
+	udf_write_data(opt, loc, lvid, totsize, "Logical Volume Integrity descriptor");
 	free(lvid);
 }
 
-void write_partitionvoldesc(int loc, int snum, int start, int end, int usb)
+void write_partitionvoldesc(write_func udf_write_data, mkudf_options *opt, int loc, int snum, int start, int end, int usb)
 {
 	struct PartitionDesc *pd;
 	struct PartitionHeaderDesc *phd;
@@ -672,8 +298,8 @@ void write_partitionvoldesc(int loc, int snum, int start, int end, int usb)
 	phd = (struct PartitionHeaderDesc *)&(pd->partitionContentsUse[0]);
 	phd->unallocatedSpaceTable.extLength = le32_to_cpu(0);
 	phd->unallocatedSpaceBitmap.extLength = le32_to_cpu(
-		((((sizeof(struct SpaceBitmapDesc)+end-start) >> (blocksize_bits + 3)) + 1)
-		<< blocksize_bits) | 0x40000000);
+		((((sizeof(struct SpaceBitmapDesc)+end-start) >> (opt->blocksize_bits + 3)) + 1)
+		<< opt->blocksize_bits) | 0x40000000);
 	phd->unallocatedSpaceBitmap.extPosition = le32_to_cpu(usb-start);
 	phd->partitionIntegrityTable.extLength = le32_to_cpu(0);
 	phd->freedSpaceTable.extLength = le32_to_cpu(0);
@@ -689,11 +315,11 @@ void write_partitionvoldesc(int loc, int snum, int start, int end, int usb)
 	pd->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 	
 	pd->descTag = query_tag(TID_PARTITION_DESC, 2, 1, loc, pd, totsize);
-	udf_write_data(loc, pd, totsize, "Partition descriptor");
+	udf_write_data(opt, loc, pd, totsize, "Partition descriptor");
 	free(pd);
 }
 
-void write_unallocatedspacedesc(int loc, int snum, int start1, int end1, int start2, int end2)
+void write_unallocatedspacedesc(write_func udf_write_data, mkudf_options *opt, int loc, int snum, int start1, int end1, int start2, int end2)
 {
 	struct UnallocatedSpaceDesc *usd;
 	extent_ad *ead;
@@ -704,22 +330,22 @@ void write_unallocatedspacedesc(int loc, int snum, int start1, int end1, int sta
 	usd = calloc(1, totsize);
 
 	ead = &(usd->allocDescs[0]);
-	ead->extLength = le32_to_cpu((1 + end1 - start1) * blocksize);
+	ead->extLength = le32_to_cpu((1 + end1 - start1) * opt->blocksize);
 	ead->extLocation = le32_to_cpu(start1);
 
 	ead = &(usd->allocDescs[1]);
-	ead->extLength = le32_to_cpu((1 + end2 - start2) * blocksize);
+	ead->extLength = le32_to_cpu((1 + end2 - start2) * opt->blocksize);
 	ead->extLocation = le32_to_cpu(start2);
  
 	usd->volDescSeqNum = le32_to_cpu(snum);
 	usd->numAllocDescs = le32_to_cpu(ndesc);
 
 	usd->descTag = query_tag(TID_UNALLOC_SPACE_DESC, 2, 1, loc, usd, totsize);
-	udf_write_data(loc, usd, totsize, "Unallocated Space descriptor");
+	udf_write_data(opt, loc, usd, totsize, "Unallocated Space descriptor");
 	free(usd);
 }
 
-void write_impusevoldesc(int loc, int snum)
+void write_impusevoldesc(write_func udf_write_data, mkudf_options *opt, int loc, int snum)
 {
 	struct ImpUseVolDesc *iuvd;
 	struct ImpUseVolDescImpUse *iuvdiu;
@@ -734,7 +360,7 @@ void write_impusevoldesc(int loc, int snum)
 	iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
 	strcpy(iuvdiu->LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
 
-	memcpy(iuvdiu->logicalVolIdent, lvol_id, sizeof(lvol_id));
+	memcpy(iuvdiu->logicalVolIdent, opt->lvol_id, sizeof(opt->lvol_id));
 
 	memset(&instr, 0, sizeof(struct ustr));
 	sprintf(instr.u_name, "mkudf (Linux UDF tools) %d.%d (%d)",
@@ -766,11 +392,11 @@ void write_impusevoldesc(int loc, int snum)
 	iuvd->impIdent.identSuffix[3] = UDF_OS_ID_LINUX;
 
 	iuvd->descTag = query_tag(TID_IMP_USE_VOL_DESC, 2, 1, loc, iuvd, totsize);
-	udf_write_data(loc, iuvd, totsize, "Imp Use Volume descriptor");
+	udf_write_data(opt, loc, iuvd, totsize, "Imp Use Volume descriptor");
 	free(iuvd);
 }
 
-void write_termvoldesc(int loc)
+void write_termvoldesc(write_func udf_write_data, mkudf_options *opt, int loc)
 {
 	struct TerminatingDesc *td;
 	size_t totsize;
@@ -779,11 +405,11 @@ void write_termvoldesc(int loc)
 	td = calloc(1, totsize);
 	
 	td->descTag = query_tag(TID_TERMINATING_DESC, 2, 1, loc, td, totsize);
-	udf_write_data(loc, td, totsize, "Terminating descriptor");
+	udf_write_data(opt, loc, td, totsize, "Terminating descriptor");
 	free(td);
 }
 
-void write_filesetdesc(int loc, int sloc, int snum, int rootpart, int rootblock, timestamp crtime)
+void write_filesetdesc(write_func udf_write_data, mkudf_options *opt, int loc, int sloc, int snum, int rootpart, int rootblock, timestamp crtime)
 {
 	struct FileSetDesc *fsd;
 	ssize_t totsize;
@@ -800,15 +426,15 @@ void write_filesetdesc(int loc, int sloc, int snum, int rootpart, int rootblock,
 	fsd->fileSetDescNum = 0;
 	fsd->logicalVolIdentCharSet.charSetType = UDF_CHAR_SET_TYPE;
 	strcpy(fsd->logicalVolIdentCharSet.charSetInfo, UDF_CHAR_SET_INFO);
-	memcpy(&fsd->logicalVolIdent, lvol_id, sizeof(lvol_id));
+	memcpy(&fsd->logicalVolIdent, opt->lvol_id, sizeof(opt->lvol_id));
 	fsd->fileSetCharSet.charSetType = UDF_CHAR_SET_TYPE;
 	strcpy(fsd->fileSetCharSet.charSetInfo, UDF_CHAR_SET_INFO);
-	memcpy(&fsd->fileSetIdent, file_set_id, sizeof(file_set_id));
+	memcpy(&fsd->fileSetIdent, opt->file_set_id, sizeof(opt->file_set_id));
 /*
 	copyrightFileIdent[32]
 	abstractFileIdent
 */
-	fsd->rootDirectoryICB.extLength = le32_to_cpu(blocksize);
+	fsd->rootDirectoryICB.extLength = le32_to_cpu(opt->blocksize);
 	fsd->rootDirectoryICB.extLocation.logicalBlockNum = le32_to_cpu(rootblock);
 	fsd->rootDirectoryICB.extLocation.partitionReferenceNum = le16_to_cpu(rootpart);
 	fsd->domainIdent.flags = 0;
@@ -819,11 +445,11 @@ void write_filesetdesc(int loc, int sloc, int snum, int rootpart, int rootblock,
 */
 	
 	fsd->descTag = query_tag(TID_FILE_SET_DESC, 2, snum, loc - sloc, fsd, totsize);
-	udf_write_data(loc, fsd, totsize, "File Set descriptor");
+	udf_write_data(opt, loc, fsd, totsize, "File Set descriptor");
 	free(fsd);
 }
 
-void write_spartable(int loc, int snum, int start, int num)
+void write_spartable(write_func udf_write_data, mkudf_options *opt, int loc, int snum, int start, int num)
 {
 	struct SparingTable *st;
 	size_t totsize;
@@ -845,11 +471,11 @@ void write_spartable(int loc, int snum, int start, int num)
 	}
 
 	st->descTag = query_tag(0, 2, snum, loc, st, totsize);
-	udf_write_data(loc, st, totsize, "Sparing Table");
+	udf_write_data(opt, loc, st, totsize, "Sparing Table");
 	free(st);
 }
 
-void write_spacebitmapdesc(int loc, int sloc, int snum, int start, int end, int fileset)
+void write_spacebitmapdesc(write_func udf_write_data, mkudf_options *opt, int loc, int sloc, int snum, int start, int end, int fileset)
 {
 	struct SpaceBitmapDesc *sbd;
 	size_t totsize;
@@ -862,24 +488,28 @@ void write_spacebitmapdesc(int loc, int sloc, int snum, int start, int end, int 
 	sbd->numOfBits = le32_to_cpu(end-start+1);
 	sbd->numOfBytes = le32_to_cpu(nbytes);
 	memset(sbd->bitmap, 0xFF, sizeof(Uint8) * nbytes);
-	for (i=0; i<(totsize + blocksize - 1) >> blocksize_bits; i++)
+	for (i=0; i<(totsize + opt->blocksize - 1) >> opt->blocksize_bits; i++)
 		sbd->bitmap[i/8] &= ~(1 << i%8);
 	sbd->bitmap[fileset/8] &= ~(1 << (fileset%8));
 	sbd->bitmap[(fileset+32)/8] &= ~(1 << ((fileset+32)%8));
 	sbd->bitmap[(fileset+33)/8] &= ~(1 << ((fileset+33)%8));
 
 	sbd->descTag = query_tag(TID_SPACE_BITMAP_DESC, 2, snum, loc - sloc, sbd, sizeof(tag));
-	udf_write_data(loc, sbd, totsize, "Space Bitmap descriptor");
+	udf_write_data(opt, loc, sbd, totsize, "Space Bitmap descriptor");
 	free(sbd);
 }
 
-void write_fileentry1(int loc, int sloc, int snum, int part, int block, timestamp crtime)
+void write_fileentry1(write_func udf_write_data, mkudf_options *opt, int loc, int sloc, int snum, int part, int block, timestamp crtime)
 {
+	char foo[] = {	0x10,\
+					0x65, 0xE5, 0x67, 0x2C, 0x8A, 0x9E, 0x30, 0xC7,\
+					0x30, 0xA3, 0x30, 0xEC, 0x30, 0xEC, 0x30, 0xAF,\
+					0x30, 0xAF };
 	struct FileEntry *fe;
 	struct FileIdentDesc *fid;
 	size_t totsize;
 	Uint32 leattr = 0;
-	Uint32 filelen2 = 11;
+	Uint32 filelen2 = /* 11 */ sizeof(foo);
 	Uint32 ladesc1 = compute_ident_length(sizeof(struct FileIdentDesc));
 	Uint32 ladesc2 = compute_ident_length(sizeof(struct FileIdentDesc) + filelen2);
 
@@ -890,7 +520,7 @@ void write_fileentry1(int loc, int sloc, int snum, int part, int block, timestam
 	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x0A; /* 0000 1010 */
 	fid->lengthFileIdent = 0;
-	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLength = le32_to_cpu(opt->blocksize);
 	fid->icb.extLocation.logicalBlockNum = cpu_to_le32(block);
 	fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(part);
 	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(16);
@@ -901,13 +531,18 @@ void write_fileentry1(int loc, int sloc, int snum, int part, int block, timestam
 	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x02; /* 0000 0010 */
 	fid->lengthFileIdent = filelen2;
-	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLength = le32_to_cpu(opt->blocksize);
 	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(block+1);
 	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(part);
 	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(17);
 	fid->lengthOfImpUse = le16_to_cpu(0);
+#if 0
 	strcpy(&fid->fileIdent[0], " lost+found");
 	fid->fileIdent[0] = 8;
+#else
+	printf("len=%d\n", sizeof(foo));
+	memcpy(&fid->fileIdent, foo, sizeof(foo));
+#endif
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc2);
 
 	fe->uid = le32_to_cpu(0);
@@ -938,11 +573,11 @@ void write_fileentry1(int loc, int sloc, int snum, int part, int block, timestam
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_DIRECTORY, 0, 0, ICB_FLAG_AD_IN_ICB);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
-	udf_write_data(loc, fe, totsize, "File Entry");
+	udf_write_data(opt, loc, fe, totsize, "File Entry");
 	free(fe);
 }
 
-void write_fileentry2(int loc, int sloc, int snum, int part, int block, timestamp crtime)
+void write_fileentry2(write_func udf_write_data, mkudf_options *opt, int loc, int sloc, int snum, int part, int block, timestamp crtime)
 {
 	struct FileEntry *fe;
 	struct FileIdentDesc *fid;
@@ -957,7 +592,7 @@ void write_fileentry2(int loc, int sloc, int snum, int part, int block, timestam
 	fid->fileVersionNum = le16_to_cpu(1);
 	fid->fileCharacteristics = 0x0A; /* 0000 1010 */
 	fid->lengthFileIdent = 0;
-	fid->icb.extLength = le32_to_cpu(blocksize);
+	fid->icb.extLength = le32_to_cpu(opt->blocksize);
 	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(block);
 	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(part);
 	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(17);
@@ -992,7 +627,7 @@ void write_fileentry2(int loc, int sloc, int snum, int part, int block, timestam
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_DIRECTORY, 2, 0, ICB_FLAG_AD_IN_ICB);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
-	udf_write_data(loc, fe, totsize, "File Entry");
+	udf_write_data(opt, loc, fe, totsize, "File Entry");
 	free(fe);
 }
 
@@ -1068,7 +703,7 @@ int compute_ident_length(int len)
 }
 
 int
-main(int argc, char *argv[])
+mkudf(write_func udf_write_data, mkudf_options *opt)
 {
 	Uint32 pvd, pvd_len, rvd, rvd_len, snum, lvd, lvd_len;
 	Uint32 filesetpart, filesetblock, part0start;
@@ -1077,23 +712,8 @@ main(int argc, char *argv[])
 	struct timezone tz;
 	timestamp crtime;
 
-	if ( argc < 2 ) {
-		usage();
-		return 0;
-	}
-	parse_args(argc, argv);
-
-	fs_img = open(argv[optind], O_RDWR, 0660);
-	if (fs_img == -1) {
-		perror("error opening image file");
-		return -1;
-	}
-
 	gettimeofday(&tv, &tz);
 	crtime = query_timestamp(&tv, &tz);
-
-	get_blocksize();
-	get_blocks();
 
 	pvd = 0x120;
 	pvd_len = 0x10;
@@ -1104,62 +724,61 @@ main(int argc, char *argv[])
 	lvd_len = 2;
 
 	filesetpart = 0;
-	if (opt_partition == PT_SPARING)
+	if (opt->partition == PT_SPARING)
 	{
 		part0start = 2464;
 		sparstart = 1408;
 		spartable = 2432;
 		sparnum = 32;
 	}
-	else if (opt_partition == PT_VAT)
+	else if (opt->partition == PT_VAT)
 		part0start = 384;
 	else
 		part0start = 1408;
 
 	filesetblock =
 		(sizeof(struct SpaceBitmapDesc) +
-		((lastblock-288-part0start)/8 + 1) * sizeof(Uint8) + blocksize - 1) >>
-			blocksize_bits;
+		(((opt->blocks-1)-288-part0start)/8 + 1) * sizeof(Uint8) + opt->blocksize - 1) >>
+			opt->blocksize_bits;
 
-	if (opt_partition == PT_SPARING || opt_partition == PT_NORMAL)
+	if (opt->partition == PT_SPARING || opt->partition == PT_NORMAL)
 		filesetblock = ((filesetblock + 31) / 32) * 32;
 
-	write_vrs( 32768 >> blocksize_bits );
-	write_anchor(256, pvd, pvd_len, rvd, rvd_len);
+	write_vrs(udf_write_data, opt, 32768 >> opt->blocksize_bits );
+	write_anchor(udf_write_data, opt, 256, pvd, pvd_len, rvd, rvd_len);
 
-	write_primaryvoldesc(pvd, ++snum, crtime);
-	write_logicalvoldesc(pvd+1, ++snum, lvd, lvd_len, filesetpart, filesetblock,
-		spartable, sparnum);
-	write_partitionvoldesc(pvd+2, ++snum, part0start, lastblock-288, part0start);
-	if (opt_partition == PT_SPARING || opt_partition == PT_NORMAL)
-		write_unallocatedspacedesc(pvd+3, ++snum, 32, 255, 384, 1407);
+	write_primaryvoldesc(udf_write_data, opt, pvd, ++snum, crtime);
+	write_logicalvoldesc(udf_write_data, opt, pvd+1, ++snum, lvd, lvd_len, filesetpart,
+		filesetblock, spartable, sparnum);
+	write_partitionvoldesc(udf_write_data, opt, pvd+2, ++snum, part0start, (opt->blocks-1)-288, part0start);
+	if (opt->partition == PT_SPARING || opt->partition == PT_NORMAL)
+		write_unallocatedspacedesc(udf_write_data, opt, pvd+3, ++snum, 32, 255, 384, 1407);
 	else
-		write_unallocatedspacedesc(pvd+3, ++snum, 32, 255, 0, 0);
-	write_impusevoldesc(pvd+4, ++snum);
-	write_termvoldesc(pvd+5);
+		write_unallocatedspacedesc(udf_write_data, opt, pvd+3, ++snum, 32, 255, 0, 0);
+	write_impusevoldesc(udf_write_data, opt, pvd+4, ++snum);
+	write_termvoldesc(udf_write_data, opt, pvd+5);
 
-	write_primaryvoldesc(rvd, snum, crtime);
-	write_logicalvoldesc(rvd+1, snum, lvd, lvd_len, filesetpart, filesetblock,
-		spartable, sparnum);
-	write_partitionvoldesc(rvd+2, snum, part0start, lastblock-288, part0start);
-	if (opt_partition == PT_SPARING || opt_partition == PT_NORMAL)
-		write_unallocatedspacedesc(rvd+3, snum, 32, 255, 384, 1407);
+	write_primaryvoldesc(udf_write_data, opt, rvd, snum, crtime);
+	write_logicalvoldesc(udf_write_data, opt, rvd+1, snum, lvd, lvd_len, filesetpart,
+		filesetblock, spartable, sparnum);
+	write_partitionvoldesc(udf_write_data, opt, rvd+2, snum, part0start, (opt->blocks-1)-288, part0start);
+	if (opt->partition == PT_SPARING || opt->partition == PT_NORMAL)
+		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, snum, 32, 255, 384, 1407);
 	else
-		write_unallocatedspacedesc(rvd+3, snum, 32, 255, 0, 0);
-	write_impusevoldesc(rvd+4, snum);
-	write_termvoldesc(rvd+5);
+		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, snum, 32, 255, 0, 0);
+	write_impusevoldesc(udf_write_data, opt, rvd+4, snum);
+	write_termvoldesc(udf_write_data, opt, rvd+5);
 
-	write_logicalvolintdesc(lvd, crtime, part0start);
-	write_termvoldesc(lvd+1);
+	write_logicalvolintdesc(udf_write_data, opt, lvd, crtime, part0start);
+	write_termvoldesc(udf_write_data, opt, lvd+1);
 
-	if (opt_partition == PT_SPARING)
-		write_spartable(spartable, 1, sparstart, sparnum);
-	write_spacebitmapdesc(part0start, part0start, 1, part0start, lastblock-288, filesetblock);
-	write_filesetdesc(part0start+filesetblock, part0start, 1, 0, filesetblock+32, crtime);
-	write_fileentry1(part0start+filesetblock+32, part0start, 1, 0, filesetblock+32, crtime);
-	write_fileentry2(part0start+filesetblock+33, part0start, 1, 0, filesetblock+32, crtime);
-	write_anchor(lastblock-256, pvd, pvd_len, rvd, rvd_len);
-	write_anchor(lastblock, pvd, pvd_len, rvd, rvd_len);
-	close(fs_img);
+	if (opt->partition == PT_SPARING)
+		write_spartable(udf_write_data, opt, spartable, 1, sparstart, sparnum);
+	write_spacebitmapdesc(udf_write_data, opt, part0start, part0start, 1, part0start, (opt->blocks-1)-288, filesetblock);
+	write_filesetdesc(udf_write_data, opt, part0start+filesetblock, part0start, 1, 0, filesetblock+32, crtime);
+	write_fileentry1(udf_write_data, opt, part0start+filesetblock+32, part0start, 1, 0, filesetblock+32, crtime);
+	write_fileentry2(udf_write_data, opt, part0start+filesetblock+33, part0start, 1, 0, filesetblock+32, crtime);
+	write_anchor(udf_write_data, opt, (opt->blocks-1)-256, pvd, pvd_len, rvd, rvd_len);
+	write_anchor(udf_write_data, opt, (opt->blocks-1), pvd, pvd_len, rvd, rvd_len);
 	return 0;
 }
