@@ -1,0 +1,21 @@
+Template: udftools/makedev-ask
+Type: select
+Choices: Create device files, Do nothing
+Choices-de: Gerätedateien erstellen, Nichts machen
+Choices-es: Crear los ficheros de dispositivo, No hacer nada
+Default: Create device files
+Description: Create device files (/dev/pktcdvd0 etc.)?
+ The "pktsetup" tool supplied as part of the udftools package can be
+ used to set up packet writing for CD/DVD devices. However, the
+ corresponding device files /dev/pktcdvd0 etc. are not present on your
+ system. Should I create them?
+Description-de: Die Gerätedateien (/dev/pktcdvd0 etc.) erzeugen?
+ Das Programm "pktsetup" ist Teil des udftools-Pakets und wird zur
+ Installation von Packet-Writing für CD/DVD-Geräte genutzt. Im Moment
+ sind die dafür notwendigen Gerätedateien /etc/pktcdvd0 etc. nicht
+ vorhanden. Sollen diese jetzt erzeugt werden?
+Description-es: ¿Crear los ficheros de dispositivo (/dev/pktcdvd0, etc.)?
+ La herramienta "pktsetup", incluida en el paquete udftools, se puede usar
+ para configurar la escritura por paquetes de dispositivos CD y DVD. Sin
+ embargo, los correspondientes ficheros de dispositivo /dev/pktcdvd0, etc.
+ no están presentes en su sistema. ¿Debería crearlos?

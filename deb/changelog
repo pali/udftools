@@ -1,0 +1,6 @@
+udftools () unstable; urgency=low
+
+  * This version was built directly from upstream sources. It is not
+    an official Debian package.
+
+ -- Ben Fennema <bfennema@falcon.csc.calpoly.edu>  Wed, 13 Feb 2002 18:55:23 +0100

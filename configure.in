@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(mkudffs/mkudffs.c)
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(include/config.h:include/config.in)
-AM_INIT_AUTOMAKE(udftools, 1.0.0b2)
+AM_INIT_AUTOMAKE(udftools, 1.0.0b3)
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -25,4 +25,4 @@ AC_CHECK_FUNCS(gettimeofday mktime open64 lseek64 llseek)
 AC_SUBST(LIBOBJS)
 AC_CHECK_FUNCS(getopt_long , , [LIBOBJS="$LIBOBJS getopt.lo"] )
 
-AC_OUTPUT(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile doc/Makefile)
+AC_OUTPUT(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile wrudf/Makefile doc/Makefile)

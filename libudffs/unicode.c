@@ -24,7 +24,41 @@
 #include "defaults.h"
 #include "config.h"
 
-static int encode_utf8(struct udf_disc *disc, char *out, char *hdr, char *in, int outlen)
+int decode_utf8(char *in, char *out, int inlen)
+{
+	int len = 0, i;
+	char c;
+
+	if (in[inlen-1] == 0)
+		return 0;
+	else if (in[0] != 8 && in[0] != 16)
+		return 0;
+
+	for (i=0; i<inlen;)
+	{
+		c = in[i++];
+		if (in[0] == 16)
+			c = (c << 8) | in[i++];
+
+		if (c < 0x80U)
+			out[len++] = (uint8_t)c;
+		else if (c < 0x800U)
+		{
+			out[len++] = (uint8_t)(0xc0 | (c >> 6));
+			out[len++] = (uint8_t)(0x80 | (c & 0x3f));
+		}
+		else
+		{
+			out[len++] = (uint8_t)(0xe0 | (c >> 12));
+			out[len++] = (uint8_t)(0x80 | ((c >> 6) & 0x3f));
+			out[len++] = (uint8_t)(0x80 | (c & 0x3f));
+		}
+	}
+
+	return len;
+}
+
+int encode_utf8(char *out, char *hdr, char *in, int outlen)
 {
 	int inlen = strlen(in);
 	int utf_cnt, len = 1, i;
@@ -130,9 +164,22 @@ try_again:
 error_out:
 		return 0;
 
-	out[outlen-1] = len;
-
 	return len;
+}
+
+int decode_string(struct udf_disc *disc, char *in, char *out, int inlen)
+{
+	int i;
+
+	if (disc->flags & FLAG_UTF8)
+		return decode_utf8(in, out, inlen);
+	else if (disc->flags & (FLAG_UNICODE8 | FLAG_UNICODE16))
+	{
+		memcpy(out, &in[1], inlen);
+		return inlen;
+	}
+	else
+		return 0;
 }
 
 int encode_string(struct udf_disc *disc, char *out, char *hdr, char *in, int outlen)
@@ -141,7 +188,7 @@ int encode_string(struct udf_disc *disc, char *out, char *hdr, char *in, int out
 
 	memset(out, 0x00, outlen);
 	if (disc->flags & FLAG_UTF8)
-		return encode_utf8(disc, out, hdr, in, outlen);
+		return encode_utf8(out, hdr, in, outlen);
 	else if (disc->flags & FLAG_UNICODE8)
 	{
 		if (strlen(hdr) + strlen(in) > outlen - 2)
@@ -151,7 +198,6 @@ int encode_string(struct udf_disc *disc, char *out, char *hdr, char *in, int out
 			memcpy(&out[1], hdr, strlen(hdr));
 			memcpy(&out[1+strlen(hdr)], in, strlen(in));
 			out[0] = 0x08;
-			out[outlen-1] = strlen(hdr) + strlen(in) + 1;
 			return strlen(hdr) + strlen(in) + 1;
 		}
 	}
@@ -165,7 +211,6 @@ int encode_string(struct udf_disc *disc, char *out, char *hdr, char *in, int out
 				out[2+(i*2)] = hdr[i];
 			memcpy(&out[1+(strlen(hdr)*2)], in, strlen(in));
 			out[0] = 0x10;
-			out[outlen-1] = (strlen(hdr) * 2) + strlen(in) + 1;
 			return (strlen(hdr) * 2) + strlen(in) + 1;
 		}
 	}

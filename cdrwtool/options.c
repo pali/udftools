@@ -68,7 +68,7 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 {
 	int retval;
 
-	while ((retval = getopt_long(argc, argv, "r:t:im:u:v:d:sgqc:b:p:z:l:w:f:o:h", long_options, NULL)) != EOF)
+	while ((retval = getopt_long(argc, argv, "r:t:im:u:v:d:sgqc:C:b:p:z:l:w:f:o:h", long_options, NULL)) != EOF)
 	{
 		switch (retval)
 		{
@@ -79,6 +79,11 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			case 'c':
 			{
 				disc->close_track = strtol(optarg, NULL, 10);
+				break;
+			}
+			case 'C':
+			{
+				disc->close_session = strtol(optarg, NULL, 10);
 				break;
 			}
 			case 'q':

@@ -87,6 +87,7 @@ struct cdrw_disc
 	unsigned char	quick_setup;
 	unsigned char	mkudf;
 	unsigned int	close_track;
+	unsigned int	close_session;
 	struct udf_disc	udf_disc;
 };
 

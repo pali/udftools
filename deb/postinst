@@ -1,0 +1,33 @@
+#!/bin/sh -e
+# postinst script for udftools
+
+. /usr/share/debconf/confmodule
+db_version 2.0
+
+case "$1" in
+    configure)
+        db_get udftools/makedev-ask
+        # The reason why this checks for pktcdvd3 and not pktcdvd0 is
+        # that older versions of udftools only created pktcdvd0 and
+        # pktcdvd1 - we want pktcdvd2 and pktcdvd3 created on upgrade. 
+        # Additionally, older versions of udftools did not use group
+        # cdrom for the device files.
+        if test ! -e /dev/.devfsd \
+             -a "$RET" = "Create device files" \
+             -a ! -b /dev/pktcdvd3; then
+            cd /dev; ./MAKEDEV pktcdvd
+        fi
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 0
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

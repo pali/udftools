@@ -1,5 +1,5 @@
 /*
- * osta_udf201.h
+ * osta_udf.h
  *
  * This file is based on OSTA UDF(tm) 2.01 (March 15, 2000)
  * http://www.osta.org
@@ -32,10 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#include "ecma_167r3.h"
+#include "ecma_167.h"
 
-#ifndef _OSTA_UDF201_H
-#define _OSTA_UDF201_H 1
+#ifndef _OSTA_UDF_H
+#define _OSTA_UDF_H 1
 
 /* OSTA CS0 Charspec (UDF 2.01 2.1.2) */
 #define UDF_CHAR_SET_TYPE		0
@@ -151,9 +151,9 @@ struct sparablePartitionMap
 /* Virtual Allocation Table (UDF 1.5 2.2.10) */
 struct virtualAllocationTable15
 {
-	uint32_t	VirtualSector[0];
-	regid		ident;
-	uint32_t	previousVATICB;
+	uint32_t	vatEntry[0];
+	regid		vatIdent;
+	uint32_t	previousVATICBLoc;
 } __attribute__ ((packed));  
 
 #define ICBTAG_FILE_TYPE_VAT15		0x00U
@@ -164,12 +164,12 @@ struct virtualAllocationTable20
 	uint16_t	lengthHeader;
 	uint16_t	lengthImpUse;
 	dstring		logicalVolIdent[128];
-	uint32_t	previousVatICBLoc;
-	uint32_t	numFIDSFiles;
-	uint32_t	numFIDSDirectories;
-	uint16_t	minReadRevision;
-	uint16_t	minWriteRevision;
-	uint16_t	maxWriteRevision;
+	uint32_t	previousVATICBLoc;
+	uint32_t	numFiles;
+	uint32_t	numDirs;
+	uint16_t	minUDFReadRev;
+	uint16_t	minUDFWriteRev;
+	uint16_t	maxUDFWriteRev;
 	uint16_t	reserved;
 	uint8_t		impUse[0];
 	uint32_t	vatEntry[0];
@@ -268,4 +268,4 @@ struct freeAppEASpace
 #define UDF_OS_ID_BEOS			0x00U
 #define UDF_OS_ID_WINCE			0x00U
 
-#endif /* _OSTA_UDF201_H */
+#endif /* _OSTA_UDF_H */

@@ -23,8 +23,8 @@
 #ifndef __LIBUDFFS_H
 #define __LIBUDFFS_H
 
-#include "ecma_167r3.h"
-#include "osta_udf201.h"
+#include "ecma_167.h"
+#include "osta_udf.h"
 #include "udf_endian.h"
 
 #define FLAG_FREED_BITMAP		0x00000001
@@ -45,6 +45,9 @@
 #define FLAG_STRATEGY4096		0x00000100
 #define FLAG_BLANK_TERMINAL		0x00000200
 
+#define FLAG_BRIDGE			0x00000400
+#define FLAG_CLOSED			0x00000800
+#define FLAG_VAT			0x00001000
 
 struct udf_extent;
 struct udf_desc;
@@ -66,6 +69,14 @@ enum udf_space_type
 	UDF_SPACE_TYPE_SIZE = 11,
 };
 
+struct udf_sizing
+{
+	uint32_t	align;
+	uint32_t	numSize;
+	uint32_t	denomSize;
+	uint32_t	minSize;
+};
+
 enum udf_alloc_type
 {
 	VDS_SIZE,
@@ -83,7 +94,7 @@ struct udf_disc
 	uint8_t				blocksize_bits;
 	uint32_t			flags;
 
-	uint32_t			sizes[UDF_ALLOC_TYPE_SIZE][4];
+	struct udf_sizing		sizing[UDF_ALLOC_TYPE_SIZE];
 
 	void				(*write)(struct udf_disc *, struct udf_extent *);
 	void				*write_data;
@@ -99,6 +110,9 @@ struct udf_disc
 	struct logicalVolIntegrityDesc	*udf_lvid;
 
 	struct sparingTable		*udf_stable[4];
+
+	uint32_t			*vat;
+	uint64_t			vat_entries;
 
 	struct fileSetDesc		*udf_fsd;
 
@@ -133,7 +147,7 @@ struct udf_desc
 struct udf_data
 {
 	uint64_t			length;
-	void				*data;
+	void				*buffer;
 	struct udf_data			*next;
 	struct udf_data			*prev;
 };
@@ -152,15 +166,24 @@ struct udf_desc *next_desc(struct udf_desc *, uint16_t);
 struct udf_desc *find_desc(struct udf_extent *, uint32_t);
 struct udf_desc *set_desc(struct udf_disc *, struct udf_extent *, uint16_t, uint32_t, uint32_t, struct udf_data *);
 void append_data(struct udf_desc *, struct udf_data *);
+struct udf_data *alloc_data(void *, int);
+
+/* desc.c */
+inline struct impUseVolDescImpUse *query_iuvdiu(struct udf_disc *);
+inline struct logicalVolIntegrityDescImpUse *query_lvidiu(struct udf_disc *);
 
 /* file.c */
 tag query_tag(struct udf_disc *, struct udf_extent *, struct udf_desc *, uint16_t);
 extern tag udf_query_tag(struct udf_disc *, uint16_t, uint16_t, uint32_t, struct udf_data *, uint16_t);
 extern struct udf_desc *udf_create(struct udf_disc *, struct udf_extent *, uint8_t *, uint8_t, uint32_t, struct udf_desc *, uint8_t, uint8_t, uint16_t);
 extern struct udf_desc *udf_mkdir(struct udf_disc *, struct udf_extent *, uint8_t *, uint8_t, uint32_t, struct udf_desc *);
+extern void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_data *data);
 extern void insert_fid(struct udf_disc *, struct udf_extent *, struct udf_desc *, struct udf_desc *, uint8_t *, uint8_t, uint8_t);
 extern int udf_alloc_blocks(struct udf_disc *, struct udf_extent *, uint32_t, uint32_t);
 
+extern int decode_utf8(char *, char *, int);
+extern int encode_utf8(char *, char *, char *, int);
+extern int decode_string(struct udf_disc *, char *, char *, int);
 extern int encode_string(struct udf_disc *, char *, char *, char *, int);
 
 static inline void clear_bits(uint8_t *bitmap, uint32_t offset, uint64_t length)

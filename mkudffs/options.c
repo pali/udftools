@@ -39,6 +39,7 @@ struct option long_options[] = {
 	{ "fsid", required_argument, NULL, OPT_FSID },
 	{ "strategy", required_argument, NULL, OPT_STRATEGY },
 	{ "spartable", required_argument, NULL, OPT_SPARTABLE },
+	{ "packetlen", required_argument, NULL, OPT_PACKETLEN },
 	{ "media-type", required_argument, NULL, OPT_MEDIA_TYPE },
 	{ "space", required_argument, NULL, OPT_SPACE },
 	{ "ad", required_argument, NULL, OPT_AD },
@@ -46,6 +47,8 @@ struct option long_options[] = {
 	{ "u8", no_argument, NULL, OPT_UNICODE8 },
 	{ "u16", no_argument, NULL, OPT_UNICODE16 },
 	{ "utf8", no_argument, NULL, OPT_UTF8 },
+	{ "bridge", no_argument, NULL, OPT_BRIDGE },
+	{ "closed", no_argument, NULL, OPT_CLOSED },
 	{ 0, 0, NULL, 0 },
 };
 
@@ -64,13 +67,16 @@ void usage(void)
 		"\t--fsid=\n"
 		"\t--strategy=\n"
 		"\t--spartable=\n"
+		"\t--packetlen=\n"
 		"\t--media-type=\n"
 		"\t--space=\n"
 		"\t--ad=\n"
 		"\t--noefe\n"
 		"\t--u8\n"
 		"\t--u16\n"
-		"\t--utf8\n",
+		"\t--utf8\n"
+		"\t--bridge\n"
+		"\t--closed\n",
 		MKUDFFS_VERSION, UDFFS_VERSION, UDFFS_DATE
 	);
 	exit(1);
@@ -81,6 +87,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 	int retval;
 	int i;
 	int media = DEFAULT_HD;
+	uint16_t packetlen = 0;
 
 	while ((retval = getopt_long(argc, argv, "b:r:h", long_options, NULL)) != EOF)
 	{
@@ -144,28 +151,38 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 				disc->flags |= FLAG_UTF8;
 				break;
 			}
+			case OPT_BRIDGE:
+			{
+				disc->flags |= FLAG_BRIDGE;
+				break;
+			}
+			case OPT_CLOSED:
+			{
+				disc->flags |= FLAG_CLOSED;
+				break;
+			}
 			case OPT_LVID:
 			{
-				encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, "", optarg, 128);
-				encode_string(disc, ((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent, "", optarg, 128);
-				encode_string(disc, disc->udf_fsd->logicalVolIdent, "", optarg, 128);
+				disc->udf_lvd[0]->logicalVolIdent[127] = encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, "", optarg, 128);
+				((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent[127] = encode_string(disc, ((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent, "", optarg, 128);
+				disc->udf_fsd->logicalVolIdent[127] = encode_string(disc, disc->udf_fsd->logicalVolIdent, "", optarg, 128);
 				break;
 			}
 			case OPT_VID:
 			{
-				encode_string(disc, disc->udf_pvd[0]->volIdent, "", optarg, 32);
+				disc->udf_pvd[0]->volIdent[31] = encode_string(disc, disc->udf_pvd[0]->volIdent, "", optarg, 32);
 				break;
 			}
 			case OPT_VSID:
 			{
 				char ts[9];
 				strncpy(ts, &disc->udf_pvd[0]->volSetIdent[1], 8);
-				encode_string(disc, disc->udf_pvd[0]->volSetIdent, ts, optarg, 128);
+				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, ts, optarg, 128);
 				break;
 			}
 			case OPT_FSID:
 			{
-				encode_string(disc, disc->udf_fsd->fileSetIdent, "", optarg, 128);
+				disc->udf_fsd->fileSetIdent[31] = encode_string(disc, disc->udf_fsd->fileSetIdent, "", optarg, 32);
 				break;
 			}
 			case OPT_STRATEGY:
@@ -192,15 +209,24 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 					fprintf(stderr, "mkudffs: invalid spartable count\n");
 					exit(1);
 				}
-				add_type2_sparable_partition(disc, 0, spartable);
+				add_type2_sparable_partition(disc, 0, spartable, packetlen);
 				media = DEFAULT_CDRW;
+				break;
+			}
+			case OPT_PACKETLEN:
+			{
+				struct sparablePartitionMap *spm;
+
+				packetlen = strtoul(optarg, NULL, 0);
+				if ((spm = find_type2_sparable_partition(disc, 0)))
+					spm->packetLength = cpu_to_le16(packetlen);
 				break;
 			}
 			case OPT_MEDIA_TYPE:
 			{
 				if (!strncmp(optarg, "hd", 2))
 					media = DEFAULT_HD;
-				else if (!strncmp(optarg, "dvd", 3))
+				else if (!strcmp(optarg, "dvd"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
 					media = DEFAULT_DVD;
@@ -209,6 +235,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 					media = DEFAULT_DVDRAM;
+				}
+				else if (!strncmp(optarg, "dvdrw", 5))
+				{
+					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
+					media = DEFAULT_DVDRW;
+					packetlen = 16;
 				}
 				else if (!strncmp(optarg, "worm", 4))
 				{
@@ -226,6 +258,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 					media = DEFAULT_CDRW;
+				}
+				else if (!strncmp(optarg, "cdr", 3))
+				{
+					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
+					media = DEFAULT_CDR;
+					disc->flags |= FLAG_VAT;
+					disc->flags &= ~FLAG_CLOSED;
 				}
 				else
 				{
@@ -292,8 +331,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 
 	if (le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) == 0)
 	{
-		if (media == DEFAULT_CDRW)
-			add_type2_sparable_partition(disc, 0, 2);
+		if (media == DEFAULT_CDRW || media == DEFAULT_DVDRW)
+			add_type2_sparable_partition(disc, 0, 2, packetlen);
+		else if (media == DEFAULT_CDR)
+		{
+			add_type1_partition(disc, 0);
+			add_type2_virtual_partition(disc, 0);
+		}
 		else
 			add_type1_partition(disc, 0);
 	}
@@ -301,9 +345,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 	if (!(disc->flags & FLAG_SPACE))
 		disc->flags |= FLAG_UNALLOC_BITMAP;
 
+	if (media == DEFAULT_CDR)
+		disc->flags &= ~FLAG_SPACE;
+
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
-		if (disc->sizes[i][2] == 0)
-			memcpy(disc->sizes[i], default_ratio[media][i], sizeof(default_ratio[media][i]));
+		if (disc->sizing[i].denomSize == 0)
+			memcpy(&disc->sizing[i], &default_sizing[media][i], sizeof(default_sizing[media][i]));
 	}
 }

@@ -412,7 +412,7 @@ int format_disc(int fd, struct cdrw_disc *disc)
 	 */
 
 	/* format descriptor */
-	buffer[8] = 0;		/* session and grow bits (7 and 6) */
+	buffer[8] = 0x40;		/* session and grow bits (7 and 6) */
 	buffer[9] = 0;
 	buffer[10] = 0;
 	buffer[11] = 0;
@@ -518,6 +518,27 @@ int close_track(int fd, unsigned int track)
 	if ((ret = wait_cmd(fd, &cgc, NULL, CGC_DATA_NONE, WAIT_BLANK)) < 0)
 	{
 		perror("close track");
+		return ret;
+	}
+	print_completion_info(fd);
+	return 0;
+}
+
+int close_session(int fd, unsigned int track)
+{
+	struct cdrom_generic_command cgc;
+	int ret;
+
+	memset(&cgc, 0, sizeof(cgc));
+	cgc.cmd[0] = GPCMD_CLOSE_TRACK;
+	cgc.cmd[1] = USE_IMMED;
+	cgc.cmd[2] = 2; /* bit 2 is close session/border */
+	cgc.cmd[4] = (track >> 8) & 0xff;
+	cgc.cmd[5] = track & 0xff;
+
+	if ((ret = wait_cmd(fd, &cgc, NULL, CGC_DATA_NONE, WAIT_BLANK)) < 0)
+	{
+		perror("close session");
 		return ret;
 	}
 	print_completion_info(fd);

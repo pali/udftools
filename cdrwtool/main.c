@@ -74,18 +74,18 @@ void write_func(struct udf_disc *disc, struct udf_extent *ext)
 			{
 				if (data->length + offset > bufferlen)
 				{
-					memcpy(buffer + offset, data->data, bufferlen - offset);
+					memcpy(buffer + offset, data->buffer, bufferlen - offset);
 					write_blocks(fd, buffer, packet * 32, 32);
 					memset(buffer, 0x00, bufferlen);
 					lastpacket = ++ packet;
 
-					memcpy(buffer, data->data + (bufferlen - offset), data->length - (bufferlen - offset));
+					memcpy(buffer, data->buffer + (bufferlen - offset), data->length - (bufferlen - offset));
 					offset = data->length - (bufferlen - offset);
 				}
 				else
 				{
 					lastpacket = packet;
-					memcpy(buffer + offset, data->data, data->length);
+					memcpy(buffer + offset, data->buffer, data->length);
 					offset += data->length;
 				}
 
@@ -152,7 +152,7 @@ int quick_setup(int fd, struct cdrw_disc *disc, char *device)
 		printf("Formatting track\n");
 		if ((ret = format_disc(fd, disc)))
 			return ret;
-		add_type2_sparable_partition(&disc->udf_disc, 0, 2);
+		add_type2_sparable_partition(&disc->udf_disc, 0, 2, 0);
 		disc->udf_disc.udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 	}
 	else
@@ -166,8 +166,8 @@ int quick_setup(int fd, struct cdrw_disc *disc, char *device)
 	disc->udf_disc.flags |= FLAG_UNALLOC_BITMAP;
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
-		if (disc->udf_disc.sizes[i][2] == 0)
-			memcpy(disc->udf_disc.sizes[i], default_ratio[DEFAULT_CDRW][i], sizeof(default_ratio[DEFAULT_CDRW][i]));
+		if (disc->udf_disc.sizing[i].denomSize == 0)
+			memcpy(&disc->udf_disc.sizing[i], &default_sizing[DEFAULT_CDRW][i], sizeof(default_sizing[DEFAULT_CDRW][i]));
 	}
 
 	split_space(&disc->udf_disc);
@@ -193,14 +193,14 @@ int mkudf_session(int fd, struct cdrw_disc *disc)
 	int i;
 
 	disc->udf_disc.head->blocks = disc->offset;
-	add_type2_sparable_partition(&disc->udf_disc, 0, 2);
+	add_type2_sparable_partition(&disc->udf_disc, 0, 2, 0);
 	disc->udf_disc.udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 
 	disc->udf_disc.flags |= FLAG_UNALLOC_BITMAP;
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
-		if (disc->udf_disc.sizes[i][2] == 0)
-			memcpy(disc->udf_disc.sizes[i], default_ratio[DEFAULT_CDRW][i], sizeof(default_ratio[DEFAULT_CDRW][i]));
+		if (disc->udf_disc.sizing[i].denomSize == 0)
+			memcpy(&disc->udf_disc.sizing[i], &default_sizing[DEFAULT_CDRW][i], sizeof(default_sizing[DEFAULT_CDRW][i]));
 	}
 
 	split_space(&disc->udf_disc);
@@ -289,6 +289,13 @@ int main(int argc, char *argv[])
 	if (disc.close_track)
 	{
 		ret = close_track(fd, disc.close_track);
+		cdrom_close(fd);
+		return ret;
+	}
+
+	if (disc.close_session)
+	{
+		ret = close_session(fd, disc.close_session);
 		cdrom_close(fd);
 		return ret;
 	}

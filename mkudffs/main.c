@@ -133,7 +133,7 @@ void write_func(struct udf_disc *disc, struct udf_extent *ext)
 					bufferlen = (data->length + offset + disc->blocksize - 1) & ~(disc->blocksize - 1);
 					buffer = realloc(buffer, bufferlen);
 				}
-				memcpy(buffer + offset, data->data, data->length);
+				memcpy(buffer + offset, data->buffer, data->length);
 				offset += data->length;
 				data = data->next;
 			}

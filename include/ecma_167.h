@@ -1,5 +1,5 @@
 /*
- * ecma_167r3.h
+ * ecma_167.h
  *
  * This file is based on ECMA-167 3rd edition (June 1997)
  * http://www.ecma.ch
@@ -34,8 +34,8 @@
 
 #include <inttypes.h>
 
-#ifndef _ECMA_167R3_H
-#define _ECMA_167R3_H 1
+#ifndef _ECMA_167_H
+#define _ECMA_167_H 1
 
 /* Character set specification (ECMA 167r3 1/7.2.1) */
 typedef struct
@@ -606,7 +606,7 @@ struct fileEntry
 #define FE_RECORD_FMT_CRLF		0x0A
 #define FE_RECORD_FMT_LFCR		0x0B
 
-#define Record Display Attributes (ECMA 167r3 4/14.9.8) */
+/* Record Display Attributes (ECMA 167r3 4/14.9.8) */
 #define FE_RECORD_DISPLAY_ATTR_UNDEF	0x00
 #define FE_RECORD_DISPLAY_ATTR_1	0x01
 #define FE_RECORD_DISPLAY_ATTR_2	0x02
@@ -819,4 +819,4 @@ struct extendedFileEntry
 	uint8_t		allocDescs[0];
 } __attribute__ ((packed));
 
-#endif /* _ECMA_167R3_H */
+#endif /* _ECMA_167_H */

@@ -23,7 +23,7 @@
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H 1
 
-extern uint32_t default_ratio[][UDF_ALLOC_TYPE_SIZE][4];
+extern struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE];
 
 extern struct primaryVolDesc default_pvd;
 extern struct logicalVolDesc default_lvd;
@@ -37,6 +37,9 @@ extern struct logicalVolIntegrityDesc default_lvid;
 extern struct logicalVolIntegrityDescImpUse default_lvidiu;
 extern struct sparingTable default_stable;
 extern struct sparablePartitionMap default_sparmap;
+extern struct virtualAllocationTable15 default_vat15;
+extern struct virtualAllocationTable20 default_vat20;
+extern struct virtualPartitionMap default_virtmap;
 extern struct fileSetDesc default_fsd;
 extern struct fileEntry default_fe;
 extern struct extendedFileEntry default_efe;

@@ -257,16 +257,9 @@ struct udf_desc *set_desc(struct udf_disc *disc, struct udf_extent *ext, uint16_
 	new_desc->offset = offset;
 	new_desc->length = length;
 	if (data == NULL)
-	{
-		new_desc->data = calloc(1, sizeof(struct udf_data));
-		new_desc->data->length = length;
-		if (length)
-			new_desc->data->data = calloc(1, length);
-	}
+		new_desc->data = alloc_data(NULL, length);
 	else
-	{
 		new_desc->data = data;
-	}
 
 	if (ext->head == NULL)
 	{
@@ -309,4 +302,19 @@ void append_data(struct udf_desc *desc, struct udf_data *data)
 
 	ndata->next = data;
 	data->prev = ndata;
+}
+
+struct udf_data *alloc_data(void *buffer, int length)
+{
+	struct udf_data *data;
+
+	data = calloc(1, sizeof(struct udf_data));
+
+	if (buffer)
+		data->buffer = buffer;
+	else if (length)
+		data->buffer = calloc(1, length);
+	data->length = length;
+
+	return data;
 }

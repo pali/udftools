@@ -1,0 +1,72 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# This is the debhelper compatability version to use.
+export DH_COMPAT=3
+
+# Non-standard default goal:
+build-deb:
+	if test ! -d debian -a ! -h debian; then ln -s deb debian; fi
+	printf "udftools (%s) unstable; urgency=low\n\n  * This version was built directly from upstream sources. It is not\n    an official Debian package.\n\n -- Ben Fennema <bfennema@falcon.csc.calpoly.edu>  %s\n" "`pwd | sed 's%^.*/udftools-\([^/]\+\)$$%\1%'`" "`date -R`" >deb/changelog
+	dpkg-buildpackage -rfakeroot -us -uc -b
+	rm -f debian deb/changelog
+
+# If the user did "./configure --some-option", then
+# recover the --some-option from config.status and use it when
+# reconfiguring with correct --prefix
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	@o=`test config.status && sed -n "/^# [^ ]*configure/ { s/\(^# [^ ]*\|'\?--\(prefix\|mandir\|infodir\)=[^ ]*\)//gp; q;}" config.status`; \
+	echo "(user-supplied configure options: $$o)"; \
+	cmd="./configure $$o --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info"; \
+	echo "$$cmd"; $$cmd
+	touch configure-stamp
+
+build:	build-stamp
+
+build-stamp: configure-stamp 
+	dh_testdir mkudffs/main.c
+	$(MAKE)
+	touch build-stamp
+
+clean:
+	dh_testdir mkudffs/main.c
+	dh_testroot
+	rm -f build-stamp configure-stamp
+	-$(MAKE) distclean
+	rm -f include/stamp-h include/stamp-h[0-9]*
+	dh_clean
+
+install: build
+	dh_testdir mkudffs/main.c
+	dh_testroot
+	dh_clean -k
+	dh_installdirs
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/udftools
+	rm -rf debian/udftools/usr/lib # libudffs not needed
+
+# Build architecture-independent files here.
+binary-indep: build install
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir mkudffs/main.c
+	dh_testroot
+	dh_installdebconf	
+	dh_installdocs
+	dh_installchangelogs
+	dh_link
+	dh_strip
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure

@@ -1,0 +1,25 @@
+Source: udftools
+Section: otherosfs
+Priority: extra
+Maintainer: Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+Build-Depends: debhelper (>> 3.0.0)
+Standards-Version: 3.5.6
+
+Package: udftools
+Architecture: any
+Depends: ${shlibs:Depends}, debconf (>= 0.9.41), makedev (>= 2.3.1-56)
+Description: Tools for UDF filesystems and DVD/CD-R(W) drives
+ This package contains a number of user-space tools related to
+ creating filesystems in the UDF (Universal Disk Format), which is
+ primarily used for DVDs, but sometimes also CD-ROMs:
+ .
+  mkudffs - Format a device, creating an empty UDF filesystem
+  cdrwtool - Low-level drive management (e.g. set writing speed, format)
+  pktsetup - Set up a packet writing device (/dev/pktcdvd0) for a drive
+ .
+ Note that you need Linux 2.4 or later to mount UDF filesystems. The
+ kernel patches that accompany these tools are not currently packaged
+ for Debian, but are being merged into the 2.4 kernel tree.
+ .
+ This package was built directly from upstream sources. It is not an
+ official Debian package.

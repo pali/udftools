@@ -23,8 +23,8 @@
 #ifndef __MKUDFFS_H
 #define __MKUDFFS_H
 
-#include "ecma_167r3.h"
-#include "osta_udf201.h"
+#include "ecma_167.h"
+#include "osta_udf.h"
 #include "udf_endian.h"
 #include "libudffs.h"
 
@@ -43,6 +43,8 @@
 #define DEFAULT_WORM	1
 #define DEFAULT_MO	1
 #define DEFAULT_CDRW	2
+#define DEFAULT_CDR	3
+#define DEFAULT_DVDRW	4
 
 #ifndef NAME_MAX
 #define NAME_MAX	255
@@ -59,8 +61,8 @@ void setup_vrs(struct udf_disc *);
 void setup_anchor(struct udf_disc *);
 void setup_partition(struct udf_disc *);
 int setup_space(struct udf_disc *, struct udf_extent *, uint32_t);
-int setup_fileset(struct udf_disc *, struct udf_extent *, uint32_t);
-int setup_root(struct udf_disc *, struct udf_extent *, uint32_t);
+int setup_fileset(struct udf_disc *, struct udf_extent *);
+int setup_root(struct udf_disc *, struct udf_extent *);
 void calc_space(struct udf_disc *, struct udf_extent *);
 void setup_vds(struct udf_disc *);
 void setup_pvd(struct udf_disc *, struct udf_extent *, struct udf_extent *, uint32_t);
@@ -71,8 +73,10 @@ void setup_iuvd(struct udf_disc *, struct udf_extent *, struct udf_extent *, uin
 void setup_td(struct udf_disc *, struct udf_extent *, struct udf_extent *, uint32_t);
 void setup_lvid(struct udf_disc *, struct udf_extent *);
 void setup_stable(struct udf_disc *, struct udf_extent *[4], struct udf_extent *);
+void setup_vat(struct udf_disc *, struct udf_extent *);
 void add_type1_partition(struct udf_disc *, uint16_t);
-void add_type2_sparable_partition(struct udf_disc *, uint16_t, uint8_t);
+void add_type2_sparable_partition(struct udf_disc *, uint16_t, uint8_t, uint16_t);
+void add_type2_virtual_partition(struct udf_disc *, uint16_t);
 struct sparablePartitionMap *find_type2_sparable_partition(struct udf_disc *, uint16_t);
 
 #endif /* __MKUDFFS_H */
