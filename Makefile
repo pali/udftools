@@ -14,7 +14,7 @@
 
 include ../config.mk
 
-UDF_INC = -I../include -I../src -I$(LINUX)/include
+UDF_INC = -I../include -I../linux-$(UTS_SHORT) -I$(LINUX)/include
 
 CFLAGS	= $(UDF_INC)\
 	-O2 -Wall -Wstrict-prototypes -I..  -g

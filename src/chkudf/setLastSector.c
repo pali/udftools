@@ -143,7 +143,7 @@ BOOL Get_Last_RTI()
             printf("  Variable packet written track.\n");
             LastSector = trackstart + tracklength - 1;
             if (freeblocks) {
-              LastSector = LastSector - freeblocks - 6;
+              LastSector = LastSector - freeblocks - 7;
             }
           }
           LastSectorAccurate = TRUE;
