@@ -519,7 +519,7 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 	spm->partitionMapLength = maplen;
 	spm->partIdent.flags = 0;
 	strncpy(spm->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE));
-    ((Uint16 *)spm->partIdent.identSuffix)[0] = le16_to_cpu(0x0200);
+    ((Uint16 *)spm->partIdent.identSuffix)[0] = le16_to_cpu(0x0150);
     spm->partIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
     spm->partIdent.identSuffix[3] = UDF_OS_ID_LINUX;
 	spm->volSeqNum = le16_to_cpu(1);
@@ -541,7 +541,7 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 
 	lvd->domainIdent.flags = 0;
 	strcpy(lvd->domainIdent.ident, UDF_ID_COMPLIANT);
-	((Uint16 *)lvd->domainIdent.identSuffix)[0] = le16_to_cpu(0x0200);
+	((Uint16 *)lvd->domainIdent.identSuffix)[0] = le16_to_cpu(0x0150);
 	lvd->domainIdent.identSuffix[2] = 0x00;
 
 	fsd = (long_ad *)lvd->logicalVolContentsUse;
@@ -596,7 +596,7 @@ void write_logicalvolintdesc(int loc, timestamp crtime)
 	lvidiu->numDirs = le32_to_cpu(2);
 	lvidiu->minUDFReadRev = le16_to_cpu(0x0150);
 	lvidiu->minUDFWriteRev = le16_to_cpu(0x0150);
-	lvidiu->maxUDFWriteRev = le16_to_cpu(0x0200);
+	lvidiu->maxUDFWriteRev = le16_to_cpu(0x0150);
 
 	lvid->recordingDateAndTime = crtime;
 	lvid->integrityType = le32_to_cpu(INTEGRITY_TYPE_CLOSE);
@@ -732,7 +732,7 @@ void write_impusevoldesc(int loc, int snum)
 
 	iuvd->impIdent.flags = 0;
 	strcpy(iuvd->impIdent.ident, UDF_ID_LV_INFO);
-	((Uint16 *)iuvd->impIdent.identSuffix)[0] = le16_to_cpu(0x0200);
+	((Uint16 *)iuvd->impIdent.identSuffix)[0] = le16_to_cpu(0x0150);
 	iuvd->impIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
 	iuvd->impIdent.identSuffix[3] = UDF_OS_ID_LINUX;
 
@@ -820,7 +820,7 @@ void write_spartable(int loc, int snum, int start, int num)
 	st = calloc(1, totsize);
 	st->sparingIdent.flags = 0;
 	strncpy(st->sparingIdent.ident, UDF_ID_SPARING, strlen(UDF_ID_SPARING));
-    ((Uint16 *)st->sparingIdent.identSuffix)[0] = le16_to_cpu(0x0200);
+    ((Uint16 *)st->sparingIdent.identSuffix)[0] = le16_to_cpu(0x0150);
     st->sparingIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
     st->sparingIdent.identSuffix[3] = UDF_OS_ID_LINUX;
 	st->reallocationTableLen = le16_to_cpu(32);

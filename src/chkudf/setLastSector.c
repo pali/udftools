@@ -128,7 +128,7 @@ BOOL Get_Last_RTI()
           /*
            * Track is blank; we want the previous one
            */
-          buffer[5] = track_no - 1;  /* The right last track        */
+          cdb[5] = track_no - 1;  /* The right last track        */
           result = do_scsi(cdb, 10, buffer, 36, 0, sensedata, sensebufsize);
         }
         if (!result) {
@@ -141,7 +141,7 @@ BOOL Get_Last_RTI()
             LastSector = trackstart + tracklength - 1;
           } else {
             printf("  Variable packet written track.\n");
-            LastSector = trackstart + tracklength - 2;
+            LastSector = trackstart + tracklength - 1;
             if (freeblocks) {
               LastSector = LastSector - freeblocks - 6;
             }
