@@ -33,17 +33,29 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <udfdecl.h>
 
-typedef unsigned char Uint8;
+#ifndef HAVE_LLSEEK_PROTOTYPE
+extern Sint64 llseek (int fd, Sint64 offset, int origin);
+#endif
 
 Uint8 sector[2048];
+
+static Sint64 udf_lseek64(int fd, Sint64 offset, int whence)
+{
+#ifdef __USE_LARGEFILE64
+	return lseek64(fd, offset, whence);
+#else
+	return llseek(fd, offset, whence);
+#endif /* __USE_LARGEFILE64 */
+}
 
 int main(int argc, char **argv)
 {
 	int fd;
-	long retval;
-	unsigned long fp;
-	unsigned long sec = 0;
+	Sint64 retval;
+	Sint64 fp;
+	Uint64 sec = 0;
 
 	if (argc < 2) {
 		printf("usage: dump <device> <sector>\n");
@@ -58,21 +70,21 @@ int main(int argc, char **argv)
 	if (argc == 3)
 		sec = strtoul(argv[2], NULL, 0);
 
-	fp= sec << 11L;
-	retval = lseek(fd, fp, SEEK_SET);
+	fp = sec << 11L;
+	retval = udf_lseek64(fd, fp, SEEK_SET);
 	if (retval < 0) {
 		perror(argv[1]);
 		return -1;
 	} else
-		printf("%ld: seek to %ld ok, retval %lu\n", 
+		printf("%Lu: seek to %Ld ok, retval %Ld\n", 
 			sec, fp, retval);
 
 	retval = read(fd, sector, 2048);
 	if ( retval > 0 ) {
 		int i, j;
-		printf("retval= %ld\n", retval);
+		printf("retval= %Ld\n", retval);
 		for (i = 0; i < retval; i += 16) {
-			printf("%08lx-%03x: ", sec, i);
+			printf("%08Lx-%03x: ", sec, i);
 			for (j = 0; j < 16; j++)
 				printf((j == 7) ? "%02x-": "%02x ",
 					sector[i + j]);
@@ -87,7 +99,7 @@ int main(int argc, char **argv)
 		/*retval = read(fd, sector, 2048);*/
 		sec++;
 	} else {
-		printf("**** errno=%d ****", errno);
+		printf("**** errno=%d ****\n", errno);
 	}
 	
 	close(fd);
