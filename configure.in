@@ -22,7 +22,6 @@ AC_STRUCT_TM
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(gettimeofday mktime open64 lseek64 llseek)
-AC_SUBST(AC_LIBOBJ)
-AC_CHECK_FUNCS(getopt_long , , [AC_LIBOBJ="$AC_LIBOBJ getopt.lo"] )
+AC_CHECK_FUNCS([getopt_long],[],[AC_LIBOBJ([getopt])])
 
 AC_OUTPUT(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile wrudf/Makefile doc/Makefile)
