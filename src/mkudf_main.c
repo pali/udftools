@@ -273,6 +273,7 @@ void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char 
 {
 	static int last = 0;
 	ssize_t retval;
+	static char empty_buffer[4096];
 
 	if (block > last)
 		last = block;
@@ -281,6 +282,10 @@ void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char 
 
 	udf_lseek64(opt->device, (Sint64)block << opt->blocksize_bits, SEEK_SET);
 	retval = write(opt->device, buffer, size);
+	if (size & (opt->blocksize - 1))
+		write(opt->device, empty_buffer,
+			opt->blocksize - (size & (opt->blocksize - 1)));
+			
 	if (retval == -1) {
 		printf("error writing %s: %s\n", type, sys_errlist[errno]);
 		exit(-1);
