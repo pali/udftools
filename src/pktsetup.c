@@ -9,7 +9,7 @@
 #include <bits/types.h>
 #include <sys/types.h>
 
-#include <linux/packet.h>
+#include <linux/pktcdvd.h>
 #include <linux/cdrom.h>
 
 int init_cdrom(int fd)
@@ -51,8 +51,6 @@ void setup_dev(char *pkt_device, char *device, int rem)
 			return;
 	}
 		
-	printf("device %s, pkt_device %s\n", device, pkt_device);
-
 	if (ioctl(pkt_fd, cmd, dev_fd) < 0) {
 		perror("PACKET_SET_DEV");
 		return;
@@ -64,8 +62,8 @@ void setup_dev(char *pkt_device, char *device, int rem)
 
 void usage(void)
 {
-	printf("pktsetup /dev/packet0 /dev/hdd\tsetup device\n");
-	printf("pktsetup -d /dev/packet0\ttear down device\n");
+	printf("pktsetup /dev/pktcddvd0 /dev/hdd\tsetup device\n");
+	printf("pktsetup -d /dev/pktcddvd\ttear down device\n");
 }
 
 int main(int argc, char **argv)

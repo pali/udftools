@@ -111,6 +111,7 @@ void sig_progress(int sig)
 
 	if (!(sense.sks[0] & 0x80)) {
 		printf("Progress indicator not implemented on this drive\n");
+		printf("Don't access drive until operation has completed\n");
 		progress = 101;
 		return;
 	}
@@ -167,13 +168,13 @@ int mode_sense(unsigned char *buffer, int page, char pc, int size)
 
 int set_write_mode(write_params_t *w)
 {
-	unsigned char header[0x8];
+	unsigned char header[0x10];
 	unsigned char *buffer;
 	int ret, len, offset;
 
 	memset(header, 0x00, sizeof(header));
 
-	len = 0x8;
+	len = 0x10;
 
 	if ((ret = mode_sense(header, GPMODE_WRITE_PARMS_PAGE,
 			      PAGE_DEFAULT, len)) < 0)
@@ -203,14 +204,14 @@ int set_write_mode(write_params_t *w)
 	buffer[offset+11] = (w->packet_size >> 16) & 0xff;
 	buffer[offset+12] = (w->packet_size >>  8) & 0xff;
 	buffer[offset+13] = w->packet_size & 0xff;
-	buffer[offset+48] = 0x00;
-	buffer[offset+49] = 0x00;
-	buffer[offset+50] = 0x08;
-	buffer[offset+51] = 0x00;
-
-#if 0
-	dump_buffer(buffer, len);
-#endif
+	/* sub-header is only a mode-2 thing */
+	if (w->data_block == 10)
+	{
+		buffer[offset+48] = 0x00;
+		buffer[offset+49] = 0x00;
+		buffer[offset+50] = 0x08;
+		buffer[offset+51] = 0x00;
+	}
 
 	if ((ret = mode_select(buffer, len)) < 0) {
 		dump_buffer(buffer, len);
@@ -225,13 +226,13 @@ int set_write_mode(write_params_t *w)
 	
 int get_write_mode(write_params_t *w)
 {
-	unsigned char header[0x8];
+	unsigned char header[0x10];
 	unsigned char *buffer;
 	int ret, len, offset;
 
-	memset(header, 0, sizeof(header));
+	memset(header, 0x00, sizeof(header));
 
-	len = 0x8;
+	len = 0x10;
 
 	if ((ret = mode_sense(header, GPMODE_WRITE_PARMS_PAGE,
 			      PAGE_CURRENT, len)) < 0)
@@ -846,7 +847,7 @@ int get_options(int argc, char *argv[], options_t *o)
 	o->filename[0]		= 0;
 	o->disc_track_info	= 0;
 	o->format		= 0;
-	o->border		= 3;
+	o->border		= 0;
 	o->speed		= DEFAULT_SPEED;
 	o->buffer		= 0;
 	o->quick_setup		= 0;

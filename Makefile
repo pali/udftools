@@ -70,10 +70,11 @@ cdrwtool:	src/mkudf.c src/cdrwtool.c $(LIBS)
 pktsetup:	src/pktsetup.c
 	@echo "* -------------------------------------------------------- *"
 	@echo "* Making Jens Axboe's pktsetup                         ... *"
-	@echo "* major=42, minor=0-4                                  ... *"
+	@echo "* major=97, minor=0-15                                 ... *"
 	@echo "* ftp.kernel.org/pub/linux/kernel/people/axboe/packet/ ... *"
 	@echo "* -------------------------------------------------------- *"
 	$(CC) $< $(CFLAGS) -o $@
+	@if [ ! -f /dev/pktcdvd0 ]; then mknod /dev/pktcdvd0 b 97 0; fi
 
 chkudf: $(CHKUDFDEP)
 	cp $(CHKUDFDEP) .
