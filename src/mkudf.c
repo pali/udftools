@@ -37,7 +37,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include <../src/udfdecl.h>
+#include <linux/udf_fs.h>
 #include <asm/page.h>
 
 /* These should be changed if you make any code changes */
