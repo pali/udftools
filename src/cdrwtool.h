@@ -1,7 +1,7 @@
 /*
  * Perform all sort of actions on a CD-R, CD-RW, and DVD-R drive.
  *
- * Copyright Jens Axboe, 1999
+ * Copyright Jens Axboe, 1999, 2000
  *
  * Released under the GPL licences.
  *
@@ -58,7 +58,9 @@ typedef struct {
 	unsigned char	speed;			/* writing speed */
 	unsigned int	buffer;			/* buffer size */
 	unsigned int	reserve_track;		/* reserve a track */
-	unsigned char	quick;
+	unsigned char	quick_setup;
+	unsigned char	mkudf;
+	unsigned int	close_track;
 } options_t;
 
 struct option longoptions[] = {
@@ -67,16 +69,18 @@ struct option longoptions[] = {
 	{ "get write parameters",		0, NULL, 'g' },
 	{ "blank cdrw disc",			1, NULL, 'b' },
 	{ "format cdrw disc",			1, NULL, 'm' },
+	{ "run mkudf on track",			1, NULL, 'u' },
 	{ "set cd writing speed",		1, NULL, 't' },
 	{ "write fixed packets",		1, NULL, 'p' },
+	{ "perform quick setup",		0, NULL, 'q' },
 	{ "reserve track",			1, NULL, 'r' },
+	{ "close track",			1, NULL, 'c' },
 	{ "fixed packet size",			1, NULL, 'z' },
 	{ "border/session setting",		1, NULL, 'l' },
 	{ "write type",				1, NULL, 'w' },
 	{ "file to write",			2, NULL, 'f' },
 	{ "start at this lba for file write",	1, NULL, 'o' },
 	{ "print detailed disc info",		0, NULL, 'i' },
-	{ "quick",				0, NULL, 'q' },
 	{ "help",				0, NULL, 'h' },
 	{ NULL,					0, NULL,  0  }
 };
@@ -187,6 +191,11 @@ typedef struct opc_table {
 	__u16 speed;
 	__u8 opc_value[6];
 } opc_table_t;
+
+typedef struct disc_capacity {
+	__u32 lba;
+	__u32 block_length;
+} disc_capacity_t;
 
 #endif /* WT_H */
 
