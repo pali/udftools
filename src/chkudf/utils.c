@@ -34,7 +34,7 @@ UINT16 doCRC(UINT8 *buffer, int n)
   int byte, bit;
   UINT8 bitval, msb;
 
-  if (n > 2032) {
+  if (n > 4080) {
     CRC = 0xffff;
   } else {
     for (byte = 0; byte < n; byte++) {
