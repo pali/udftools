@@ -38,9 +38,11 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/ioctl.h>
+#include <linux/fs.h>
 
 #include <udfdecl.h>
 #include "mkudf.h"
+
 
 #ifndef HAVE_LLSEEK_PROTOTYPE
 extern Sint64 llseek (int fd, Sint64 offset, int origin);
