@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#include <stdint.h>
+#include <inttypes.h>
 #include <sys/types.h>
 
 #ifdef HAVE_SYS_ISA_DEFS_H
