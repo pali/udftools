@@ -13,7 +13,7 @@
 int checkICB(struct FileEntry *fe, struct long_ad FE, int dir)
 {
   if (fe) {
-    if (!CheckTag((struct tag *)fe, FE.Location_LBN, TAGID_FILE_ENTRY, 16, blocksize)) {
+    if (!CheckTag((struct tag *)fe, U_endian32(FE.Location_LBN), TAGID_FILE_ENTRY, 16, blocksize)) {
       printf("(%10d) ", U_endian32(fe->InfoLengthL));
     }
 

@@ -9,7 +9,7 @@ chkudf: $(OBJS)
 	gcc -o chkudf -ggdb $(OBJS)
 
 .c.o:
-	gcc -I../../../linux/include -Wall -ggdb -c $*.c
+	gcc -I../../../../linux/include -Wall -ggdb -c $*.c
 
 clean:
 	rm chkudf *.o

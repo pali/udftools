@@ -5,8 +5,8 @@
 // #define WIN16
 // #define WIN32
 // #define OS2
-#define LINUX
-// #define SOLARIS
+// #define LINUX
+#define SOLARIS
 
 /* 
  *  The following adjust for byte order on various machines and interfaces.
