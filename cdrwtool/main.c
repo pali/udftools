@@ -144,11 +144,15 @@ int quick_setup(int fd, struct cdrw_disc *disc, char *device)
 	printf("Disc capacity is %u blocks (%uKB/%uMB)\n",
 		blocks, blocks * 2, blocks / 512);
 
-	disc->udf_disc.head->blocks = blocks;
+	if (!disc->offset)
+		disc->udf_disc.head->blocks = blocks;
+	else
+		disc->udf_disc.head->blocks = disc->offset;
 
 	if (disc->fpacket)
 	{
-		disc->offset = blocks;
+		if (!disc->offset)
+			disc->offset = blocks;
 		printf("Formatting track\n");
 		if ((ret = format_disc(fd, disc)))
 			return ret;

@@ -40,7 +40,7 @@ struct option long_options[] = {
 	{ "set mkudffs version", 1, NULL, 'v' },
 	{ "set cd writing speed", 1, NULL, 't' },
 	{ "write fixed packets", 1, NULL, 'p' },
-	{ "perform quick setup", no_argument, NULL, 'q' },
+	{ "perform quick setup", optional_argument, NULL, 'q' },
 	{ "reserve track", 1, NULL, 'r' },
 	{ "close track", 1, NULL, 'c' },
 	{ "fixed packet size", 1, NULL, 'z' },
@@ -68,7 +68,7 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 {
 	int retval;
 
-	while ((retval = getopt_long(argc, argv, "r:t:im:u:v:d:sgqc:C:b:p:z:l:w:f:o:h", long_options, NULL)) != EOF)
+	while ((retval = getopt_long(argc, argv, "r:t:im:u:v:d:sgq::c:C:b:p:z:l:w:f:o:h", long_options, NULL)) != EOF)
 	{
 		switch (retval)
 		{
@@ -89,6 +89,10 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			case 'q':
 			{
 				disc->quick_setup = 1;
+				if (optarg)
+					disc->offset = strtol(optarg, NULL, 10);
+				else
+					disc->offset = 0;
 				break;
 			}
 			case 'u':
