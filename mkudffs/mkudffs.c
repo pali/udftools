@@ -250,14 +250,14 @@ void split_space(struct udf_disc *disc)
 	if (size % offsets[PSPACE_SIZE])
 		size -= (size % offsets[PSPACE_SIZE]);
 	set_extent(disc, PSPACE, start, size);
-	for (i=0; i<disc->udf_lvd[0]->numPartitionMaps; i++)
+	for (i=0; i<le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps); i++)
 	{
 		if (i == 1)
 			disc->udf_lvid->freeSpaceTable[i] = cpu_to_le32(0xFFFFFFFF);
 		else
 			disc->udf_lvid->freeSpaceTable[i] = cpu_to_le32(size);
 	}
-	for (j=0; j<disc->udf_lvd[0]->numPartitionMaps; j++)
+	for (j=0; j<le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps); j++)
 	{
 		if (j == 1)
 			disc->udf_lvid->sizeTable[i+j] = cpu_to_le32(0xFFFFFFFF);
