@@ -1,10 +1,4 @@
 /*
- * #include <unistd.h>
- * off_t lseek(int fd, off_t offset, int whence = SEEK_SET)
- * retunrs -1 on error
- */
-
-/*
  * mkudf.c
  *
  * PURPOSE
@@ -62,6 +56,7 @@
 
 #define OPT_BLOCKS		0x2000
 #define OPT_MEDIA		0x2001
+#define OPT_PARTITION	0x2002
 
 #define OPT_BLK_SIZE	0x2010
 #define OPT_LVOL_ID		0x2011
@@ -87,6 +82,7 @@ struct option long_options[] = {
 	/* Media Data */
 	{ "blocks", required_argument, NULL, OPT_BLOCKS },
 	{ "media-type", required_argument, NULL, OPT_MEDIA },
+	{ "partition-type", required_argument, NULL, OPT_PARTITION },
 	/* Logical Volume Descriptor */
 	{ "blocksize", required_argument, NULL, OPT_BLK_SIZE },
 	{ "logical-volume-id", required_argument, NULL, OPT_LVOL_ID },
@@ -107,8 +103,7 @@ struct option long_options[] = {
 
 typedef enum media_types
 {
-	MT_FILE,
-	MT_DISK,
+	MT_HD,
 	MT_CDR,
 	MT_CDRW,
 	MT_DVDR,
@@ -116,17 +111,28 @@ typedef enum media_types
 	MT_DVDRAM
 } media_types;
 
+typedef enum partition_types
+{
+	PT_NORMAL,
+	PT_SPARING,
+	PT_VAT
+} partition_types;
+
 /* Command line globals */
 char *opt_filename;
 unsigned opt_blocks = 0U;
+media_types opt_media = MT_HD;
+partition_types opt_partition = PT_NORMAL;
 
 unsigned opt_blocksize = 0U;
 
 /* Generic globals */
 int fs_img;
+
+unsigned blocks;
+
 unsigned blocksize;
 unsigned blocksize_bits;
-unsigned blocks;
 unsigned lastblock;
 dstring vol_id[32];
 dstring lvol_id[128];
@@ -166,7 +172,8 @@ usage(void)
 		"\t--version\n"
 		"Settings:\n"
 		"\t--blocks=NUMBER\n"
-		"\t--media-type=ow|ro|rw|wo\n"
+		"\t--media-type=hd|cdr|cdrw|dvdr|dvdrw|dvdram\n"
+		"\t--partition-type=normal|sparing|vat\n"
 
 		"\t--blocksize=NUMBER\n"
 		"\t--logical-volume-id=STRING\n"
@@ -223,6 +230,19 @@ parse_args(int argc, char *argv[])
 				break;
 			case OPT_MEDIA:
 				break;
+			case OPT_PARTITION:
+				if (strlen(optarg) == 6 && !strncmp(optarg, "normal", 6))
+					opt_partition = PT_NORMAL;
+				else if (strlen(optarg) == 7 && !strncmp(optarg, "sparing", 7))
+					opt_partition = PT_SPARING;
+				else if (strlen(optarg) == 3 && !strncmp(optarg, "vat", 3))
+					opt_partition = PT_VAT;
+				else
+				{
+					fprintf(stderr, "%s --partition-type=normal|sparing|vat\n",
+						argv[0]);
+					exit(-1);
+				}
 
 			case OPT_BLK_SIZE:
 				opt_blocksize = strtoul(optarg, 0, 0);
@@ -321,6 +341,8 @@ void get_blocks()
 		blocks = opt_blocks;
 	lastblock = blocks-1;
 	fprintf(stderr,"blocks=%d opt_blocks=%d lastblock=%d\n", blocks, opt_blocks, lastblock);
+	if (!blocks)
+		exit(0);
 }
 		
 
@@ -582,9 +604,9 @@ void write_logicalvolintdesc(int loc, timestamp crtime)
 	lvid = calloc(1, totsize);
 
 	for (i=0; i<npart; i++)
-		lvid->freeSpaceTable[i] = le32_to_cpu(273388);
+		lvid->freeSpaceTable[i] = le32_to_cpu(blocks - 4);
 	for (i=0; i<npart; i++)
-		lvid->sizeTable[i+npart] = le32_to_cpu(273408);
+		lvid->sizeTable[i+npart] = le32_to_cpu(blocks);
 	lvidiu = (struct LogicalVolIntegrityDescImpUse *)&(lvid->impUse[npart*2*sizeof(Uint32)/sizeof(Uint8)]);
 
 	lvidiu->impIdent.flags = 0;
