@@ -1051,7 +1051,10 @@ timestamp query_timestamp(struct timeval *tv, struct timezone *tz)
 
 	tm = localtime(&tv->tv_sec);
 
-	ret.typeAndTimezone = le16_to_cpu(((-tz->tz_minuteswest) & 0x0FFF) | 0x1000);
+	ret.typeAndTimezone = le16_to_cpu(((-tz->tz_minuteswest +
+		(tz->tz_dsttime ? 60 : 0)) & 0x0FFF) | 0x1000);
+
+	printf("%ld (%s)/%d\n", tm->tm_gmtoff, tm->tm_zone, tz->tz_minuteswest);
 	ret.year = le16_to_cpu(1900 + tm->tm_year);
 	ret.month = 1 + tm->tm_mon;
 	ret.day = tm->tm_mday;
