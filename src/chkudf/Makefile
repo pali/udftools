@@ -1,3 +1,5 @@
+include ../../../config.mk
+
 OBJS=chkudf.o read_udf.o errors.o utils.o verifyVRS.o verifyAVDP.o \
 	globals.o checkTag.o verifyVDS.o verifyVD.o verifyRegid.o \
         setLastSector.o build_scsi.o utils_read.o init.o \
@@ -9,7 +11,7 @@ chkudf: $(OBJS)
 	gcc -o chkudf -g $(OBJS)
 
 .c.o:
-	gcc -I../../../../linux/include -Wall -g -c $*.c
+	gcc -Wall -I$(LINUX)/include -g -c $*.c
 
 clean:
 	@-/bin/rm -f chkudf *.o *~ *.bak

@@ -12,12 +12,11 @@
 .SUFFIXES:
 .SUFFIXES: .c .o .h .a
 
-include ../Make.conf
+include ../config.mk
 
-# KERNH=-I/usr/src/linux-2.1.129/include
-UDF_INC = -I../include -I../src
+UDF_INC = -I../include -I../src -I$(LINUX)/include
 
-CFLAGS	= $(KERNH) $(UDF_INC)\
+CFLAGS	= $(UDF_INC)\
 	-O2 -Wall -Wstrict-prototypes -I..  -g
 LIBS		= ../lib/libudf.a
 
@@ -26,7 +25,7 @@ CHKUDFDEP	= $(CHKUDFDIR)/chkudf
 
 EXE=dumpsect dumpfe taglist cdinfo mkudf chkudf dumpea checkdisk bmap
 
-all: $(EXE)
+all: ../.prereq.ok $(EXE)
 
 install: $(EXE)
 	@echo "TDEST= $(TOOLS_DEST)"
