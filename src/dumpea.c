@@ -28,8 +28,6 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <linux/ioctl.h>
-#include <linux/fs.h>
 
 #include <linux/udf_fs_i.h> /* for ioctl */
 
