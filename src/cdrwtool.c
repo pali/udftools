@@ -33,14 +33,20 @@
  *	  doing a format/blank with IMMED set.
  *	- added the -q quick setup option.
  *
+ * Ver 0.1		27/10/00
+ *	- Fix wrong warning when using IMMED bit for format/blank
+ *	  when command completes
+ *	- Default to setting mode2-form1 write type
+ *	- Print sense on failed command
+ *
  * Todo:
- *	- Add the -q quick option and integrate with mkudf.
  *	- Set sensible write speed, don't default to DEFAULT_SPEED.
  *
  * Drives tested and known to work:
- *	- HP 8210i
+ *	- HP 8210i, 9xxx (progress indicator works)
  *	- Sony CRX100E (without progress indicator)
  *	- Yamaha CRW6416SX (SCSI, no progress indicator)
+ *	- Plextor PlexWriter 12/4/32
  *
  */
 
@@ -61,26 +67,16 @@
 
 #define CDROM_DEVICE	"/dev/scd0"
 
-#define DEFAULT_SPEED	4
-
-/* define this to 0 to make format and blank block until the entire
- * operation has succeeded. otherwise control is returned as soon as
- * the drive has verified the command -- this can be used for polling
- * the device for completion.
- */
-#undef NONBLOCKING_OP
-
 static char cdrom_device[NAME_MAX];
 static int progress;
 static int fd;
 
-static char packet_data[32][2048];
+static char packet_data[PACKET_BLOCK][CDROM_BLOCK];
 static int last_packet = -1;
 
 extern struct option longoptions[];
 
-#if 1
-void dump_buffer(const void *buffer, int size)
+void hexdump(const void *buffer, int size)
 {
 	unsigned char *ptr = (unsigned char *) buffer;
 	int i;
@@ -89,19 +85,40 @@ void dump_buffer(const void *buffer, int size)
 		printf("%02x ", ptr[i]);
 	printf("\n");
 }
-#endif
+
+void dump_sense(struct request_sense *sense)
+{
+	printf("Command failed with ");
+	if (sense) {
+		printf("sense %02x.%02x.%02x\n", sense->sense_key, sense->asc,
+						sense->ascq);
+	} else {
+		printf("no sense\n");
+	}
+}
 
 int wait_cmd(struct cdrom_generic_command *cgc, unsigned char *buf, int dir)
 {
+	struct request_sense sense;
+	int ret;
+
+	memset(&sense, 0, sizeof(sense));
+
 	cgc->buffer = buf;
 	cgc->data_direction = dir;
-	return ioctl(fd, CDROM_SEND_PACKET, cgc);
+	cgc->sense = &sense;
+
+	ret = ioctl(fd, CDROM_SEND_PACKET, cgc);
+	if (ret)
+		dump_sense(cgc->sense);
+	return ret;
 }
 
 void sig_progress(int sig)
 {
 	struct cdrom_generic_command cgc;
 	struct request_sense sense;
+	static int did = 0;
 	int ret;
 
 	memset(&cgc, 0, sizeof(cgc));
@@ -110,7 +127,7 @@ void sig_progress(int sig)
 	cgc.sense = &sense;
 	ret = wait_cmd(&cgc, NULL, CGC_DATA_NONE);
 
-	if (!(sense.sks[0] & 0x80)) {
+	if (!(sense.sks[0] & 0x80) && !did) {
 		printf("Progress indicator not implemented on this drive\n");
 		printf("Don't access drive until operation has completed\n");
 		progress = 101;
@@ -118,6 +135,7 @@ void sig_progress(int sig)
 	}
 
 	progress = ((sense.sks[1] << 8 | sense.sks[2]) * 100) / 0xffff;
+	did = 1;
 
 	printf("%02d%% complete\n", progress);
 	if (progress == 99) {
@@ -130,7 +148,7 @@ void sig_progress(int sig)
 void print_completion_info(void)
 {
 	/* we can only poll sense for non-blocking commands */
-#ifndef NONBLOCKING_OP
+#ifndef USE_IMMED
 	return;
 #endif
 	progress = 0;
@@ -215,7 +233,7 @@ int set_write_mode(write_params_t *w)
 	}
 
 	if ((ret = mode_select(buffer, len)) < 0) {
-		dump_buffer(buffer, len);
+		hexdump(buffer, len);
 		free(buffer);
 		perror("mode_select");
 		return ret;
@@ -294,10 +312,6 @@ int write_blocks(char *buffer, int lba, int blocks)
 	cgc.cmd[8] = blocks;
 	cgc.buflen = blocks * 2048;
 
-#if 0
-	dump_buffer(cgc.cmd, 12);
-#endif
-
 	return wait_cmd(&cgc, buffer, CGC_DATA_WRITE);
 }
 
@@ -309,7 +323,7 @@ void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char 
 	if (last_packet == -1)
 	{
 		last_packet = packet;
-		memset(packet_data, 0x00, 2048*32);
+		memset(*packet_data, 0x00, PACKET_SIZE);
 	}
 
 	if (packet != last_packet)
@@ -320,14 +334,12 @@ void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char 
 			exit(1);
 		}
 
-		memset(packet_data, 0x00, 2048*32);
+		memset(packet_data, 0x00, PACKET_SIZE);
 		memcpy(packet_data[block % 32], buffer, size);
 		last_packet = packet;
 	}
 	else
-	{
 		memcpy(packet_data[block % 32], buffer, size);
-	}
 }
 
 static void udf_flush_data(void)
@@ -408,7 +420,7 @@ int blank_disc(int type)
         memset(&cgc, 0, sizeof(cgc));
         cgc.cmd[0] = GPCMD_BLANK;
         cgc.cmd[1] = (type == BLANK_FULL ? 0 : 1);
-#ifdef NONBLOCKING_OP
+#ifdef USE_IMMED
 	cgc.cmd[1] |= 1 << 4;
 #endif
 
@@ -437,9 +449,7 @@ int format_disc(options_t *o)
 	/* format list header */
 	buffer[0] = 0;
 	buffer[1] = 0;		/* FOV: 0 (use defaults) */
-#ifdef NONBLOCKING_OP
-	buffer[1] |= (1 << 1);
-#endif
+	buffer[1] |= (USE_IMMED << 1);
 	buffer[2] = 0;
 	buffer[3] = 8;
 
@@ -542,9 +552,7 @@ int close_track(unsigned track)
 
 	memset(&cgc, 0, sizeof(cgc));
 	cgc.cmd[0] = GPCMD_CLOSE_TRACK;
-#ifndef NONBLOCKING_OP
-	cgc.cmd[1] = 1;
-#endif
+	cgc.cmd[1] = USE_IMMED;
 	cgc.cmd[2] = 1; /* bit 2 is close session/border */
 	cgc.cmd[4] = (track >> 8) & 0xff;
 	cgc.cmd[5] = track & 0xff;
@@ -798,13 +806,13 @@ void make_write_page(write_params_t *w, options_t *o)
 	{
 		case WRITE_MODE1:
 		{
-			w->data_block = 8;
+			w->data_block = 0x8;
 			w->session_format = 0x00;
 			break;
 		}
 		case WRITE_MODE2:
 		{
-			w->data_block = 10;
+			w->data_block = 0xa;
 			w->session_format = 0x20;
 			break;
 		}
@@ -843,9 +851,9 @@ int get_options(int argc, char *argv[], options_t *o)
 	o->get_settings		= 0;
 	o->set_settings		= 0;
 	o->fpacket 		= 1;
-	o->packet_size 		= 32;
+	o->packet_size 		= PACKET_BLOCK;
 	o->link_size 		= 0; /* jens 7 */
-	o->write_type	 	= 1;
+	o->write_type	 	= WRITE_MODE2;
 	o->blank	 	= 0;
 	o->offset	 	= 0;
 	o->filename[0]		= 0;
@@ -860,7 +868,7 @@ int get_options(int argc, char *argv[], options_t *o)
 	o->mkudf		= 0;
 	strcpy(cdrom_device, CDROM_DEVICE);
 
-	while (1){
+	while (1) {
 		c = getopt_long(argc, argv, "r:t:im:u:d:sgqcb:p:z:l:w:f:o:h", longoptions, &res);
 		if (c == -1)
 			break;

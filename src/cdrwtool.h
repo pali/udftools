@@ -14,6 +14,14 @@
 #include <unistd.h>
 #include <endian.h>
 
+/*
+ * define this to 0 to make format and blank block until the entire
+ * operation has succeeded. otherwise control is returned as soon as
+ * the drive has verified the command -- this can be used for polling
+ * the device for completion.
+ */
+#define USE_IMMED	1
+
 #define PAGE_CURRENT	0
 #define PAGE_CHANGE	1
 #define PAGE_DEFAULT	2
@@ -23,13 +31,17 @@
 #define BLANK_FAST	2
 
 #define WRITE_MODE1	1
-#define WRITE_MODE2	2
+#define WRITE_MODE2	2	/* mode2, form 1 */
 
 #define CDROM_BLOCK	2048
+#define PACKET_BLOCK	32
+#define PACKET_SIZE	CDROM_BLOCK*PACKET_BLOCK
 
 #ifndef NAME_MAX
 #define NAME_MAX	255
 #endif
+
+#define DEFAULT_SPEED	12
 
 typedef struct {
 	unsigned char	ls_v;			/* link_size valid */

@@ -1,6 +1,4 @@
 /*
- * Quite possibly the ugliest piece I've ever written...
- *
  * Copyright (c) 1999,2000	Jens Axboe <axboe@suse.de>
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -18,7 +16,6 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
-
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -27,8 +24,15 @@
 #include <bits/types.h>
 #include <sys/types.h>
 
-#include <linux/pktcdvd.h>
 #include <linux/cdrom.h>
+
+/*
+ * if we don't have one, we probably have neither
+ */
+#ifndef PACKET_SETUP_DEV
+#define PACKET_SETUP_DEV	_IOW('X', 1, unsigned int)
+#define PACKET_TEARDOWN_DEV	_IOW('X', 2, unsigned int)
+#endif
 
 int init_cdrom(int fd)
 {
@@ -52,46 +56,51 @@ int init_cdrom(int fd)
 
 void setup_dev(char *pkt_device, char *device, int rem)
 {
-	int pkt_fd = open(pkt_device, O_RDONLY | O_CREAT), dev_fd = 0;
-	unsigned int cmd = rem ? PACKET_TEARDOWN_DEV : PACKET_SETUP_DEV;
+	int pkt_fd, dev_fd, cmd;
 
-	if (pkt_fd < 0) {
-		perror("packet open");
+	if ((pkt_fd = open(pkt_device, O_RDONLY | O_CREAT)) == -1) {
+		perror("open packet device");
 		return;
 	}
 
 	if (!rem) {
-		if ((dev_fd = open(device, O_RDONLY | O_NONBLOCK)) < 0) {
-			perror("open device");
+		cmd = PACKET_SETUP_DEV;
+		if ((dev_fd = open(device, O_RDONLY | O_NONBLOCK)) == -1) {
+			perror("open cd-rom");
+			close(pkt_fd);
 			return;
 		}
-		if (init_cdrom(dev_fd))
+		if (init_cdrom(dev_fd)) {
+			close(pkt_fd);
+			close(dev_fd);
 			return;
+		}
+	} else {
+		cmd = PACKET_TEARDOWN_DEV;
+		dev_fd = 0; /* silence gcc */
 	}
 		
-	if (ioctl(pkt_fd, cmd, dev_fd) < 0) {
-		perror("PACKET_SET_DEV");
-		return;
-	}
-	printf("%s %s\n", rem ? "removed" : "setup", pkt_device);
-	close(dev_fd);
+	if (ioctl(pkt_fd, cmd, dev_fd) == -1)
+		perror("ioctl");
+
+	if (dev_fd)
+		close(dev_fd);
 	close(pkt_fd);
 }
 
-void usage(void)
+int usage(void)
 {
-	printf("pktsetup /dev/pktcdvd0 /dev/hdd\tsetup device\n");
-	printf("pktsetup -d /dev/pktcdvd0\ttear down device\n");
+	printf("pktsetup /dev/pktcdvd0 /dev/cdrom\tsetup device\n");
+	printf("pktsetup -d /dev/pktcdvd0\t\ttear down device\n");
+	return 1;
 }
 
 int main(int argc, char **argv)
 {
 	int rem = 0, c;
 
-	if (argc == 1) {
-		usage();
-		return 1;
-	}
+	if (argc == 1)
+		return usage();
 
 	while ((c = getopt(argc, argv, "d")) != EOF) {
 		switch (c) {
@@ -99,8 +108,7 @@ int main(int argc, char **argv)
 				rem = 1;
 				break;
 			default:
-				usage();
-				exit(1);
+				return usage();
 		}
 	}
 	setup_dev(argv[optind], argv[optind + 1], rem);
