@@ -156,6 +156,8 @@ int DisplayDirs(void)
             }
           }
         } else {
+          printf("**Error in directory\n");
+          DumpError();
           depth--;
         }
       }
@@ -185,6 +187,8 @@ int GetFID(struct FileIDDesc *FID, struct FileEntry *fe, UINT16 part, int offset
   if (count < blocksize) {
     CheckTag((struct tag *)FID, location, TAGID_FILE_ID, 0, blocksize - 16);
     if (Error.Code == ERR_TAGLOC) {
+      printf("** Wrong Tag Location. Expected %d, Found %d (%d)\n",
+         Error.Expected, Error.Found, location);
       FID_Loc_Wrong++;
       Error.Code = 0;
     }

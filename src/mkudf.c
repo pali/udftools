@@ -36,17 +36,19 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
 
 #include <udfdecl.h>
 
 #ifndef HAVE_LLSEEK_PROTOTYPE
-extern Uint64 llseek (int fd, Uint64 offset, int origin);
+extern Sint64 llseek (int fd, Sint64 offset, int origin);
 #endif
 
 /* These should be changed if you make any code changes */
 #define VERSION_MAJOR	1
-#define VERSION_MINOR	2
-#define VERSION_BUILD	2
+#define VERSION_MINOR	3
+#define VERSION_BUILD	3
 
 /*
  * Command line option token values.
@@ -133,11 +135,11 @@ unsigned opt_blocksize = 0U;
 /* Generic globals */
 int fs_img;
 
-unsigned blocks;
+unsigned long blocks;
 
 unsigned blocksize;
 unsigned blocksize_bits;
-unsigned lastblock;
+unsigned long lastblock;
 dstring vol_id[32];
 dstring lvol_id[128];
 dstring set_id[128];
@@ -304,7 +306,7 @@ parse_args(int argc, char *argv[])
 	}
 }
 
-static Uint64 udf_lseek64(int fd, Uint64 offset, int whence)
+static Sint64 udf_lseek64(int fd, Sint64 offset, int whence)
 {
 #ifdef __USE_LARGEFILE64
 	return lseek64(fd, offset, whence);
@@ -343,13 +345,59 @@ void get_blocksize()
 	fprintf(stderr,"blocksize=%d bits=%d\n", blocksize, blocksize_bits);
 }
 
+static int valid_offset(int fd, Sint64 offset)
+{
+	char ch;
+
+	if (udf_lseek64(fd, offset, SEEK_SET) < 0)
+		return 0;
+	if (read(fd, &ch, 1) < 1)
+		return 0;
+	return 1;
+}
+
 void get_blocks()
 {
-	blocks = udf_lseek64(fs_img, 0, SEEK_END) >> blocksize_bits;
+#ifdef BLKGETSIZE
+	long size;
+#endif
+#ifdef FDGETPRM
+	struct floppy_struct this_floppy;
+#endif
+
+#ifdef BLKGETSIZE
+	if (ioctl(fs_img, BLKGETSIZE, &size) >= 0)
+		blocks = size / (blocksize / 512);
+	else 
+#endif
+#ifdef FDGETPRM
+	if (ioctl(fs_img, FDGETPRM, &this_floppy) >= 0)
+		blocks = this_floppy.size / (blocksize / 512);
+	else
+#endif
+	{
+		Sint64 high, low;
+
+		for (low=0, high = 1024; valid_offset(fs_img, high); high *= 2)
+			low = high;
+		while (low < high - 1)
+		{
+			const Sint64 mid = (low + high) / 2;
+
+			if (valid_offset(fs_img, mid))
+				low = mid;
+			else
+				high = mid;
+		}
+
+		valid_offset(fs_img, 0);
+		blocks = (low + 1) / blocksize;
+	}
+
 	if (opt_blocks)
 		blocks = opt_blocks;
 	lastblock = blocks-1;
-	fprintf(stderr,"blocks=%d opt_blocks=%d lastblock=%d\n", blocks, opt_blocks, lastblock);
+	fprintf(stderr,"blocks=%ld opt_blocks=%d lastblock=%ld\n", blocks, opt_blocks, lastblock);
 	if (!blocks)
 		exit(0);
 }
@@ -459,7 +507,7 @@ write_anchor(int loc, int start, int len, int rstart, int rlen)
 	avdp->reserveVolDescSeqExt.extLength = le32_to_cpu(rlen * blocksize);
 	avdp->descTag = query_tag(TID_ANCHOR_VOL_DESC_PTR, 2, 1, loc, avdp, totsize);
 
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, avdp, blocksize);
 	if (retval == -1) {
 		perror("error writing Anchor descriptor");
@@ -508,7 +556,7 @@ write_primaryvoldesc(int loc, int snum, timestamp crtime)
 	pvd->flags = le16_to_cpu(0x0001);
 	pvd->descTag = query_tag(TID_PRIMARY_VOL_DESC, 2, 1, loc, pvd, totsize);
 
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, pvd, sizeof(struct PrimaryVolDesc));
 	if (retval == -1) {
 		perror("error writing Primary Volume descriptor");
@@ -596,7 +644,7 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 	lvd->integritySeqExt.extLength = le32_to_cpu(len * blocksize);
 
 	lvd->descTag = query_tag(TID_LOGICAL_VOL_DESC, 2, 1, loc, lvd, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, lvd, totsize);
 	if (retval == -1) {
 	        perror("error writing Logical Volume descriptor");
@@ -645,7 +693,7 @@ void write_logicalvolintdesc(int loc, timestamp crtime, int part0start)
 	lvid->lengthOfImpUse = le32_to_cpu(sizeof(struct LogicalVolIntegrityDescImpUse));
 
 	lvid->descTag = query_tag(TID_LOGICAL_VOL_INTEGRITY_DESC, 2, 1, loc, lvid, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, lvid, totsize);
 	if (retval == -1) {
 		perror("error writing Logical Volume Integrity descriptor");
@@ -690,7 +738,7 @@ void write_partitionvoldesc(int loc, int snum, int start, int end, int usb)
 	pd->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 	
 	pd->descTag = query_tag(TID_PARTITION_DESC, 2, 1, loc, pd, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, pd, totsize);
 	if (retval == -1) {
 		perror("error writing Partition descriptor");
@@ -721,7 +769,7 @@ void write_unallocatedspacedesc(int loc, int snum, int start1, int end1, int sta
 	usd->numAllocDescs = le32_to_cpu(ndesc);
 
 	usd->descTag = query_tag(TID_UNALLOC_SPACE_DESC, 2, 1, loc, usd, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, usd, totsize);
 	if (retval == -1) {
 		perror("error writing Unallocated Space descriptor");
@@ -777,7 +825,7 @@ void write_impusevoldesc(int loc, int snum)
 	iuvd->impIdent.identSuffix[3] = UDF_OS_ID_LINUX;
 
 	iuvd->descTag = query_tag(TID_IMP_USE_VOL_DESC, 2, 1, loc, iuvd, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, iuvd, totsize);
 	if (retval == -1) {
 		perror("error writing Imp Use Volume descriptor");
@@ -795,7 +843,7 @@ void write_termvoldesc(int loc)
 	td = calloc(1, totsize);
 	
 	td->descTag = query_tag(TID_TERMINATING_DESC, 2, 1, loc, td, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, td, totsize);
 	if (retval == -1) {
 		perror("error writing Terminating descriptor");
@@ -840,7 +888,7 @@ void write_filesetdesc(int loc, int sloc, int snum, int rootpart, int rootblock,
 */
 	
 	fsd->descTag = query_tag(TID_FILE_SET_DESC, 2, snum, loc - sloc, fsd, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, fsd, totsize);
 	free(fsd);
 	if (retval == -1) {
@@ -872,7 +920,7 @@ void write_spartable(int loc, int snum, int start, int num)
 	}
 
 	st->descTag = query_tag(0, 2, snum, loc, st, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, st, totsize);
 	free(st);
 	if (retval == -1) {
@@ -902,7 +950,7 @@ void write_spacebitmapdesc(int loc, int sloc, int snum, int start, int end, int 
 	sbd->bitmap[(fileset+33)/8] &= ~(1 << ((fileset+33)%8));
 
 	sbd->descTag = query_tag(TID_SPACE_BITMAP_DESC, 2, snum, loc - sloc, sbd, sizeof(tag));
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, sbd, totsize);
 	free(sbd);
 	if (retval == -1) {
@@ -977,7 +1025,7 @@ void write_fileentry1(int loc, int sloc, int snum, int part, int block, timestam
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_DIRECTORY, 0, 0, ICB_FLAG_AD_IN_ICB);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, fe, totsize);
 	if (retval == -1) {
 		perror("error writing File Entry");
@@ -1036,7 +1084,7 @@ void write_fileentry2(int loc, int sloc, int snum, int part, int block, timestam
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_DIRECTORY, 2, 0, ICB_FLAG_AD_IN_ICB);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
-	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, (Sint64)loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, fe, totsize);
 	if (retval == -1) {
 		perror("error writing File Entry");
@@ -1131,7 +1179,7 @@ main(int argc, char *argv[])
 	}
 	parse_args(argc, argv);
 
-	fs_img = open(argv[optind], O_WRONLY, 0660);
+	fs_img = open(argv[optind], O_RDWR, 0660);
 	if (fs_img == -1) {
 		perror("error opening image file");
 		return -1;
