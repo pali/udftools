@@ -17,7 +17,7 @@ include ../Make.conf
 # KERNH=-I/usr/src/linux-2.1.129/include
 UDF_INC = -I../include -I../src
 
-CFLAGS	= -DDEBUG $(KERNH) $(UDF_INC)\
+CFLAGS	= $(KERNH) $(UDF_INC)\
 	-O2 -Wall -Wstrict-prototypes -I..  -g
 LIBS		= ../lib/libudf.a
 
