@@ -27,7 +27,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <linux/fs.h>
+#include <sys/mount.h>
 #include <linux/cdrom.h>
 
 int iso_get_last_session(int fd);
