@@ -108,11 +108,11 @@ void printDchars( char *start, UINT8 length)
         printf("\"");
         for (i=0;i<dispLen;i++,i++) {
             unichar = *(start + i) << 8;
-            unichar |= *(start + i + 1);
+            unichar |= (UINT8)*(start + i + 1);
             if ((unichar > 31) && (unichar < 127)) {
               printf("%c", (UINT8)unichar);
             } else {
-              printf(".");
+              printf("[%4x]", unichar);
             }
         }
         printf("\"");
