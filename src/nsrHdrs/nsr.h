@@ -34,12 +34,6 @@
 /*      successor clause.                                           */
 /*                                                                  */
 /********************************************************************/
-/*
- $Source: /tmp/cvs/udf/tools/src/nsrHdrs/nsr.h,v $
- $Revision: 1.25 $      $Author: bfennema $
- $State: Exp $          $Locker:  $
- $Date: 1999/11/23 07:48:00 $
- ********************************************************************/
 
 #include "nsr_sys.h"
 #include "nsr_part1.h"
