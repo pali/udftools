@@ -17,7 +17,7 @@ include ../config.mk
 UDF_INC = -I../include -I../linux-$(UTS_SHORT) -I$(LINUX)/include
 
 CFLAGS	= $(UDF_INC)\
-	-O2 -Wall -Wstrict-prototypes -I..  -g
+	-O2 -Wall -Wstrict-prototypes -I..  -g -D_LARGEFILE64_SOURCE
 LIBS		= ../lib/libudf.a
 
 CHKUDFDIR	= src/chkudf
