@@ -6,7 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <linux/cdrom.h>
-#include <linux/fs.h>
+#include <sys/mount.h>
 #include "chkudf.h"
 #include "protos.h"
 
