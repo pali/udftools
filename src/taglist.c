@@ -344,6 +344,7 @@ int main(int argc, char **argv)
 				} else {
 				    int a;
 				    printf("\tuID: %Ld ", fe->uniqueID);
+					printf("Loc: %d ", fe->descTag.tagLocation);
 				    printf("Type: %Xh ", fe->icbTag.fileType);
 				    printf("Len: %Ld ", fe->informationLength);
 				    a=fe->icbTag.flags & 0x7;
