@@ -789,6 +789,7 @@ int main(int argc, char **argv)
 	else if (o.quick && o.format)
 	{
 		mkudf_options opt;
+		memset(&opt, 0x00, sizeof(mkudf_options));
 		opt.device = fd;
 		opt.partition = PT_SPARING;
 		opt.blocksize = 2048;
