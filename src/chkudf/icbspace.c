@@ -47,12 +47,21 @@ int track_file_allocation(struct FileEntry *FE, UINT16 ptn)
              sizeAD = isLAD ?  sizeof(struct long_ad) : sizeof(struct short_ad);
              file_length = 0;
              ad_start = (UINT8 *)(FE + 1) + U_endian32(FE->L_EA);
+             printf("\n  [type=%s, ad_start=%p, ADlength=%d, info_length=%d]  ",
+				isLAD ? "LONG" : "SHORT", ad_start, ADlength,
+				U_endian32(FE->InfoLengthL));
              while (ad_offset < ADlength) {
                sad = (struct short_ad *)(ad_start + ad_offset);
                lad = (struct long_ad *)(ad_start + ad_offset);
                if (isLAD) {
                   ptn = U_endian16(lad->Location_PartNo);
                }
+               printf("\n    [ad_offset=%d, atype=%d, loc=%d, len=%d, file_length=%d]  ",
+					ad_offset,
+					U_endian32(sad->ExtentLength.Length32) >> 30,
+					U_endian32(sad->Location),
+					U_endian32(sad->ExtentLength.Length32) & 0x3FFFFFFF,
+					file_length);
                if (U_endian32(sad->ExtentLength.Length32) & 0x3FFFFFFF) {
                  switch(U_endian32(sad->ExtentLength.Length32) >> 30) {
                    case E_RECORDED:
@@ -114,12 +123,15 @@ int track_file_allocation(struct FileEntry *FE, UINT16 ptn)
                                    } else {
                                      ad_offset = ADlength;
                                    }
+									printf("\n      [NEW ad_start=%p, ADlength=%d]  ",
+										ad_start, ADlength);
                                    break;
                  }
                } else {
                  ad_offset = ADlength;
                }
              }
+				printf("  [file_length=%d]  ", file_length);
              if (file_length != U_endian32(FE->InfoLengthL)) {
                if (((FE->InfoLengthL + blocksize - 1) & ~(blocksize - 1)) == 
                    file_length) {
