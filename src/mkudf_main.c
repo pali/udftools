@@ -201,6 +201,7 @@ parse_args(int argc, char *argv[], struct mkudf_options *opt, char **filename)
 						argv[0]);
 					exit(-1);
 				}
+				break;
 
 			case OPT_BLK_SIZE:
 				opt->blocksize = strtoul(optarg, 0, 0);
