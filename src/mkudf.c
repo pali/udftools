@@ -797,15 +797,16 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 	write_impusevoldesc(udf_write_data, opt, pvd+4, ++snum);
 	write_termvoldesc(udf_write_data, opt, pvd+5);
 
-	write_primaryvoldesc(udf_write_data, opt, rvd, snum, crtime);
-	write_logicalvoldesc(udf_write_data, opt, rvd+1, snum, lvd, lvd_len, filesetpart,
+	snum = 0;
+	write_primaryvoldesc(udf_write_data, opt, rvd, ++snum, crtime);
+	write_logicalvoldesc(udf_write_data, opt, rvd+1, ++snum, lvd, lvd_len, filesetpart,
 		filesetblock, spartable1, spartable2, sparnum);
-	write_partitionvoldesc(udf_write_data, opt, rvd+2, snum, part0start, (opt->blocks-1)-288, part0start);
+	write_partitionvoldesc(udf_write_data, opt, rvd+2, ++snum, part0start, (opt->blocks-1)-288, part0start);
 	if (opt->partition == PT_SPARING || opt->partition == PT_NORMAL)
-		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, snum, 64, 255, 384, 1407);
+		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, ++snum, 64, 255, 384, 1407);
 	else
-		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, snum, 64, 255, 0, 0);
-	write_impusevoldesc(udf_write_data, opt, rvd+4, snum);
+		write_unallocatedspacedesc(udf_write_data, opt, rvd+3, ++snum, 64, 255, 0, 0);
+	write_impusevoldesc(udf_write_data, opt, rvd+4, ++snum);
 	write_termvoldesc(udf_write_data, opt, rvd+5);
 
 	write_logicalvolintdesc(udf_write_data, opt, lvd, crtime, part0start);
