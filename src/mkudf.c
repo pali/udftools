@@ -136,9 +136,7 @@ write_primaryvoldesc(write_func udf_write_data, mkudf_options *opt, int loc, int
 	pvd->volAbstract.extLength = le32_to_cpu(0);
 	pvd->volCopyright.extLocation = le32_to_cpu(0);
 	pvd->volCopyright.extLength = le32_to_cpu(0);
-/*
-	pvd.appIdent // Application Identifier
-*/
+	memset(&pvd->appIdent, 0x00, sizeof(EntityID));
 	pvd->recordingDateAndTime = crtime;
 	pvd->impIdent.flags = 0;
 	strcpy(pvd->impIdent.ident, UDF_ID_DEVELOPER);
@@ -270,7 +268,7 @@ void write_logicalvolintdesc(write_func udf_write_data, mkudf_options *opt, int 
 	lvid->integrityType = le32_to_cpu(INTEGRITY_TYPE_CLOSE);
 	lvid->nextIntegrityExt.extLocation = le32_to_cpu(0);
 	lvid->nextIntegrityExt.extLength = le32_to_cpu(0);
-	((Uint64 *)lvid->logicalVolContentsUse)[0] = le64_to_cpu(18); /* Max Unique ID */
+	((Uint64 *)lvid->logicalVolContentsUse)[0] = le64_to_cpu(17); /* Max Unique ID */
 	lvid->numOfPartitions = le32_to_cpu(npart);
 	lvid->lengthOfImpUse = le32_to_cpu(sizeof(struct LogicalVolIntegrityDescImpUse));
 
@@ -439,6 +437,8 @@ void write_filesetdesc(write_func udf_write_data, mkudf_options *opt, int loc, i
 	fsd->rootDirectoryICB.extLocation.partitionReferenceNum = le16_to_cpu(rootpart);
 	fsd->domainIdent.flags = 0;
 	strcpy(fsd->domainIdent.ident, UDF_ID_COMPLIANT);
+	((Uint16 *)fsd->domainIdent.identSuffix)[0] = le16_to_cpu(0x0150);
+	fsd->domainIdent.identSuffix[2] = 0x00;
 /*
 	nextExt
 	StreamDirectoryICB
@@ -557,7 +557,7 @@ void write_fileentry1(write_func udf_write_data, mkudf_options *opt, int loc, in
 	fe->recordDisplayAttr = 0;
 	fe->recordLength = le32_to_cpu(0);
 	fe->informationLength = le64_to_cpu(ladesc1 + ladesc2 + leattr);
-	fe->logicalBlocksRecorded = le64_to_cpu(1);
+	fe->logicalBlocksRecorded = le64_to_cpu(0);
 	fe->accessTime = crtime;
 	fe->modificationTime = fe->accessTime;
 	fe->attrTime = fe->accessTime;
@@ -571,7 +571,7 @@ void write_fileentry1(write_func udf_write_data, mkudf_options *opt, int loc, in
 	fe->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	fe->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
-	fe->uniqueID = le64_to_cpu(16);
+	fe->uniqueID = le64_to_cpu(0);
 	fe->lengthExtendedAttr = le32_to_cpu(0);
 	fe->lengthAllocDescs = le32_to_cpu(ladesc1 + ladesc2);
 
@@ -611,7 +611,7 @@ void write_fileentry2(write_func udf_write_data, mkudf_options *opt, int loc, in
 	fe->recordDisplayAttr = 0;
 	fe->recordLength = le32_to_cpu(0);
 	fe->informationLength = le64_to_cpu(ladesc1 + leattr);
-	fe->logicalBlocksRecorded = le64_to_cpu(1);
+	fe->logicalBlocksRecorded = le64_to_cpu(0);
 	fe->accessTime = crtime;
 	fe->modificationTime = fe->accessTime;
 	fe->attrTime = fe->accessTime;
@@ -625,7 +625,7 @@ void write_fileentry2(write_func udf_write_data, mkudf_options *opt, int loc, in
 	fe->impIdent.identSuffix[0] = UDF_OS_CLASS_UNIX;
 	fe->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 
-	fe->uniqueID = le64_to_cpu(17);
+	fe->uniqueID = le64_to_cpu(16);
 	fe->lengthExtendedAttr = le32_to_cpu(0);
 	fe->lengthAllocDescs = le32_to_cpu(ladesc1);
 
@@ -642,8 +642,7 @@ timestamp query_timestamp(struct timeval *tv, struct timezone *tz)
 
 	tm = localtime(&tv->tv_sec);
 
-	ret.typeAndTimezone = le16_to_cpu(((-tz->tz_minuteswest +
-		(tz->tz_dsttime ? 60 : 0)) & 0x0FFF) | 0x1000);
+	ret.typeAndTimezone = le16_to_cpu(((-tz->tz_minuteswest) & 0x0FFF) | 0x1000);
 
 	printf("%ld (%s)/%d\n", tm->tm_gmtoff, tm->tm_zone, tz->tz_minuteswest);
 	ret.year = le16_to_cpu(1900 + tm->tm_year);
@@ -712,6 +711,7 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 	Uint32 pvd, pvd_len, rvd, rvd_len, snum, lvd, lvd_len;
 	Uint32 filesetpart, filesetblock, part0start;
 	Uint32 sparstart = 0, spartable = 0, sparnum = 0;
+	Uint32 min_blocks = 0;
 	struct timeval tv;
 	struct timezone tz;
 	timestamp crtime;
@@ -730,15 +730,33 @@ mkudf(write_func udf_write_data, mkudf_options *opt)
 	filesetpart = 0;
 	if (opt->partition == PT_SPARING)
 	{
+		if (opt->blocks % 32)
+		{
+			printf("mkudf: spared partitions must be a multiple of 32 blocks in size.\n");
+			return -2;
+		}
 		part0start = 2464;
 		sparstart = 1408;
 		spartable = 2432;
 		sparnum = 32;
+		min_blocks = 2818;
 	}
 	else if (opt->partition == PT_VAT)
+	{
 		part0start = 384;
+		min_blocks = 738;
+	}
 	else
+	{
 		part0start = 1408;
+		min_blocks = 1762;
+	}
+
+	if (opt->blocks < min_blocks)
+	{
+		printf("mkudf: min blocks=%d\n", min_blocks);
+		return -1;
+	}
 
 	filesetblock =
 		(sizeof(struct SpaceBitmapDesc) +
