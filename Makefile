@@ -21,7 +21,9 @@
   LD_RFLAGS	=
   TOPDIR 	= .
 
-all: dump taglist
+EXE=dump taglist
+
+all: $(EXE)
 
 dump: 	dump.c
 	$(CC) dump.c -o $@
@@ -29,3 +31,5 @@ dump: 	dump.c
 taglist:	taglist.c
 	$(CC) taglist.c -o $@
 
+clean:
+	/bin/rm -f *.o $(EXE)
