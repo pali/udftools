@@ -22,7 +22,7 @@ int CheckRegid(struct udfEntityId *reg, char *ID)
   if (reg->uOSClass > 6) {
     error = 1;
   }
-  if ((U_endian16(reg->uUDFRevision) < 0x100) || (U_endian16(reg->uUDFRevision) > 0x200)) {
+  if ((U_endian16(reg->uUDFRevision) < 0x100) || (U_endian16(reg->uUDFRevision) > 0x201)) {
     error = 1;
   }
   return error;
