@@ -1,5 +1,19 @@
-Ver 0.01 Alpha	99/11/09
-	- Mostly untested ;)
+2002-02-09  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+
+	* Added ability to set udf version in cdrwtool
+	* Changed default udf version in cdrwtool to 1.50
+	* Fiddled with write_file for variable written packets
+
+2002-01-30  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+
+	* Split the commands from the main program
+	* Merged with new mkudffs code
+
+Ver 0.1		27/10/00
+	- Fix wrong warning when using IMMED bit for format/blank
+	  when command completes
+	- Default to setting mode2-form1 write type
+	- Print sense on failed command
 
 Ver 0.02 Alpha	00/02/02
 	- addded reserve track option
@@ -12,15 +26,8 @@ Ver 0.02 Alpha	00/02/02
 	  doing a format/blank with IMMED set.
 	- added the -q quick setup option.
 
-Ver 0.1		27/10/00
-	- Fix wrong warning when using IMMED bit for format/blank
-	  when command completes
-	- Default to setting mode2-form1 write type
-	- Print sense on failed command
-
-Ver 0.2		30/01/02
-	- Split the commands from the main program
-	- Merged with new mkudffs code
+Ver 0.01 Alpha	99/11/09
+	- Mostly untested ;)
 
 Todo:
 	- Set sensible write speed, don't default to DEFAULT_SPEED.

@@ -1,0 +1,8 @@
+2002-02-09  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+
+	* Fixed building on Solaris 2.8 (all big endian machines require gcc >= 2.96)
+	* Migrate udf revision setting code to a function
+
+2002-01-30  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+
+	* Rewrite of mkudfs test tool

@@ -46,8 +46,10 @@ void udf_init_disc(struct udf_disc *disc)
 
 	disc->blocksize = 2048;
 	disc->blocksize_bits = 11;
-	disc->udf_rev = 0x0201;
-	disc->flags = FLAG_EFE | FLAG_UTF8;
+	disc->udf_rev = le16_to_cpu(default_lvidiu.minUDFReadRev);
+	disc->flags = FLAG_UTF8;
+	if (disc->udf_rev >= 0x0200)
+		disc->flags |= FLAG_EFE;
 
 	gettimeofday(&tv, NULL);
 	tm = localtime(&tv.tv_sec);
@@ -119,6 +121,44 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->head->start = 0;
 	disc->head->next = NULL;
 	disc->head->prev = NULL;
+}
+
+int udf_set_version(struct udf_disc *disc, int udf_rev)
+{
+	struct logicalVolIntegrityDescImpUse *lvidiu;
+
+	if (disc->udf_rev == udf_rev)
+		return 0;
+	else if (disc->udf_rev != 0x0102 &&
+		disc->udf_rev != 0x0150 &&
+		disc->udf_rev != 0x0200 &&
+		disc->udf_rev != 0x0201)
+	{
+		return 1;
+	}
+	else
+		disc->udf_rev = udf_rev;
+
+	if (disc->udf_rev < 0x0200)
+	{
+		disc->flags &= ~FLAG_EFE;
+		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
+	}
+	else
+	{
+		disc->flags |= FLAG_EFE;
+		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR03);
+	}
+
+	((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev); 
+	((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev); 
+	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = le16_to_cpu(udf_rev); 
+	lvidiu = (struct logicalVolIntegrityDescImpUse *)&(disc->udf_lvid->impUse[le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) * 2 * sizeof(uint32_t)]);
+	lvidiu->minUDFReadRev = le16_to_cpu(udf_rev);
+	lvidiu->minUDFWriteRev = le16_to_cpu(udf_rev);
+	lvidiu->maxUDFWriteRev = le16_to_cpu(udf_rev);
+	((uint16_t *)disc->udf_stable[0]->sparingIdent.identSuffix)[0] = le16_to_cpu(udf_rev);
+	return 0;
 }
 
 void split_space(struct udf_disc *disc)

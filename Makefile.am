@@ -1,1 +1,1 @@
-SUBDIRS = libudffs mkudffs cdrwtool pktsetup
+SUBDIRS = libudffs mkudffs cdrwtool pktsetup doc

@@ -36,7 +36,8 @@ struct option long_options[] = {
 	{ "get write parameters", no_argument, NULL, 'g' },
 	{ "blank cdrw disc", 1, NULL, 'b' },
 	{ "format cdrw disc", 1,NULL, 'm' },
-	{ "run mkudf on track", 1,NULL, 'u' },
+	{ "run mkudffs on track", 1, NULL, 'u' },
+	{ "set mkudffs version", 1, NULL, 'v' },
 	{ "set cd writing speed", 1, NULL, 't' },
 	{ "write fixed packets", 1, NULL, 'p' },
 	{ "perform quick setup", no_argument, NULL, 'q' },
@@ -67,7 +68,7 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 {
 	int retval;
 
-	while ((retval = getopt_long(argc, argv, "r:t:im:u:d:sgqcb:p:z:l:w:f:o:h", long_options, NULL)) != EOF)
+	while ((retval = getopt_long(argc, argv, "r:t:im:u:v:d:sgqc:b:p:z:l:w:f:o:h", long_options, NULL)) != EOF)
 	{
 		switch (retval)
 		{
@@ -77,7 +78,7 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 				break;
 			case 'c':
 			{
-				disc->close_track = 1;
+				disc->close_track = strtol(optarg, NULL, 10);
 				break;
 			}
 			case 'q':
@@ -89,7 +90,14 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			{
 				disc->mkudf = 1;
 				disc->offset = strtol(optarg, NULL, 10);
-				printf("mkudfing %lu blocks\n", disc->offset);
+				printf("mkudffs %lu blocks\n", disc->offset);
+				break;
+			}
+			case 'v':
+			{
+				if (udf_set_version(&disc->udf_disc, strtol(optarg, NULL, 16)))
+					exit(1);
+				printf("udf version set to 0x%04x\n", disc->udf_disc.udf_rev);
 				break;
 			}
 			case 'r':

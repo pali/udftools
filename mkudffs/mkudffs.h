@@ -30,11 +30,11 @@
 
 #define CS0				0x00000001
 #define UDF_ID_APPLICATION		"*Linux mkudffs"
-#define MKUDFFS_VERSION			"1.0.0b1"
+#define MKUDFFS_VERSION			"1.0.0b2"
 
 #define EMAIL_STRING			"<linux_udf@hpesjro.fc.hp.com>"
 
-#define UDFFS_DATE			"2002/01/30"
+#define UDFFS_DATE			"2002/02/09"
 #define UDFFS_VERSION			"1.0.0-cvs"
 
 #define DEFAULT_HD	0
@@ -44,9 +44,14 @@
 #define DEFAULT_MO	1
 #define DEFAULT_CDRW	2
 
+#ifndef NAME_MAX
+#define NAME_MAX	255
+#endif
+
 extern char *udf_space_type_str[UDF_SPACE_TYPE_SIZE];
 
 void udf_init_disc(struct udf_disc *);
+int udf_set_version(struct udf_disc *, int);
 void split_space(struct udf_disc *);
 void dump_space(struct udf_disc *);
 void write_disc(struct udf_disc *);

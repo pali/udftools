@@ -52,7 +52,7 @@ struct primaryVolDesc default_pvd =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_PVD),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
 	},
@@ -102,7 +102,7 @@ struct logicalVolDesc default_lvd =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_LVD),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct logicalVolDesc) - sizeof(tag)),
 	},
@@ -119,8 +119,8 @@ struct logicalVolDesc default_lvd =
 		ident : UDF_ID_COMPLIANT,
 		identSuffix :
 		{
+			0x50,
 			0x01,
-			0x02,
 			0x00,
 		}
 	},
@@ -140,7 +140,7 @@ struct volDescPtr default_vdp =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_VDP),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct volDescPtr) - sizeof(tag)),
 	},
@@ -175,7 +175,7 @@ struct impUseVolDesc default_iuvd =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_IUVD),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct impUseVolDesc) - sizeof(tag)),
 	},
@@ -185,8 +185,8 @@ struct impUseVolDesc default_iuvd =
 		ident : UDF_ID_LV_INFO,
 		identSuffix :
 		{
+			0x50,
 			0x01,
-			0x02,
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX,
 		},
@@ -198,7 +198,7 @@ struct partitionDesc default_pd =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_PD),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct partitionDesc) - sizeof(tag)),
 	},
@@ -206,7 +206,7 @@ struct partitionDesc default_pd =
 	partitionFlags : cpu_to_le16(0x0001),
 	partitionContents :
 	{
-		ident : PD_PARTITION_CONTENTS_NSR03,
+		ident : PD_PARTITION_CONTENTS_NSR02,
 	},
 	accessType : cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE),
 	impIdent :
@@ -225,7 +225,7 @@ struct unallocSpaceDesc default_usd =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_USD),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct unallocSpaceDesc) - sizeof(tag)),
 	},
@@ -237,7 +237,7 @@ struct terminatingDesc default_td =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_TD),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct terminatingDesc) - sizeof(tag)),
 	},
@@ -248,7 +248,7 @@ struct logicalVolIntegrityDesc default_lvid =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_LVID),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct logicalVolIntegrityDesc) - sizeof(tag)),
 	},
@@ -268,9 +268,9 @@ struct logicalVolIntegrityDescImpUse default_lvidiu =
 			UDF_OS_ID_LINUX
 		},
 	},
-	minUDFReadRev : cpu_to_le16(0x0201),
-	minUDFWriteRev : cpu_to_le16(0x0201),
-	maxUDFWriteRev : cpu_to_le16(0x0201),
+	minUDFReadRev : cpu_to_le16(0x0150),
+	minUDFWriteRev : cpu_to_le16(0x0150),
+	maxUDFWriteRev : cpu_to_le16(0x0150),
 };
 
 struct sparingTable default_stable =
@@ -278,7 +278,7 @@ struct sparingTable default_stable =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(0),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct sparingTable) - sizeof(tag)),
 	},
@@ -288,8 +288,8 @@ struct sparingTable default_stable =
 		ident : UDF_ID_SPARING,
 		identSuffix :
 		{
+			0x50,
 			0x01,
-			0x02,
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX
 		},
@@ -308,8 +308,8 @@ struct sparablePartitionMap default_sparmap =
 		ident : UDF_ID_SPARABLE,
 		identSuffix :
 		{
+			0x50,
 			0x01,
-			0x02,
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX
 		},
@@ -323,7 +323,7 @@ struct fileSetDesc default_fsd =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_FSD),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct fileSetDesc) - sizeof(tag)),
 	},
@@ -350,8 +350,8 @@ struct fileSetDesc default_fsd =
 		ident : UDF_ID_COMPLIANT,
 		identSuffix :
 		{
+			0x50,
 			0x01,
-			0x02,
 			0x00,
 		},
 	}
@@ -362,7 +362,7 @@ struct fileEntry default_fe =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_LVID),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
 	},
@@ -394,7 +394,7 @@ struct extendedFileEntry default_efe =
 	descTag :
 	{
 		tagIdent : cpu_to_le16(TAG_IDENT_LVID),
-		descVersion : cpu_to_le16(3),
+		descVersion : cpu_to_le16(2),
 		tagSerialNum : 1,
 		descCRC : cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
 	},

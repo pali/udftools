@@ -83,7 +83,7 @@ bin_PROGRAMS = mkudffs
 mkudffs_LDADD = $(top_builddir)/libudffs/libudffs.la
 mkudffs_SOURCES = main.c mkudffs.c defaults.c options.c mkudffs.h options.h ../include/ecma_167r3.h ../include/osta_udf201.h ../include/libudffs.h ../include/defaults.h ../include/udf_endian.h
 
-AM_CFLAGS = -D_LARGEFILE64_SOURCE
+AM_CPPFLAGS = -D_LARGEFILE64_SOURCE
 subdir = mkudffs
 mkinstalldirs = $(SHELL) $(top_srcdir)/config/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/include/config.h
@@ -114,7 +114,7 @@ LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 CFLAGS = @CFLAGS@
 DIST_SOURCES = $(mkudffs_SOURCES)
-DIST_COMMON = Makefile.am Makefile.in
+DIST_COMMON = ChangeLog Makefile.am Makefile.in
 SOURCES = $(mkudffs_SOURCES)
 
 all: all-am

@@ -80,11 +80,12 @@ am__quote = @am__quote@
 install_sh = @install_sh@
 
 lib_LTLIBRARIES = libudffs.la
-libudffs_la_SOURCES = crc.c extent.c file.c unicode.c getopt.h ../include/libudffs.h ../include/ecma_167r3.h ../include/osta_udf201.h ../include/defaults.h ../include/udf_endian.h
+libudffs_la_SOURCES = crc.c extent.c file.c unicode.c ../include/getopt.h ../include/libudffs.h ../include/ecma_167r3.h ../include/osta_udf201.h ../include/defaults.h ../include/udf_endian.h
+EXTRA_libudffs_la_SOURCES = getopt.c
 libudffs_la_LIBADD = @LIBOBJS@
-libudffs_la_LDFLAGS = -version-info 2:0:0
+libudffs_la_LDFLAGS = -version-info 1:0:0
 
-AM_CFLAGS = -D_LARGEFILE64_SOURCE
+AM_CPPFLAGS = -D_LARGEFILE64_SOURCE
 subdir = libudffs
 mkinstalldirs = $(SHELL) $(top_srcdir)/config/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/include/config.h
@@ -102,7 +103,7 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 @AMDEP_TRUE@DEP_FILES = $(DEPDIR)/crc.Plo $(DEPDIR)/extent.Plo \
-@AMDEP_TRUE@	$(DEPDIR)/file.Plo $(DEPDIR)/getopt.Po \
+@AMDEP_TRUE@	$(DEPDIR)/file.Plo $(DEPDIR)/getopt.Plo \
 @AMDEP_TRUE@	$(DEPDIR)/unicode.Plo
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -112,9 +113,9 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 CFLAGS = @CFLAGS@
-DIST_SOURCES = $(libudffs_la_SOURCES)
-DIST_COMMON = Makefile.am Makefile.in getopt.c
-SOURCES = $(libudffs_la_SOURCES)
+DIST_SOURCES = $(libudffs_la_SOURCES) $(EXTRA_libudffs_la_SOURCES)
+DIST_COMMON = Makefile.am Makefile.in
+SOURCES = $(libudffs_la_SOURCES) $(EXTRA_libudffs_la_SOURCES)
 
 all: all-am
 
@@ -167,7 +168,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/crc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/extent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/file.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/getopt.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/getopt.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/unicode.Plo@am__quote@
 
 distclean-depend:

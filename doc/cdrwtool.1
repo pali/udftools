@@ -1,0 +1,143 @@
+.\" Copyright 2002 Paul Thompson <set@pobox.com>
+.\"
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" The GNU General Public License's references to "object code"
+.\" and "executables" are to be interpreted as the output of any
+.\" document formatting or typesetting system, including
+.\" intermediate and printed output.
+.\"
+.\" This manual is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public
+.\" License along with this manual; if not, write to the Free
+.\" Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111,
+.\" USA.
+.\"
+.\" References consulted:
+.\"   udf-0.9.5 source
+.\"
+.\"
+.TH CDRWTOOL 1 "2002-02-09" "udftools-1.0.0b2" "Commands"
+
+.SH NAME
+cdrwtool \- perform various actions on a CD-R, CD-RW, and DVD-R
+
+.SH SYNOPSIS
+.BI "cdrwtool \-d " device " \-i | \-g"
+.PP
+.BI "cdrwtool \-d " device " \-s [ " write-parameters " ]"
+.PP
+.BI "cdrwtool \-d " device " \-q [ " write-parameters " ]"
+.PP
+.BI "cdrwtool \-d " device " \-m " offset " [ " write-parameters " ]"
+.PP
+.BI "cdwrtool \-d " device " \-u " blocks " [ " write-parameters " ]"
+.PP
+.BI "cdrwtool \-d " device " \-b " b_mode " [ " write-parameters " ]"
+.PP
+.BI "cdrwtool \-d " device " \-c " blocks " [ " write-parameters " ]"
+.PP
+.BI "cdwrtool \-d " device " \-f " filename " [ " write-parameters " ]"
+.PP
+.BI "cdwrtool \-d " device " \-r " track " [ " write-parameters " ]"
+.PP
+.BI "cdrwtool \-h"
+
+.SH DESCRIPTION
+The \fBcdwrtool\fP command can perform certain actions on a CD-R,
+CD-RW, or DVD-R device. Mainly these are blanking the media,
+formating it for use with the packet-cd device,  and applying an
+UDF filesystem.
+.PP
+The most common usage is probably the `quick setup' option:
+.IP
+.BI "cdrwtool \-d " device " \-q"
+.PP
+which will blank the disc, format it as one large track, and
+write the UDF filesystem structures.
+.PP
+Other options get and set various parameters of how the device is
+set up, and provide for different offsets, modes and settings
+from the defaults.
+.PP
+The usefulness of most of the options is not explained.
+
+.SH OPTIONS
+Main directives:
+.IP "\fB\-d \fIdevice\fP"
+Specify the device to use. eg. \fI/dev/sr0\fP
+
+.IP \fB\-i\fP
+Print disc track info.
+
+.IP \fB\-g\fP
+Print write parameters.
+
+.IP "\fB\-u \fIlength\fP"
+Make a UDF filesystem using \fIlength\fP number of blocks.
+
+.IP "\fB\-m \fIoffset\fP"
+Format the disc at \fIoffset\fP number of blocks.
+
+.IP "\fB\-b \fImode\fP"
+Blank the disk using a \fImode\fP of `full' or `fast'.
+
+.IP "\fB\-f \fIfilename\fP"
+Write file.
+
+.IP "\fB\-c \fItrack\fP"
+Close track.
+.IP "\fB\-r \fItrack\fP"
+Reserve track.
+
+.IP \fB\-s\fP
+Set write parameters determined by
+.BR "\-l" , " \-w" ", and" " \-p"
+options for the disc.
+
+.IP "\fB\-v \fIversion\fP"
+Specify the udf revision to use. Valid revisions are 0x0201, 0x0200, 0x0150,
+and 0x0102. If omitted, 
+.B mkudffs
+udf-version is 0x0150.
+
+.IP \fB\-h\fP
+Prints a sparse help message.
+.PP
+
+Write parameters:
+.IP "\fB\-t \fIspeed\fP"
+Set write speed. (Defaults to 12x ?)
+.IP "\fB\-l \fItype\fP"
+Set multi\-session field. Either `0', `1', or `3', corresponding to
+`No B0 pointer. Next Session not allowed',
+`B0 pointer = FF:FF:FF. Next session not allowed', and
+`Next session allowed. B0 pointer = next possible program area' respectively.
+.IP "\fB\-w \fImode\fP"
+Set write mode. Either `mode1' or `mode2'.
+.IP "\fB\-p \fItype\fP"
+Set packet type. Either `0' or `1', corresponding to
+variable and fixed packet sizes respectively.
+.IP "\fB\-o \fIoffset\fP"
+Set write offset.
+
+.SH AUTHORS
+.nf
+Jens Axboe <axboe@suse.de>
+Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+.fi
+
+.SH AVAILABILITY
+.B cdrwtool
+is part of the udftools package and is available from
+http://linux-udf.sourceforge.net.
+
+.SH "SEE ALSO"
+.BR pktsetup (8)

@@ -294,8 +294,9 @@ int write_blocks(int fd, char *buffer, int lba, int blocks)
 	cgc.cmd[3] = (lba >> 16) & 0xff;
 	cgc.cmd[4] = (lba >>  8) & 0xff;
 	cgc.cmd[5] = lba & 0xff;
-	cgc.cmd[8] = blocks;
-	cgc.buflen = blocks * 2048;
+	cgc.cmd[7] = (blocks >> 8) & 0xff;
+	cgc.cmd[8] = blocks & 0xff;
+	cgc.buflen = blocks * CDROM_BLOCK;
 
 	return wait_cmd(fd, &cgc, buffer, CGC_DATA_WRITE, WAIT_SYNC);
 }
@@ -316,7 +317,7 @@ int write_file(int fd, struct cdrw_disc *disc)
 	 * probably uses some of this for internal housekeeping, and
 	 * we want to completely eliminate buffer underruns.
 	 */
-	size = disc->fpacket ? disc->packet_size * CDROM_BLOCK : disc->buffer - 100 * 1024;
+	size = disc->fpacket ? disc->packet_size * CDROM_BLOCK : 63 * CDROM_BLOCK;
 	lba = disc->offset;
 
 	buf = (char *) malloc(size+1);
@@ -339,7 +340,7 @@ int write_file(int fd, struct cdrw_disc *disc)
 			if (disc->fpacket) {
 				memset(&buf[ret], 0, size - ret - 1);
 			} else {
-				blocks = (size - ret) / CDROM_BLOCK;
+				blocks = (ret + CDROM_BLOCK - 1) / CDROM_BLOCK;
 			}
 			/* regardless of type, this is the last write */
 			go_on = 0;
@@ -350,15 +351,16 @@ int write_file(int fd, struct cdrw_disc *disc)
 			break;
 
 		/* sync to indicate that one packet has been sent */
-		sync_cache(fd);
+//		sync_cache(fd);
 
 		/* for fixed packets, the run-in/run-out blocks are
 		 * contained within the packet size. variable packets
 		 * don't count them as part of the written size.
 		 */
 		lba += blocks;
-		lba += disc->fpacket ? 0 : 7;
+//		lba += disc->fpacket ? 0 : 7;
 	}
+	sync_cache(fd);
 
 	close(file);
 	free(buf);

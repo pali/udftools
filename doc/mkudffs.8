@@ -1,0 +1,167 @@
+.\" Copyright 2002 Paul Thompson <set@pobox.com>
+.\"
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" The GNU General Public License's references to "object code"
+.\" and "executables" are to be interpreted as the output of any
+.\" document formatting or typesetting system, including
+.\" intermediate and printed output.
+.\"
+.\" This manual is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public
+.\" License along with this manual; if not, write to the Free
+.\" Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111,
+.\" USA.
+.\"
+.\" References consulted:
+.\"     udftools src
+.\"
+.TH MKUDFFS 8 "2002-02-09" "udftools-1.0.0b2" "System Management Commands"
+
+.SH NAME
+mkudffs \- create an UDF filesystem
+
+.SH SYNOPSIS
+.BI "mkudffs [ switches ] " device " [ " blocks-count " ] "
+
+.SH DESCRIPTION
+.B mkudffs
+is used to create a UDF filesystem on a device (usually a disk).
+\fIdevice\fP is the special file corresponding to the device (e.g
+\fI/dev/hdX\fP). \fIblocks-count\fP is the number of blocks on the device.
+If omitted,
+.B mkudffs
+automagically figures the file system size.
+
+.SH OPTIONS
+.TP
+.B \-\-help
+Display the usage and list of options.
+
+.TP
+.BI \-b,\-\-blocksize= " block-size "
+Specify the size of blocks in bytes. Valid block size vales are 1024,
+2048 and 4096 bytes per block. If omitted,
+.B mkudffs
+block-size is 2048.
+
+.TP
+.BI \-r,\-\-udfrev= " udf-revision "
+Specify the udf revision to use. Valid revisions are 0x0201, 0x0200, 0x0150,
+and 0x0102. If omitted,
+.B mkudffs
+udf-revision is 0x0201.
+
+.TP
+.BI \-\-lvid= " logical-volume-ident "
+Specify the logical volume identifier.
+
+.TP
+.BI \-\-vid= " volume-ident "
+Specify the volume identifier.
+
+.TP
+.BI \-\-vsid= " volume-set-ident "
+Specify the volume set identifier.
+
+.TP
+.BI \-\-fsid= " file-set-ident "
+Specify the file set identifier.
+
+.TP
+.BI \-\-strategy= " strategy "
+Specify the allocation strategy to use. Valid strategies are 4 and 4096.
+If omitted,
+.B mkudffs
+strategy is based on the \fImedia-type\fP.
+
+.TP
+.BI \-\-spartable= " spartable-number "
+Specify the number of sparing tables to write to disc. Valid numbers are 1 \- 4.
+This option implies \fB\-\-media\-type=\fIcdrw\fP.
+
+.TP
+.BI \-\-media-type= " media-type "
+Specify the media type. Valid media types are:
+.RS 1.2i
+.TP 1.6i
+hd
+hard drive
+.TP
+dvd
+DVD (Digital Versital Disc)
+.TP
+dvdram
+DVD\-RAM (Digital Versital Disc\-Random Access Memory)
+.TP
+worm
+WORM (Write Once Ready Many)
+.TP
+mo
+MO (Magneto Optical)
+.TP
+cdrw
+CD\-RW (CD Read\-Write)
+.RE
+.TP
+.BI \-\-space= " space "
+.RS 1.2i
+.TP 1.6i
+freedbitmap
+Freed bitmap
+.TP
+freedtable
+Freed table
+.TP
+unallocbitmap
+Unallocated bitmap
+.TP
+unalloctable
+Unallocated table
+.RE
+.TP
+.BI \-\-ad= " ad "
+.RS 1.2i
+.TP 1.6i
+inicb
+Allocation Descriptors in ICB
+.TP
+short
+Short Allocation Descriptors
+.TP
+long
+Long Allocation Descriptors
+.RE
+.TP
+.B \-\-noefe
+Don't Use Extended File Entries
+.TP
+.B \-\-u8
+Use 8-bit unicode for file names
+.TP
+.B \-\-u16
+Use 16-bit unicode for file names
+.TP
+.B \-\-utf8
+Use UTF-8 for file names
+
+.SH "EXIT STATUS"
+.B mkudffs
+returns 0 if successful, non-zero if there are problems.
+
+.SH AUTHOR
+.nf
+Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+.fi
+
+.SH AVAILABILITY
+.B mkudffs
+is part of the udftools package and is available from
+http://linux-udf.sourceforge.net.

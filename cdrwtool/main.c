@@ -136,7 +136,7 @@ int quick_setup(int fd, struct cdrw_disc *disc, char *device)
 		return ret;
 
 	blocks = msf_to_lba(di.lead_out_m, di.lead_out_s, di.lead_out_f) - 152;
-	if (disc->fpacket && !(ti.packet && ti.fp))
+	if (disc->fpacket)
 	{
 		/* fixed packets format usable blocks */
 		blocks = ((blocks + 7) / (disc->packet_size + 7)) * disc->packet_size;

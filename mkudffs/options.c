@@ -114,30 +114,11 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 			case OPT_UDF_REV:
 			case 'r':
 			{
-				struct logicalVolIntegrityDescImpUse *lvidiu;
-
-				disc->udf_rev = strtoul(optarg, NULL, 16);
-				if (disc->udf_rev != 0x0102 &&
-				    disc->udf_rev != 0x0150 &&
-				    disc->udf_rev != 0x0200 &&
-				    disc->udf_rev != 0x0201)
+				if (udf_set_version(disc, strtoul(optarg, NULL, 16)))
 				{
 					fprintf(stderr, "mkudffs: invalid udf revision\n");
 					exit(1);
 				}
-				if (disc->udf_rev < 0x0200)
-				{
-					disc->flags &= ~FLAG_EFE;
-					strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
-				}
-				((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
-				((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
-				((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = le16_to_cpu(disc->udf_rev);
-				lvidiu = (struct logicalVolIntegrityDescImpUse *)&(disc->udf_lvid->impUse[le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) * 2 * sizeof(uint32_t)]);
-				lvidiu->minUDFReadRev = le16_to_cpu(disc->udf_rev);
-				lvidiu->minUDFWriteRev = le16_to_cpu(disc->udf_rev);
-				lvidiu->maxUDFWriteRev = le16_to_cpu(disc->udf_rev);
-				((uint16_t *)disc->udf_stable[0]->sparingIdent.identSuffix)[0] = le16_to_cpu(disc->udf_rev);
 				break;
 			}
 			case OPT_NO_EFE:
