@@ -1,7 +1,7 @@
 /*
  * cdrwtool - perform all sort of actions on a CD-R, CD-RW, and DVD-R drive.
  *
- * Copyright (c) 1999	Jens Axboe <axboe@image.dk>
+ * Copyright (c) 1999,2000	Jens Axboe <axboe@suse.de>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,15 +24,23 @@
  *
  * Ver 0.02 Alpha	00/02/02
  *	- addded reserve track option
- *	- progress indicator for format / blank (only the device
- *	  "disconnects" through the IMMED bit -- see BLOCKING_CMD)
+ *	- progress indicator for format / blank (only when the device
+ *	  "disconnects" through the IMMED bit -- see BLOCKING_CMD, and
+ *	  if the drive supports the progress through sense stuff). Beware
+ *	  that it is pretty crappy...
  *	- print OPC info in print_disc_track_info
+ *	- do manual locking/unlocking to prevent lock door errors while
+ *	  doing a format/blank with IMMED set.
+ *	- added the -q quick setup option.
  *
  * Todo:
- *	- Some of the source is not endian safe right now. Fix that.
  *	- Add the -q quick option and integrate with mkudf.
- *	- Add progress indicator for blank/format.
  *	- Set sensible write speed, don't default to DEFAULT_SPEED.
+ *
+ * Drives tested and known to work:
+ *	- HP 8210i
+ *	- Sony CRX100E (without progress indicator)
+ *	- Yamaha CRW6416SX (SCSI, no progress indicator)
  *
  */
 
@@ -42,6 +50,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <signal.h>
 
 #include <sys/ioctl.h>
 
@@ -50,7 +59,7 @@
 #include "cdrwtool.h"
 #include "mkudf.h"
 
-#define CDROM_DEVICE	"/dev/hdc"
+#define CDROM_DEVICE	"/dev/scd0"
 
 #define DEFAULT_SPEED	4
 
@@ -59,44 +68,91 @@
  * the drive has verified the command -- this can be used for polling
  * the device for completion.
  */
-#undef NONBLOCKING_OP
+#define NONBLOCKING_OP
 
 static char cdrom_device[NAME_MAX];
+static int progress;
+static int fd;
+
+static char packet_data[32][2048];
+static int last_packet = -1;
 
 extern struct option longoptions[];
 
 #if 1
-void dump_buffer(const unsigned char *buffer, int size)
+void dump_buffer(const void *buffer, int size)
 {
+	unsigned char *ptr = (unsigned char *) buffer;
 	int i;
 
 	for (i = 0; i < size; i++)
-		printf("%02x ", buffer[i]);
+		printf("%02x ", ptr[i]);
 	printf("\n");
 }
 #endif
 
-int wait_cmd(int device, struct cdrom_generic_command *cgc,
-	     unsigned char *buf)
+int wait_cmd(struct cdrom_generic_command *cgc, unsigned char *buf)
 {
 	cgc->buffer = buf;
-	return ioctl(device, CDROM_SEND_PACKET, cgc);
+	return ioctl(fd, CDROM_SEND_PACKET, cgc);
+}
+
+void sig_progress(int sig)
+{
+	struct cdrom_generic_command cgc;
+	struct request_sense sense;
+	int ret;
+
+	memset(&cgc, 0, sizeof(cgc));
+	memset(&sense, 0, sizeof(sense));
+
+	cgc.sense = &sense;
+	ret = wait_cmd(&cgc, NULL);
+
+	if (!(sense.sks[0] & 0x80)) {
+		printf("Progress indicator not implemented on this drive\n");
+		progress = 101;
+		return;
+	}
+
+	progress = ((sense.sks[1] << 8 | sense.sks[2]) * 100) / 0xffff;
+
+	printf("%02d%% complete\n", progress);
+	if (progress == 99) {
+		progress = 101;
+		return;
+	}
+	alarm(2);
+}
+
+void print_completion_info(void)
+{
+	/* we can only poll sense for non-blocking commands */
+#ifndef NONBLOCKING_OP
+	return;
+#endif
+	progress = 0;
+	signal(SIGALRM, sig_progress);
+	alarm(5);
+	while (progress < 100)
+		sleep(1);
 }
 
 /* buffer must already have been filled by mode_sense */
-int mode_select(int device, unsigned char *buffer)
+int mode_select(unsigned char *buffer, int len)
 {
 	struct cdrom_generic_command cgc;
 
 	memset(&cgc, 0, sizeof(cgc));
+	memset(buffer, 0, 3);
 	cgc.cmd[0] = GPCMD_MODE_SELECT_10;
 	cgc.cmd[1] = 1 << 4;
-	cgc.cmd[8] = cgc.buflen = 0x3c;
+	cgc.cmd[8] = cgc.buflen = len;
 
-	return wait_cmd(device, &cgc, buffer);
+	return wait_cmd(&cgc, buffer);
 }
 
-int mode_sense(int device, unsigned char *buffer, int page, char pc, int size)
+int mode_sense(unsigned char *buffer, int page, char pc, int size)
 {
 	struct cdrom_generic_command cgc;
 
@@ -106,72 +162,110 @@ int mode_sense(int device, unsigned char *buffer, int page, char pc, int size)
 	cgc.cmd[2] = page | pc << 6;
 	cgc.cmd[8] = cgc.buflen = size;
 
-	return wait_cmd(device, &cgc, buffer);
+	return wait_cmd(&cgc, buffer);
 }
 
-int set_write_mode(int device, write_params_t *w)
+int set_write_mode(write_params_t *w)
 {
-	unsigned char buffer[0x40];
-	int ret;
+	unsigned char header[0x8];
+	unsigned char *buffer;
+	int ret, len, offset;
 
-	memset(buffer, 0, sizeof(buffer));
+	memset(header, 0x00, sizeof(header));
 
-	if ((ret = mode_sense(device, buffer, GPMODE_WRITE_PARMS_PAGE,
-			      PAGE_DEFAULT, 0x3c)) < 0) {
+	len = 0x8;
+
+	if ((ret = mode_sense(header, GPMODE_WRITE_PARMS_PAGE,
+			      PAGE_DEFAULT, len)) < 0)
+	{
 		perror("mode_sense_write");
 		return ret;
 	}
 
-	buffer[10] = w->ls_v << 5;
-	buffer[11] = w->track_mode | w->fpacket << 5 | w->border << 6;
-	buffer[12] = w->data_block & 0xf;
-	buffer[13] = w->link_size;
-	buffer[16] = w->session_format & 0xff;
-	buffer[18] = (w->packet_size >> 24) & 0xff;
-	buffer[19] = (w->packet_size >> 16) & 0xff;
-	buffer[20] = (w->packet_size >>  8) & 0xff;
-	buffer[21] = w->packet_size & 0xff;
+	len = 2 + (((header[0] & 0xff) << 8) | (header[1] & 0xff));
+	offset = 8 + (((header[6] & 0xff) << 8) | (header[7] & 0xff));
+	buffer = calloc(len, sizeof(unsigned char));
+
+	if ((ret = mode_sense(buffer, GPMODE_WRITE_PARMS_PAGE,
+			      PAGE_DEFAULT, len)) < 0)
+	{
+		perror("mode_sense_write");
+		return ret;
+	}
+
+
+	buffer[offset+2] = w->ls_v << 5;
+	buffer[offset+3] = w->track_mode | w->fpacket << 5 | w->border << 6;
+	buffer[offset+4] = w->data_block & 0xf;
+	buffer[offset+5] = w->link_size;
+	buffer[offset+8] = w->session_format & 0xff;
+	buffer[offset+10] = (w->packet_size >> 24) & 0xff;
+	buffer[offset+11] = (w->packet_size >> 16) & 0xff;
+	buffer[offset+12] = (w->packet_size >>  8) & 0xff;
+	buffer[offset+13] = w->packet_size & 0xff;
+	buffer[offset+48] = 0x00;
+	buffer[offset+49] = 0x00;
+	buffer[offset+50] = 0x08;
+	buffer[offset+51] = 0x00;
 
 #if 0
-	dump_buffer(buffer, 0x40);
+	dump_buffer(buffer, len);
 #endif
 
-	if ((ret = mode_select(device, buffer)) < 0) {
-		dump_buffer(buffer, 32);
+	if ((ret = mode_select(buffer, len)) < 0) {
+		dump_buffer(buffer, len);
+		free(buffer);
 		perror("mode_select");
 		return ret;
 	}
 
+	free(buffer);
 	return 0;
 }
 	
-int get_write_mode(int device, write_params_t *w)
+int get_write_mode(write_params_t *w)
 {
-	unsigned char buffer[0x40];
-	int ret;
+	unsigned char header[0x8];
+	unsigned char *buffer;
+	int ret, len, offset;
 
-	memset(buffer, 0, sizeof(buffer));
+	memset(header, 0, sizeof(header));
 
-	if ((ret = mode_sense(device, buffer, GPMODE_WRITE_PARMS_PAGE,
-			      PAGE_CURRENT, 0x3c)) < 0) {
+	len = 0x8;
+
+	if ((ret = mode_sense(header, GPMODE_WRITE_PARMS_PAGE,
+			      PAGE_CURRENT, len)) < 0)
+	{
 		perror("mode_sense_write");
 		return ret;
 	}
 
-	w->ls_v = (buffer[10] >> 5) & 1;
-	w->border = (buffer[11] >> 6) & 3;
-	w->fpacket = (buffer[11] >> 5) & 1;
-	w->track_mode = (buffer[11] & 0xf) | 0x3;
-	w->data_block = buffer[12] & 0xf;
-	w->link_size = buffer[13];
-	w->session_format = buffer[16];
-	w->session_format = 0x20;
-	w->packet_size = buffer[21];
+	len = 2 + (((header[0] & 0xff) << 8) | (header[1] & 0xff));
+	offset = 8 + (((header[6] & 0xff) << 8) | (header[7] & 0xff));
+	buffer = calloc(len, sizeof(unsigned char));
+
+	if ((ret = mode_sense(buffer, GPMODE_WRITE_PARMS_PAGE,
+			      PAGE_CURRENT, len)) < 0)
+	{
+		perror("mode_sense_write");
+		return ret;
+	}
+
+	w->ls_v = (buffer[offset+2] >> 5) & 1;
+	w->border = (buffer[offset+3] >> 6) & 3;
+	w->fpacket = (buffer[offset+3] >> 5) & 1;
+	w->track_mode = buffer[offset+3] & 0xf;
+	w->data_block = buffer[offset+4] & 0xf;
+	w->link_size = buffer[offset+5];
+	w->session_format = buffer[offset+8];
+	w->packet_size = buffer[offset+13];
+
+	free(buffer);
 
 	return 0;
 }
 
-int sync_cache(int device)
+int sync_cache(void)
 {
 	struct cdrom_generic_command cgc;
 
@@ -179,16 +273,19 @@ int sync_cache(int device)
 	cgc.cmd[0] = 0x35;
 	cgc.cmd[1] = 2;
 	cgc.buflen = 12;
-	return wait_cmd(device, &cgc, NULL);
+	return wait_cmd(&cgc, NULL);
 }
 
-int write_blocks(int device, char *buffer, int lba, int blocks)
+int write_blocks(char *buffer, int lba, int blocks)
 {
 	struct cdrom_generic_command cgc;
 
 	memset(&cgc, 0, sizeof(cgc));
 
 	cgc.cmd[0] = GPCMD_WRITE_10;
+#if 0
+	cgc.cmd[1] = 1 << 3;
+#endif
 	cgc.cmd[2] = (lba >> 24) & 0xff;
 	cgc.cmd[3] = (lba >> 16) & 0xff;
 	cgc.cmd[4] = (lba >>  8) & 0xff;
@@ -200,16 +297,50 @@ int write_blocks(int device, char *buffer, int lba, int blocks)
 	dump_buffer(cgc.cmd, 12);
 #endif
 
-	return wait_cmd(device, &cgc, buffer);
+	return wait_cmd(&cgc, buffer);
 }
 
-int write_file(int device, options_t *o)
+void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char *type)
 {
-	int fd, lba, size, blocks;
+	int packet = block / 32;
+	int err;
+
+	if (last_packet == -1)
+	{
+		last_packet = packet;
+		memset(packet_data, 0x00, 2048*32);
+	}
+
+	if (packet != last_packet)
+	{
+		if ((err = write_blocks(*packet_data, last_packet * 32, 32)))
+		{
+			printf("Error writing packet %d (%x)\n", last_packet, err);
+			exit(1);
+		}
+
+		memset(packet_data, 0x00, 2048*32);
+		memcpy(packet_data[block % 32], buffer, size);
+		last_packet = packet;
+	}
+	else
+	{
+		memcpy(packet_data[block % 32], buffer, size);
+	}
+}
+
+static void udf_flush_data(void)
+{
+	write_blocks(*packet_data, last_packet * 32, 32);
+}
+
+int write_file(options_t *o)
+{
+	int file, lba, size, blocks;
 	char *buf = NULL;
 	int ret = 0, go_on = 1;
 
-	if ((fd = open(o->filename, O_RDONLY)) < 0) {
+	if ((file = open(o->filename, O_RDONLY)) < 0) {
 		fprintf(stderr, "can't open %s\n", o->filename);
 		return 1;
 	}
@@ -228,7 +359,7 @@ int write_file(int device, options_t *o)
 
 	while (!ret && go_on) {
 		blocks = o->fpacket ? o->packet_size : size / CDROM_BLOCK;
-		ret = read(fd, buf, size);
+		ret = read(file, buf, size);
 		if (ret == -1) {
 			perror("read from file");
 			break;
@@ -249,11 +380,11 @@ int write_file(int device, options_t *o)
 		}
 
 		fprintf(stdout, "writing at lba = %d, blocks = %d\n", lba, blocks);
-		if ((ret = write_blocks(device, buf, lba, blocks)))
+		if ((ret = write_blocks(buf, lba, blocks)))
 			break;
 
 		/* sync to indicate that one packet has been sent */
-		sync_cache(device);
+		sync_cache();
 
 		/* for fixed packets, the run-in/run-out blocks are
 		 * contained within the packet size. variable packets
@@ -263,12 +394,12 @@ int write_file(int device, options_t *o)
 		lba += o->fpacket ? 0 : 7;
 	}
 
-	close(fd);
+	close(file);
 	free(buf);
 	return ret;
 }
 
-int blank_disc(int device, int type)
+int blank_disc(int type)
 {
         struct cdrom_generic_command cgc;
 	int ret;
@@ -280,15 +411,16 @@ int blank_disc(int device, int type)
 	cgc.cmd[1] |= 1 << 4;
 #endif
 
-        if ((ret = wait_cmd(device, &cgc, NULL)) < 0) {
+        if ((ret = wait_cmd(&cgc, NULL)) < 0) {
                 perror("blank disc");
                 return ret;
         }
 
+	print_completion_info();
         return 0;
 }
 
-int format_disc(int device, options_t *o)
+int format_disc(options_t *o)
 {
 	struct cdrom_generic_command cgc;
 	unsigned char buffer[16];
@@ -305,7 +437,7 @@ int format_disc(int device, options_t *o)
 	buffer[0] = 0;
 	buffer[1] = 0;		/* FOV: 0 (use defaults) */
 #ifdef NONBLOCKING_OP
-	buffer[1] |= 2;
+	buffer[1] |= (1 << 1);
 #endif
 	buffer[2] = 0;
 	buffer[3] = 8;
@@ -324,15 +456,16 @@ int format_disc(int device, options_t *o)
 	buffer[14] = (o->offset >>  8) & 0xff;
 	buffer[15] = o->offset & 0xff;
 
-	if ((ret = wait_cmd(device, &cgc, buffer)) < 0) {
+	if ((ret = wait_cmd(&cgc, buffer)) < 0) {
 		perror("format disc");
 		return ret;
 	}
 
+	print_completion_info();
 	return 0;
 }
 
-int read_disc_info(int device, disc_info_t *di)
+int read_disc_info(disc_info_t *di)
 {
 	struct cdrom_generic_command cgc;
 	int ret;
@@ -342,7 +475,7 @@ int read_disc_info(int device, disc_info_t *di)
 	cgc.cmd[0] = GPCMD_READ_DISC_INFO;
 	cgc.cmd[8] = cgc.buflen = 2;
 	
-	if ((ret = wait_cmd(device, &cgc, (unsigned char *)di)) < 0) {
+	if ((ret = wait_cmd(&cgc, (unsigned char *)di)) < 0) {
 		perror("read disc info");
 		return ret;
 	}
@@ -352,7 +485,7 @@ int read_disc_info(int device, disc_info_t *di)
 		cgc.buflen = sizeof(disc_info_t);
 
 	cgc.cmd[8] = cgc.buflen;
-	if ((ret = wait_cmd(device, &cgc, (unsigned char *)di)) < 0)
+	if ((ret = wait_cmd(&cgc, (unsigned char *)di)) < 0)
 	{
 		perror("read disc info");
 		return ret;
@@ -361,7 +494,7 @@ int read_disc_info(int device, disc_info_t *di)
 	return 0;
 }
 
-int read_track_info(int device, track_info_t *ti, int trackno)
+int read_track_info(track_info_t *ti, int trackno)
 {
 	struct cdrom_generic_command cgc;
 	int ret;
@@ -373,7 +506,7 @@ int read_track_info(int device, track_info_t *ti, int trackno)
 	cgc.cmd[5] = trackno;
 	cgc.cmd[8] = cgc.buflen = 28;
 	
-	if ((ret = wait_cmd(device, &cgc, (unsigned char *) ti)) < 0) {
+	if ((ret = wait_cmd(&cgc, (unsigned char *) ti)) < 0) {
 		perror("read track info");
 		return ret;
 	}
@@ -381,7 +514,7 @@ int read_track_info(int device, track_info_t *ti, int trackno)
 	return 0;
 }
 
-int reserve_track(int device, options_t *o)
+int reserve_track(options_t *o)
 {
 	struct cdrom_generic_command cgc;
 	int ret;
@@ -393,7 +526,7 @@ int reserve_track(int device, options_t *o)
 	cgc.cmd[7] = (o->reserve_track >>  8) & 0xff;
 	cgc.cmd[8] = o->reserve_track & 0xff;
 	
-	if ((ret = wait_cmd(device, &cgc, NULL)) < 0) {
+	if ((ret = wait_cmd(&cgc, NULL)) < 0) {
 		perror("reserve track");
 		return ret;
 	}
@@ -401,7 +534,29 @@ int reserve_track(int device, options_t *o)
 	return 0;
 }
 
-int read_buffer_cap(int device, options_t *o)
+int close_track(unsigned track)
+{
+	struct cdrom_generic_command cgc;
+	int ret;
+
+	memset(&cgc, 0, sizeof(cgc));
+	cgc.cmd[0] = GPCMD_CLOSE_TRACK;
+#ifndef NONBLOCKING_OP
+	cgc.cmd[1] = 1;
+#endif
+	cgc.cmd[2] = 1; /* bit 2 is close session/border */
+	cgc.cmd[4] = (track >> 8) & 0xff;
+	cgc.cmd[5] = track & 0xff;
+
+	if ((ret = wait_cmd(&cgc, NULL)) < 0) {
+		perror("close track");
+		return ret;
+	}
+	print_completion_info();
+	return 0;
+}
+
+int read_buffer_cap(options_t *o)
 {
 	struct cdrom_generic_command cgc;
 	struct {
@@ -416,16 +571,16 @@ int read_buffer_cap(int device, options_t *o)
 	cgc.cmd[0] = 0x5c;
 	cgc.cmd[8] = cgc.buflen = 12;
 
-	if ((ret = wait_cmd(device, &cgc, (unsigned char *)&buf)))
+	if ((ret = wait_cmd(&cgc, (unsigned char *)&buf)))
 		return ret;
 
 	o->buffer = be32_to_cpu(buf.buffer_size);
 
-	printf("%uKB internal buffer\n", o->buffer / 1024);
+	printf("%uKB internal buffer\n", o->buffer >> 10);
 	return 0;
 }
 
-int set_cd_speed(int device, int speed)
+int set_cd_speed(int speed)
 {
 	struct cdrom_generic_command cgc;
 
@@ -442,15 +597,125 @@ int set_cd_speed(int device, int speed)
 	cgc.cmd[4] = ((0xb0 * speed) >> 8) & 0xff;
 	cgc.cmd[5] = (0xb0 * speed) & 0xff;
 
-	return wait_cmd(device, &cgc, NULL);
+	return wait_cmd(&cgc, NULL);
 }
 
-void print_completion_info(int device)
+void cdrom_close(void)
 {
-	/* we can only poll sense for non-blocking commands */
-#ifndef NONBLOCKING_OP
-	return;
-#endif
+	/* enable locking */
+	if (ioctl(fd, CDROM_LOCKDOOR, 0) < 0)
+		printf("can't unlock door\n");
+
+	ioctl(fd, CDROM_SET_OPTIONS, CDO_LOCK);
+}
+
+int cdrom_open_check(void)
+{
+	int ret, attempts = 3;
+
+	while (--attempts) {
+		ret = ioctl(fd, CDROM_DRIVE_STATUS, CDSL_CURRENT);
+		if (ret < 0)
+			return ret;
+		if (ret == CDS_DISC_OK)
+			break;
+	}
+
+	if (attempts == 0)
+		return 1;
+
+	/* drive should now be ready. check media */
+	ret = ioctl(fd, CDROM_DISC_STATUS);
+	if (ret == CDS_AUDIO || ret < 0)
+		return 1;
+
+	/* disable locking */
+	if ((ret = ioctl(fd, CDROM_CLEAR_OPTIONS, CDO_LOCK)) < 0)
+		return ret;
+
+	if ((ret == ioctl(fd, CDROM_LOCKDOOR, 1)) < 0) {
+		fprintf(stderr, "CD-ROM appears to already be opened\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+int quick_setup(options_t *o)
+{
+	track_info_t ti;
+	int ret;
+	unsigned blocks;
+	mkudf_options opt;
+
+	printf("Settings for %s:\n", cdrom_device);
+	printf("\t%s packets, size %u\n", o->fpacket ? "Fixed" : "Variable",
+					  o->packet_size);
+	printf("\tMode-%d disc\n", o->write_type);
+
+	printf("\nI'm going to do a quick setup of %s. The disc is going to " \
+		"be blanked and formatted with one big track. All data on " \
+		"the device will be lost!! Press CTRL-C to cancel now.\n",
+		 cdrom_device);
+
+	getchar();
+
+	printf("Initiating quick disc blank\n");
+
+	if ((ret = blank_disc(BLANK_FAST)))
+		return ret;
+
+	if ((ret = read_track_info(&ti, 1)) < 0)
+		return ret;
+
+	blocks = be32_to_cpu(ti.track_size);
+	if (o->fpacket) /* fixed packets format usable blocks */
+		blocks = ((blocks + 7) / (o->packet_size + 7)) * o->packet_size;
+	printf("Disc capacity is %u blocks (%uKB)\n", blocks, blocks * 2);
+
+	memset(&opt, 0x00, sizeof(mkudf_options));
+	if (o->fpacket)
+	{
+		o->offset = blocks;
+		printf("Formatting track\n");
+		if ((ret = format_disc(o)))
+			return ret;
+		opt.partition = PT_SPARING;
+	}
+	else /* Does not work!!! */
+	{
+		o->reserve_track = blocks;
+		printf("Reserving track\n");
+		if ((ret = reserve_track(o)))
+			return ret;
+		opt.partition = PT_VAT;
+	}
+
+	opt.device = fd;
+	opt.blocksize = 2048;
+	opt.blocksize_bits = 11;
+	opt.blocks = blocks;
+	printf("Writing UDF structures to disc\n");
+	mkudf(udf_write_data, &opt);
+	udf_flush_data();
+
+	printf("Quick setup complete!\n");
+	return 0;
+}
+
+int mkudf_session(options_t *o)
+{
+	mkudf_options opt;
+	memset(&opt, 0x00, sizeof(mkudf_options));
+	opt.partition = PT_SPARING;
+	opt.device = fd;
+	opt.blocksize = 2048;
+	opt.blocksize_bits = 11;
+	opt.blocks = o->offset;
+	printf("Writing UDF structures to disc\n");
+	mkudf(udf_write_data, &opt);
+	udf_flush_data();
+	return 0;
 }
 
 void print_disc_info(disc_info_t *di)
@@ -461,7 +726,7 @@ void print_disc_info(disc_info_t *di)
 	printf("\tnumber of first track = %d\n", di->n_first_track);
 	printf("\tnumber of sessions = %d\n", (di->n_sessions_m << 8) | di->n_sessions_l);
 	printf("\tnumber of tracks = %d\n", (di->first_track_m << 8) | di->first_track_l);
-	printf("\tlast track = %d\n", (di->last_track_m << 8) | di->last_track_l);
+	printf("\tstatus of last track = %d\n", (di->last_track_m << 8) | di->last_track_l);
 	printf("\turu = %d\n", di->uru);
 	printf("\tdid_v = %d\n", di->did_v);
 	printf("\tdbc_v = %d\n", di->dbc_v);
@@ -487,13 +752,14 @@ void print_track_info(track_info_t *ti)
 	printf("\tnwa_v = %d\n", ti->nwa_v);
 	printf("\ttrack_start = %u\n", be32_to_cpu(ti->track_start));
 	printf("\tnext_writable = %u\n", be32_to_cpu(ti->next_writable));
+	printf("\tlast_recorded = %u\n", be32_to_cpu(ti->last_recorded));
 	printf("\tfree_blocks = %u\n", be32_to_cpu(ti->free_blocks));
 	printf("\tpacket_size = %u\n", be32_to_cpu(ti->packet_size));
 	printf("\ttrack_size = %u (%uKB)\n", be32_to_cpu(ti->track_size),
 					     be32_to_cpu(ti->track_size) * 2);
 }
 
-int print_disc_track_info(int device)
+int print_disc_track_info(void)
 {
 	int ret, i;
 	track_info_t ti;
@@ -502,7 +768,7 @@ int print_disc_track_info(int device)
 	memset(&di, 0, sizeof(disc_info_t));
 	memset(&ti, 0, sizeof(track_info_t));
 
-	if ((ret = read_disc_info(device, &di)) < 0)
+	if ((ret = read_disc_info(&di)) < 0)
 		return ret;
 
 	printf("\nDISC INFO:\n");
@@ -511,8 +777,8 @@ int print_disc_track_info(int device)
 
 	/* Assumes no more than 256 tracks ;) */
 	printf("TRACK INFO:\n");
-	for (i = di.first_track_l; i <= di.last_track_l; i++) {
-		if ((ret = read_track_info(device, &ti, i)) < 0)
+	for (i = di.n_first_track; i <= di.last_track_l; i++) {
+		if ((ret = read_track_info(&ti, i)) < 0)
 			return ret;
 		printf("\nTrack %d\n", i);
 		print_track_info(&ti);
@@ -523,15 +789,27 @@ int print_disc_track_info(int device)
 
 void make_write_page(write_params_t *w, options_t *o)
 {
-	switch (o->write_type) {
-		case WRITE_MODE1: w->data_block = 8; break;
-		case WRITE_MODE2: w->data_block = 10; break;
+	switch (o->write_type)
+	{
+		case WRITE_MODE1:
+		{
+			w->data_block = 8;
+			w->session_format = 0x00;
+			break;
+		}
+		case WRITE_MODE2:
+		{
+			w->data_block = 10;
+			w->session_format = 0x20;
+			break;
+		}
 	}
 
 	w->packet_size = o->packet_size;
 	w->fpacket = o->fpacket;
 	w->link_size = o->link_size;
 	w->border = o->border;
+	w->track_mode = w->track_mode | 0x3;
 }
 
 void print_params(write_params_t *wp)
@@ -561,24 +839,42 @@ int get_options(int argc, char *argv[], options_t *o)
 	o->set_settings		= 0;
 	o->fpacket 		= 1;
 	o->packet_size 		= 32;
-	o->link_size 		= 0;
+	o->link_size 		= 7;
 	o->write_type	 	= 1;
 	o->blank	 	= 0;
 	o->offset	 	= 0;
 	o->filename[0]		= 0;
 	o->disc_track_info	= 0;
 	o->format		= 0;
-	o->border		= 0;
+	o->border		= 3;
 	o->speed		= DEFAULT_SPEED;
 	o->buffer		= 0;
+	o->quick_setup		= 0;
+	o->close_track		= 0;
+	o->reserve_track	= 0;
+	o->mkudf		= 0;
 	strcpy(cdrom_device, CDROM_DEVICE);
 
 	while (1){
-		c = getopt_long(argc, argv, "r:t:im:d:sgb:p:z:l:w:f:o:qh", longoptions, &res);
+		c = getopt_long(argc, argv, "r:t:im:u:d:sgqcb:p:z:l:w:f:o:h", longoptions, &res);
 		if (c == -1)
 			break;
 
 		switch (c) {
+			case 'c': {
+				o->close_track = 1;
+				break;
+			}
+			case 'q': {
+				o->quick_setup = 1;
+				break;
+			}
+			case 'u': {
+				o->mkudf = 1;
+				o->offset = strtol(optarg, NULL, 10);
+				printf("mkudfing %lu blocks\n", o->offset);
+				break;
+			}
 			case 'r': {
 				o->reserve_track = strtol(optarg, NULL, 10);
 				printf("reserving track %u\n", o->reserve_track);
@@ -669,10 +965,6 @@ int get_options(int argc, char *argv[], options_t *o)
 				printf("write offset %lu\n", o->offset);
 				break;
 			}
-			case 'q': {
-				o->quick = 1;
-				break;
-			}
 			case '?': break;
 		}
 	}
@@ -680,46 +972,9 @@ int get_options(int argc, char *argv[], options_t *o)
 	return 0;
 };
 
-char packet_data[32][2048];
-int last_packet = -1;
-
-void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char *type)
-{
-	int packet = block / 32;
-	int err;
-
-	if (last_packet == -1)
-	{
-		last_packet = packet;
-		memset(packet_data, 0x00, 2048*32);
-	}
-
-	if (packet != last_packet)
-	{
-		if ((err = write_blocks(opt->device, *packet_data, last_packet * 32, 32)))
-		{
-			printf("Error writing packet %d (%x)\n", last_packet, err);
-			exit(1);
-		}
-
-		memset(packet_data, 0x00, 2048*32);
-		memcpy(packet_data[block % 32], buffer, size);
-		last_packet = packet;
-	}
-	else
-	{
-		memcpy(packet_data[block % 32], buffer, size);
-	}
-}
-
-static void udf_flush_data(int device)
-{
-	write_blocks(device, *packet_data, last_packet * 32, 32);
-}
-
 int main(int argc, char **argv)
 {
-	int fd, ret;
+	int ret;
 	write_params_t w;
 	options_t o;
 
@@ -727,24 +982,31 @@ int main(int argc, char **argv)
 	memset(&o, 0, sizeof(o));
 
 	/* get command line options */
-	if (get_options(argc, argv, &o))
-		return 1;
+	if ((ret = get_options(argc, argv, &o)))
+		return ret;
 
 	/* open device */
-	if ((fd = open(cdrom_device, O_RDONLY | O_NONBLOCK)) == -1) {
+	if ((fd = open(cdrom_device, O_RDONLY | O_NONBLOCK)) < 0) {
 		perror("open cdrom device");
-		return 1;
+		return fd;
 	}
 
-	if (read_buffer_cap(fd, &o))
-		return 1;
+	atexit(cdrom_close);
 
-	if ((ret = get_write_mode(fd, &w))) {
+	if ((ret = cdrom_open_check())) {
+		fprintf(stderr, "set_options\n");
+		return ret;
+	}
+
+	if ((ret = read_buffer_cap(&o)))
+		return ret;
+
+	if ((ret = get_write_mode(&w))) {
 		fprintf(stderr, "get_write\n");
 		return ret;
 	}
 
-	if ((ret = set_cd_speed(fd, o.speed))) {
+	if ((ret = set_cd_speed(o.speed))) {
 		fprintf(stderr, "set speed\n");
 		return ret;
 	}
@@ -753,59 +1015,41 @@ int main(int argc, char **argv)
 		if (o.get_settings)
 			print_params(&w);
 		if (o.disc_track_info)
-			print_disc_track_info(fd);
-		return 0;
+			print_disc_track_info();
+		return ret;
 	}
 
 	/* define write parameters based on command line options */
 	make_write_page(&w, &o);
 
-	if ((ret = set_write_mode(fd, &w))) {
+	if ((ret = set_write_mode(&w))) {
 		printf("set_write\n");
 		return ret;
 	}
 
+	if (o.close_track)
+		return close_track(o.close_track);
+
+	if (o.quick_setup)
+		return quick_setup(&o);
+
 	/* blank disc, if specified */
 	if (o.blank)
-		if ((ret = blank_disc(fd, o.blank)))
-			return ret;
+		return blank_disc(o.blank);
 
 	/* format disc, if specified */
-	if (o.format) {
-		if (o.offset % (o.packet_size * 2)) {
-			printf("format size not multiple of packet size\n");
-			return 1;
-		}
-		if ((ret = format_disc(fd, &o)))
-			return ret;
-	}
+	if (o.format)
+		return format_disc(&o);
+
+	if (o.mkudf)
+		return mkudf_session(&o);
 
 	/* write file, if specified */
 	if (o.filename[0] != 0)
-	{
-		if ((ret = write_file(fd, &o)))
-			return ret;
-	}
-	else if (o.quick && o.format)
-	{
-		mkudf_options opt;
-		memset(&opt, 0x00, sizeof(mkudf_options));
-		opt.device = fd;
-		opt.partition = PT_SPARING;
-		opt.blocksize = 2048;
-		opt.blocksize_bits = 11;
-		opt.blocks = o.offset;
-
-		mkudf(udf_write_data, &opt);
-		udf_flush_data(fd);
-	}
+		return write_file(&o);
 
 	if (o.reserve_track)
-		if ((ret == reserve_track(fd, &o)))
-			return ret;
-
-	if (o.format || o.blank || o.reserve_track)
-		print_completion_info(fd);
+		return reserve_track(&o);
 
 	close(fd);
 	return 0;

@@ -23,7 +23,7 @@ LIBS		= ../lib/libudf.a
 CHKUDFDIR	= src/chkudf
 CHKUDFDEP	= $(CHKUDFDIR)/chkudf
 
-EXE=dumpsect dumpfe taglist cdinfo mkudf chkudf dumpea checkdisk bmap cdrwtool
+EXE=dumpsect pdumpsect dumpfe taglist cdinfo mkudf chkudf dumpea checkdisk bmap cdrwtool pktsetup
 
 all: ../.prereq.ok $(EXE)
 
@@ -32,6 +32,9 @@ install: $(EXE)
 	$(INSTALL) $^ $(TOOLS_DEST)
 
 dumpsect: 	src/dumpsect.c
+	$(CC) $< $(CFLAGS) -o $@
+
+pdumpsect:	src/pdumpsect.c
 	$(CC) $< $(CFLAGS) -o $@
 
 dumpfe:	src/dumpfe.c
@@ -52,10 +55,6 @@ checkdisk: src/checkdisk.c
 bmap: src/bmap.c
 	$(CC) $< $(CFLAGS) -o $@
 
-#
-# to use the loop device:
-# mount -t udf <filename> /mnt -o loop
-#
 mkudf:	src/mkudf_main.c src/mkudf.c $(LIBS)
 	@echo "* ------------------------------ *"
 	@echo "* Making Ben Fennema's mkudf ... *"
@@ -63,7 +62,18 @@ mkudf:	src/mkudf_main.c src/mkudf.c $(LIBS)
 	$(CC) -I.. src/mkudf_main.c src/mkudf.c $(CFLAGS) $(LIBS) -o $@
 
 cdrwtool:	src/mkudf.c src/cdrwtool.c $(LIBS)
+	@echo "* -------------------------------- *"
+	@echo "* Making Jens Axboe's cdrwtool ... *"
+	@echo "* -------------------------------- *"
 	$(CC) -I.. src/mkudf.c src/cdrwtool.c $(CFLAGS) $(LIBS) -o $@
+
+pktsetup:	src/pktsetup.c
+	@echo "* -------------------------------------------------------- *"
+	@echo "* Making Jens Axboe's pktsetup                         ... *"
+	@echo "* major=42, minor=0-4                                  ... *"
+	@echo "* ftp.kernel.org/pub/linux/kernel/people/axboe/packet/ ... *"
+	@echo "* -------------------------------------------------------- *"
+	$(CC) $< $(CFLAGS) -o $@
 
 chkudf: $(CHKUDFDEP)
 	cp $(CHKUDFDEP) .
