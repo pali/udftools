@@ -61,6 +61,11 @@ void
 write_vrs(write_func udf_write_data, mkudf_options *opt, int start)
 {
 	struct VolStructDesc vd;
+	int blocksize_bits = opt->blocksize_bits;
+	int blocksize = opt->blocksize;
+	if (blocksize < sizeof(struct VolStructDesc))
+		blocksize = sizeof(struct VolStructDesc);
+	opt->blocksize_bits = 11;
 
 	memset(&vd, 0, sizeof(struct VolStructDesc));
 
@@ -68,29 +73,31 @@ write_vrs(write_func udf_write_data, mkudf_options *opt, int start)
 #if 0
 	vd.structType = 0x01U;
 	memcpy(vd.stdIdent, STD_ID_CD001, STD_ID_LEN);
-	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "CD001 descriptor");
-	start += 2048;
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, sizeof(struct VolStructDesc), "CD001 descriptor");
+	start += blocksize;
 
 	vd.structType = 0xFFU;
 	memcpy(vd.stdIdent, STD_ID_CD001, STD_ID_LEN);
-	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "CD001 descriptor");
- 	start += 2048;
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, sizeof(struct VolStructDesc), "CD001 descriptor");
+ 	start += blocksize;
 #endif
 
 	vd.structType = 0x00U;
 	vd.structVersion = 0x01U;
 
 	memcpy(vd.stdIdent, STD_ID_BEA01, STD_ID_LEN);
-	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "BEA01 descriptor");
-	start += 2048;
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, sizeof(struct VolStructDesc), "BEA01 descriptor");
+	start += blocksize;
 
 	memcpy(vd.stdIdent, STD_ID_NSR02, STD_ID_LEN);
-	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "NSR002 descriptor");
-	start += 2048;
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, sizeof(struct VolStructDesc), "NSR002 descriptor");
+	start += blocksize;
 
 	memcpy(vd.stdIdent, STD_ID_TEA01, STD_ID_LEN);
-	udf_write_data(opt, start >> opt->blocksize_bits, &vd, 2048, "TEA01 descriptor");
-	start += 2048;
+	udf_write_data(opt, start >> opt->blocksize_bits, &vd, sizeof(struct VolStructDesc), "TEA01 descriptor");
+	start += blocksize;
+
+	opt->blocksize_bits = blocksize_bits;
 }
 
 void
@@ -500,6 +507,8 @@ void write_spacebitmapdesc(write_func udf_write_data, mkudf_options *opt, int lo
 	sbd->bitmap[fileset/8] &= ~(1 << (fileset%8));
 	sbd->bitmap[(fileset+32)/8] &= ~(1 << ((fileset+32)%8));
 	sbd->bitmap[(fileset+33)/8] &= ~(1 << ((fileset+33)%8));
+	if ((end-start+1)%8)
+		sbd->bitmap[nbytes-1] = 0x0FF >> (8-((end-start+1)%8));
 
 	sbd->descTag = query_tag(TID_SPACE_BITMAP_DESC, 2, snum, loc - sloc, sbd, sizeof(tag));
 	udf_write_data(opt, loc, sbd, totsize, "Space Bitmap descriptor");
