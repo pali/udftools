@@ -412,7 +412,7 @@ int format_disc(int fd, struct cdrw_disc *disc)
 	 */
 
 	/* format descriptor */
-	buffer[8] = 0x40;		/* session and grow bits (7 and 6) */
+	buffer[8] = 0x00;		/* session and grow bits (7 and 6) */
 	buffer[9] = 0;
 	buffer[10] = 0;
 	buffer[11] = 0;
