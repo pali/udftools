@@ -57,6 +57,7 @@ int read_cd(int fd, int sec, unsigned char *buffer)
 
 	cgc.buffer = buffer;
 	cgc.buflen = len;
+	cgc.data_direction = CGC_DATA_READ;
 	ret = ioctl(fd, CDROM_SEND_PACKET, &cgc);
 	if (ret >= 0)
 		return len;
