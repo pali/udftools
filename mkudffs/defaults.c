@@ -171,7 +171,7 @@ struct impUseVolDescImpUse default_iuvdiu =
 		charSetInfo : UDF_CHAR_SET_INFO
 	},
 	logicalVolIdent : "\x08" "LinuxUDF",
-	LVInfo1 : "\x08" "Linux mkudffs " MKUDFFS_VERSION,
+	LVInfo1 : "\x08" "Linux mkudffs " PACKAGE_VERSION,
 	LVInfo2 : "\x08" "Linux UDF " UDFFS_VERSION " (" UDFFS_DATE ")",
 	LVInfo3 : "\x08" EMAIL_STRING,
 	impIdent :

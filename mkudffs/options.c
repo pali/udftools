@@ -77,7 +77,7 @@ void usage(void)
 		"\t--utf8\n"
 		"\t--bridge\n"
 		"\t--closed\n",
-		MKUDFFS_VERSION, UDFFS_VERSION, UDFFS_DATE
+		PACKAGE_VERSION, UDFFS_VERSION, UDFFS_DATE
 	);
 	exit(1);
 }
