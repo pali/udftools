@@ -38,6 +38,7 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
 
 #include <udfdecl.h>
 #include "mkudf.h"
@@ -273,8 +274,9 @@ static Sint64 udf_lseek64(int fd, Sint64 offset, int whence)
 void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char *type)
 {
 	static int last = 0;
-	ssize_t retval;
+	ssize_t retval = 0;
 	static char empty_buffer[4096];
+	int bsize;
 
 	if (block > last)
 		last = block;
@@ -282,12 +284,18 @@ void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char 
 		printf("seeking back! last was %d, want %d (%s)\n", last, block, type);
 
 	udf_lseek64(opt->device, (Sint64)block << opt->blocksize_bits, SEEK_SET);
-	retval = write(opt->device, buffer, size);
-	if (size & (opt->blocksize - 1))
-		write(opt->device, empty_buffer,
-			opt->blocksize - (size & (opt->blocksize - 1)));
+	bsize = size & ~(opt->blocksize - 1);
+	if (bsize)
+		retval = write(opt->device, buffer, bsize);
+	if (retval != -1 && (size - bsize))
+	{
+		memcpy(empty_buffer, buffer + bsize, size - bsize);
+		retval = write(opt->device, empty_buffer, opt->blocksize);
+		memset(empty_buffer, 0x00, opt->blocksize);
+	}
 			
-	if (retval == -1) {
+	if (retval == -1)
+	{
 		printf("error writing %s: %s\n", type, sys_errlist[errno]);
 		exit(-1);
 	}
