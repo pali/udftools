@@ -687,7 +687,8 @@ int quick_setup(options_t *o)
 
 	printf("\nI'm going to do a quick setup of %s. The disc is going to " \
 		"be blanked and formatted with one big track. All data on " \
-		"the device will be lost!! Press CTRL-C to cancel now.\n",
+		"the device will be lost!! Press CTRL-C to cancel now.\n"
+		"ENTER to continue.\n",
 		 cdrom_device);
 
 	getchar();
