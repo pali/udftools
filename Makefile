@@ -23,7 +23,7 @@ LIBS		= ../lib/libudf.a
 CHKUDFDIR	= src/chkudf
 CHKUDFDEP	= $(CHKUDFDIR)/chkudf
 
-EXE=dumpsect pdumpsect dumpfe taglist cdinfo mkudf chkudf dumpea checkdisk bmap cdrwtool pktsetup
+EXE=dumpsect dumpfe taglist cdinfo mkudf chkudf dumpea checkdisk bmap dumpdisc cdrwtool pktsetup pdumpsect
 
 all: ../.prereq.ok $(EXE)
 
@@ -50,6 +50,9 @@ taglist: src/taglist.c
 	$(CC) -I.. $< $(CFLAGS) -o $@
 
 checkdisk: src/checkdisk.c
+	$(CC) $< $(CFLAGS) -o $@
+
+dumpdisc: src/dumpdisc.c
 	$(CC) $< $(CFLAGS) -o $@
 
 bmap: src/bmap.c
