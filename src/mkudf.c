@@ -39,10 +39,14 @@
 
 #include <udfdecl.h>
 
+#ifndef HAVE_LLSEEK_PROTOTYPE
+extern Uint64 llseek (int fd, Uint64 offset, int origin);
+#endif
+
 /* These should be changed if you make any code changes */
 #define VERSION_MAJOR	1
-#define VERSION_MINOR	0
-#define VERSION_BUILD	0
+#define VERSION_MINOR	2
+#define VERSION_BUILD	2
 
 /*
  * Command line option token values.
@@ -300,9 +304,18 @@ parse_args(int argc, char *argv[])
 	}
 }
 
+static Uint64 udf_lseek64(int fd, Uint64 offset, int whence)
+{
+#ifdef __USE_LARGEFILE64
+	return lseek64(fd, offset, whence);
+#else
+	return llseek(fd, offset, whence);
+#endif /* __USE_LARGEFILE64 */
+}
+
 void write_system_area()
 {
-	lseek(fs_img, 32768, SEEK_SET);
+	udf_lseek64(fs_img, 32768, SEEK_SET);
 }
 
 void get_blocksize()
@@ -332,12 +345,8 @@ void get_blocksize()
 
 void get_blocks()
 {
-	blocks = lseek(fs_img, 0, SEEK_END) >> blocksize_bits;
-#if 0
-	if (opt_blocks && opt_blocks < blocks)
-#else
+	blocks = udf_lseek64(fs_img, 0, SEEK_END) >> blocksize_bits;
 	if (opt_blocks)
-#endif
 		blocks = opt_blocks;
 	lastblock = blocks-1;
 	fprintf(stderr,"blocks=%d opt_blocks=%d lastblock=%d\n", blocks, opt_blocks, lastblock);
@@ -450,7 +459,7 @@ write_anchor(int loc, int start, int len, int rstart, int rlen)
 	avdp->reserveVolDescSeqExt.extLength = le32_to_cpu(rlen * blocksize);
 	avdp->descTag = query_tag(TID_ANCHOR_VOL_DESC_PTR, 2, 1, loc, avdp, totsize);
 
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, avdp, blocksize);
 	if (retval == -1) {
 		perror("error writing Anchor descriptor");
@@ -499,7 +508,7 @@ write_primaryvoldesc(int loc, int snum, timestamp crtime)
 	pvd->flags = le16_to_cpu(0x0001);
 	pvd->descTag = query_tag(TID_PRIMARY_VOL_DESC, 2, 1, loc, pvd, totsize);
 
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, pvd, sizeof(struct PrimaryVolDesc));
 	if (retval == -1) {
 		perror("error writing Primary Volume descriptor");
@@ -511,46 +520,50 @@ void
 write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int filesetblock, int spartable, int sparnum)
 {
 	struct LogicalVolDesc *lvd;
-#if 0
 	struct GenericPartitionMap1 *gpm1;
-#else
 	struct SparablePartitionMap *spm;
-#endif
 	long_ad *fsd;
 	ssize_t retval;
 	size_t totsize;
-#if 0
-	Uint32 maplen = 6;
-#else
-	Uint32 maplen = 64;
-#endif
+	Uint8 maplen = 0;
+	Uint32 totmaplen;
+
+	if (opt_partition == PT_NORMAL)
+		maplen = 6;
+	else if (opt_partition == PT_SPARING)
+		maplen = 64;
 
 	totsize = sizeof(struct LogicalVolDesc) + maplen;
 	lvd = calloc(1, totsize);
 
-#if 0
-	gpm1 = (struct GenericPartitionMap1 *)&(lvd->partitionMaps[0]);
-	/* type 1 only */ /* 2 2.2.8, 2.2.9 */
-	gpm1->partitionMapType = 1;
-	gpm1->partitionMapLength = maplen;
-	gpm1->volSeqNum = le16_to_cpu(1);
-	gpm1->partitionNum = le16_to_cpu(0);
-#else
-	spm = (struct SparablePartitionMap *)&(lvd->partitionMaps[0]);
-	spm->partitionMapType = 2;
-	spm->partitionMapLength = maplen;
-	spm->partIdent.flags = 0;
-	strncpy(spm->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE));
-    ((Uint16 *)spm->partIdent.identSuffix)[0] = le16_to_cpu(0x0150);
-    spm->partIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
-    spm->partIdent.identSuffix[3] = UDF_OS_ID_LINUX;
-	spm->volSeqNum = le16_to_cpu(1);
-	spm->partitionNum = le16_to_cpu(0);
-	spm->packetLength = le16_to_cpu(32);
-	spm->numSparingTables = 1;
-	spm->sizeSparingTable = sizeof(struct SparingTable) + sparnum * sizeof(SparingEntry);
-	spm->locSparingTable[0] = spartable;
-#endif
+	if (opt_partition == PT_NORMAL)
+	{
+		gpm1 = (struct GenericPartitionMap1 *)&(lvd->partitionMaps[0]);
+		/* type 1 only */ /* 2 2.2.8, 2.2.9 */
+		gpm1->partitionMapType = 1;
+		gpm1->partitionMapLength = maplen;
+		gpm1->volSeqNum = le16_to_cpu(1);
+		gpm1->partitionNum = le16_to_cpu(0);
+	}
+	else
+	{
+		spm = (struct SparablePartitionMap *)&(lvd->partitionMaps[0]);
+		spm->partitionMapType = 2;
+		spm->partitionMapLength = maplen;
+		spm->partIdent.flags = 0;
+		strncpy(spm->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE));
+		((Uint16 *)spm->partIdent.identSuffix)[0] = le16_to_cpu(0x0150);
+		spm->partIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
+		spm->partIdent.identSuffix[3] = UDF_OS_ID_LINUX;
+		spm->volSeqNum = le16_to_cpu(1);
+		spm->partitionNum = le16_to_cpu(0);
+		spm->packetLength = le16_to_cpu(32);
+		spm->numSparingTables = 1;
+		spm->sizeSparingTable = sizeof(struct SparingTable) + sparnum * sizeof(SparingEntry);
+		spm->locSparingTable[0] = spartable;
+	}
+
+	totmaplen = maplen;
 
 	lvd->volDescSeqNum = le32_to_cpu(snum);
 
@@ -571,7 +584,7 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 	fsd->extLocation.logicalBlockNum = le32_to_cpu(filesetblock);
 	fsd->extLocation.partitionReferenceNum = le16_to_cpu(filesetpart);
 
-	lvd->mapTableLength = le32_to_cpu(maplen);
+	lvd->mapTableLength = le32_to_cpu(totmaplen);
 	lvd->numPartitionMaps = le32_to_cpu(1);
 
 	lvd->impIdent.flags = 0;
@@ -583,7 +596,7 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 	lvd->integritySeqExt.extLength = le32_to_cpu(len * blocksize);
 
 	lvd->descTag = query_tag(TID_LOGICAL_VOL_DESC, 2, 1, loc, lvd, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, lvd, totsize);
 	if (retval == -1) {
 	        perror("error writing Logical Volume descriptor");
@@ -591,7 +604,7 @@ write_logicalvoldesc(int loc, int snum, int start, int len, int filesetpart, int
 	}
 }
 
-void write_logicalvolintdesc(int loc, timestamp crtime)
+void write_logicalvolintdesc(int loc, timestamp crtime, int part0start)
 {
 	int i;
 	struct LogicalVolIntegrityDesc *lvid;
@@ -599,14 +612,17 @@ void write_logicalvolintdesc(int loc, timestamp crtime)
 	ssize_t retval;
 	size_t totsize;
 	Uint32 npart = 1;
+	Uint32 spaceused = ((sizeof(struct SpaceBitmapDesc) +
+		((lastblock-288-part0start)/8 + 1) * sizeof(Uint8) + blocksize - 1) >>
+		blocksize_bits) + 3;
 
 	totsize = sizeof(struct LogicalVolIntegrityDesc) + sizeof(Uint32) * npart + sizeof(Uint32) * npart + sizeof(struct LogicalVolIntegrityDescImpUse);
 	lvid = calloc(1, totsize);
 
 	for (i=0; i<npart; i++)
-		lvid->freeSpaceTable[i] = le32_to_cpu(blocks - 4);
+		lvid->freeSpaceTable[i] = le32_to_cpu(1+lastblock-288-part0start-spaceused);
 	for (i=0; i<npart; i++)
-		lvid->sizeTable[i+npart] = le32_to_cpu(blocks);
+		lvid->sizeTable[i+npart] = le32_to_cpu(1+lastblock-288-part0start);
 	lvidiu = (struct LogicalVolIntegrityDescImpUse *)&(lvid->impUse[npart*2*sizeof(Uint32)/sizeof(Uint8)]);
 
 	lvidiu->impIdent.flags = 0;
@@ -629,7 +645,7 @@ void write_logicalvolintdesc(int loc, timestamp crtime)
 	lvid->lengthOfImpUse = le32_to_cpu(sizeof(struct LogicalVolIntegrityDescImpUse));
 
 	lvid->descTag = query_tag(TID_LOGICAL_VOL_INTEGRITY_DESC, 2, 1, loc, lvid, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, lvid, totsize);
 	if (retval == -1) {
 		perror("error writing Logical Volume Integrity descriptor");
@@ -656,7 +672,9 @@ void write_partitionvoldesc(int loc, int snum, int start, int end, int usb)
 
 	phd = (struct PartitionHeaderDesc *)&(pd->partitionContentsUse[0]);
 	phd->unallocatedSpaceTable.extLength = le32_to_cpu(0);
-	phd->unallocatedSpaceBitmap.extLength = le32_to_cpu(((end-start)/(blocksize*8) + 1) * blocksize | 0x40000000);
+	phd->unallocatedSpaceBitmap.extLength = le32_to_cpu(
+		((((sizeof(struct SpaceBitmapDesc)+end-start) >> (blocksize_bits + 3)) + 1)
+		<< blocksize_bits) | 0x40000000);
 	phd->unallocatedSpaceBitmap.extPosition = le32_to_cpu(usb-start);
 	phd->partitionIntegrityTable.extLength = le32_to_cpu(0);
 	phd->freedSpaceTable.extLength = le32_to_cpu(0);
@@ -672,7 +690,7 @@ void write_partitionvoldesc(int loc, int snum, int start, int end, int usb)
 	pd->impIdent.identSuffix[1] = UDF_OS_ID_LINUX;
 	
 	pd->descTag = query_tag(TID_PARTITION_DESC, 2, 1, loc, pd, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, pd, totsize);
 	if (retval == -1) {
 		perror("error writing Partition descriptor");
@@ -703,7 +721,7 @@ void write_unallocatedspacedesc(int loc, int snum, int start1, int end1, int sta
 	usd->numAllocDescs = le32_to_cpu(ndesc);
 
 	usd->descTag = query_tag(TID_UNALLOC_SPACE_DESC, 2, 1, loc, usd, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, usd, totsize);
 	if (retval == -1) {
 		perror("error writing Unallocated Space descriptor");
@@ -759,7 +777,7 @@ void write_impusevoldesc(int loc, int snum)
 	iuvd->impIdent.identSuffix[3] = UDF_OS_ID_LINUX;
 
 	iuvd->descTag = query_tag(TID_IMP_USE_VOL_DESC, 2, 1, loc, iuvd, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, iuvd, totsize);
 	if (retval == -1) {
 		perror("error writing Imp Use Volume descriptor");
@@ -777,7 +795,7 @@ void write_termvoldesc(int loc)
 	td = calloc(1, totsize);
 	
 	td->descTag = query_tag(TID_TERMINATING_DESC, 2, 1, loc, td, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, td, totsize);
 	if (retval == -1) {
 		perror("error writing Terminating descriptor");
@@ -822,7 +840,7 @@ void write_filesetdesc(int loc, int sloc, int snum, int rootpart, int rootblock,
 */
 	
 	fsd->descTag = query_tag(TID_FILE_SET_DESC, 2, snum, loc - sloc, fsd, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, fsd, totsize);
 	free(fsd);
 	if (retval == -1) {
@@ -854,7 +872,7 @@ void write_spartable(int loc, int snum, int start, int num)
 	}
 
 	st->descTag = query_tag(0, 2, snum, loc, st, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, st, totsize);
 	free(st);
 	if (retval == -1) {
@@ -863,11 +881,12 @@ void write_spartable(int loc, int snum, int start, int num)
 	}
 }
 
-void write_spacebitmapdesc(int loc, int sloc, int snum, int start, int end)
+void write_spacebitmapdesc(int loc, int sloc, int snum, int start, int end, int fileset)
 {
 	struct SpaceBitmapDesc *sbd;
 	ssize_t retval;
 	size_t totsize;
+	int i;
 	Uint32 nbytes = (end-start)/8+1;
 
 	totsize = sizeof(struct SpaceBitmapDesc) + sizeof(Uint8) * nbytes;
@@ -876,14 +895,14 @@ void write_spacebitmapdesc(int loc, int sloc, int snum, int start, int end)
 	sbd->numOfBits = le32_to_cpu(end-start+1);
 	sbd->numOfBytes = le32_to_cpu(nbytes);
 	memset(sbd->bitmap, 0xFF, sizeof(Uint8) * nbytes);
-	sbd->bitmap[0] = 0xfe;
-	sbd->bitmap[1] = 0xff;
-	sbd->bitmap[2] = 0xfd;
-    sbd->bitmap[4] = 0xfe;
-    sbd->bitmap[8] = 0xfe;
+	for (i=0; i<(totsize + blocksize - 1) >> blocksize_bits; i++)
+		sbd->bitmap[i/8] &= ~(1 << i%8);
+	sbd->bitmap[fileset/8] &= ~(1 << (fileset%8));
+	sbd->bitmap[(fileset+32)/8] &= ~(1 << ((fileset+32)%8));
+	sbd->bitmap[(fileset+33)/8] &= ~(1 << ((fileset+33)%8));
 
 	sbd->descTag = query_tag(TID_SPACE_BITMAP_DESC, 2, snum, loc - sloc, sbd, sizeof(tag));
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, sbd, totsize);
 	free(sbd);
 	if (retval == -1) {
@@ -911,8 +930,9 @@ void write_fileentry1(int loc, int sloc, int snum, int part, int block, timestam
 	fid->fileCharacteristics = 0x0A; /* 0000 1010 */
 	fid->lengthFileIdent = 0;
 	fid->icb.extLength = le32_to_cpu(blocksize);
-	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(block);
-	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(part);
+	fid->icb.extLocation.logicalBlockNum = cpu_to_le32(block);
+	fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(part);
+	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(16);
 	fid->lengthOfImpUse = le16_to_cpu(0);
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc1);
 
@@ -921,8 +941,9 @@ void write_fileentry1(int loc, int sloc, int snum, int part, int block, timestam
 	fid->fileCharacteristics = 0x02; /* 0000 0010 */
 	fid->lengthFileIdent = filelen2;
 	fid->icb.extLength = le32_to_cpu(blocksize);
-	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(17);
+	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(block+1);
 	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(part);
+	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(17);
 	fid->lengthOfImpUse = le16_to_cpu(0);
 	strcpy(&fid->fileIdent[0], " lost+found");
 	fid->fileIdent[0] = 8;
@@ -956,7 +977,7 @@ void write_fileentry1(int loc, int sloc, int snum, int part, int block, timestam
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_DIRECTORY, 0, 0, ICB_FLAG_AD_IN_ICB);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, fe, totsize);
 	if (retval == -1) {
 		perror("error writing File Entry");
@@ -983,6 +1004,7 @@ void write_fileentry2(int loc, int sloc, int snum, int part, int block, timestam
 	fid->icb.extLength = le32_to_cpu(blocksize);
 	fid->icb.extLocation.logicalBlockNum = le32_to_cpu(block);
 	fid->icb.extLocation.partitionReferenceNum = le16_to_cpu(part);
+	*(Uint32 *)((struct ADImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(17);
 	fid->lengthOfImpUse = le16_to_cpu(0);
 	fid->descTag = query_tag(TID_FILE_IDENT_DESC, 2, snum, loc - sloc, fid, ladesc1);
 
@@ -1014,7 +1036,7 @@ void write_fileentry2(int loc, int sloc, int snum, int part, int block, timestam
 
 	fe->icbTag = query_icbtag(0, 4, 0, 1, FILE_TYPE_DIRECTORY, 2, 0, ICB_FLAG_AD_IN_ICB);
 	fe->descTag = query_tag(TID_FILE_ENTRY, 2, snum, loc - sloc, fe, totsize);
-	lseek(fs_img, loc << blocksize_bits, SEEK_SET);
+	udf_lseek64(fs_img, loc << blocksize_bits, SEEK_SET);
 	retval = write(fs_img, fe, totsize);
 	if (retval == -1) {
 		perror("error writing File Entry");
@@ -1093,6 +1115,9 @@ int compute_ident_length(int len)
 int
 main(int argc, char *argv[])
 {
+	Uint32 pvd, pvd_len, rvd, rvd_len, snum, lvd, lvd_len;
+	Uint32 filesetpart, filesetblock, part0start;
+	Uint32 sparstart = 0, spartable = 0, sparnum = 0;
 	struct timeval tv;
 	struct timezone tz;
 	timestamp crtime;
@@ -1114,30 +1139,71 @@ main(int argc, char *argv[])
 
 	get_blocksize();
 	get_blocks();
+
+	pvd = 0x120;
+	pvd_len = 0x10;
+	rvd = 0x140;
+	rvd_len = 0x10;
+	snum = 0;
+	lvd = 0x160;
+	lvd_len = 2;
+
+	filesetpart = 0;
+	if (opt_partition == PT_SPARING)
+	{
+		part0start = 2464;
+		sparstart = 1408;
+		spartable = 2432;
+		sparnum = 32;
+	}
+	else if (opt_partition == PT_VAT)
+		part0start = 384;
+	else
+		part0start = 1408;
+
+	filesetblock =
+		(sizeof(struct SpaceBitmapDesc) +
+		((lastblock-288-part0start)/8 + 1) * sizeof(Uint8) + blocksize - 1) >>
+			blocksize_bits;
+
+	if (opt_partition == PT_SPARING || opt_partition == PT_NORMAL)
+		filesetblock = ((filesetblock + 31) / 32) * 32;
+
 	write_system_area();
 	write_vrs();
-	write_anchor(256, 0x120, 16, 0x140, 16);
-	write_anchor(lastblock-256, 0x120, 16, 0x140, 16);
-	write_anchor(lastblock, 0x120, 16, 0x140, 16);
-	write_primaryvoldesc(0x120, 1, crtime);
-	write_primaryvoldesc(0x140, 1, crtime);
-	write_logicalvoldesc(0x121, 2, 0x160, 2, 0, 32, 2432, 32);
-	write_logicalvoldesc(0x141, 2, 0x160, 2, 0, 32, 2432, 32);
-	write_logicalvolintdesc(0x160, crtime);
-	write_termvoldesc(0x161);
-	write_partitionvoldesc(0x122, 3, 2464, lastblock-288, 2464);
-	write_partitionvoldesc(0x142, 3, 2464, lastblock-288, 2464);
-	write_unallocatedspacedesc(0x123, 4, 32, 255, 384, 1407);
-	write_unallocatedspacedesc(0x143, 4, 32, 255, 384, 1407);
-	write_impusevoldesc(0x124, 5);
-	write_impusevoldesc(0x144, 5);
-	write_termvoldesc(0x125);
-	write_termvoldesc(0x145);
-	write_spartable(2432, 1, 1408, 32);
-	write_spacebitmapdesc(2464, 2464, 1, 2464, lastblock-288);
-	write_filesetdesc(2496, 2464, 1, 0, 2528-2464, crtime);
-	write_fileentry1(2528, 2464, 1, 0, 2528-2464, crtime);
-	write_fileentry2(2481, 2464, 1, 0, 2528-2464, crtime);
+	write_anchor(256, pvd, pvd_len, rvd, rvd_len);
+	write_anchor(lastblock-256, pvd, pvd_len, rvd, rvd_len);
+	write_anchor(lastblock, pvd, pvd_len, rvd, rvd_len);
+	write_primaryvoldesc(pvd, ++snum, crtime);
+	write_logicalvoldesc(pvd+1, ++snum, lvd, lvd_len, filesetpart, filesetblock,
+		spartable, sparnum);
+	write_primaryvoldesc(rvd, snum, crtime);
+	write_logicalvoldesc(rvd+1, snum, lvd, lvd_len, filesetpart, filesetblock,
+		spartable, sparnum);
+	write_logicalvolintdesc(lvd, crtime, part0start);
+	write_termvoldesc(lvd+1);
+	write_partitionvoldesc(pvd+2, ++snum, part0start, lastblock-288, part0start);
+	write_partitionvoldesc(rvd+2, snum, part0start, lastblock-288, part0start);
+	if (opt_partition == PT_SPARING || opt_partition == PT_NORMAL)
+	{
+		write_unallocatedspacedesc(pvd+3, ++snum, 32, 255, 384, 1407);
+		write_unallocatedspacedesc(rvd+3, snum, 32, 255, 384, 1407);
+	}
+	else
+	{
+		write_unallocatedspacedesc(pvd+3, ++snum, 32, 255, 0, 0);
+		write_unallocatedspacedesc(rvd+3, snum, 32, 255, 0, 0);
+	}
+	write_impusevoldesc(pvd+4, ++snum);
+	write_impusevoldesc(rvd+4, snum);
+	write_termvoldesc(pvd+5);
+	write_termvoldesc(rvd+5);
+	if (opt_partition == PT_SPARING)
+		write_spartable(spartable, 1, sparstart, sparnum);
+	write_spacebitmapdesc(part0start, part0start, 1, part0start, lastblock-288, filesetblock);
+	write_filesetdesc(part0start+filesetblock, part0start, 1, 0, filesetblock+32, crtime);
+	write_fileentry1(part0start+filesetblock+32, part0start, 1, 0, filesetblock+32, crtime);
+	write_fileentry2(part0start+filesetblock+33, part0start, 1, 0, filesetblock+32, crtime);
 	close(fs_img);
 	return 0;
 }

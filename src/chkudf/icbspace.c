@@ -107,6 +107,11 @@ int track_file_allocation(struct FileEntry *FE, UINT16 ptn)
                                    } else {
                                      error = 1;
                                    }
+									if (error)
+									{
+										printf("Error=%d, Error.Code=%d\n", error, Error.Code);
+										DumpError();
+									}
                                    if (error == 2) {
                                      if (U_endian32(AED->sTag.uTagLoc) == 0xffffffff) {
                                        error = 0;

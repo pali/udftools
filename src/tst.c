@@ -23,5 +23,9 @@ int main(int argc, char **argv)
 		fseek(fp, i*2048, SEEK_SET);
 		fwrite(data, 2048, 1, fp);
 	}
+	ftruncate(fileno(fp), 400*2048);
+	ftruncate(fileno(fp), 800*2048);
+	fseek(fp, 799*2048, SEEK_SET);
+	fwrite(data, 2048, 1, fp);
 	fclose(fp);
 }
