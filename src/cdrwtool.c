@@ -74,6 +74,11 @@ static int last_packet = -1;
 
 extern struct option longoptions[];
 
+int msf_to_lba(int m, int s, int f)
+{
+	return (((m * 60) + s) * 75) + f;
+}
+
 void hexdump(const void *buffer, int size)
 {
 	unsigned char *ptr = (unsigned char *) buffer;
@@ -325,7 +330,7 @@ int write_blocks(char *buffer, int lba, int blocks)
 	cgc.cmd[8] = blocks;
 	cgc.buflen = blocks * 2048;
 
-	return wait_cmd(&cgc, buffer, CGC_DATA_WRITE, WAIT_PC);
+	return wait_cmd(&cgc, buffer, CGC_DATA_WRITE, WAIT_SYNC);
 }
 
 void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char *type)
@@ -669,6 +674,7 @@ int cdrom_open_check(void)
 
 int quick_setup(options_t *o)
 {
+	disc_info_t di;
 	track_info_t ti;
 	int ret;
 	unsigned blocks;
@@ -691,10 +697,13 @@ int quick_setup(options_t *o)
 	if ((ret = blank_disc(BLANK_FAST)))
 		return ret;
 
+	if ((ret = read_disc_info(&di)) < 0)
+		return ret;
+
 	if ((ret = read_track_info(&ti, 1)) < 0)
 		return ret;
 
-	blocks = be32_to_cpu(ti.track_size);
+	blocks = msf_to_lba(di.lead_out_m, di.lead_out_s, di.lead_out_f) - 152;
 	if (o->fpacket && !(ti.packet && ti.fp))
 	{
 			/* fixed packets format usable blocks */
@@ -762,6 +771,16 @@ void print_disc_info(disc_info_t *di)
 	printf("\tdbc_v = %d\n", di->dbc_v);
 	printf("\tdisc type = %d\n", di->disc_type);
 	printf("\tdisc_id = %u\n", be32_to_cpu(di->disc_id));
+	printf("\tlead_in = %02d:%02d:%02d (%u)\n",
+		di->lead_in_m,
+		di->lead_in_s,
+		di->lead_in_f,
+		msf_to_lba(di->lead_in_m, di->lead_in_s, di->lead_in_f));
+	printf("\tlead_out = %02d:%02d:%02d (%u)\n",
+		di->lead_out_m,
+		di->lead_out_s,
+		di->lead_out_f,
+		msf_to_lba(di->lead_out_m, di->lead_out_s, di->lead_out_f));
 	printf("\tOPC entries = %u\n", di->opc_entries);
 	printf("\n");
 }

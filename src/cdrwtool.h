@@ -162,8 +162,14 @@ typedef struct disc_info {
 	__u8 first_track_m;
 	__u8 last_track_m;
 	__u32 disc_id;
-	__u32 lead_in;
-	__u32 lead_out;
+	__u8 lead_in_r;
+	__u8 lead_in_m;
+	__u8 lead_in_s;
+	__u8 lead_in_f;
+	__u8 lead_out_r;
+	__u8 lead_out_m;
+	__u8 lead_out_s;
+	__u8 lead_out_f;
 	__u8 disc_bar_code[8];
 	__u8 reserved3;
 	__u8 opc_entries;
