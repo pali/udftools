@@ -1,0 +1,12 @@
+libudffs
+	Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+
+mkudffs
+	Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+
+cdrwtool
+	Jens Axboe <axboe@suse.de>
+	Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+
+pktsetup
+	Jens Axboe <axboe@suse.de>

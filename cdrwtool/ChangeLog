@@ -1,0 +1,33 @@
+Ver 0.01 Alpha	99/11/09
+	- Mostly untested ;)
+
+Ver 0.02 Alpha	00/02/02
+	- addded reserve track option
+	- progress indicator for format / blank (only when the device
+	  "disconnects" through the IMMED bit -- see BLOCKING_CMD, and
+	  if the drive supports the progress through sense stuff). Beware
+	  that it is pretty crappy...
+	- print OPC info in print_disc_track_info
+	- do manual locking/unlocking to prevent lock door errors while
+	  doing a format/blank with IMMED set.
+	- added the -q quick setup option.
+
+Ver 0.1		27/10/00
+	- Fix wrong warning when using IMMED bit for format/blank
+	  when command completes
+	- Default to setting mode2-form1 write type
+	- Print sense on failed command
+
+Ver 0.2		30/01/02
+	- Split the commands from the main program
+	- Merged with new mkudffs code
+
+Todo:
+	- Set sensible write speed, don't default to DEFAULT_SPEED.
+
+Drives tested and known to work:
+	- HP 8210i, 9xxx (progress indicator works)
+	- Sony CRX100E (without progress indicator)
+	- Yamaha CRW6416SX (SCSI, no progress indicator)
+	- Yamaha CRW8424SX (SCSI, no progress indicator)
+	- Plextor PlexWriter 12/4/32

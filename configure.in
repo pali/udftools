@@ -1,0 +1,28 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(mkudffs/mkudffs.c)
+AC_CONFIG_AUX_DIR(config)
+AM_CONFIG_HEADER(include/config.h:include/config.in)
+AM_INIT_AUTOMAKE(udftools, 2.0)
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_DISABLE_SHARED
+AM_PROG_LIBTOOL
+
+dnl Checks for libraries.
+
+dnl Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADERS(fcntl.h malloc.h sys/time.h unistd.h endian.h getopt.h sys/isa_defs.h string.h strings.h)
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_INLINE
+AC_HEADER_TIME
+AC_STRUCT_TM
+
+dnl Checks for library functions.
+AC_CHECK_FUNCS(gettimeofday mktime open64 lseek64 llseek)
+AC_SUBST(LIBOBJS)
+AC_CHECK_FUNCS(getopt_long , , [LIBOBJS="$LIBOBJS getopt.o"] )
+
+AC_OUTPUT(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile)
