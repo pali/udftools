@@ -396,7 +396,7 @@ main(int argc, char *argv[])
 	}
 	parse_args(argc, argv, &opt, &filename);
 
-	opt.device = open(filename, O_RDWR, 0660);
+	opt.device = open64(filename, O_RDWR, 0660);
 	if (opt.device == -1)
 	{
 		perror("error opening image file");
