@@ -13,7 +13,7 @@
  * CONTACTS
  *      E-mail regarding any portion of the Linux UDF file system should be
  *      directed to the development team mailing list (run by majordomo):
- *              linux_udf@hootie.lvld.hp.com
+ *              linux_udf@hpesjro.fc.hp.com
  *
  * COPYRIGHT
  *	This file is distributed under the terms of the GNU General Public
@@ -36,7 +36,7 @@
 #define VERSION_MINOR	4
 #define VERSION_BUILD	6
 
-#define EMAIL_STRING	"<linux_udf@hootie.lvld.hp.com>"
+#define EMAIL_STRING	"<linux_udf@hpesjro.fc.hp.com>"
 
 #include <sys/time.h>
 #include <udfdecl.h>
