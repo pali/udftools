@@ -24,7 +24,7 @@ LIBS		= ../lib/libudf.a
 CHKUDFDIR	= src/chkudf
 CHKUDFDEP	= $(CHKUDFDIR)/chkudf
 
-EXE=dumpsect dumpfe taglist cdinfo mkudf chkudf dumpea
+EXE=dumpsect dumpfe taglist cdinfo mkudf chkudf dumpea checkdisk bmap
 
 all: $(EXE)
 
@@ -46,6 +46,12 @@ cdinfo: src/cdinfo.c
 
 taglist: src/taglist.c
 	$(CC) -I.. $< $(CFLAGS) -o $@
+
+checkdisk: src/checkdisk.c
+	$(CC) $< $(CFLAGS) -o $@
+
+bmap: src/bmap.c
+	$(CC) $< $(CFLAGS) -o $@
 
 #
 # to use the loop device:

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <linux/cdrom.h>
+#include <linux/fs.h>
 #include "chkudf.h"
 #include "protos.h"
 
@@ -22,6 +23,21 @@
 int AVDP_Places[] = {-2, -258, 0, -256, -152, -150, -408, -406};
 int End_Places[]  = {-2,   -2, 0,    0, -152, -150, -152, -150};
 int Num_Places = 8;
+
+BOOL Get_Last_BGS()
+{
+  unsigned long buffer;
+  int      result;
+  BOOL     success = FALSE;
+
+  result = ioctl(device, BLKGETSIZE, buffer);
+  if (!result)
+  {
+      LastSector = buffer;
+      success = TRUE;
+  }
+  return success;
+}
 
 /*
  * This routine uses the HP 4020/6020 non-standard READ TRACK INFORMATION
@@ -193,23 +209,29 @@ void SetLastSector(void)
 
   if (scsi) {
     if (isType5) {             /* Check for CD device */
-      if (!Get_Last_PRTI()) {         /* Proprietary RTI     */
-        if (!Get_Last_RTI()) {        /* Generic RTI         */
-          if (!Get_Last_ReadCap()) {  /* Read Capacity       */
-            if (!Get_Last_ReadTOC()) {/* Read TOC            */
-              printf("  Couldn't determine location of last sector.\n");
+      if (!Get_Last_BGS()) {            /* Block Get Size      */
+        if (!Get_Last_PRTI()) {         /* Proprietary RTI     */
+          if (!Get_Last_RTI()) {        /* Generic RTI         */
+            if (!Get_Last_ReadCap()) {  /* Read Capacity       */
+              if (!Get_Last_ReadTOC()) {/* Read TOC            */
+                printf("  Couldn't determine location of last sector.\n");
+              }
             }
           }
         }
       }
     } else {
-      if (!Get_Last_ReadCap()) {
-        printf("  Couldn't read capacity.\n");
+      if (!Get_Last_BGS()) {      /* Block Get Size      */
+        if (!Get_Last_ReadCap()) {/* Read Capacity       */
+          printf("  Couldn't read capacity.\n");
+        }
       }
     }
   } else {
-    if (!Get_Last_ReadTOC()) {/* Read TOC            */
-      printf("  Couldn't determine location of last sector.\n");
+    if (!Get_Last_BGS()) {      /* Block Get Size      */
+      if (!Get_Last_ReadTOC()) {/* Read TOC            */
+        printf("  Couldn't determine location of last sector.\n");
+      }
     }
   }
 }

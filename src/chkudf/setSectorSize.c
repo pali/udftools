@@ -73,7 +73,7 @@ void SetSectorSize(void)
     }
   }
   if (secsize == 0) {                 /* Block size still not set */
-    secsize = 0x800; /* Try 0x200 byte sectors first */
+	secsize = 0x200;
     found = FALSE;
     avdpbuf = malloc(MAX_SECTOR_SIZE);
     if (avdpbuf) {
@@ -86,8 +86,10 @@ void SetSectorSize(void)
           printf("\n**Read error #%d\n", errno);
         } else {
           found = !CheckTag((struct tag *)avdpbuf, 256, 2, 0, MAX_SECTOR_SIZE);
+          ClearError();
           if (!found) {
             found = !CheckTag((struct tag *)avdpbuf, 512, 2, 0, MAX_SECTOR_SIZE);
+            ClearError();
             if (found) {
               secsize >>= 1;
             }
