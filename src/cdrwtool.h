@@ -14,13 +14,27 @@
 #include <unistd.h>
 #include <endian.h>
 
+#include <asm/param.h>
+
+/*
+ * define this to be the default cdrom device
+ */
+#define CDROM_DEVICE	"/dev/scd1"
+
+/*
+ * adjust these values if commands are timing out before completion
+ */
+#define WAIT_PC			(5 * HZ)
+#define WAIT_SYNC		(25 * HZ)
+#define WAIT_BLANK		(60 * 60 * HZ)
+
 /*
  * define this to 0 to make format and blank block until the entire
  * operation has succeeded. otherwise control is returned as soon as
  * the drive has verified the command -- this can be used for polling
  * the device for completion.
  */
-#define USE_IMMED	1
+#define USE_IMMED 0
 
 #define PAGE_CURRENT	0
 #define PAGE_CHANGE	1

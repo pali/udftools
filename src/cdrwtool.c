@@ -65,8 +65,6 @@
 #include "cdrwtool.h"
 #include "mkudf.h"
 
-#define CDROM_DEVICE	"/dev/scd0"
-
 static char cdrom_device[NAME_MAX];
 static int progress;
 static int fd;
@@ -86,31 +84,45 @@ void hexdump(const void *buffer, int size)
 	printf("\n");
 }
 
-void dump_sense(struct request_sense *sense)
+void dump_sense(unsigned char *cdb, struct request_sense *sense)
 {
-	printf("Command failed with ");
+	int i;
+
+	printf("Command failed: ");
+
+	for (i=0; i<12; i++)
+		printf("%02x ", cdb[i]);
+
 	if (sense) {
-		printf("sense %02x.%02x.%02x\n", sense->sense_key, sense->asc,
+		printf("- sense %02x.%02x.%02x\n", sense->sense_key, sense->asc,
 						sense->ascq);
 	} else {
-		printf("no sense\n");
+		printf(", no sense\n");
 	}
 }
 
-int wait_cmd(struct cdrom_generic_command *cgc, unsigned char *buf, int dir)
+int wait_cmd(struct cdrom_generic_command *cgc, unsigned char *buf, int dir,
+			 int timeout)
 {
 	struct request_sense sense;
 	int ret;
+
+	if (cgc->timeout <= 0)
+		cgc->timeout = 500;
 
 	memset(&sense, 0, sizeof(sense));
 
 	cgc->buffer = buf;
 	cgc->data_direction = dir;
 	cgc->sense = &sense;
+	cgc->timeout = timeout;
 
 	ret = ioctl(fd, CDROM_SEND_PACKET, cgc);
 	if (ret)
-		dump_sense(cgc->sense);
+	{
+		perror("wait_cmd");
+		dump_sense(cgc->cmd, cgc->sense);
+	}
 	return ret;
 }
 
@@ -125,7 +137,7 @@ void sig_progress(int sig)
 	memset(&sense, 0, sizeof(sense));
 
 	cgc.sense = &sense;
-	ret = wait_cmd(&cgc, NULL, CGC_DATA_NONE);
+	ret = wait_cmd(&cgc, NULL, CGC_DATA_NONE, WAIT_PC);
 
 	if (!(sense.sks[0] & 0x80) && !did) {
 		printf("Progress indicator not implemented on this drive\n");
@@ -148,14 +160,15 @@ void sig_progress(int sig)
 void print_completion_info(void)
 {
 	/* we can only poll sense for non-blocking commands */
-#ifndef USE_IMMED
+#if USE_IMMED == 0
 	return;
-#endif
+#else
 	progress = 0;
 	signal(SIGALRM, sig_progress);
 	alarm(5);
 	while (progress < 100)
 		sleep(1);
+#endif
 }
 
 /* buffer must already have been filled by mode_sense */
@@ -169,7 +182,7 @@ int mode_select(unsigned char *buffer, int len)
 	cgc.cmd[1] = 1 << 4;
 	cgc.cmd[8] = cgc.buflen = len;
 
-	return wait_cmd(&cgc, buffer, CGC_DATA_WRITE);
+	return wait_cmd(&cgc, buffer, CGC_DATA_WRITE, WAIT_PC);
 }
 
 int mode_sense(unsigned char *buffer, int page, char pc, int size)
@@ -182,7 +195,7 @@ int mode_sense(unsigned char *buffer, int page, char pc, int size)
 	cgc.cmd[2] = page | pc << 6;
 	cgc.cmd[8] = cgc.buflen = size;
 
-	return wait_cmd(&cgc, buffer, CGC_DATA_READ);
+	return wait_cmd(&cgc, buffer, CGC_DATA_READ, WAIT_PC);
 }
 
 int set_write_mode(write_params_t *w)
@@ -292,7 +305,7 @@ int sync_cache(void)
 	memset(&cgc, 0, sizeof(cgc));
 	cgc.cmd[0] = 0x35;
 	cgc.cmd[1] = 2;
-	return wait_cmd(&cgc, NULL, CGC_DATA_NONE);
+	return wait_cmd(&cgc, NULL, CGC_DATA_NONE, WAIT_SYNC);
 }
 
 int write_blocks(char *buffer, int lba, int blocks)
@@ -312,7 +325,7 @@ int write_blocks(char *buffer, int lba, int blocks)
 	cgc.cmd[8] = blocks;
 	cgc.buflen = blocks * 2048;
 
-	return wait_cmd(&cgc, buffer, CGC_DATA_WRITE);
+	return wait_cmd(&cgc, buffer, CGC_DATA_WRITE, WAIT_PC);
 }
 
 void udf_write_data(mkudf_options *opt, int block, void *buffer, int size, char *type)
@@ -414,20 +427,19 @@ int write_file(options_t *o)
 
 int blank_disc(int type)
 {
-        struct cdrom_generic_command cgc;
+	struct cdrom_generic_command cgc;
 	int ret;
 
-        memset(&cgc, 0, sizeof(cgc));
-        cgc.cmd[0] = GPCMD_BLANK;
-        cgc.cmd[1] = (type == BLANK_FULL ? 0 : 1);
-#ifdef USE_IMMED
-	cgc.cmd[1] |= 1 << 4;
-#endif
+	memset(&cgc, 0, sizeof(cgc));
+	cgc.cmd[0] = GPCMD_BLANK;
+	cgc.cmd[1] = (type == BLANK_FULL ? 0 : 1);
+	cgc.cmd[1] |= (USE_IMMED << 4);
 
-        if ((ret = wait_cmd(&cgc, NULL, CGC_DATA_NONE)) < 0) {
-                perror("blank disc");
-                return ret;
-        }
+	if ((ret = wait_cmd(&cgc, NULL, CGC_DATA_NONE, WAIT_BLANK)) < 0)
+	{
+		perror("blank disc");
+		 return ret;
+	}
 
 	print_completion_info();
 	return 0;
@@ -467,7 +479,8 @@ int format_disc(options_t *o)
 	buffer[14] = (o->offset >>  8) & 0xff;
 	buffer[15] = o->offset & 0xff;
 
-	if ((ret = wait_cmd(&cgc, buffer, CGC_DATA_WRITE)) < 0) {
+	if ((ret = wait_cmd(&cgc, buffer, CGC_DATA_WRITE, WAIT_BLANK)) < 0)
+	{
 		perror("format disc");
 		return ret;
 	}
@@ -486,7 +499,8 @@ int read_disc_info(disc_info_t *di)
 	cgc.cmd[0] = GPCMD_READ_DISC_INFO;
 	cgc.cmd[8] = cgc.buflen = 2;
 	
-	if ((ret = wait_cmd(&cgc, (unsigned char *)di, CGC_DATA_READ)) < 0) {
+	if ((ret = wait_cmd(&cgc, (unsigned char *)di, CGC_DATA_READ, WAIT_PC)) < 0)
+	{
 		perror("read disc info");
 		return ret;
 	}
@@ -496,7 +510,7 @@ int read_disc_info(disc_info_t *di)
 		cgc.buflen = sizeof(disc_info_t);
 
 	cgc.cmd[8] = cgc.buflen;
-	if ((ret = wait_cmd(&cgc, (unsigned char *)di, CGC_DATA_READ)) < 0)
+	if ((ret = wait_cmd(&cgc, (unsigned char *)di, CGC_DATA_READ, WAIT_PC)) < 0)
 	{
 		perror("read disc info");
 		return ret;
@@ -517,7 +531,8 @@ int read_track_info(track_info_t *ti, int trackno)
 	cgc.cmd[5] = trackno;
 	cgc.cmd[8] = cgc.buflen = 28;
 	
-	if ((ret = wait_cmd(&cgc, (unsigned char *) ti, CGC_DATA_READ)) < 0) {
+	if ((ret = wait_cmd(&cgc, (unsigned char *) ti, CGC_DATA_READ, WAIT_PC)) < 0)
+	{
 		perror("read track info");
 		return ret;
 	}
@@ -537,7 +552,8 @@ int reserve_track(options_t *o)
 	cgc.cmd[7] = (o->reserve_track >>  8) & 0xff;
 	cgc.cmd[8] = o->reserve_track & 0xff;
 	
-	if ((ret = wait_cmd(&cgc, NULL, CGC_DATA_NONE)) < 0) {
+	if ((ret = wait_cmd(&cgc, NULL, CGC_DATA_NONE, WAIT_BLANK)) < 0)
+	{
 		perror("reserve track");
 		return ret;
 	}
@@ -557,7 +573,8 @@ int close_track(unsigned track)
 	cgc.cmd[4] = (track >> 8) & 0xff;
 	cgc.cmd[5] = track & 0xff;
 
-	if ((ret = wait_cmd(&cgc, NULL, CGC_DATA_NONE)) < 0) {
+	if ((ret = wait_cmd(&cgc, NULL, CGC_DATA_NONE, WAIT_BLANK)) < 0)
+	{
 		perror("close track");
 		return ret;
 	}
@@ -580,7 +597,7 @@ int read_buffer_cap(options_t *o)
 	cgc.cmd[0] = 0x5c;
 	cgc.cmd[8] = cgc.buflen = 12;
 
-	if ((ret = wait_cmd(&cgc, (unsigned char *)&buf, CGC_DATA_READ)))
+	if ((ret = wait_cmd(&cgc, (unsigned char *)&buf, CGC_DATA_READ, WAIT_PC)))
 		return ret;
 
 	o->buffer = be32_to_cpu(buf.buffer_size);
@@ -606,7 +623,7 @@ int set_cd_speed(int speed)
 	cgc.cmd[4] = ((0xb0 * speed) >> 8) & 0xff;
 	cgc.cmd[5] = (0xb0 * speed) & 0xff;
 
-	return wait_cmd(&cgc, NULL, CGC_DATA_NONE);
+	return wait_cmd(&cgc, NULL, CGC_DATA_NONE, WAIT_PC);
 }
 
 void cdrom_close(void)
