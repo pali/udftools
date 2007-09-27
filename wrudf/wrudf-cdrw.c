@@ -614,7 +614,6 @@ void*
 readTaggedBlock(uint32_t lbn, uint16_t partition) 
 {
     int		i;
-    uint32_t	blkno;
     uint8_t	sum, *p;
     struct generic_desc *block;
 
@@ -634,7 +633,7 @@ readTaggedBlock(uint32_t lbn, uint16_t partition)
 	if( strncmp(((struct sparingTable*)block)->sparingIdent.ident, UDF_ID_SPARING, strlen(UDF_ID_SPARING)) != 0 ) {
 	    for( i = 0; i < 2048; i++ ) {
 		if( ((uint8_t*)block)[i] != 0 ) {
-		    printf("readTaggedBlock: Empty block %d not all zeroes\n", blkno);
+		    printf("readTaggedBlock: Empty block %d not all zeroes\n", lbn);
 		    break;
 		}
 	    }
@@ -647,10 +646,10 @@ readTaggedBlock(uint32_t lbn, uint16_t partition)
 	    sum += *(p + i);
 
     if( block->descTag.tagChecksum != sum )
-	fail("readTagged: Checksum error in block %d\n", blkno);
+	fail("readTagged: Checksum error in block %d\n", lbn);
 
     if( block->descTag.descCRC != udf_crc((uint8_t*)block + sizeof(tag), ((tag*)block)->descCRCLength, 0) )
-	fail("readTagged: CRC error in block %d\n", blkno);
+	fail("readTagged: CRC error in block %d\n", lbn);
 
     return block;
 }
@@ -709,8 +708,8 @@ int
 writeExtents(char* src, int usesShort, void* extents) 
 {
     uint	len, blkno, partitionNumber;
-    long_ad	*lo;
-    short_ad	*sh;
+    long_ad	*lo=NULL;
+    short_ad	*sh=NULL;
 
     if( usesShort ) {
 	sh = (short_ad*) extents;

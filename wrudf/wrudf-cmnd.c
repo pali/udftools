@@ -45,7 +45,7 @@ char	*hdWorkingDir;
 int
 copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat) 
 {
-    int		fd, i, blkno;
+    int		fd, i=0, blkno;
     uint32_t	nBytes, blkInPkt;
     uint32_t	maxVarPktSize;		// in bytes
     struct fileIdentDesc *fid;
@@ -54,7 +54,7 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 
     fd = open(inName, O_RDONLY);
     if( fd == 0 ) {
-	printf("'%s' does not exist\n", cmndv[i]);
+	printf("'%s' does not exist\n", inName);
 	return CMND_FAILED;
     }
 

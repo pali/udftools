@@ -31,6 +31,7 @@
 #include <sys/types.h>		/* for u_char etc. */
 #include <linux/cdrom.h>
 #include <unistd.h>		/* sleep() */
+#include <stdlib.h>
 
 #include "bswap.h"
 #include "ide-pc.h"

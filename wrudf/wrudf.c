@@ -245,7 +245,7 @@ initialise(char *devicename)
 	    } else if( strncmp( spm->partIdent.ident, UDF_ID_VIRTUAL, strlen(UDF_ID_VIRTUAL)) == 0 )
 		virtualPartitionNum = i;
 	}
-	spm = (char*)spm + spm->partitionMapLength;
+	spm = (struct sparablePartitionMap*)((char*)spm + spm->partitionMapLength);
     }
 
     if( medium == CDR ) {
@@ -300,7 +300,7 @@ initialise(char *devicename)
 	    fail("SpaceBitmap not found\n");
     }
 
-    if (fsdLen = decode_utf8(fsd->fileSetIdent, fsdOut, fsd->fileSetIdent[31]))
+    if ((fsdLen = decode_utf8(fsd->fileSetIdent, fsdOut, fsd->fileSetIdent[31]))>=0)
         fsdOut[fsdLen] = '\0';
 
     printf("You are going to update fileset '%s'\nProceed (y/N) : ", &fsdOut[1]);
@@ -605,7 +605,7 @@ parseCmnd(char* line)
 int
 main(int argc, char** argv) 
 { 
-    int	 	rv;
+    int	 	rv=0;
     int		cmnd;
     char	prompt[256];
     Directory	*d;

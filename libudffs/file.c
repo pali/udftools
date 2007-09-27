@@ -576,7 +576,7 @@ inline unsigned long udf_find_next_zero_bit(void * addr, unsigned long size, uns
 	tmp = leBPL_to_cpup(p);
 found_first:
 	tmp |= (~0UL << size);
-	if (tmp == ~0UL)	/* Are any bits zero? */
+	if (tmp == (uintBPL)~0UL)	/* Are any bits zero? */
 		return result + size; /* Nope. */
 found_middle:
 	return result + ffz(tmp);

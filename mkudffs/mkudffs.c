@@ -72,7 +72,7 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc));
 	memcpy(disc->udf_pvd[0], &default_pvd, sizeof(struct primaryVolDesc));
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
-	sprintf(&disc->udf_pvd[0]->volSetIdent[1], "%08lx%s",
+	sprintf((char *)&disc->udf_pvd[0]->volSetIdent[1], "%08lx%s",
 		mktime(tm), &disc->udf_pvd[0]->volSetIdent[9]);
 	disc->udf_pvd[0]->volIdent[31] = strlen(disc->udf_pvd[0]->volIdent);
 	disc->udf_pvd[0]->volSetIdent[127] = strlen(disc->udf_pvd[0]->volSetIdent);
@@ -289,7 +289,7 @@ void dump_space(struct udf_disc *disc)
 int write_disc(struct udf_disc *disc)
 {
 	struct udf_extent *start_ext;
-	int ret;
+	int ret=0;
 
 	start_ext = disc->head;
 
@@ -299,6 +299,7 @@ int write_disc(struct udf_disc *disc)
 			return ret;
 		start_ext = start_ext->next;
 	}
+	return ret;
 }
 
 void setup_vrs(struct udf_disc *disc)
@@ -450,7 +451,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		struct unallocSpaceEntry *use;
 		short_ad *sad;
 		int max = (0x3FFFFFFF / disc->blocksize) * disc->blocksize;
-		int pos;
+		int pos=0;
 		long long rem;
 
 		if (disc->flags & FLAG_STRATEGY4096)
