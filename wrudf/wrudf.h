@@ -23,9 +23,11 @@
 #include <sys/time.h>
 #include <time.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "ecma_167.h"
 #include "osta_udf.h"
+#include "libudffs.h"
 
 struct generic_desc
 {

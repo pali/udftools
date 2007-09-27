@@ -226,6 +226,7 @@ int read_disc_info(int, disc_info_t *);
 int read_track_info(int, track_info_t *, int);
 int reserve_track(int, struct cdrw_disc *);
 int close_track(int, unsigned int);
+int close_session(int, unsigned int);
 int read_buffer_cap(int, struct cdrw_disc *);
 int set_cd_speed(int, int);
 void cdrom_close(int);
@@ -236,5 +237,6 @@ int print_disc_track_info(int);
 void make_write_page(write_params_t *, struct cdrw_disc *);
 void print_params(write_params_t *);
 void cdrw_init_disc(struct cdrw_disc *);
+int udf_set_version(struct udf_disc *, int);
 
 #endif /* _CDRWTOOL_H */

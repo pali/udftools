@@ -25,6 +25,7 @@
 #include <getopt.h>
 #include <bits/types.h>
 #include <sys/types.h>
+#include <string.h>
 
 #include <linux/cdrom.h>
 

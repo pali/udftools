@@ -23,6 +23,8 @@
 #ifndef __UDF_ENDIAN_H
 #define __UDF_ENDIAN_H
 
+#include <string.h>
+
 #include "bswap.h"
 
 static inline lb_addr lelb_to_cpu(lb_addr in)

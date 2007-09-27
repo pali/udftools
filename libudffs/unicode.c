@@ -169,8 +169,6 @@ error_out:
 
 int decode_string(struct udf_disc *disc, char *in, char *out, int inlen)
 {
-	int i;
-
 	if (disc->flags & FLAG_UTF8)
 		return decode_utf8(in, out, inlen);
 	else if (disc->flags & (FLAG_UNICODE8 | FLAG_UNICODE16))
