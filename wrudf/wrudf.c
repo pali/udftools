@@ -245,7 +245,7 @@ initialise(char *devicename)
 	    } else if( strncmp( spm->partIdent.ident, UDF_ID_VIRTUAL, strlen(UDF_ID_VIRTUAL)) == 0 )
 		virtualPartitionNum = i;
 	}
-	(char*)spm += spm->partitionMapLength;
+	spm = (char*)spm + spm->partitionMapLength;
     }
 
     if( medium == CDR ) {
