@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <signal.h>
+#include <limits.h>
 
 #include <sys/ioctl.h>
 #include <asm/param.h>

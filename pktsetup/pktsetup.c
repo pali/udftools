@@ -26,6 +26,8 @@
 #include <bits/types.h>
 #include <sys/types.h>
 #include <string.h>
+#include <limits.h>
+#include <stdlib.h>
 
 #include <linux/cdrom.h>
 
@@ -86,7 +88,7 @@ static void setup_dev(char *pkt_device, char *device, int rem)
 {
 	int pkt_fd, dev_fd, cmd;
 
-	if ((pkt_fd = open(pkt_device, O_RDONLY | O_CREAT)) == -1) {
+	if ((pkt_fd = open(pkt_device, O_RDONLY | O_CREAT, 0600)) == -1) {
 		perror("open packet device");
 		return;
 	}
