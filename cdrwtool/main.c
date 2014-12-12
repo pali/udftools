@@ -242,7 +242,9 @@ int main(int argc, char *argv[])
 	udf_init_disc(&disc.udf_disc);
 	strcpy(filename, CDROM_DEVICE);
 	parse_args(argc, argv, &disc, filename);
-	if ((fd = open(filename, O_RDONLY | O_NONBLOCK)) < 0)
+	if (((fd = open(filename, O_RDWR | O_NONBLOCK)) < 0) &&
+		((errno != EROFS) ||
+		((fd = open(filename, O_RDONLY | O_NONBLOCK)) < 0)))
 	{
 		perror("open cdrom device");
 		return fd;
