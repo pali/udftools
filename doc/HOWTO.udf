@@ -1,0 +1,153 @@
+udftools
+===================
+
+Kernel support for packet writing
+---------------------------------
+
+Packet writing is a technique by which a writable medium (typically a
+CD or DVD) can be used just like a USB stick or a directory on the
+hard disc: Files and directories can be created/renamed/removed
+freely, and no separate "burning" step is necessary to write the data
+to the medium. Packet writing is possible both with write-once media
+(CD-R, DVD+R, DVD-R) and rewritable media (CD-RW, DVD+RW,
+DVD-RW). Obviously, with write-once media the free space on the
+filesystem will not increase if you delete files.
+
+In order to do packet writing under Linux, your kernel needs
+both support for UDF (Universal Disc Format) filesystems and for
+packet writing. This is the case for kernels later than about 2.6.10.
+For earlier kernels, you may have to apply patches from Peter
+Osterlund <http://web.telia.com/~u89404340/packet.html>. That site
+also has patches for udftools to make them work with recent kernels -
+they have been applied to this package. This package tries to support
+both old-style packet writing (kernel <2.6.8), and the newer variant
+(>=2.6.10), with and without udev. Use a recent 2.6 kernel for optimum
+results!
+
+
+Formatting and using a UDF DVD-RW or CD-RW for packet writing
+-------------------------------------------------------------
+
+The commands differ depending on whether you are using DVD or CD
+media.
+
+1) Edit /etc/udftools.conf and add your drive for packet writing.
+For example, if your CD/DVD writer is /dev/hdc and you want it
+available as the default /dev/pktcdvd/0, then use the setting
+"DEVICES=/dev/hdc". Execute "/etc/rc.d/rc.udftools start" afterwards to
+register the device.
+
+If the device name /dev/hdc differs on your system, adjust the
+following commands as appropriate.
+
+2) Prepare the medium in restricted overwrite mode:
+
+DVD-RW: dvd+rw-format -force /dev/hdc
+ CD-RW: Do nothing, skip this step!
+
+3) Write an empty session spanning the whole medium. It seems that
+without this step, any attempt to create the UDF filesystem will fail.
+
+DVD-RW: growisofs -Z /dev/hdc=/dev/zero
+ CD-RW: cdrwtool -d /dev/hdc -q
+
+4) Format the packet device in UDF format.
+
+DVD-RW: mkudffs --udfrev=0x0150 --spartable=2 --media-type=dvdrw /dev/pktcdvd/0
+ CD-RW: mkudffs --udfrev=0x0150 --spartable=2 --media-type=cdrw /dev/pktcdvd/0
+
+The parameters require some more explanation: For --udfrev, use either
+0x0150 for UDF version 1.50, or 0x0201 for UDF version 2.01. The
+version decision has mostly to do with compatibility:
+  - Windows 98/ME can read up to v1.02
+  - Windows 2000, Mac OS 9, Linux 2.4 can read up to v1.50
+  - Windows 2003/XP can read up to v2.01
+  - Linux 2.6 can read up to v2.60
+For normal data, UDF 1.50 is OK. UDF 2.00 and 2.01 introduce
+additional functionality for streaming audio/video.
+
+Possible values for --media-type are: hd dvdram dvdrw worm mo cdrw cdr.
+Use the one appropriate for your medium/device.
+
+5) Mount the disc. The "noatime" option is important: It will reduce
+the amount of writes to the device and thus increase its lifetime. You
+may first have to create the mount directory using "mkdir
+/media/dvd0":
+
+  mount -t udf -o rw,noatime /dev/pktcdvd/0 /media/dvd0
+
+The "sync" mount option might also be useful, but will typically cause
+an increased number of write accesses to the medium. From now on, the
+root user can access the filesystem under /media/dvd0 using read and
+write operations.
+
+6) If regular users should also have write access, modify the
+permissions as follows _while the filesystem is mounted_:
+
+  chgrp plugdev /media/dvd0       # Set group ownership to "plugdev"
+  chmod g+rwx /media/dvd0         # Give full read/write access to group
+
+Now all users who should have access to the disc need to be added to
+the "plugdev" group using "adduser <username> plugdev".
+
+To also allow these users to mount and unmount/eject the medium, you
+can use either of these two routes:
+
+ - Install the "pmount" package and add the device to the list of
+   allowed devices using "echo /dev/pktcdvd/0 >>/etc/pmount.allow".
+   All members of the group "plugdev" will then be able to mount the
+   disc using "pmount /dev/pktcdvd/0 dvd0" and unmount it using
+   "pumount /media/dvd0".
+
+ - Add a line like the following to /etc/fstab:
+   /dev/pktcdvd/0 /media/dvd0 udf rw,noatime,users,noauto 0 0
+   This will enable _all_ users to mount the disc using
+   "mount /media/dvd0" and unmount it with
+   "umount /media/dvd0". However, with the permissions from step 5)
+   above, only the members of group "plugdev" ought to be able to
+   write to it.
+
+
+Support for UDF filesystems
+---------------------------
+
+UDF (not packet writing) support in Linux 2.4 and later kernels is
+sufficient to read from and write to UDF filesystems. For example, you
+can create a regular file, "format" it using mkudffs, and then
+loop-mount it. To do this, execute the following commands as root:
+(After "count=", supply the required size in MB of the filesystem.)
+
+   dd if=/dev/zero of=udfimage bs=1M count=10
+   mkudffs udfimage
+   mkdir udfmnt
+   mount -o loop -t udf udfimage udfmnt
+
+You need Linux 2.4+ with UDF read *and* write support enabled. Now you
+can copy data to the "udfmnt" directory. After an "umount udfmnt", the
+file "udfimage" could theoretically be written to a CD-R(W) or
+DVD-R(W). In practice, you will not want to do that, as the whole
+point of using UDF is to do packet writing.
+
+
+"/dev/pktcdvd0" not present?
+----------------------------
+
+The "pktsetup" tool requires a device like /dev/pktcdvd0,
+/dev/pktcdvd1 etc. If the device is not present on your system, this
+means one of two things:
+
+ - You are using devfs (the file /dev/.devfsd is present). In this
+   case, just try to use the device, and the appropriate driver should
+   be loaded automatically.
+
+ - You are not using devfs now, but it was being used at the time the
+   udftools package was installed. In this case, you need to create
+   the devices as root now, using the command:
+
+   dpkg-reconfigure udftools
+
+ - You are using udev, and there is no packet writing support in your
+   kernel.
+
+
+ -- Richard Atterer <atterer@debian.org>  Wed, 22 Nov 2006 23:38:16 +0100
