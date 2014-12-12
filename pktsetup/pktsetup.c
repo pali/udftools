@@ -84,13 +84,13 @@ static int init_cdrom(int fd)
 	return 0;
 }
 
-static void setup_dev(char *pkt_device, char *device, int rem)
+static int setup_dev(char *pkt_device, char *device, int rem)
 {
 	int pkt_fd, dev_fd, cmd;
 
 	if ((pkt_fd = open(pkt_device, O_RDONLY | O_CREAT, 0600)) == -1) {
 		perror("open packet device");
-		return;
+		return 1;
 	}
 
 	if (!rem) {
@@ -98,24 +98,29 @@ static void setup_dev(char *pkt_device, char *device, int rem)
 		if ((dev_fd = open(device, O_RDONLY | O_NONBLOCK)) == -1) {
 			perror("open cd-rom");
 			close(pkt_fd);
-			return;
+			return 1;
 		}
 		if (init_cdrom(dev_fd)) {
 			close(pkt_fd);
 			close(dev_fd);
-			return;
+			return 0;
+		} else {
+			return 1;
 		}
 	} else {
 		cmd = PACKET_TEARDOWN_DEV;
 		dev_fd = 0; /* silence gcc */
 	}
 		
-	if (ioctl(pkt_fd, cmd, dev_fd) == -1)
+	if (ioctl(pkt_fd, cmd, dev_fd) == -1) {
 		perror("ioctl");
+		return 1;
+	}
 
 	if (dev_fd)
 		close(dev_fd);
 	close(pkt_fd);
+	return 0;
 }
 
 static int usage(void)
@@ -212,18 +217,19 @@ static int remove_stale_dev_node(int ctl_fd, char *devname)
 	return 0;
 }
 
-static void setup_dev_chardev(char *pkt_device, char *device, int rem)
+static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 {
 	struct pkt_ctrl_command c;
 	struct stat stat_buf;
 	int ctl_fd, dev_fd;
+	int ret = 1;
 
 	memset(&c, 0, sizeof(struct pkt_ctrl_command));
 
 	create_ctl_dev();
 	if ((ctl_fd = open(pkt_dev_name(CTL_DEV), O_RDONLY)) < 0) {
 		perror("ctl open");
-		return;
+		return 1;
 	}
 
 	if (!rem) {
@@ -257,6 +263,7 @@ static void setup_dev_chardev(char *pkt_device, char *device, int rem)
 			goto out_close;
 		}
 		mknod(pkt_dev_name(pkt_device), S_IFBLK | 0640, c.pkt_dev);
+		ret = 0;
 	} else {
 		int major, minor, remove_node;
 
@@ -278,12 +285,17 @@ static void setup_dev_chardev(char *pkt_device, char *device, int rem)
 			perror("ioctl");
 			goto out_close;
 		}
-		if (remove_node)
-			unlink(pkt_dev_name(pkt_device));
+		if (remove_node) {
+			if (unlink(pkt_dev_name(pkt_device)) == 0)
+				ret = 0;
+		} else {
+			ret = 0;
+		}
 	}
 
 out_close:
 	close(ctl_fd);
+	return ret;
 }
 
 static void show_mappings(void)
@@ -343,8 +355,7 @@ int main(int argc, char **argv)
 	pkt_device = argv[optind];
 	device = argv[optind + 1];
 	if (strchr(pkt_device, '/'))
-		setup_dev(pkt_device, device, rem);
+		return setup_dev(pkt_device, device, rem);
 	else
-		setup_dev_chardev(pkt_device, device, rem);
-	return 0;
+		return setup_dev_chardev(pkt_device, device, rem);
 }
