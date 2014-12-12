@@ -37,6 +37,9 @@ pktsetup \- set up and tear down packet device associations
 .B pktsetup
 .B \-d
 .I packet_device
+.br
+.B pktsetup
+.B \-s
 .ad b
 .SH DESCRIPTION
 .B Pktsetup
@@ -59,35 +62,42 @@ returns 0 on success, nonzero on failure.
 Delete the association between the specified \fIpacket-device\fP
 and its block device.
 
+.IP "\fB\-s\fP"
+Show the current device mapping, one device per line, in the format
+ \fIname\fP : \fIpktdevid\fP -> \fIblkdevid\fP
+.br
+(e.g. "0 : 253:0 -> 22:0")
+
 .SH EXAMPLE
 The following commands provide an example of using the
 packet device.
 .nf
 .IP
 cdrwtool -d /dev/sr0 -q
-pktsetup /dev/pktcdvd0 /dev/sr0
+pktsetup 0 /dev/sr0
 
 mount -t udf /dev/pktcdvd0 /mnt
  ...
 umount /dev/pktcdvd0
-pktsetup -d /dev/pktcdvd0
+pktsetup -d 0
 .fi
 .LP
 
 .SH FILES
 .nf
-/dev/pktcdvd0,/dev/pktcdvd1,...  CD/DVD packet devices (block major=97)
+/dev/pktcdvd0,/dev/pktcdvd1,...  CD/DVD packet devices
 .fi
 
 .SH AUTHOR
 .nf
 Jens Axboe <axboe@suse.de>
+Some additions by Richard Atterer <atterer@debian.org>
 .fi
 
 .SH AVAILABILITY
 .B pktsetup
 is part of the udftools package and is available from
-http://linux-udf.sourceforge.net.
+http://sourceforge.net/projects/linux-udf/
 
 .SH "SEE ALSO"
 .BR cdrwtool (1)
