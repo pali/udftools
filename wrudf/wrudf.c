@@ -602,6 +602,28 @@ parseCmnd(char* line)
     return cmnd;
 }
 
+int show_help()
+{
+	char *msg =
+	"Interactive tool to maintain an UDF filesystem.\n"
+	"Usage:\n"
+	"\twrudf [device]\n"
+	"Available commands:\n"
+	"\tcp\n"
+	"\trm\n"
+	"\tmkdir\n"
+	"\trmdir\n"
+	"\tlsc\n"
+	"\tlsh\n"
+	"\tcdc\n"
+	"\tcdh\n"
+	"Specify cdh/lsh or cdc/lsc to do cd or ls for Harddisk or CompactDisc.\n"
+	"\tquit\n"
+	"\texit\n";
+	printf("%s", msg);
+	return 0;
+}
+
 int
 main(int argc, char** argv) 
 { 
@@ -613,7 +635,9 @@ main(int argc, char** argv)
     printf("wrudf " WRUDF_VERSION "\n");
     devicename= "/dev/cdrom";
 
-    if(argc > 1 )
+    if( argc > 2 || (argc == 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "-help") || !strcmp(argv[1], "--help"))) )
+	return show_help();
+    else if( argc == 2 )
 	devicename = argv[1];			/* can specify disk image filename */
 
     if( setpriority(PRIO_PROCESS, 0, -10) ) {
