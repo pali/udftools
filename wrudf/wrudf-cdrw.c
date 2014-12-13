@@ -374,7 +374,7 @@ void updateSparingTable() {
     struct packetbuf	*pb;
     struct sparablePartitionMap *spm = (struct sparablePartitionMap*)lvd->partitionMaps;
 
-    for( i = 0; i <= 4; i++ ) {
+    for( i = 0; i < sizeof(spm->locSparingTable); i++ ) {
 	pbn = spm->locSparingTable[i];
 	if( pbn == 0 )
 	    return;
@@ -766,8 +766,10 @@ initIO(char *filename)
 
     if( S_ISREG(filestat.st_mode) ) {		/* disk image of a UDF volume */
 	devicetype = DISK_IMAGE;
-	if( !(device = open(filename, O_RDWR)) )
+	if( !(device = open(filename, O_RDWR)) ) {
 	    fail("initIO: open %s failed\n", filename);
+	    return 0;
+	}
 
 	/* heuristically determine medium imitated on disk image based on VAT FileEntry in block 512 */
 	rv = lseek(device, 2048 * 512, SEEK_SET);

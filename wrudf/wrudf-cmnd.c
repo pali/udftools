@@ -696,7 +696,7 @@ analyzeDest(char* arg, struct fileIdentDesc** fid, char** name)
 	*fid = findFileIdentDesc(curDir, comp);
 	if( *fid == NULL )
 	    return DIR_INVALID;
-	if( ! (*fid)->fileCharacteristics & FID_FILE_CHAR_DIRECTORY )
+	if( ! ((*fid)->fileCharacteristics & FID_FILE_CHAR_DIRECTORY ))
 	    return DIR_INVALID;
 	if( (*fid)->fileCharacteristics & FID_FILE_CHAR_DELETED )
 	    return DIR_INVALID;
