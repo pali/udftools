@@ -1,1 +1,1 @@
-SUBDIRS = libudffs mkudffs cdrwtool pktsetup udffsck wrudf doc udfct
+SUBDIRS = libudffs mkudffs cdrwtool pktsetup udffsck wrudf doc
