@@ -42,7 +42,7 @@ void udf_init_disc(struct udf_disc *disc)
 	struct tm 	*tm;
 	int		altzone;
 
-	memset(disc, 0x00, sizeof(disc));
+	memset(disc, 0x00, sizeof(*disc));
 
 	disc->blocksize = 2048;
 	disc->blocksize_bits = 11;

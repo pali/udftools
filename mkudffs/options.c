@@ -320,7 +320,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 	}
 	if (optind == argc)
 		usage();
-	strcpy(device, argv[optind]);
+	strncpy(device, argv[optind], NAME_MAX-1);
+	device[NAME_MAX-1] = '\0';
 	optind ++;
 	if (optind < argc)
 		disc->head->blocks = strtoul(argv[optind++], NULL, 0);
