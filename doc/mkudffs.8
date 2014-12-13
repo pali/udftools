@@ -1,4 +1,5 @@
 .\" Copyright 2002 Paul Thompson <set@pobox.com>
+.\" Copyright 2014 Pali Rohár <pali.rohar@gmail.com>
 .\"
 .\" This is free documentation; you can redistribute it and/or
 .\" modify it under the terms of the GNU General Public License as
@@ -42,12 +43,12 @@ automagically figures the file system size.
 
 .SH OPTIONS
 .TP
-.B \-\-help
+.B \-h,\-\-help
 Display the usage and list of options.
 
 .TP
 .BI \-b,\-\-blocksize= " block-size "
-Specify the size of blocks in bytes. Valid block size vales are 1024,
+Specify the size of blocks in bytes. Valid block size vales are 512, 1024,
 2048 and 4096 bytes per block. If omitted,
 .B mkudffs
 block-size is 2048.
@@ -61,19 +62,27 @@ udf-revision is 0x0201.
 
 .TP
 .BI \-\-lvid= " logical-volume-ident "
-Specify the logical volume identifier.
+Specify the logical volume identifier. If omitted,
+.B mkudffs
+logical-volume-ident is LinuxUDF.
 
 .TP
 .BI \-\-vid= " volume-ident "
-Specify the volume identifier.
+Specify the volume identifier. If omitted,
+.B mkudffs
+volume-ident is LinuxUDF.
 
 .TP
 .BI \-\-vsid= " volume-set-ident "
-Specify the volume set identifier.
+Specify the second part of volume set identifier. If omitted,
+.B mkudffs
+volume-set-ident is LinuxUDF. First part is always set to local timestamp.
 
 .TP
 .BI \-\-fsid= " file-set-ident "
-Specify the file set identifier.
+Specify the file set identifier. If omitted,
+.B mkudffs
+file-set-ident is LinuxUDF.
 
 .TP
 .BI \-\-strategy= " strategy "
@@ -92,7 +101,7 @@ This option implies \fB\-\-media\-type=\fIcdrw\fP.
 Specify the media type. Valid media types are:
 .RS 1.2i
 .TP 1.6i
-hd
+hd (default)
 hard drive
 .TP
 dvd
@@ -110,6 +119,7 @@ MO (Magneto Optical)
 cdrw
 CD\-RW (CD Read\-Write)
 .RE
+
 .TP
 .BI \-\-space= " space "
 .RS 1.2i
@@ -126,6 +136,7 @@ Unallocated bitmap
 unalloctable
 Unallocated table
 .RE
+
 .TP
 .BI \-\-ad= " ad "
 .RS 1.2i
@@ -139,18 +150,25 @@ Short Allocation Descriptors
 long
 Long Allocation Descriptors
 .RE
+
 .TP
 .B \-\-noefe
 Don't Use Extended File Entries
+
 .TP
 .B \-\-u8
-Use 8-bit unicode for file names
+Ident string options are encoded in 8-bit OSTA Compressed Unicode equivalent.
+Must be specified as first argument.
+
 .TP
 .B \-\-u16
-Use 16-bit unicode for file names
+Ident string options are encoded in 16-bit OSTA Compressed Unicode equivalent.
+Must be specified as first argument.
+
 .TP
 .B \-\-utf8
-Use UTF-8 for file names
+Ident string options are encoded in UTF-8 (default).
+Must be specified as first argument.
 
 .TP
 .B \-\-closed
