@@ -623,7 +623,7 @@ int cdrom_open_check(int fd)
 	if ((ret = ioctl(fd, CDROM_CLEAR_OPTIONS, CDO_LOCK)) < 0)
 		return ret;
 
-	if ((ret == ioctl(fd, CDROM_LOCKDOOR, 1)) < 0) {
+	if ((ret = ioctl(fd, CDROM_LOCKDOOR, 1)) < 0) {
 		fprintf(stderr, "CD-ROM appears to already be opened\n");
 		return 1;
 	}

@@ -135,7 +135,8 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			}
 			case 'd':
 			{
-				strcpy(device, optarg);
+				strncpy(device, optarg, NAME_MAX-1);
+				device[NAME_MAX-1] = '\0';
 				printf("using device %s\n", device);
 				break;
 			}
