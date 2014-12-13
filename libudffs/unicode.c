@@ -27,7 +27,7 @@
 int decode_utf8(char *in, char *out, int inlen)
 {
 	int len = 0, i;
-	char c;
+	unsigned int c;
 
 	if (in[inlen-1] == 0)
 		return 0;
@@ -63,7 +63,7 @@ int encode_utf8(char *out, char *hdr, char *in, int outlen)
 	int inlen = strlen(in);
 	int utf_cnt, len = 1, i;
 	uint32_t utf_char, max_val;
-	char c;
+	unsigned int c;
 
 	out[0] = 8;
 	max_val = 0xFF;
@@ -92,7 +92,7 @@ try_again:
 		if (utf_cnt)
 		{
 			utf_char = (utf_char << 6) | (c & 0x3F);
-			if (--utf_char)
+			if (--utf_cnt)
 				continue;
 		}
 		else
