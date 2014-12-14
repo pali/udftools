@@ -202,6 +202,11 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 		}
 		else /* start + blocks > start_ext->start + start_ext->blocks */
 		{
+			if (start_ext->blocks < blocks)
+			{
+				printf("trying to change type of multiple extents\n");
+				exit(1);
+			}
 			new_ext = malloc(sizeof(struct udf_extent));
 			new_ext->space_type = type;
 			new_ext->start = start;
