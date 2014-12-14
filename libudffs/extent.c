@@ -313,7 +313,7 @@ struct udf_data *alloc_data(void *buffer, int length)
 	if (buffer)
 		data->buffer = buffer;
 	else if (length)
-		data->buffer = calloc(1, length);
+		data->buffer = calloc(1, length+sizeof(unsigned long));
 	data->length = length;
 
 	return data;
