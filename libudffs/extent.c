@@ -86,7 +86,7 @@ cont:
 		dec = (start_ext->start + start_ext->blocks) % offset;
 		if (start_ext->blocks - dec < blocks)
 		{
-			start_ext = next_extent(start_ext->next, type);
+			start_ext = prev_extent(start_ext->prev, type);
 			goto cont;
 		}
 	}
