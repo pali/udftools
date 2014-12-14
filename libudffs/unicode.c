@@ -40,7 +40,9 @@ int decode_utf8(char *in, char *out, int inlen)
 		if (in[0] == 16)
 			c = (c << 8) | in[i++];
 
-		if (c < 0x80U)
+		if (c == 0x00U)
+			break;
+		else if (c < 0x80U)
 			out[len++] = (uint8_t)c;
 		else if (c < 0x800U)
 		{
