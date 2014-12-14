@@ -189,7 +189,7 @@ int encode_string(struct udf_disc *disc, char *out, char *hdr, char *in, int out
 		return encode_utf8(out, hdr, in, outlen);
 	else if (disc->flags & FLAG_UNICODE8)
 	{
-		if (strlen(hdr) + strlen(in) > outlen - 2)
+		if (strlen(hdr) + strlen(in) >= outlen - 2)
 			return 0;
 		else
 		{
@@ -201,7 +201,7 @@ int encode_string(struct udf_disc *disc, char *out, char *hdr, char *in, int out
 	}
 	else if (disc->flags & FLAG_UNICODE16)
 	{
-		if (strlen(hdr) + strlen(in) > outlen - 2)
+		if (strlen(hdr)*2 + strlen(in) >= outlen - 2)
 			return 0;
 		else
 		{
