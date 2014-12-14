@@ -34,7 +34,7 @@ int decode_utf8(char *in, char *out, int inlen)
 	else if (in[0] != 8 && in[0] != 16)
 		return 0;
 
-	for (i=0; i<inlen;)
+	for (i=1; i<inlen;)
 	{
 		c = in[i++];
 		if (in[0] == 16)
