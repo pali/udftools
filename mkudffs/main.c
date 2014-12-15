@@ -31,6 +31,9 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <limits.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
+#include <linux/fd.h>
 
 #include "mkudffs.h"
 #include "defaults.h"
