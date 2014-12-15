@@ -65,6 +65,9 @@ static int valid_offset(int fd, int64_t offset)
 int get_blocks(int fd, int blocksize, int opt_blocks)
 {
 	int blocks;
+#ifdef BLKGETSIZE64
+	uint64_t size64;
+#endif
 #ifdef BLKGETSIZE
 	long size;
 #endif
@@ -72,6 +75,11 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 	struct floppy_struct this_floppy;
 #endif
 
+#ifdef BLKGETSIZE64
+	if (ioctl(fd, BLKGETSIZE64, &size64) >= 0)
+		blocks = size64 / blocksize;
+	else
+#endif
 #ifdef BLKGETSIZE
 	if (ioctl(fd, BLKGETSIZE, &size) >= 0)
 		blocks = size / (blocksize / 512);
