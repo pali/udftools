@@ -166,11 +166,21 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 				disc->udf_lvd[0]->logicalVolIdent[127] = encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, "", optarg, 128);
 				((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent[127] = encode_string(disc, ((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent, "", optarg, 128);
 				disc->udf_fsd->logicalVolIdent[127] = encode_string(disc, disc->udf_fsd->logicalVolIdent, "", optarg, 128);
+				if (!disc->udf_fsd->logicalVolIdent[127])
+				{
+					fprintf(stderr, "mkudffs: Error: lvid option is too long\n");
+					exit(1);
+				}
 				break;
 			}
 			case OPT_VID:
 			{
 				disc->udf_pvd[0]->volIdent[31] = encode_string(disc, disc->udf_pvd[0]->volIdent, "", optarg, 32);
+				if (!disc->udf_pvd[0]->volIdent[31])
+				{
+					fprintf(stderr, "mkudffs: Error: vid option is too long\n");
+					exit(1);
+				}
 				break;
 			}
 			case OPT_VSID:
@@ -179,11 +189,21 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 				strncpy(ts, &disc->udf_pvd[0]->volSetIdent[1], 8);
 				ts[8] = 0;
 				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, ts, optarg, 128);
+				if (!disc->udf_pvd[0]->volSetIdent[127])
+				{
+					fprintf(stderr, "mkudffs: Error: vsid option is too long\n");
+					exit(1);
+				}
 				break;
 			}
 			case OPT_FSID:
 			{
 				disc->udf_fsd->fileSetIdent[31] = encode_string(disc, disc->udf_fsd->fileSetIdent, "", optarg, 32);
+				if (!disc->udf_fsd->fileSetIdent[31])
+				{
+					fprintf(stderr, "mkudffs: Error: fsid option is too long\n");
+					exit(1);
+				}
 				break;
 			}
 			case OPT_STRATEGY:
