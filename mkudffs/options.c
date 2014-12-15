@@ -58,7 +58,7 @@ void usage(void)
 		"Usage:\n"
 		"\tmkudffs [options] device [blocks-count]\n"
 		"Switches:\n"
-		"\t--help\n"
+		"\t--help, -h\n"
 		"\t--blocksize=, -b\n"
 		"\t--udfrev=, -r\n"
 		"\t--lvid=\n"
