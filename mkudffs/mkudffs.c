@@ -366,6 +366,7 @@ void setup_anchor(struct udf_disc *disc)
 		disc->udf_anchor[i]->mainVolDescSeqExt.extLength = cpu_to_le32(mlen);
 		disc->udf_anchor[i]->reserveVolDescSeqExt.extLocation = cpu_to_le32(rloc);
 		disc->udf_anchor[i]->reserveVolDescSeqExt.extLength = cpu_to_le32(rlen);
+		memset(disc->udf_anchor[i]->reserved, 0, sizeof(disc->udf_anchor[i]->reserved));
 		disc->udf_anchor[i]->descTag = query_tag(disc, ext, ext->head, 1);
 		ext = next_extent(ext->next, ANCHOR);
 	} while (i++, ext != NULL);
