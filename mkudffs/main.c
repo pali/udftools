@@ -185,6 +185,12 @@ int main(int argc, char *argv[])
 	disc.write = write_func;
 	disc.write_data = &fd;
 
+	if (((disc.flags & FLAG_BRIDGE) && disc.head->blocks < 513) || disc.head->blocks < 281)
+	{
+		fprintf(stderr, "mkudffs: Error: Not enough blocks on device '%s', try decreasing blocksize\n", filename);
+		exit(1);
+	}
+
 	split_space(&disc);
 
 	setup_vrs(&disc);
