@@ -74,6 +74,7 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 #ifdef FDGETPRM
 	struct floppy_struct this_floppy;
 #endif
+	struct stat buf;
 
 #ifdef BLKGETSIZE64
 	if (ioctl(fd, BLKGETSIZE64, &size64) >= 0)
@@ -90,6 +91,9 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 		blocks = this_floppy.size / (blocksize / 512);
 	else
 #endif
+	if (fstat(fd, &buf) == 0 && S_ISREG(buf.st_mode))
+		blocks = buf.st_size / blocksize;
+	else
 	{
 		int64_t high, low;
 
