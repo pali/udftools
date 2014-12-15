@@ -177,6 +177,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 			{
 				char ts[9];
 				strncpy(ts, &disc->udf_pvd[0]->volSetIdent[1], 8);
+				ts[8] = 0;
 				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, ts, optarg, 128);
 				break;
 			}
