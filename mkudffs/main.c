@@ -123,7 +123,6 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 	static char *buffer = NULL;
 	static int bufferlen = 0, length, offset;
 	int fd = *(int *)disc->write_data;
-	int ret;
 	struct udf_desc *desc;
 	struct udf_data *data;
 
@@ -138,7 +137,8 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 		desc = ext->head;
 		while (desc != NULL)
 		{
-			ret = udf_lseek64(fd, (uint64_t)(ext->start + desc->offset) << disc->blocksize_bits, SEEK_SET);
+			if (udf_lseek64(fd, (uint64_t)(ext->start + desc->offset) << disc->blocksize_bits, SEEK_SET) < 0)
+				return -1;
 			data = desc->data;
 			offset = 0;
 			while (data != NULL)
