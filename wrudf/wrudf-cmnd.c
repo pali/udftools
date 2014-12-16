@@ -254,7 +254,11 @@ copyDirectory(Directory *dir, char* name)
 	return CMND_FAILED;
     }
 
-    chdir(name);
+    if( chdir(name) != 0 ) {
+	printf("Change dir '%s': %m\n", name);
+	return CMND_FAILED;
+    }
+
     printf("Now in %s\n", getcwd(NULL, 0));
     workDir = dir;
 
@@ -290,7 +294,8 @@ copyDirectory(Directory *dir, char* name)
 	}
     }
 
-    chdir("..");
+    if( chdir("..") != 0 )
+	printf("Change dir '..': %m\n");
 
     closedir(srcDir);
     return CMND_OK;
@@ -807,12 +812,17 @@ cpCommand(void)
 		    }
 		    cpyDir = readDirectory(curDir, &newFid->icb, srcname);
 		}
-		chdir(cmndv[i]);
-		copyDirectory(cpyDir, ".");
+		if( chdir(cmndv[i]) != 0 )
+			printf("Change dir '%s': %m\n", cmndv[i]);
+		else
+			copyDirectory(cpyDir, ".");
 	    } else 
 		printf("Destination is not a directory\n");
 
-	    chdir(hdWorkingDir); 
+	    if( chdir(hdWorkingDir) != 0 ) {
+		printf("Change dir '%s': %m\n", hdWorkingDir);
+		return CMND_FAILED;
+	    }
 	    continue;
 	}
 
@@ -998,7 +1008,11 @@ int cdhCommand()
     if( cmndc > 1 )
 	return WRONG_NO_ARGS;
 
-    chdir(cmndv[0]);
+    if( chdir(cmndv[0]) != 0 ) {
+	printf("Change dir '%s': %m\n", cmndv[0]);
+	return CMND_FAILED;
+    }
+
     if( hdWorkingDir ) free(hdWorkingDir);
     hdWorkingDir = getcwd(NULL, 0);
     printf("Harddisk working directory set to %s\n", cmndv[0]);
@@ -1017,7 +1031,9 @@ int lshCommand() {
     if( cmndc == 1 )
 	strcat(cmnd, cmndv[0]);
 
-    system(cmnd);
+    if( system(cmnd) != 0 )
+	return CMND_FAILED;
+
     return CMND_OK;
 }
 
