@@ -51,7 +51,8 @@ Display the usage and list of options.
 Specify the size of blocks in bytes. Valid block size vales are 512, 1024,
 2048 and 4096 bytes per block. If omitted,
 .B mkudffs
-block-size is 2048.
+block-size is set to device logical block (sector) size. If it is unknown
+then block-size 2048 is used.
 
 .TP
 .BI \-r,\-\-udfrev= " udf-revision "
