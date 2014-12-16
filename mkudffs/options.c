@@ -2,6 +2,7 @@
  * options.c
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2014       Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -200,9 +201,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 			}
 			case OPT_VSID:
 			{
-				char ts[9];
-				strncpy(ts, &disc->udf_pvd[0]->volSetIdent[1], 8);
-				ts[8] = 0;
+				char ts[17];
+				strncpy(ts, &disc->udf_pvd[0]->volSetIdent[1], 16);
+				ts[16] = 0;
 				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, ts, optarg, 128);
 				if (!disc->udf_pvd[0]->volSetIdent[127])
 				{

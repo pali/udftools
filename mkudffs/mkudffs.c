@@ -2,6 +2,7 @@
  * mkudffs.c
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2014       Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -41,6 +42,8 @@ void udf_init_disc(struct udf_disc *disc)
 	struct timeval	tv;
 	struct tm 	*tm;
 	int		altzone;
+	int		fd;
+	unsigned long int rnd;
 
 	memset(disc, 0x00, sizeof(*disc));
 
@@ -68,12 +71,24 @@ void udf_init_disc(struct udf_disc *disc)
 	ts.hundredsOfMicroseconds = (tv.tv_usec - ts.centiseconds * 10000) / 100;
 	ts.microseconds = tv.tv_usec - ts.centiseconds * 10000 - ts.hundredsOfMicroseconds * 100;
 
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd >= 0) {
+		if (read(fd, &rnd, sizeof(rnd)) != sizeof(rnd)) {
+			srand(time(NULL));
+			rnd = rand();
+		}
+		close(fd);
+	} else {
+		srand(time(NULL));
+		rnd = rand();
+	}
+
 	/* Allocate/Initialize Descriptors */
 	disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc));
 	memcpy(disc->udf_pvd[0], &default_pvd, sizeof(struct primaryVolDesc));
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
-	sprintf((char *)&disc->udf_pvd[0]->volSetIdent[1], "%08lx%s",
-		mktime(tm), &disc->udf_pvd[0]->volSetIdent[9]);
+	sprintf((char *)&disc->udf_pvd[0]->volSetIdent[1], "%08lx%08lx%s",
+		mktime(tm)%0xFFFFFFFF, rnd%0xFFFFFFFF, &disc->udf_pvd[0]->volSetIdent[17]);
 	disc->udf_pvd[0]->volIdent[31] = strlen(disc->udf_pvd[0]->volIdent);
 	disc->udf_pvd[0]->volSetIdent[127] = strlen(disc->udf_pvd[0]->volSetIdent);
 
