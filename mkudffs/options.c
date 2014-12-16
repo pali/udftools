@@ -83,7 +83,7 @@ void usage(void)
 	exit(1);
 }
 
-void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
+void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int *blocksize)
 {
 	int retval;
 	int i;
@@ -117,6 +117,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 					exit(1);
 				}
 				disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);
+				*blocksize = disc->blocksize;
 				break;
 			}
 			case OPT_UDF_REV:

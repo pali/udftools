@@ -2,6 +2,7 @@
  * main.c
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2014       Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -118,6 +119,30 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 	return blocks;
 }
 
+void detect_blocksize(int fd, struct udf_disc *disc)
+{
+	int size;
+	uint16_t bs;
+
+#ifdef BLKSSZGET
+	if (ioctl(fd, BLKSSZGET, &size) != 0)
+		return;
+
+	disc->blocksize = size;
+	for (bs=512,disc->blocksize_bits=9; disc->blocksize_bits<13; disc->blocksize_bits++,bs<<=1)
+	{
+		if (disc->blocksize == bs)
+			break;
+	}
+	if (disc->blocksize_bits == 13)
+	{
+		disc->blocksize = 2048;
+		disc->blocksize_bits = 11;
+	}
+	disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);
+#endif
+}
+
 int write_func(struct udf_disc *disc, struct udf_extent *ext)
 {
 	static char *buffer = NULL;
@@ -168,10 +193,12 @@ int main(int argc, char *argv[])
 	struct udf_disc	disc;
 	char filename[NAME_MAX];
 	int fd;
+	int blocksize;
 
 	memset(&disc, 0x00, sizeof(disc));
 	udf_init_disc(&disc);
-	parse_args(argc, argv, &disc, filename);
+	blocksize = -1;
+	parse_args(argc, argv, &disc, filename, &blocksize);
 #ifdef HAVE_OPEN64
 	fd = open64(filename, O_RDWR | O_CREAT, 0660);
 #else
@@ -181,6 +208,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, strerror(errno));
 		exit(1);
 	}
+
+	if (blocksize == -1)
+		detect_blocksize(fd, &disc);
+
 	disc.head->blocks = get_blocks(fd, disc.blocksize, disc.head->blocks);
 	disc.write = write_func;
 	disc.write_data = &fd;
