@@ -62,7 +62,7 @@ struct primaryVolDesc default_pvd =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_PVD),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
 	},
 	volDescSeqNum : constant_cpu_to_le32(1),
@@ -112,7 +112,7 @@ struct logicalVolDesc default_lvd =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_LVD),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct logicalVolDesc) - sizeof(tag)),
 	},
 	volDescSeqNum : constant_cpu_to_le32(2),
@@ -150,7 +150,7 @@ struct volDescPtr default_vdp =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_VDP),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct volDescPtr) - sizeof(tag)),
 	},
 	volDescSeqNum : constant_cpu_to_le32(3),
@@ -185,7 +185,7 @@ struct impUseVolDesc default_iuvd =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_IUVD),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct impUseVolDesc) - sizeof(tag)),
 	},
 	volDescSeqNum : constant_cpu_to_le32(4),
@@ -208,7 +208,7 @@ struct partitionDesc default_pd =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_PD),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct partitionDesc) - sizeof(tag)),
 	},
 	volDescSeqNum : constant_cpu_to_le32(5),
@@ -235,7 +235,7 @@ struct unallocSpaceDesc default_usd =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_USD),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct unallocSpaceDesc) - sizeof(tag)),
 	},
 	volDescSeqNum : constant_cpu_to_le32(6),
@@ -247,7 +247,7 @@ struct terminatingDesc default_td =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_TD),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct terminatingDesc) - sizeof(tag)),
 	},
 };
@@ -258,7 +258,7 @@ struct logicalVolIntegrityDesc default_lvid =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_LVID),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct logicalVolIntegrityDesc) - sizeof(tag)),
 	},
 	integrityType : constant_cpu_to_le32(LVID_INTEGRITY_TYPE_CLOSE),
@@ -288,7 +288,7 @@ struct sparingTable default_stable =
 	{
 		tagIdent : constant_cpu_to_le16(0),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct sparingTable) - sizeof(tag)),
 	},
 	sparingIdent :
@@ -380,7 +380,7 @@ struct fileSetDesc default_fsd =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_FSD),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct fileSetDesc) - sizeof(tag)),
 	},
 	interchangeLvl : constant_cpu_to_le16(2),
@@ -419,7 +419,7 @@ struct fileEntry default_fe =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_LVID),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
 	},
 	icbTag :
@@ -451,7 +451,7 @@ struct extendedFileEntry default_efe =
 	{
 		tagIdent : constant_cpu_to_le16(TAG_IDENT_LVID),
 		descVersion : constant_cpu_to_le16(2),
-		tagSerialNum : 1,
+		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
 	},
 	icbTag :
