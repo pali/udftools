@@ -171,7 +171,9 @@ static void create_ctl_dev(void)
 	int dev;
 
 	if ((misc_minor = get_misc_minor()) < 0) {
-		system("/sbin/modprobe pktcdvd");
+		if (system("/sbin/modprobe pktcdvd") != 0) {
+			fprintf(stderr, "Can't load pktcdvd kernel module\n");
+		}
 		misc_minor = get_misc_minor();
 	}
 	if (misc_minor < 0) {
