@@ -137,18 +137,33 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device)
 			{
 				disc->flags &= ~FLAG_CHARSET;
 				disc->flags |= FLAG_UNICODE8;
+				if (strcmp(argv[1], "--u8") != 0)
+				{
+					fprintf(stderr, "mkudffs: Option --u8 must be specified as first argument\n");
+					exit(1);
+				}
 				break;
 			}
 			case OPT_UNICODE16:
 			{
 				disc->flags &= ~FLAG_CHARSET;
 				disc->flags |= FLAG_UNICODE16;
+				if (strcmp(argv[1], "--u16") != 0)
+				{
+					fprintf(stderr, "mkudffs: Option --u16 must be specified as first argument\n");
+					exit(1);
+				}
 				break;
 			}
 			case OPT_UTF8:
 			{
 				disc->flags &= ~FLAG_CHARSET;
 				disc->flags |= FLAG_UTF8;
+				if (strcmp(argv[1], "--utf8") != 0)
+				{
+					fprintf(stderr, "mkudffs: Option --utf8 must be specified as first argument\n");
+					exit(1);
+				}
 				break;
 			}
 			case OPT_BRIDGE:
