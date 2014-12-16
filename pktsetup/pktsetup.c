@@ -352,8 +352,13 @@ int main(int argc, char **argv)
 				return usage();
 		}
 	}
+	if (optind == argc || (!rem && optind+1 == argc) || (rem && optind+1 < argc) || (!rem && optind+2 < argc))
+		return usage();
 	pkt_device = argv[optind];
-	device = argv[optind + 1];
+	if (rem)
+		device = argv[optind + 1];
+	else
+		device = NULL;
 	if (strchr(pkt_device, '/'))
 		return setup_dev(pkt_device, device, rem);
 	else
