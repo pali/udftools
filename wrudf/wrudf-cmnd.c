@@ -321,6 +321,7 @@ deleteDirectory(Directory *dir, struct fileIdentDesc* fid)
 
     name = malloc(fid->lengthFileIdent + 1);
     strncpy(name, fid->fileIdent + fid->lengthOfImpUse, fid->lengthFileIdent);
+    name[fid->lengthFileIdent] = 0;
     readDirectory(dir, &fid->icb, name);
     childDir = dir->child;
 
