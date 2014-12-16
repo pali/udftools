@@ -573,7 +573,6 @@ updateDirectory(Directory* dir)
 Directory * 
 makeDir(Directory *dir, char* name ) 
 {
-    int			rv;
     Directory		*newDir;
     struct fileEntry	*fe;
     struct fileIdentDesc *backFid, *forwFid;
@@ -614,7 +613,7 @@ makeDir(Directory *dir, char* name )
 	setChecksum(fe);
     }
 
-    rv = insertFileIdentDesc(dir, forwFid);
+    insertFileIdentDesc(dir, forwFid);
     dir->fe.fileLinkCount++;
     dir->dirDirty = 1;
 
