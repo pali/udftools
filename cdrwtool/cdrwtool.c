@@ -111,7 +111,7 @@ void sig_progress(int sig)
 	cgc.sense = &sense;
 	ret = wait_cmd(sigfd, &cgc, NULL, CGC_DATA_NONE, WAIT_PC);
 
-	if (!(sense.sks[0] & 0x80) && !did) {
+	if ((ret || !(sense.sks[0] & 0x80)) && !did) {
 		printf("Progress indicator not implemented on this drive\n");
 		printf("Don't access drive until operation has completed\n");
 		progress = 101;
