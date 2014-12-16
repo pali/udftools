@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <malloc.h>
+#include <ctype.h>
 
 #include "mkudffs.h"
 #include "defaults.h"
@@ -32,12 +33,15 @@
 
 struct option long_options[] = {
 	{ "help", no_argument, NULL, OPT_HELP },
+	{ "label", required_argument, NULL, OPT_LABEL },
+	{ "uuid", required_argument, NULL, OPT_UUID },
 	{ "blocksize", required_argument, NULL, OPT_BLK_SIZE },
 	{ "udfrev", required_argument, NULL, OPT_UDF_REV },
 	{ "lvid", required_argument, NULL, OPT_LVID },
 	{ "vid", required_argument, NULL, OPT_VID },
 	{ "vsid", required_argument, NULL, OPT_VSID },
 	{ "fsid", required_argument, NULL, OPT_FSID },
+	{ "fullvsid", required_argument, NULL, OPT_FULLVSID },
 	{ "strategy", required_argument, NULL, OPT_STRATEGY },
 	{ "spartable", required_argument, NULL, OPT_SPARTABLE },
 	{ "packetlen", required_argument, NULL, OPT_PACKETLEN },
@@ -60,12 +64,15 @@ void usage(void)
 		"\tmkudffs [options] device [blocks-count]\n"
 		"Switches:\n"
 		"\t--help, -h\n"
+		"\t--label=, -l\n"
+		"\t--uuid=, -u\n"
 		"\t--blocksize=, -b\n"
 		"\t--udfrev=, -r\n"
 		"\t--lvid=\n"
 		"\t--vid=\n"
 		"\t--vsid=\n"
 		"\t--fsid=\n"
+		"\t--fullvsid=\n"
 		"\t--strategy=\n"
 		"\t--spartable=\n"
 		"\t--packetlen=\n"
@@ -90,7 +97,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	int media = DEFAULT_HD;
 	uint16_t packetlen = 0;
 
-	while ((retval = getopt_long(argc, argv, "b:r:h", long_options, NULL)) != EOF)
+	while ((retval = getopt_long(argc, argv, "l:u:b:r:h", long_options, NULL)) != EOF)
 	{
 		switch (retval)
 		{
@@ -179,36 +186,82 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 				break;
 			}
 			case OPT_LVID:
-			{
-				disc->udf_lvd[0]->logicalVolIdent[127] = encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, "", optarg, 128);
-				((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent[127] = encode_string(disc, ((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent, "", optarg, 128);
-				disc->udf_fsd->logicalVolIdent[127] = encode_string(disc, disc->udf_fsd->logicalVolIdent, "", optarg, 128);
-				if (!disc->udf_fsd->logicalVolIdent[127])
-				{
-					fprintf(stderr, "mkudffs: Error: lvid option is too long\n");
-					exit(1);
-				}
-				break;
-			}
 			case OPT_VID:
+			case OPT_LABEL:
+			case 'l':
 			{
-				disc->udf_pvd[0]->volIdent[31] = encode_string(disc, disc->udf_pvd[0]->volIdent, "", optarg, 32);
-				if (!disc->udf_pvd[0]->volIdent[31])
+				if (retval != OPT_VID)
 				{
-					fprintf(stderr, "mkudffs: Error: vid option is too long\n");
-					exit(1);
+					disc->udf_lvd[0]->logicalVolIdent[127] = encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, "", optarg, 128);
+					((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent[127] = encode_string(disc, ((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent, "", optarg, 128);
+					disc->udf_fsd->logicalVolIdent[127] = encode_string(disc, disc->udf_fsd->logicalVolIdent, "", optarg, 128);
+					if (!disc->udf_fsd->logicalVolIdent[127])
+					{
+						fprintf(stderr, "mkudffs: Error: lvid option is too long\n");
+						exit(1);
+					}
+				}
+				if (retval != OPT_LVID)
+				{
+					disc->udf_pvd[0]->volIdent[31] = encode_string(disc, disc->udf_pvd[0]->volIdent, "", optarg, 32);
+					if (!disc->udf_pvd[0]->volIdent[31])
+					{
+						fprintf(stderr, "mkudffs: Error: vid option is too long\n");
+						exit(1);
+					}
 				}
 				break;
 			}
 			case OPT_VSID:
 			{
 				char ts[17];
-				strncpy(ts, &disc->udf_pvd[0]->volSetIdent[1], 16);
+				if (disc->udf_pvd[0]->volSetIdent[0] == 16)
+					for (i = 0; i < 16; ++i)
+						ts[i] = disc->udf_pvd[0]->volSetIdent[2+(i*2)];
+				else
+					strncpy(ts, &disc->udf_pvd[0]->volSetIdent[1], 16);
 				ts[16] = 0;
 				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, ts, optarg, 128);
 				if (!disc->udf_pvd[0]->volSetIdent[127])
 				{
 					fprintf(stderr, "mkudffs: Error: vsid option is too long\n");
+					exit(1);
+				}
+				break;
+			}
+			case OPT_UUID:
+			case 'u':
+			{
+				char ts[110];
+				if (strlen(optarg) != 16)
+				{
+					fprintf(stderr, "mkudffs: Error: uuid is not 16 bytes length\n");
+					exit(1);
+				}
+				for (i = 0; i < 16; ++i)
+				{
+					if (!isalnum(optarg[i]))
+					{
+						fprintf(stderr, "mkudffs: Error: uuid is not alphanumeric\n");
+						exit(1);
+					}
+				}
+				strncpy(ts, &disc->udf_pvd[0]->volSetIdent[17], 109);
+				ts[109] = 0;
+				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, optarg, ts, 128);
+				if (!disc->udf_pvd[0]->volSetIdent[127])
+				{
+					fprintf(stderr, "mkudffs: Error: vsid option is too long\n");
+					exit(1);
+				}
+				break;
+			}
+			case OPT_FULLVSID:
+			{
+				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, "", optarg, 128);
+				if (!disc->udf_pvd[0]->volSetIdent[127])
+				{
+					fprintf(stderr, "mkudffs: Error: fullvsid option is too long\n");
 					exit(1);
 				}
 				break;

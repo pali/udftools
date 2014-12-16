@@ -192,8 +192,10 @@ int main(int argc, char *argv[])
 {
 	struct udf_disc	disc;
 	char filename[NAME_MAX];
+	char buf[128*3];
 	int fd;
 	int blocksize;
+	int len;
 
 	memset(&disc, 0x00, sizeof(disc));
 	udf_init_disc(&disc);
@@ -215,6 +217,22 @@ int main(int argc, char *argv[])
 	disc.head->blocks = get_blocks(fd, disc.blocksize, disc.head->blocks);
 	disc.write = write_func;
 	disc.write_data = &fd;
+
+	printf("filename=%s\n", filename);
+
+	memset(buf, 0, sizeof(buf));
+	len = decode_utf8(disc.udf_lvd[0]->logicalVolIdent, buf, 128);
+	buf[len] = 0;
+	printf("label=%s\n", buf);
+
+	memset(buf, 0, sizeof(buf));
+	len = decode_utf8(disc.udf_pvd[0]->volSetIdent, buf, 128);
+	buf[len] = 0;
+	printf("uuid=%.16s\n", buf);
+
+	printf("blocksize=%u\n", disc.blocksize);
+	printf("blocks=%u\n", disc.head->blocks);
+	printf("udfrev=%x\n", disc.udf_rev);
 
 	if (((disc.flags & FLAG_BRIDGE) && disc.head->blocks < 513) || disc.head->blocks < 281)
 	{

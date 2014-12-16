@@ -53,5 +53,8 @@ void parse_args(int, char *[], struct udf_disc *, char *, int *);
 #define OPT_MEDIA_TYPE	0x2009
 #define OPT_SPACE	0x200A
 #define OPT_AD		0x200B
+#define OPT_LABEL	0x200C
+#define OPT_UUID	0x200D
+#define OPT_FULLVSID	0x200E
 
 #endif /* _OPTIONS_H */
