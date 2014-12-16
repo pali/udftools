@@ -418,7 +418,7 @@ void setup_anchor(struct udf_disc *disc)
 
 void setup_partition(struct udf_disc *disc)
 {
-	struct udf_extent *vat, *pspace;
+	struct udf_extent *pspace;
 
 	pspace = next_extent(disc->head, PSPACE);
 	if (!pspace) {
@@ -948,12 +948,9 @@ void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct ud
 void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
 {
 	uint32_t offset = 0;
-	struct udf_desc *vtable, *desc;
+	struct udf_desc *vtable;
 	struct udf_data *data;
-	struct fileEntry *fe;
-	struct extendedFileEntry *efe;
-	struct fileIdentDesc *fid;
-	uint32_t *vsector, len;
+	uint32_t len;
 	struct virtualAllocationTable15 *vat15;
 	struct virtualAllocationTable20 *vat20;
 
