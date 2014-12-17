@@ -3,3 +3,9 @@ mkudffs_LDADD = $(top_builddir)/libudffs/libudffs.la
 mkudffs_SOURCES = main.c mkudffs.c defaults.c options.c mkudffs.h options.h ../include/ecma_167.h ../include/osta_udf.h ../include/libudffs.h ../include/defaults.h ../include/udf_endian.h ../include/bswap.h
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -D_LARGEFILE64_SOURCE
+
+install-exec-hook:
+	cd $(DESTDIR)$(sbindir) && ln -s mkudffs$(EXEEXT) mkfs.udf$(EXEEXT)
+
+uninstall-hook:
+	-rm $(DESTDIR)$(sbindir)/mkfs.udf$(EXEEXT)
