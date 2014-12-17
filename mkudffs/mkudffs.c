@@ -54,6 +54,9 @@ void udf_init_disc(struct udf_disc *disc)
 	if (disc->udf_rev >= 0x0200)
 		disc->flags |= FLAG_EFE;
 
+	disc->uid = -1;
+	disc->gid = -1;
+
 	gettimeofday(&tv, NULL);
 	tm = localtime(&tv.tv_sec);
 	altzone = timezone - 3600;
@@ -634,6 +637,17 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 
 	desc = udf_mkdir(disc, pspace, NULL, 0, offset, NULL);
 	offset = desc->offset;
+
+	if (disc->flags & FLAG_EFE)
+	{
+		((struct extendedFileEntry *)desc->data->buffer)->uid = cpu_to_le32(disc->uid);
+		((struct extendedFileEntry *)desc->data->buffer)->gid = cpu_to_le32(disc->gid);
+	}
+	else
+	{
+		((struct fileEntry *)desc->data->buffer)->uid = cpu_to_le32(disc->uid);
+		((struct fileEntry *)desc->data->buffer)->gid = cpu_to_le32(disc->gid);
+	}
 
 	if (disc->flags & FLAG_STRATEGY4096)
 		disc->udf_fsd->rootDirectoryICB.extLength = cpu_to_le32(disc->blocksize * 2);

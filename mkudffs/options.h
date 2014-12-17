@@ -56,5 +56,7 @@ void parse_args(int, char *[], struct udf_disc *, char *, int *);
 #define OPT_LABEL	0x200C
 #define OPT_UUID	0x200D
 #define OPT_FULLVSID	0x200E
+#define OPT_UID		0x200F
+#define OPT_GID		0x2010
 
 #endif /* _OPTIONS_H */

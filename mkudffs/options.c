@@ -42,6 +42,8 @@ struct option long_options[] = {
 	{ "vsid", required_argument, NULL, OPT_VSID },
 	{ "fsid", required_argument, NULL, OPT_FSID },
 	{ "fullvsid", required_argument, NULL, OPT_FULLVSID },
+	{ "uid", required_argument, NULL, OPT_UID },
+	{ "gid", required_argument, NULL, OPT_GID },
 	{ "strategy", required_argument, NULL, OPT_STRATEGY },
 	{ "spartable", required_argument, NULL, OPT_SPARTABLE },
 	{ "packetlen", required_argument, NULL, OPT_PACKETLEN },
@@ -73,6 +75,8 @@ void usage(void)
 		"\t--vsid=\n"
 		"\t--fsid=\n"
 		"\t--fullvsid=\n"
+		"\t--uid=\n"
+		"\t--gid=\n"
 		"\t--strategy=\n"
 		"\t--spartable=\n"
 		"\t--packetlen=\n"
@@ -274,6 +278,16 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 					fprintf(stderr, "mkudffs: Error: fsid option is too long\n");
 					exit(1);
 				}
+				break;
+			}
+			case OPT_UID:
+			{
+				disc->uid = strtol(optarg, NULL, 0);
+				break;
+			}
+			case OPT_GID:
+			{
+				disc->gid = strtol(optarg, NULL, 0);
 				break;
 			}
 			case OPT_STRATEGY:

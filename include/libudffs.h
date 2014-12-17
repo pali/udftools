@@ -94,6 +94,9 @@ struct udf_disc
 	uint8_t				blocksize_bits;
 	uint32_t			flags;
 
+	uint32_t			uid;
+	uint32_t			gid;
+
 	struct udf_sizing		sizing[UDF_ALLOC_TYPE_SIZE];
 
 	int				(*write)(struct udf_disc *, struct udf_extent *);
