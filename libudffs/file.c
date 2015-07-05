@@ -492,7 +492,7 @@ struct udf_desc *udf_mkdir(struct udf_disc *disc, struct udf_extent *pspace, uin
 #define uint(x) xuint(x)
 #define xuint(x) uint ## x ## _t
 
-inline unsigned long ffz(unsigned long word)
+static inline unsigned long ffz(unsigned long word)
 {
 	unsigned long result;
 
@@ -506,7 +506,7 @@ inline unsigned long ffz(unsigned long word)
 	return result;
 }
 
-inline unsigned long udf_find_next_one_bit (void * addr, unsigned long size, unsigned long offset)
+static inline unsigned long udf_find_next_one_bit (void * addr, unsigned long size, unsigned long offset)
 {
 	uintBPL * p = ((uintBPL *) addr) + (offset / BITS_PER_LONG);
 	uintBPL result = offset & ~(BITS_PER_LONG-1);
@@ -543,7 +543,7 @@ found_middle:
 	return result + ffz(~tmp);
 }
 
-inline unsigned long udf_find_next_zero_bit(void * addr, unsigned long size, unsigned long offset)
+static inline unsigned long udf_find_next_zero_bit(void * addr, unsigned long size, unsigned long offset)
 {
 	uintBPL * p = ((uintBPL *) addr) + (offset / BITS_PER_LONG);
 	uintBPL result = offset & ~(BITS_PER_LONG-1);

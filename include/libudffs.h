@@ -171,10 +171,6 @@ struct udf_desc *set_desc(struct udf_disc *, struct udf_extent *, uint16_t, uint
 void append_data(struct udf_desc *, struct udf_data *);
 struct udf_data *alloc_data(void *, int);
 
-/* desc.c */
-inline struct impUseVolDescImpUse *query_iuvdiu(struct udf_disc *);
-inline struct logicalVolIntegrityDescImpUse *query_lvidiu(struct udf_disc *);
-
 /* file.c */
 tag query_tag(struct udf_disc *, struct udf_extent *, struct udf_desc *, uint16_t);
 extern tag udf_query_tag(struct udf_disc *, uint16_t, uint16_t, uint32_t, struct udf_data *, uint16_t);
@@ -195,6 +191,16 @@ static inline void clear_bits(uint8_t *bitmap, uint32_t offset, uint64_t length)
 	{
 		bitmap[(length+offset-1)/8] &= ~(1 << ((offset+length-1)%8));
 	}
+}
+
+static inline struct impUseVolDescImpUse *query_iuvdiu(struct udf_disc *disc)
+{
+	return (struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse;
+}
+
+static inline struct logicalVolIntegrityDescImpUse *query_lvidiu(struct udf_disc *disc)
+{
+	return (struct logicalVolIntegrityDescImpUse *)&(disc->udf_lvid->impUse[le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) * 2 * sizeof(uint32_t)]);
 }
 
 #endif /* __LIBUDFFS_H */
