@@ -19,6 +19,10 @@
  */
 #define CDROM_DEVICE	"/dev/scd1"
 
+#ifndef HZ
+#define HZ sysconf(_SC_CLK_TCK)
+#endif
+
 /*
  * adjust these values if commands are timing out before completion
  */
