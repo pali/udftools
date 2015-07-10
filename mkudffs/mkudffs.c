@@ -530,7 +530,10 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		use->lengthAllocDescs = cpu_to_le32(sizeof(short_ad));
 		sad = (short_ad *)&use->allocDescs[0];
 		rem = (long long)pspace->blocks * disc->blocksize - length;
-		if (disc->blocksize - sizeof(struct unallocSpaceEntry) < (rem / max) * sizeof(short_ad))
+		if (disc->blocksize - sizeof(struct unallocSpaceEntry) < (rem / max) * sizeof(short_ad)) {
+			fprintf(stderr, "Creation of so large filesystems with unalloc table not supported.\n");
+			exit(1);
+		}
 		pos = offset + (length/disc->blocksize);
 		printf("pos=%d, rem=%lld\n", pos, rem);
 		if (rem > 0x3FFFFFFF)
