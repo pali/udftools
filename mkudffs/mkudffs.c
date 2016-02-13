@@ -687,16 +687,8 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	if (next_extent(disc->head, STABLE) && next_extent(disc->head, SSPACE))
 	{
 		struct udf_desc *nat;
-		if (disc->udf_rev == 0x0150)
-		{
-			struct fileEntry *fe;
-			nat = udf_create(disc, pspace, "\x08" "Non-Allocatable Space", 22, offset+1, desc, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_SYSTEM);
-			fe = (struct fileEntry *)nat->data->buffer;
-			fe->icbTag.flags = cpu_to_le16((le16_to_cpu(fe->icbTag.flags) & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT);
-			fe->descTag = query_tag(disc, pspace, nat, 1);
-			offset = nat->offset;
-		}
-		else
+
+		if (disc->flags & FLAG_EFE)
 		{
 			struct extendedFileEntry *efe;
 			struct udf_desc *ss;
@@ -718,7 +710,15 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 			efe->descTag = query_tag(disc, pspace, nat, 1);
 			offset = nat->offset;
 		}
-
+		else
+		{
+			struct fileEntry *fe;
+			nat = udf_create(disc, pspace, "\x08" "Non-Allocatable Space", 22, offset+1, desc, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_SYSTEM);
+			fe = (struct fileEntry *)nat->data->buffer;
+			fe->icbTag.flags = cpu_to_le16((le16_to_cpu(fe->icbTag.flags) & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT);
+			fe->descTag = query_tag(disc, pspace, nat, 1);
+			offset = nat->offset;
+		}
 	}
 
 	desc = udf_mkdir(disc, pspace, "\x08" "lost+found", 11, offset+1, desc);
