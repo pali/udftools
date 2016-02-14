@@ -161,15 +161,22 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 	else
 		disc->udf_rev = udf_rev;
 
-	if (disc->udf_rev < 0x0200)
+	if (disc->udf_rev >= 0x0200)
+
+	{
+		disc->flags |= FLAG_EFE;
+		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR03);
+	}
+	else if (disc->udf_rev == 0x0150)
 	{
 		disc->flags &= ~FLAG_EFE;
 		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
 	}
-	else
+	else // 0x0102
 	{
-		disc->flags |= FLAG_EFE;
-		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR03);
+		disc->flags &= ~FLAG_VAT;
+		disc->flags &= ~FLAG_EFE;
+		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
 	}
 
 	((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev); 
