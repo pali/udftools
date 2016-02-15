@@ -437,9 +437,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 
 	if (le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) == 0)
 	{
-		if (media == DEFAULT_CDRW || media == DEFAULT_DVDRW)
+		if ((media == DEFAULT_CDRW || media == DEFAULT_DVDRW) && (disc->udf_rev != 0x0102))
 			add_type2_sparable_partition(disc, 0, 2, packetlen);
-		else if (media == DEFAULT_CDR)
+		else if ((media == DEFAULT_CDR) && (disc->udf_rev != 0x0102))
 		{
 			add_type1_partition(disc, 0);
 			add_type2_virtual_partition(disc, 0);
