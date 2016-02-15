@@ -194,12 +194,10 @@ int main(int argc, char *argv[])
 	char filename[NAME_MAX];
 	char buf[128*3];
 	int fd;
-	int blocksize;
+	int blocksize = -1;
 	int len;
 
-	memset(&disc, 0x00, sizeof(disc));
 	udf_init_disc(&disc);
-	blocksize = -1;
 	parse_args(argc, argv, &disc, filename, &blocksize);
 #ifdef HAVE_OPEN64
 	fd = open64(filename, O_RDWR | O_CREAT, 0660);
