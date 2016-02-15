@@ -51,8 +51,6 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->blocksize_bits = 11;
 	disc->udf_rev = le16_to_cpu(default_lvidiu.minUDFReadRev);
 	disc->flags = FLAG_UTF8 | FLAG_CLOSED;
-	if (disc->udf_rev >= 0x0200)
-		disc->flags |= FLAG_EFE;
 
 	disc->uid = -1;
 	disc->gid = -1;
