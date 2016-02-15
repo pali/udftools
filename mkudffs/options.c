@@ -457,6 +457,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
 		if (disc->sizing[i].denomSize == 0)
-			memcpy(&disc->sizing[i], &default_sizing[media][i], sizeof(default_sizing[media][i]));
+			disc->sizing[i] = default_sizing[media][i];
 	}
 }
