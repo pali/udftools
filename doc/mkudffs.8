@@ -39,7 +39,10 @@ is used to create a UDF filesystem on a device (usually a disk).
 \fI/dev/hdX\fP). \fIblocks-count\fP is the number of blocks on the device.
 If omitted,
 .B mkudffs
-automagically figures the file system size.
+automagically figures the file system size. The order of options matters.
+Ident string options must be first and options to override default
+settings implied by the media-type or UDF revison should be after
+the option they are overriding.
 
 .SH OPTIONS
 .TP
@@ -143,6 +146,9 @@ DVD (Digital Versatile Disc)
 .TP
 dvdram
 DVD\-RAM (Digital Versatile Disc\-Random Access Memory)
+.TP
+dvdrw
+DVD\-RW (DVD Read\-Write)
 .TP
 worm
 WORM (Write Once Ready Many)
