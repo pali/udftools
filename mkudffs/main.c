@@ -199,11 +199,7 @@ int main(int argc, char *argv[])
 
 	udf_init_disc(&disc);
 	parse_args(argc, argv, &disc, filename, &blocksize);
-#ifdef HAVE_OPEN64
-	fd = open64(filename, O_RDWR | O_CREAT, 0660);
-#else
-	fd = open(filename, O_RDWR | O_CREAT | O_LARGEFILE, 0660);
-#endif
+	fd = open(filename, O_RDWR | O_CREAT, 0660);
 	if (fd == -1) {
 		fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, strerror(errno));
 		exit(1);
