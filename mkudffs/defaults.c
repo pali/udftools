@@ -424,10 +424,10 @@ struct fileEntry default_fe =
 {
 	descTag :
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_LVID),
+		tagIdent : constant_cpu_to_le16(TAG_IDENT_FE),
 		descVersion : constant_cpu_to_le16(3),
 		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
+		descCRC : constant_cpu_to_le16(sizeof(struct fileEntry) - sizeof(tag)),
 	},
 	icbTag :
 	{
@@ -457,10 +457,10 @@ struct extendedFileEntry default_efe =
 {
 	descTag :
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_LVID),
+		tagIdent : constant_cpu_to_le16(TAG_IDENT_EFE),
 		descVersion : constant_cpu_to_le16(3),
 		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
+		descCRC : constant_cpu_to_le16(sizeof(struct extendedFileEntry) - sizeof(tag)),
 	},
 	icbTag :
 	{
