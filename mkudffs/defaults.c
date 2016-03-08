@@ -77,7 +77,7 @@ struct primaryVolDesc default_pvd =
 	volIdent : "\x08" "LinuxUDF",
 	volSeqNum : constant_cpu_to_le16(1),
 	maxVolSeqNum : constant_cpu_to_le16(1),
-	interchangeLvl : constant_cpu_to_le16(2),
+	interchangeLvl : constant_cpu_to_le16(3),
 	maxInterchangeLvl : constant_cpu_to_le16(3),
 	charSetList : constant_cpu_to_le32(CS0),
 	maxCharSetList : constant_cpu_to_le32(CS0),
@@ -390,7 +390,7 @@ struct fileSetDesc default_fsd =
 		tagSerialNum : constant_cpu_to_le16(1),
 		descCRC : constant_cpu_to_le16(sizeof(struct fileSetDesc) - sizeof(tag)),
 	},
-	interchangeLvl : constant_cpu_to_le16(2),
+	interchangeLvl : constant_cpu_to_le16(3),
 	maxInterchangeLvl : constant_cpu_to_le16(3),
 	charSetList : constant_cpu_to_le32(CS0),
 	maxCharSetList : constant_cpu_to_le32(CS0),
@@ -441,6 +441,7 @@ struct fileEntry default_fe =
 	fileLinkCount : constant_cpu_to_le16(0),
 	informationLength : constant_cpu_to_le64(0),
 	logicalBlocksRecorded : constant_cpu_to_le64(0),
+	checkpoint : constant_cpu_to_le32(1),
 	impIdent :
 	{
 		ident : UDF_ID_DEVELOPER,
@@ -474,6 +475,7 @@ struct extendedFileEntry default_efe =
 	informationLength : constant_cpu_to_le64(0),
 	objectSize : constant_cpu_to_le64(0),
 	logicalBlocksRecorded : constant_cpu_to_le64(0),
+	checkpoint : constant_cpu_to_le32(1),
 	impIdent :
 	{
 		ident : UDF_ID_DEVELOPER,
