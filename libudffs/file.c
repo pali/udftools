@@ -392,6 +392,10 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 			else
 				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 1);
 		}
+		efe->icbTag.fileType = filetype;
+		efe->icbTag.flags = cpu_to_le16(le16_to_cpu(efe->icbTag.flags) | flags);
+		efe->uid = cpu_to_le32(disc->uid);
+		efe->gid = cpu_to_le32(disc->gid);
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
 			efe->icbTag.strategyType = cpu_to_le16(4096);
@@ -410,13 +414,10 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 			efe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(0);
 			efe->icbTag.parentICBLocation.partitionReferenceNum = cpu_to_le16(0);
 		}
-		efe->icbTag.fileType = filetype;
-		efe->icbTag.flags = cpu_to_le16(le16_to_cpu(efe->icbTag.flags) | flags);
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
 			query_lvidiu(disc)->numDirs = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numDirs)+1);
 		else if (filetype != ICBTAG_FILE_TYPE_STREAMDIR && filetype != ICBTAG_FILE_TYPE_VAT20 && filetype != ICBTAG_FILE_TYPE_UNDEF && !(flags & ICBTAG_FLAG_STREAM))
 			query_lvidiu(disc)->numFiles = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numFiles)+1);
-		efe->descTag = query_tag(disc, pspace, desc, 1);
 	}
 	else
 	{
@@ -445,6 +446,10 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 			fe->icbTag.strategyParameter = cpu_to_le16(1);
 			fe->icbTag.numEntries = cpu_to_le16(2);
 		}
+		fe->icbTag.fileType = filetype;
+		fe->icbTag.flags = cpu_to_le16(le16_to_cpu(fe->icbTag.flags) | flags);
+		fe->uid = cpu_to_le32(disc->uid);
+		fe->gid = cpu_to_le32(disc->gid);
 		if (parent)
 		{
 //			fe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(parent->offset);
@@ -457,13 +462,10 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 			fe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(0);
 			fe->icbTag.parentICBLocation.partitionReferenceNum = cpu_to_le16(0);
 		}
-		fe->icbTag.fileType = filetype;
-		fe->icbTag.flags = cpu_to_le16(le16_to_cpu(fe->icbTag.flags) | flags);
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
 			query_lvidiu(disc)->numDirs = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numDirs)+1);
 		else if (filetype != ICBTAG_FILE_TYPE_STREAMDIR && filetype != ICBTAG_FILE_TYPE_VAT20 && filetype != ICBTAG_FILE_TYPE_UNDEF && !(flags & ICBTAG_FLAG_STREAM))
 			query_lvidiu(disc)->numFiles = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numFiles)+1);
-		fe->descTag = query_tag(disc, pspace, desc, 1);
 	}
 
 	return desc;
@@ -475,10 +477,9 @@ struct udf_desc *udf_mkdir(struct udf_disc *disc, struct udf_extent *pspace, uin
 
 	desc = udf_create(disc, pspace, name, length, offset, parent, FID_FILE_CHAR_DIRECTORY, ICBTAG_FILE_TYPE_DIRECTORY, 0);
 
-	if (parent)
-		insert_fid(disc, pspace, parent, desc, NULL, 0, FID_FILE_CHAR_DIRECTORY | FID_FILE_CHAR_PARENT);
-	else
-		insert_fid(disc, pspace, desc, desc, NULL, 0, FID_FILE_CHAR_DIRECTORY | FID_FILE_CHAR_PARENT);
+	if (!parent)
+		parent = desc; // the root directory is it's own parent
+	insert_fid(disc, pspace, parent, desc, NULL, 0, FID_FILE_CHAR_DIRECTORY | FID_FILE_CHAR_PARENT);
 	
 	return desc;
 }
