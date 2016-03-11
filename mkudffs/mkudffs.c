@@ -715,6 +715,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 		}
 	}
 
+#if 0 // this works fine if you really want a lost+find directory on disc
 	desc = udf_mkdir(disc, pspace, "\x08" "lost+found", 11, offset+1, desc);
 	offset = desc->offset;
 
@@ -740,6 +741,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 			offset = tdesc->offset;
 		}
 	}
+#endif
 
 	if (disc->flags & FLAG_STRATEGY4096)
 		return 4;
