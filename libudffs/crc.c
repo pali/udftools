@@ -26,6 +26,11 @@
  *	Each contributing author retains all rights to their own work.
  */
 
+/**
+ * @file
+ * libudffs CRC functions
+ */
+
 #include "ecma_167.h"
 
 static uint16_t crc_table[256] = {

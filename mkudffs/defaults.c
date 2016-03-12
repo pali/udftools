@@ -20,45 +20,49 @@
  *
  */
 
-#include "mkudffs.h"
+/**
+ * @file
+ * mkudffs default structure initializers
+ */
 
-/* VDS_SIZE, LVID_SIZE, STABLE_SIZE, SSPACE_SIZE, PSPACE_SIZE */
+#include "mkudffs.h"
 
 struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 {
-	{
-		{	1,	0,	1,	16	}, // HD, DVDROM, DVDRAM
-		{	1,	0,	1,	1	},
-		{	1,	0,	1,	0	},
-		{	1,	0,	1,	0	},
-		{	1,	0,	1,	0	},
+//			align,	numSize,denomSize,minSize
+	{ // Media 0 = HD, DVDROM, DVDRAM
+		{	1,	0,	1,	16	}, // VDS_SIZE		Volume Descriptor Set
+		{	1,	0,	1,	1	}, // LVID_SIZE		Logical Volume Integrity Descriptor
+		{	1,	0,	1,	0	}, // STABLE_SIZE	Sparing Table
+		{	1,	0,	1,	0	}, // SSPACE_SIZE	Sparing Space
+		{	1,	0,	1,	0	}, // PSPACE_SIZE	Partition Space
 	},
-	{
-		{	1,	0,	1,	255	}, // WORM, MO
+	{ // Media 1 = WORM, MO
+		{	1,	0,	1,	255	},
 		{	1,	1,	50,	10	},
 		{	1,	0,	1,	0	},
 		{	1,	0,	1,	0	},
 		{	1,	0,	1,	0	},
 	},
-	{
-		{	32,	0,	1,	32	}, // CDRW
+	{ // Media 2 = CDRW
+		{	32,	0,	1,	32	},
 		{	32,	0,	1,	32	},
 		{	32,	0,	1,	32	},
 		{	32,	0,	1,	1024	},
 		{	32,	0,	1,	0	},
 	},
-	{
-		{	1,	0,	1,	16	}, // CDR
+	{ // Media 3 = CDR
+		{	1,	0,	1,	16	},
 		{	1,	0,	1,	1	},
 		{	1,	0,	1,	0	},
 		{	1,	0,	1,	0	},
 		{	1,	0,	1,	0	},
 	},
-	{
-		{       16,     0,      1,      16      }, // DVDRW
+	{ // Media 4 = DVDRW
 		{       16,     0,      1,      16      },
 		{       16,     0,      1,      16      },
-		{       16,     0,      1,      1824    }, // minSize = 1824, typo?
+		{       16,     0,      1,      16      },
+		{       16,     0,      1,      1024    },
 		{       16,     0,      1,      0       },
 	}
 };

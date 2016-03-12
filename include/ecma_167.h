@@ -32,6 +32,11 @@
  * SUCH DAMAGE.
  */
 
+/**
+ * @file
+ * ECMA-167r3 defines and structure definitions
+ */
+
 #include <inttypes.h>
 
 #ifndef _ECMA_167_H

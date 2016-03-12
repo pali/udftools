@@ -20,12 +20,64 @@
  *
  */
 
+/**
+ * @file
+ * libudffs file and directory handling functions
+ */
+
 #include <malloc.h>
 
 #include "libudffs.h"
 #include "defaults.h"
 #include "config.h"
 
+/**
+ * For a more detailed discussion of partition and extends see the comments
+ * at the top of extent.c in this directory.
+ *
+ * An information control block (ICB) is an on-disc structure used to
+ * store information about files such as allocation descriptors. The
+ * structure of the ICB hierarchy can be quite complex for write-once
+ * media which use various strategies of linked lists to preserve multiple
+ * historial file versions. Strategy type 4 is normally used on rewritable
+ * media where an ICB containing 'direct entries' can be updated as needed.
+ *
+ * Every file has a file entry/extended file entry (tag:FE/EFE) udf_descriptor
+ * which is in the root of the ICB hierarchy for the file. For normal files the
+ * FE/EFE can be thought of as the 'inode' for the file as it contains the
+ * location of the on-disc extents of the file. Small amounts of data can be
+ * recorded directly in the allocation descriptor area of the FE/EFE ICB if it
+ * is deemed useful. This 'INICB' feature is used for directories with strategy
+ * type 4.
+ *
+ * A file identifier descriptor (tag:FID) udf_descriptor is a 40+ byte structure
+ * recorded in a directory file to describe the parent directory and any files
+ * or subdirectories. The unnamed parent entry is always recorded first and the
+ * parent of the root directory is the root directory, generally referred to
+ * as '<root>'. All other files/directories must have a non-zero length name.
+ * Along with the name and attributes of the file a FID contains the location
+ * of the file FE/EFE 'inode' ICB. While not required, this may be recorded
+ * adjacent to the file data on-disc for convenience.
+ *
+ * The notation tag:FE/EFE means a udf_descriptor with an ident of either
+ * TAG_IDENT_FE or TAG_IDENT_EFE with the on-disc format FE/EFE structure
+ * stored in the first udf_data item on the udf_data list of that udf_descriptor.
+ * The 16-byte on-disc format tag will be at the beginning of that structure.
+ * Additional information such as the FID structure for directory entries will
+ * be stored in subsequent entries on the list.
+ */
+
+/**
+ * @brief create an on-disc format tag for a udf_descriptor of a
+ *        udf_extent with any space_type. For type:PSPACE the block
+ *        number will be relative to to the first block of the partition,
+ *        otherwise it will be relative to the first block of the media
+ * @param disc the udf_disc
+ * @param ext the udf_extent containing the udf_descriptor
+ * @param desc the udf_descriptor
+ * @param SerialNum the serial number to assign
+ * @return the tag
+ */
 tag query_tag(struct udf_disc *disc, struct udf_extent *ext, struct udf_desc *desc, uint16_t SerialNum)
 {
 	tag ret;
@@ -62,6 +114,16 @@ tag query_tag(struct udf_disc *disc, struct udf_extent *ext, struct udf_desc *de
 	return ret;
 }
 
+/**
+ * @brief create an on-disc format tag from udf_descriptor components
+ * @param disc the udf_disc
+ * @param Ident the tag:Ident to assign
+ * @param SerialNum the serial number to assign
+ * @param Location the block number of the on-disc tag:Ident udf_descriptor
+ * @param data the udf_data list head
+ * @param length the summed data length
+ * @return the tag
+ */
 tag udf_query_tag(struct udf_disc *disc, uint16_t Ident, uint16_t SerialNum, uint32_t Location, struct udf_data *data, uint16_t length)
 {
 	tag ret;
@@ -97,15 +159,23 @@ tag udf_query_tag(struct udf_disc *disc, uint16_t Ident, uint16_t SerialNum, uin
 	return ret;
 }
 
+/**
+ * @brief append a udf_data item containing a FID in the payload to the
+ *        udf_data list for a directory tag:FE/EFE udf_descriptor
+ * @param disc the udf_disc
+ * @param pspace the type:PSPACE udf_extent for on-disc allocations
+ * @param desc the file tag:FE/EFE udf_descriptor (for offset)
+ * @param parent the directory tag:FE/EFE udf_descriptor
+ * @param data the udf_data item containing the FID
+ * @return the block number of the on-disc tag:FID udf_desciptor
+ */
 int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_desc *parent, struct udf_data *data)
 {
 	uint32_t block = 0;
 
 	if (disc->flags & FLAG_EFE)
 	{
-		struct extendedFileEntry *efe;
-
-		efe = (struct extendedFileEntry *)parent->data->buffer;
+		struct extendedFileEntry *efe = (struct extendedFileEntry *)parent->data->buffer;
 
 		if ((le16_to_cpu(efe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB)
 		{
@@ -177,9 +247,7 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 	}
 	else
 	{
-		struct fileEntry *fe;
-
-		fe = (struct fileEntry *)parent->data->buffer;
+		struct fileEntry *fe = (struct fileEntry *)parent->data->buffer;
 
 		if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB)
 		{
@@ -252,13 +320,19 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 	return block;
 }
 
+/**
+ * @brief append a udf_data list to a (hidden) VAT file ???
+ * @param disc the udf_disc
+ * @param pspace the type:PSPACE udf_extent for on-disc allocations
+ * @param desc the file tag:FE/EFE udf_descriptor of a VAT file
+ * @param data the udf_data list head
+ * @return void
+ */
 void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_data *data)
 {
 	if (disc->flags & FLAG_EFE)
 	{
-		struct extendedFileEntry *efe;
-
-		efe = (struct extendedFileEntry *)desc->data->buffer;
+		struct extendedFileEntry *efe = (struct extendedFileEntry *)desc->data->buffer;
 
 		if ((le16_to_cpu(efe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB)
 		{
@@ -270,9 +344,7 @@ void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_de
 	}
 	else
 	{
-		struct fileEntry *fe;
-
-		fe = (struct fileEntry *)desc->data->buffer;
+		struct fileEntry *fe = (struct fileEntry *)desc->data->buffer;
 
 		if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB)
 		{
@@ -285,19 +357,37 @@ void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_de
 	*(tag *)desc->data->buffer = query_tag(disc, pspace, desc, 1);
 }
 
+/**
+ * @brief helper function to compute tag:FID udf_descriptor size and padding
+ *        to a multiple of 4 bytes
+ * @param length the length of the file name in bytes
+ * @return the length of the required memory allocation
+ */
 uint32_t compute_ident_length(uint32_t length)
 {
 	return length + (4 - (length % 4)) %4;
 }
 
-void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_desc *parent, uint8_t *name, uint8_t length, uint8_t fc)
+/**
+ * @brief create a FID and add it to a directory then increment the file
+ *        link count
+ * @param disc the udf_disc
+ * @param pspace the type:PSPACE udf_extent for on-disc allocations
+ * @param desc the file tag:FE/EFE udf_descriptor
+ * @param parent the directory tag:FE/EFE udf_descriptor
+ * @param name the file name - the first byte is the OSTA unicode compression type
+ * @param length the length of the file name in bytes
+ * @param filechar the file characteristics
+ * @return void
+ */
+void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_desc *parent, uint8_t *name, uint8_t length, uint8_t filechar)
 {
 	struct udf_data *data;
 	struct fileIdentDesc *fid;
 	int ilength = compute_ident_length(sizeof(struct fileIdentDesc) + length);
 	int offset;
 	uint64_t uniqueID;
-	
+
 	data = alloc_data(NULL, ilength);
 	fid = data->buffer;
 
@@ -306,9 +396,8 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 
 	if (disc->flags & FLAG_EFE)
 	{
-		struct extendedFileEntry *efe;
+		struct extendedFileEntry *efe = (struct extendedFileEntry *)desc->data->buffer;
 
-		efe = (struct extendedFileEntry *)desc->data->buffer;
 		efe->fileLinkCount = cpu_to_le16(le16_to_cpu(efe->fileLinkCount) + 1);
 		uniqueID = le64_to_cpu(efe->uniqueID);
 
@@ -322,7 +411,7 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 		fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
 		*(uint32_t *)((struct allocDescImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
 		fid->fileVersionNum = cpu_to_le16(1);
-		fid->fileCharacteristics = fc;
+		fid->fileCharacteristics = filechar;
 		fid->lengthFileIdent = length;
 		fid->lengthOfImpUse = cpu_to_le16(0);
 		memcpy(fid->fileIdent, name, length);
@@ -333,9 +422,8 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 	}
 	else
 	{
-		struct fileEntry *fe;
+		struct fileEntry *fe = (struct fileEntry *)desc->data->buffer;
 
-		fe = (struct fileEntry *)desc->data->buffer;
 		fe->fileLinkCount = cpu_to_le16(le16_to_cpu(fe->fileLinkCount) + 1);
 		uniqueID = le64_to_cpu(fe->uniqueID);
 
@@ -349,18 +437,30 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 		fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
 		*(uint32_t *)((struct allocDescImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
 		fid->fileVersionNum = cpu_to_le16(1);
-		fid->fileCharacteristics = fc;
+		fid->fileCharacteristics = filechar;
 		fid->lengthFileIdent = length;
 		fid->lengthOfImpUse = cpu_to_le16(0);
 		memcpy(fid->fileIdent, name, length);
 		fid->descTag = udf_query_tag(disc, TAG_IDENT_FID, 1, le32_to_cpu(fid->descTag.tagLocation), data, ilength);
-
 		fe->informationLength = cpu_to_le64(le64_to_cpu(fe->informationLength) + ilength);
 	}
 	*(tag *)desc->data->buffer = query_tag(disc, pspace, desc, 1);
 	*(tag *)parent->data->buffer = query_tag(disc, pspace, parent, 1);
 }
 
+/**
+ * @brief create a file tag:FE/EFE udf_descriptor and add the file to a directory
+ * @param disc the udf_disc
+ * @param pspace the type:PSPACE udf_extent for on-disc allocations
+ * @param name the file name - the first byte is the OSTA unicode compression type
+ * @param length the length of the file name in bytes
+ * @param offset the starting block number to search for on-disc allocations
+ * @param parent the directory tag:FE/EFE udf_descriptor
+ * @param filechar file characteristics
+ * @param filetype the file type
+ * @param flags the file flags
+ * @return the in-memory address of file tag:FE/EFE udf_descriptor
+ */
 struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, uint8_t *name, uint8_t length, uint32_t offset, struct udf_desc *parent, uint8_t filechar, uint8_t filetype, uint16_t flags)
 {
 	struct udf_desc *desc;
@@ -392,19 +492,19 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 			else
 				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 1);
 		}
-		efe->icbTag.fileType = filetype;
-		efe->icbTag.flags = cpu_to_le16(le16_to_cpu(efe->icbTag.flags) | flags);
-		efe->uid = cpu_to_le32(disc->uid);
-		efe->gid = cpu_to_le32(disc->gid);
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
 			efe->icbTag.strategyType = cpu_to_le16(4096);
 			efe->icbTag.strategyParameter = cpu_to_le16(1);
 			efe->icbTag.numEntries = cpu_to_le16(2);
 		}
+		efe->icbTag.fileType = filetype;
+		efe->icbTag.flags = cpu_to_le16(le16_to_cpu(efe->icbTag.flags) | flags);
+		efe->uid = cpu_to_le32(disc->uid);
+		efe->gid = cpu_to_le32(disc->gid);
 		if (parent)
 		{
-//			efe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(parent->offset);
+//			efe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(parent->offset); // for strategy type != 4
 			efe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(0);
 			efe->icbTag.parentICBLocation.partitionReferenceNum = cpu_to_le16(0);
 			insert_fid(disc, pspace, desc, parent, name, length, filechar);
@@ -452,7 +552,7 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 		fe->gid = cpu_to_le32(disc->gid);
 		if (parent)
 		{
-//			fe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(parent->offset);
+//			fe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(parent->offset); // for strategy type != 4
 			fe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(0);
 			fe->icbTag.parentICBLocation.partitionReferenceNum = cpu_to_le16(0);
 			insert_fid(disc, pspace, desc, parent, name, length, filechar);
@@ -471,16 +571,25 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 	return desc;
 }
 
+/**
+ * @brief create a directory tag:FE/EFE udf_descriptor and add the directory to
+ *        a parent directory
+ * @param disc the udf_disc
+ * @param pspace the type:PSPACE udf_extent for on-disc allocations
+ * @param name the file name - the first byte is the OSTA unicode compression type
+ * @param length the length of the file name in bytes
+ * @param offset the starting block number to search for on-disc allocations
+ * @param parent the parent directory tag:FE/EFE udf_descriptor
+ * @return the in-memory address of the directory tag:FE/EFE udf_descriptor
+ */
 struct udf_desc *udf_mkdir(struct udf_disc *disc, struct udf_extent *pspace, uint8_t *name, uint8_t length, uint32_t offset, struct udf_desc *parent)
 {
-	struct udf_desc *desc;
-
-	desc = udf_create(disc, pspace, name, length, offset, parent, FID_FILE_CHAR_DIRECTORY, ICBTAG_FILE_TYPE_DIRECTORY, 0);
+	struct udf_desc *desc = udf_create(disc, pspace, name, length, offset, parent, FID_FILE_CHAR_DIRECTORY, ICBTAG_FILE_TYPE_DIRECTORY, 0);
 
 	if (!parent)
 		parent = desc; // the root directory is it's own parent
-	insert_fid(disc, pspace, parent, desc, NULL, 0, FID_FILE_CHAR_DIRECTORY | FID_FILE_CHAR_PARENT);
-	
+	insert_fid(disc, pspace, parent, desc, NULL, 0, FID_FILE_CHAR_DIRECTORY | FID_FILE_CHAR_PARENT); // directory parent back links are unnamed
+
 	return desc;
 }
 
@@ -493,6 +602,11 @@ struct udf_desc *udf_mkdir(struct udf_disc *disc, struct udf_extent *pspace, uin
 #define uint(x) xuint(x)
 #define xuint(x) uint ## x ## _t
 
+/**
+ * @brief utility function to find the first zero bit in an unsigned long
+ * @param word the unsigned long to search
+ * @return the 0 based bit position from the lsb or BITS_PER_LONG
+ */
 static inline unsigned long ffz(unsigned long word)
 {
 	unsigned long result;
@@ -507,6 +621,13 @@ static inline unsigned long ffz(unsigned long word)
 	return result;
 }
 
+/**
+ * @brief find the first one bit in a space bitmap
+ * @param addr the in-memory address of the space bitmap
+ * @param size the size of the space bitmap in bits
+ * @param offset the starting bit position for the search
+ * @return the 0 based bit position or size
+ */
 static inline unsigned long udf_find_next_one_bit (void * addr, unsigned long size, unsigned long offset)
 {
 	uintBPL * p = ((uintBPL *) addr) + (offset / BITS_PER_LONG);
@@ -544,6 +665,13 @@ found_middle:
 	return result + ffz(~tmp);
 }
 
+/**
+ * @brief find the first zero bit in a space bitmap
+ * @param addr the in-memory address of the space bitmap
+ * @param size the size of the space bitmap in bits
+ * @param offset the starting bit position for the search
+ * @return the 0 based bit position or size
+ */
 static inline unsigned long udf_find_next_zero_bit(void * addr, unsigned long size, unsigned long offset)
 {
 	uintBPL * p = ((uintBPL *) addr) + (offset / BITS_PER_LONG);
@@ -583,6 +711,15 @@ found_middle:
 	return result + ffz(tmp);
 }
 
+/**
+ * @brief allocate an aligned space bitmap on-disc
+ * @param disc the udf disc
+ * @param pspace the type:PSPACE udf_extent for on-disc allocations
+ * @param bitmap the space bitmap tag:USB/FSB udf_descriptor
+ * @param start the starting block number to search for on-disc allocations
+ * @param blocks the number of blocks in the space bitmap
+ * @return the starting block number of the on-disc aligned space bitmap
+ */
 int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *bitmap, uint32_t start, uint32_t blocks)
 {
 	uint32_t alignment = disc->sizing[PSPACE_SIZE].align;
@@ -604,6 +741,15 @@ int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_extent *pspace, st
 	return start;
 }
 
+/**
+ * @brief allocate a space table on-disc
+ * @param disc the udf_disc
+ * @param pspace the type:PSPACE udf_extent for on-disc allocations
+ * @param table the space table tag:USE/FSE udf_descriptor
+ * @param start the starting block offset for the allocation search
+ * @param blocks the number of blocks in the space table
+ * @return the starting block number of the on-disc space table
+ */
 int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *table, uint32_t start, uint32_t blocks)
 {
 	uint32_t alignment = disc->sizing[PSPACE_SIZE].align;
@@ -656,6 +802,13 @@ int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_extent *pspace, str
 	return start;
 }
 
+/**
+ * @brief allocate blocks on-disc
+ * @param disc the udf_disc
+ * @param start the starting block offset for the allocation search
+ * @param blocks the number of blocks to allocate
+ * @return the starting block number of the on-disc allocation
+ */
 int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t start, uint32_t blocks)
 {
 	struct udf_desc *desc;

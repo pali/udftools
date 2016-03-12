@@ -20,6 +20,11 @@
  *
  */
 
+/**
+ * @file
+ * libudffs unicode handling functions
+ */
+
 #include "libudffs.h"
 #include "defaults.h"
 #include "config.h"

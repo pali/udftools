@@ -20,6 +20,11 @@
  *
  */
 
+/**
+ * @file
+ * libudffs defines and structure definitions
+ */
+
 #ifndef __LIBUDFFS_H
 #define __LIBUDFFS_H
 

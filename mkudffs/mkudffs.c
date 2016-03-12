@@ -21,6 +21,11 @@
  *
  */
 
+/**
+ * @file
+ * mkudffs support functions
+ */
+
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -177,9 +182,9 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
 	}
 
-	((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev); 
-	((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev); 
-	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = le16_to_cpu(udf_rev); 
+	((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev);
+	((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev);
+	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = le16_to_cpu(udf_rev);
 	lvidiu = query_lvidiu(disc);
 	lvidiu->minUDFReadRev = le16_to_cpu(udf_rev);
 	lvidiu->minUDFWriteRev = le16_to_cpu(udf_rev);
@@ -198,25 +203,25 @@ void split_space(struct udf_disc *disc)
 	struct udf_extent *ext;
 	int i, j;
 
-	if (disc->flags & FLAG_BRIDGE)
+	if (disc->flags & FLAG_BRIDGE) // UDF-Bridge had both UDF and ISO-9660 filesystems mapping the same files
 	{
 		set_extent(disc, RESERVED, 0, 512);
 		set_extent(disc, ANCHOR, 512, 1);
 	}
 	else
 	{
-		set_extent(disc, RESERVED, 0, 32768 / disc->blocksize);
-		if (disc->blocksize >= 2048)
+		set_extent(disc, RESERVED, 0, 32768 / disc->blocksize); // OS boot area
+		if (disc->blocksize >= 2048) // Volume Recognition Sequence
 			set_extent(disc, VRS, (2048 * 16) / disc->blocksize, 3);
 		else
 			set_extent(disc, VRS, (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize - 1) / disc->blocksize);
-		set_extent(disc, ANCHOR, 256, 1);
+		set_extent(disc, ANCHOR, 256, 1); // First Anchor Point at sector 256
 	}
 
-	if (disc->flags & FLAG_CLOSED)
+	if (disc->flags & FLAG_CLOSED) // Second anchor point at sector (End-Of-Volume - 256)
 		set_extent(disc, ANCHOR, blocks-257, 1);
 
-	if (!(disc->flags & FLAG_VAT))
+	if (!(disc->flags & FLAG_VAT)) // Final anchor point at sector End-Of-Volume/Session for sequentially writable media
 		set_extent(disc, ANCHOR, blocks-1, 1);
 	else
 		set_extent(disc, PSPACE, blocks-1, 1);
@@ -292,7 +297,7 @@ void split_space(struct udf_disc *disc)
 		fprintf(stderr, "mkudffs: Error: Cannot find USPACE extent\n");
 		exit(1);
 	}
-	if (ext->start % offsets[PSPACE_SIZE])
+	if (ext->start % offsets[PSPACE_SIZE]) // round start up to a multiple of alignment/packet_size
 	{
 		start = ext->start + offsets[PSPACE_SIZE] - (ext->start % offsets[PSPACE_SIZE]);
 		size = ext->blocks - offsets[PSPACE_SIZE] + (ext->start % offsets[PSPACE_SIZE]);
@@ -302,7 +307,7 @@ void split_space(struct udf_disc *disc)
 		start = ext->start;
 		size = ext->blocks;
 	}
-	if (size % offsets[PSPACE_SIZE])
+	if (size % offsets[PSPACE_SIZE]) // round size down to a multiple of alignment/packet_size
 		size -= (size % offsets[PSPACE_SIZE]);
 	set_extent(disc, PSPACE, start, size);
 	for (i=0; i<le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps); i++)
@@ -629,7 +634,7 @@ int setup_fileset(struct udf_disc *disc, struct udf_extent *pspace)
 		disc->udf_fsd->streamDirectoryICB.extLength = cpu_to_le32(disc->blocksize);
 		disc->udf_fsd->streamDirectoryICB.extLocation.logicalBlockNum = cpu_to_le32(offset);
 		disc->udf_fsd->streamDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(0);
-		
+
 	}
 
 	disc->udf_fsd->descTag = query_tag(disc, pspace, desc, 1);
@@ -643,7 +648,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	struct udf_desc *desc, *fsd_desc, *tdesc;
 	struct terminalEntry *te;
 
-	desc = udf_mkdir(disc, pspace, NULL, 0, offset, NULL);
+	desc = udf_mkdir(disc, pspace, NULL, 0, offset, NULL); // the root directory does not have a name
 	offset = desc->offset;
 
 	if (disc->flags & FLAG_STRATEGY4096)
@@ -716,7 +721,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	}
 
 #if 0 // this works fine if you really want a lost+find directory on disc
-	desc = udf_mkdir(disc, pspace, "\x08" "lost+found", 11, offset+1, desc);
+	desc = udf_mkdir(disc, pspace, "\x08" "lost+found", 11, offset+1, desc); // x08 is the compression id for 8-bit OSTA compressed unicode
 	offset = desc->offset;
 
 	if (disc->flags & FLAG_STRATEGY4096)
@@ -742,7 +747,6 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 		}
 	}
 #endif
-
 	if (disc->flags & FLAG_STRATEGY4096)
 		return 4;
 	else
@@ -1137,6 +1141,6 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 		&disc->udf_lvid->impUse[sizeof(uint32_t) * npm],
 		sizeof(uint32_t));
 }
-	
+
 
 char *udf_space_type_str[UDF_SPACE_TYPE_SIZE] = { "RESERVED", "VRS", "ANCHOR", "PVDS", "RVDS", "LVID", "STABLE", "SSPACE", "PSPACE", "USPACE", "BAD" };

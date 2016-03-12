@@ -21,6 +21,11 @@
  *
  */
 
+/**
+ * @file
+ * mkudffs main program and I/O functions
+ */
+
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>

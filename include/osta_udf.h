@@ -32,6 +32,11 @@
  * SUCH DAMAGE.
  */
 
+/**
+ * @file
+ * OSTA-UDF defines and structure definitions
+ */
+
 #include "ecma_167.h"
 
 #ifndef _OSTA_UDF_H
