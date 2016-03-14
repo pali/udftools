@@ -21,7 +21,7 @@ AC_HEADER_TIME
 AC_STRUCT_TM
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(gettimeofday mktime open64 lseek64 llseek)
+AC_CHECK_FUNCS(gettimeofday mktime lseek64 llseek)
 AC_SUBST(LTLIBOBJS)
 AC_CHECK_FUNCS([getopt_long],[],[AC_LIBOBJ([getopt])])
 
