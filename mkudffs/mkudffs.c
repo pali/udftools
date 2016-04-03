@@ -38,6 +38,7 @@
 #include <errno.h>
 
 #include "mkudffs.h"
+#include "file.h"
 #include "defaults.h"
 #include "config.h"
 

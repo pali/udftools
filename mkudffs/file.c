@@ -28,6 +28,7 @@
 #include <malloc.h>
 
 #include "libudffs.h"
+#include "file.h"
 #include "defaults.h"
 #include "config.h"
 

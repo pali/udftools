@@ -26,7 +26,6 @@
  */
 
 #include "libudffs.h"
-#include "defaults.h"
 #include "config.h"
 
 int decode_utf8(char *in, char *out, int inlen)
