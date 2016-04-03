@@ -32,10 +32,11 @@
 #include <errno.h>
 
 #include "cdrwtool.h"
-#include "defaults.h"
 #include "config.h"
-#include "../mkudffs/mkudffs.h"
 #include "options.h"
+
+#include "../mkudffs/defaults.h"
+#include "../mkudffs/mkudffs.h"
 
 int write_func(struct udf_disc *disc, struct udf_extent *ext)
 {

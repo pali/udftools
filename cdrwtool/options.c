@@ -26,7 +26,6 @@
 
 #include "cdrwtool.h"
 #include "libudffs.h"
-#include "defaults.h"
 #include "options.h"
 
 struct option long_options[] = {
