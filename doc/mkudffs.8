@@ -109,17 +109,15 @@ Specify the volume set identifier. Overwrite previous \-\-uuid and
 
 .TP
 .BI \-\-uid= " uid "
-Specify the uid of the root (/) directory. Value -1 is special and will
-cause Linux to use the uid option of \fBmount\fP. If omitted,
+Specify the uid of the root (/) directory. If omitted,
 .B mkudffs
-uid is -1.
+uid is 0.
 
 .TP
 .BI \-\-gid= " gid "
-Specify the gid of the root (/) directory. Value -1 is special and will
-cause Linux to use the gid option of \fBmount\fP. If omitted,
+Specify the gid of the root (/) directory. If omitted,
 .B mkudffs
-gid is -1.
+gid is 0.
 
 .TP
 .BI \-\-strategy= " strategy "

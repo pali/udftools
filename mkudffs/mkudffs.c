@@ -58,9 +58,6 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->udf_rev = le16_to_cpu(default_lvidiu.minUDFReadRev);
 	disc->flags = FLAG_UTF8 | FLAG_CLOSED;
 
-	disc->uid = -1;
-	disc->gid = -1;
-
 	gettimeofday(&tv, NULL);
 	tm = localtime(&tv.tv_sec);
 	altzone = timezone - 3600;
