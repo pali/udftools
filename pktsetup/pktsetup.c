@@ -31,6 +31,8 @@
 
 #include <linux/cdrom.h>
 
+#include "config.h"
+
 /*
  * if we don't have one, we probably have neither
  */
@@ -125,6 +127,8 @@ static int setup_dev(char *pkt_device, char *device, int rem)
 
 static int usage(void)
 {
+	printf("pktsetup from " PACKAGE_NAME " " PACKAGE_VERSION "\n");
+	printf("Set up and tear down packet device associations\n");
 	printf("For pktcdvd < 0.2.0:\n");
 	printf("  pktsetup /dev/pktcdvd0 /dev/cdrom  setup device\n");
 	printf("  pktsetup -d /dev/pktcdvd0          tear down device\n");

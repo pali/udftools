@@ -12,8 +12,6 @@
 
 #include "wrudf.h"
 
-#define WRUDF_VERSION 	"0.0.5"
-
 char	*devicename;			/* "/dev/cdrom" or disk image filename */
 int	device;				/* the file descriptor */
 int	devicetype;
@@ -47,7 +45,7 @@ uint32_t	options;
 
 Directory	*rootDir, *curDir;
 timestamp	timeStamp;
-regid		entityWRUDF = { 0, "-wrudf (" WRUDF_VERSION ")", "\x04\x05"};
+regid		entityWRUDF = { 0, "-wrudf (" PACKAGE_VERSION ")", "\x04\x05"};
 
 extent_ad	extentMainVolDescSeq;
 extent_ad	extentRsrvVolDescSeq;
@@ -632,7 +630,7 @@ main(int argc, char** argv)
     char	prompt[256];
     Directory	*d;
 
-    printf("wrudf " WRUDF_VERSION "\n");
+    printf("wrudf from " PACKAGE_NAME " " PACKAGE_VERSION "\n");
     devicename= "/dev/cdrom";
 
     if( argc > 2 || (argc == 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "-help") || !strcmp(argv[1], "--help"))) )

@@ -66,10 +66,10 @@ struct option long_options[] = {
 
 void usage(void)
 {
-	fprintf(stderr, "mkudffs %s for UDF FS %s, %s\n"
+	fprintf(stderr, "mkudffs from " PACKAGE_NAME " " PACKAGE_VERSION "\n"
 		"Usage:\n"
 		"\tmkudffs [options] device [blocks-count]\n"
-		"Switches:\n"
+		"Options:\n"
 		"\t--help, -h\n"
 		"\t--label=, -l\n"
 		"\t--uuid=, -u\n"
@@ -93,8 +93,7 @@ void usage(void)
 		"\t--u16\n"
 		"\t--utf8\n"
 		"\t--bridge\n"
-		"\t--closed\n",
-		PACKAGE_VERSION, UDFFS_VERSION, UDFFS_DATE
+		"\t--closed\n"
 	);
 	exit(1);
 }

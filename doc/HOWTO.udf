@@ -16,13 +16,9 @@ filesystem will not increase if you delete files.
 In order to do packet writing under Linux, your kernel needs
 both support for UDF (Universal Disc Format) filesystems and for
 packet writing. This is the case for kernels later than about 2.6.10.
-For earlier kernels, you may have to apply patches from Peter
-Osterlund <http://web.telia.com/~u89404340/packet.html>. That site
-also has patches for udftools to make them work with recent kernels -
-they have been applied to this package. This package tries to support
-both old-style packet writing (kernel <2.6.8), and the newer variant
-(>=2.6.10), with and without udev. Use a recent 2.6 kernel for optimum
-results!
+This package tries to support both old-style packet writing
+(kernel <2.6.8), and the newer variant (>=2.6.10), with and without
+udev. Use a recent 2.6 kernel for optimum results!
 
 
 Formatting and using a UDF DVD-RW or CD-RW for packet writing

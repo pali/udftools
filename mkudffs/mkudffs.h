@@ -31,11 +31,6 @@
 #define CS0				0x00000001
 #define UDF_ID_APPLICATION		"*Linux mkudffs"
 
-#define EMAIL_STRING			"<linux_udf@hpesjro.fc.hp.com>"
-
-#define UDFFS_DATE			"2004/02/26"
-#define UDFFS_VERSION			"1.0.0-cvs"
-
 #define DEFAULT_HD	0
 #define DEFAULT_DVD	0
 #define DEFAULT_DVDRAM	0

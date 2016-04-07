@@ -176,8 +176,8 @@ struct impUseVolDescImpUse default_iuvdiu =
 	},
 	logicalVolIdent : "\x08" "LinuxUDF",
 	LVInfo1 : "\x08" "Linux mkudffs " PACKAGE_VERSION,
-	LVInfo2 : "\x08" "Linux UDF " UDFFS_VERSION " (" UDFFS_DATE ")",
-	LVInfo3 : "\x08" EMAIL_STRING,
+	LVInfo2 : "\x08" "Linux udftools " PACKAGE_VERSION,
+	LVInfo3 : "\x08" PACKAGE_URL,
 	impIdent :
 	{
 		ident : UDF_ID_DEVELOPER,

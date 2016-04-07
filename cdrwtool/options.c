@@ -55,11 +55,12 @@ void usage(void)
 {
 	int i;
 
+	printf("cdrwtool from " PACKAGE_NAME " " PACKAGE_VERSION "\nUsage:\n\tcdrwtool [options]\nOptions:\n");
 	for (i = 0; long_options[i].name != NULL; i++)
 		if (long_options[i].val >= 0xFF)
-			printf("\t--%s\n", long_options[i].name);
+			printf("\t--%s\t%s\n", long_options[i].name, long_options[i].name);
 		else
-			printf("\t%c\t%s\n", long_options[i].val, long_options[i].name);
+			printf("\t-%c\t%s\n", long_options[i].val, long_options[i].name);
 	exit(1);
 }
 
