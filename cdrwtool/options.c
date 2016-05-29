@@ -45,7 +45,7 @@ struct option long_options[] = {
 	{ "fixed packet size", 1, NULL, 'z' },
 	{ "border/session setting", 1, NULL, 'l' },
 	{ "write type", 1, NULL, 'w' },
-	{ "file to write", 2, NULL, 'f' },
+	{ "file to write", 1, NULL, 'f' },
 	{ "start at this lba for file write", 1, NULL,'o' },
 	{ "print detailed disc info", no_argument, NULL, 'i' },
 	{ 0, 0, NULL, 0 },
@@ -210,7 +210,8 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			}
 			case 'f':
 			{
-				strcpy(disc->filename, optarg);
+				strncpy(disc->filename, optarg, NAME_MAX-1);
+				disc->filename[NAME_MAX-1] = '\0';
 				printf("write file %s\n", disc->filename);
 				break;
 			}
@@ -218,6 +219,7 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			{
 				disc->offset = strtoul(optarg, NULL, 10);
 				printf("write offset %lu\n", disc->offset);
+				break;
 			}
 		}
 	}
