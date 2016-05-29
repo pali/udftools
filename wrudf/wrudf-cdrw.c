@@ -89,7 +89,7 @@ void markBlock(enum markAction action, uint32_t blkno) {
 }
 
 /*	GetExtents()
- *	Try to find unallocated blocks for 'requestedLength' bytes in the rewriteable partition
+ *	Try to find unallocated blocks for 'requestedLength' bytes in the rewritable partition
  *	Return short_ad's of lbns in the physical partition together satisfying that request
  *	Last extent has length < n * 2048; if exact multiple of 2048 the a final length 0 short_ad
  *
@@ -804,7 +804,7 @@ initIO(char *filename)
 
     lastTrack = di.trk1_lastsession;
 
-    if( read_trackinfo(device, &ti, lastTrack) )	/* last track 1 in last session writeable for UDF */
+    if( read_trackinfo(device, &ti, lastTrack) )	/* last track 1 in last session writable for UDF */
 	fail("Read discinfo failed\n");
 
     if( medium == CDRW ) {
@@ -832,7 +832,7 @@ initIO(char *filename)
 	    fail("CDR disc last track reserved or not variable packet\n");
 
 	if( !ti.nwa_v )
-	    fail("Next writeable address invalid in track %d\n", ti.trk);
+	    fail("Next writable address invalid in track %d\n", ti.trk);
     }
 
     trackStart = ti.trk_start;

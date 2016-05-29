@@ -57,7 +57,7 @@ extent_ad	extentLogVolIntegrityDesc;		/* (continuation) extent for current LVIDs
 extern	uint64_t  CDRuniqueID;				/* in wrudf-cdr.c ex VAT FE */
 
 
-struct partitionDesc		*pd;			/* for the writeable partition */
+struct partitionDesc		*pd;			/* for the writable partition */
 uint16_t			virtualPartitionNum  = 0xFFFF;
 uint32_t			*vat;
 uint32_t			newVATindex;
@@ -174,7 +174,7 @@ initialise(char *devicename)
 	case TAG_IDENT_IUVD:
 	    break;
 	case TAG_IDENT_PD:
-	    /* must have one (re)writeable partition */
+	    /* must have one (re)writable partition */
 	    /* may have at most one RDONLY partition */
 	    switch( ((struct partitionDesc *)p)->accessType ) {
 	    case PD_ACCESS_TYPE_READ_ONLY:

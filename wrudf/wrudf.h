@@ -78,7 +78,7 @@ extern	uint32_t	options;
 extern int	spaceMapDirty, usdDirty, sparingTableDirty;
 
 extern struct logicalVolDesc		*lvd;
-extern struct partitionDesc		*pd;		/* The (re)writeable partition descriptor */
+extern struct partitionDesc		*pd;		/* The (re)writable partition descriptor */
 extern uint16_t				virtualPartitionNum;
 extern uint32_t				*vat;
 extern struct unallocSpaceDesc		*usd;
