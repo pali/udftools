@@ -49,7 +49,6 @@ used as a read/write filesystem. This requires kernel support for
 the packet device, and the UDF filesystem.
 .PP
 See: HOWTO.udf (in the udftools documents directory)
-.UE
 
 .SH EXIT STATUS
 .B Pktsetup
@@ -71,13 +70,13 @@ The following commands provide an example of using the
 packet device.
 .nf
 .IP
-cdrwtool -d /dev/sr0 -q
+cdrwtool \-d /dev/sr0 \-q
 pktsetup 0 /dev/sr0
 
-mount -t udf /dev/pktcdvd0 /mnt
+mount \-t udf /dev/pktcdvd0 /mnt
  ...
 umount /dev/pktcdvd0
-pktsetup -d 0
+pktsetup \-d 0
 .fi
 .LP
 
