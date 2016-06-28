@@ -76,7 +76,9 @@ then block-size 2048 is used.
 Specify the udf revision to use. Valid revisions are 0x0201, 0x0200, 0x0150,
 and 0x0102. If omitted,
 .B mkudffs
-udf-revision is 0x0201.
+udf-revision is 0x0201. The hex values represent the ISO/IEC 13346 standard
+version numbers: e.g. the 0x0201 refers to 2.01 (March 15, 2000) which is
+mainly a bugfix release to UDF 2.00.
 
 .TP
 .BI \-\-lvid= " logical-volume-ident "
