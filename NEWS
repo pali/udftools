@@ -1,3 +1,9 @@
+Changes in 1.2
+* Manpage redirect for mkfs.udf(8)
+* Manpage fix for pktsetup(8)
+* Fixed compile and install procedure
+* Fixed parsing cdrwtool --file parameter
+
 Changes in 1.1
 * Included various patches from Linux distributions (mostly bug fixes and documentation updates)
 * Lots of fixes for compilation, crashes, buffer overflows, memory corruptions, reading from uninitialized memory, etc ...
