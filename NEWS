@@ -1,0 +1,13 @@
+Changes in 1.1
+* Included various patches from Linux distributions (mostly bug fixes and documentation updates)
+* Lots of fixes for compilation, crashes, buffer overflows, memory corruptions, reading from uninitialized memory, etc ...
+* Fixed UTF-8 support
+* Fixed detection of device blocksize
+* Corrections and updates in man pages
+* mkudffs:
+  * Set first 16 chars of Volume Set Identifier to timestamp and random value
+  * Set default block-size to device logical block (sector) size
+  * Add support for label and uuid options
+  * Add support for setting uid and gid of the root directory
+  * Fixed support for UDF 1.02
+  * Symlink to mkfs.udf
