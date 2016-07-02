@@ -92,7 +92,7 @@ void udf_init_disc(struct udf_disc *disc)
 	memcpy(disc->udf_pvd[0], &default_pvd, sizeof(struct primaryVolDesc));
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
 	sprintf((char *)&disc->udf_pvd[0]->volSetIdent[1], "%08lx%08lx%s",
-		mktime(tm)%0xFFFFFFFF, rnd%0xFFFFFFFF, &disc->udf_pvd[0]->volSetIdent[17]);
+		((unsigned long int)mktime(tm))%0xFFFFFFFF, rnd%0xFFFFFFFF, &disc->udf_pvd[0]->volSetIdent[17]);
 	disc->udf_pvd[0]->volIdent[31] = strlen(disc->udf_pvd[0]->volIdent);
 	disc->udf_pvd[0]->volSetIdent[127] = strlen(disc->udf_pvd[0]->volSetIdent);
 
