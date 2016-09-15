@@ -1,0 +1,4 @@
+# Doxygen outputs
+doc/html/
+doc/latex/
+doc/doxygen_sqlite3.db
