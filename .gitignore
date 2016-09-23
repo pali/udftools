@@ -2,3 +2,28 @@
 doc/html/
 doc/latex/
 doc/doxygen_sqlite3.db
+
+# Objects & build products
+Makefile
+*.in
+configure
+config
+*.m4
+*.cache
+*.o
+.*
+*.lo
+*.la
+*.log
+include/config.h
+include/config.in
+include/stamp-h1
+config.status
+
+# Binaries
+wrudf/wrudf
+libtool
+udffsck/udffsck
+mkudffs/mkudffs
+pktsetup/pktsetup
+cdrwtool/cdrwtool
