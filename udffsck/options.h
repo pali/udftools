@@ -2,6 +2,7 @@
  * options.h
  *
  * Copyright (c) 2002       Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2016       Vojtech Vladyka <vojtech.vladyka@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +22,7 @@
  */
 
 #ifndef _OPTIONS_H
-#define _OPTIONS_H 1
+#define _OPTIONS_H
 
 #include <getopt.h>
 

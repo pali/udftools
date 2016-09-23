@@ -1,7 +1,7 @@
 /*
  * main.c
  *
- * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2016    Vojtech Vladyka <vojtch.vladyka@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,7 +20,12 @@
  *
  */
 
+#include "options.h"
+
 int main(int argc, char *argv[])
 {
-	return 0;
+    parse_args(argc, argv);	
+    
+    
+    return 0;
 }
