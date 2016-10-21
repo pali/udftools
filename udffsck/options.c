@@ -68,7 +68,7 @@ void usage(void)
     exit(1);
 }
 
-void parse_args(int argc, char *argv[]) 
+void parse_args(int argc, char *argv[],  char **path) 
 {
     int c;
 
@@ -138,8 +138,12 @@ void parse_args(int argc, char *argv[])
     if (optind < argc)
     {
         printf ("non-option ARGV-elements: ");
-        while (optind < argc)
-            printf ("%s ", argv[optind++]);
+        while (optind < argc) { //TODO deal with other unrecognized params somehow...
+            *path = (char*)malloc(strlen(argv[optind]));
+            strcpy(*path, argv[optind]);
+            printf ("%s ", *path);
+            optind++;
+        }
         putchar ('\n');
     }
 }
