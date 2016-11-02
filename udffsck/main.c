@@ -112,21 +112,26 @@ int get_avdp(int fd, struct udf_disc *disc, int sectorsize) {
     
     printf("Error: %s\n", strerror(errno));
     printf("FD: 0x%x\n", fd);
-    position = udf_lseek64(fd, sectorsize*256, SEEK_SET);
+    position = udf_lseek64(fd, sectorsize*256, SEEK_SET); // Seek to AVDP point
     printf("Error: %s\n", strerror(errno));
     printf("Current position: %x\n", position);
     
-    disc->udf_anchor[0] = malloc(sizeof(struct anchorVolDescPtr));
+    disc->udf_anchor[0] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
     
     printf("sizeof anchor: %d\n", sizeof(struct anchorVolDescPtr));
 
-    read(fd, disc->udf_anchor[0], sizeof(struct anchorVolDescPtr));
+    read(fd, disc->udf_anchor[0], sizeof(struct anchorVolDescPtr)); // Load data
     printf("Error: %s\n", strerror(errno));
     printf("Current position: %x\n", position);
     printf("desc_tag ptr: %p\n", disc->udf_anchor[0]->descTag);
     printf("AVDP: TagIdent: %x\n", disc->udf_anchor[0]->descTag.tagIdent);
 
-    return 0;
+    if(disc->udf_anchor[0]->descTag.tagIdent == TAG_IDENT_AVDP) //verify it is AVDP
+        return 0;
+    else {
+        //TODO inspect what happened. Check CRCs, checksums etc...
+        return -1;
+    }
 }
 
 int detect_blocksize(int fd, struct udf_disc *disc)
@@ -219,8 +224,10 @@ int main(int argc, char *argv[]) {
     //blocksize = detect_blocksize(fd, NULL);
 
     status = is_udf(fd); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
+    if(status) exit(status);
     status = get_avdp(fd, &disc, blocksize);
-
+    if(status) exit(status);
+    
     close(fd);
     return status;
 }
