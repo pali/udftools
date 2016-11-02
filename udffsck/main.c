@@ -106,6 +106,16 @@ int is_udf(int fp) {
     return 0;
 }
 
+int get_pvd(int fd, struct udf_disc *disc, int sectorsize) {
+    int64_t position = 0;
+    position = udf_lseek64(fd, sectorsize*(disc->udf_anchor[0]->mainVolDescSeqExt.extLocation), SEEK_SET);
+    printf("Current position: %x\n", position);
+    
+    disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc)); 
+    read(fd, disc->udf_pvd[0], sizeof(struct primaryVolDesc));
+    printf("PVD: TagIdent: %x\n", disc->udf_pvd[0]->descTag.tagIdent);
+}
+
 int get_avdp(int fd, struct udf_disc *disc, int sectorsize) {
     int64_t position = 0;
     tag *desc_tag;
@@ -225,7 +235,9 @@ int main(int argc, char *argv[]) {
 
     status = is_udf(fd); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status) exit(status);
-    status = get_avdp(fd, &disc, blocksize);
+    status = get_avdp(fd, &disc, blocksize); //load AVDP
+    if(status) exit(status);
+    status = get_pvd(fd, &disc, blocksize); //load PVD
     if(status) exit(status);
     
     close(fd);
