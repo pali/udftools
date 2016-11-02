@@ -39,6 +39,9 @@
 #define PVD 0x10
 #define AVDP 0x100
 
+#define PRIMARY_AVDP 0
+#define SECONDARY_AVDP 1
+
 #define BLOCK_SIZE 2048
 
 static int64_t udf_lseek64(int fd, int64_t offset, int whence)
@@ -116,13 +119,21 @@ int get_pvd(int fd, struct udf_disc *disc, int sectorsize) {
     printf("PVD: TagIdent: %x\n", disc->udf_pvd[0]->descTag.tagIdent);
 }
 
-int get_avdp(int fd, struct udf_disc *disc, int sectorsize) {
+int get_avdp(int fd, struct udf_disc *disc, int sectorsize, int avdp) {
     int64_t position = 0;
     tag *desc_tag;
     
     printf("Error: %s\n", strerror(errno));
     printf("FD: 0x%x\n", fd);
-    position = udf_lseek64(fd, sectorsize*256, SEEK_SET); // Seek to AVDP point
+    if(avdp == PRIMARY_AVDP)
+        position = udf_lseek64(fd, sectorsize*256, SEEK_SET); // Seek to AVDP point
+    else if(avdp == SECONDARY_AVDP)
+        position = udf_lseek64(fd, sectorsize*256, SEEK_SET); //FIXME seek to last LSN
+    else {
+        fprintf(stderr, "Unknown AVDP type. Exiting.\n");
+        return -1;
+    }
+
     printf("Error: %s\n", strerror(errno));
     printf("Current position: %x\n", position);
     
@@ -130,18 +141,13 @@ int get_avdp(int fd, struct udf_disc *disc, int sectorsize) {
     
     printf("sizeof anchor: %d\n", sizeof(struct anchorVolDescPtr));
 
-    read(fd, disc->udf_anchor[0], sizeof(struct anchorVolDescPtr)); // Load data
+    read(fd, disc->udf_anchor[avdp], sizeof(struct anchorVolDescPtr)); // Load data
     printf("Error: %s\n", strerror(errno));
     printf("Current position: %x\n", position);
-    printf("desc_tag ptr: %p\n", disc->udf_anchor[0]->descTag);
-    printf("AVDP: TagIdent: %x\n", disc->udf_anchor[0]->descTag.tagIdent);
+    printf("desc_tag ptr: %p\n", disc->udf_anchor[avdp]->descTag);
+    printf("AVDP: TagIdent: %x\n", disc->udf_anchor[avdp]->descTag.tagIdent);
 
-    if(disc->udf_anchor[0]->descTag.tagIdent == TAG_IDENT_AVDP) //verify it is AVDP
-        return 0;
-    else {
-        //TODO inspect what happened. Check CRCs, checksums etc...
-        return -1;
-    }
+    return 0;
 }
 
 int detect_blocksize(int fd, struct udf_disc *disc)
@@ -235,7 +241,7 @@ int main(int argc, char *argv[]) {
 
     status = is_udf(fd); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status) exit(status);
-    status = get_avdp(fd, &disc, blocksize); //load AVDP
+    status = get_avdp(fd, &disc, blocksize, PRIMARY_AVDP); //load AVDP
     if(status) exit(status);
     status = get_pvd(fd, &disc, blocksize); //load PVD
     if(status) exit(status);
