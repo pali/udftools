@@ -27,7 +27,7 @@
 #include <getopt.h>
 
 void usage(void);
-void parse_args(int, char *[], char **path/*, struct cdrw_disc *, char **/);
+void parse_args(int, char *[], char **path, int *blocksize/*, struct cdrw_disc *, char **/);
 
 /*
  * Command line option token values.

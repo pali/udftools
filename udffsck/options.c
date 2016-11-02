@@ -44,9 +44,7 @@ static struct option long_options[] =
     {"brief",   no_argument,       &verbose_flag, 0},
     /* These options don’t set a flag.
      *              We distinguish them by their indices. */
-    {"add",     no_argument,       0, 'a'},
-    {"append",  no_argument,       0, 'b'},
-    {"delete",  required_argument, 0, 'd'},
+    {"blocksize",  required_argument, 0, 'b'},
     {"create",  required_argument, 0, 'c'},
     {"file",    required_argument, 0, 'f'},
     {"help",    no_argument,       0, 'h'},
@@ -68,7 +66,7 @@ void usage(void)
     exit(1);
 }
 
-void parse_args(int argc, char *argv[],  char **path) 
+void parse_args(int argc, char *argv[], char **path, int *blocksize) 
 {
     int c;
 
@@ -77,7 +75,7 @@ void parse_args(int argc, char *argv[],  char **path)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "abhc:d:f:", long_options, &option_index);
+        c = getopt_long (argc, argv, "ab:hc:d:f:", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -100,7 +98,8 @@ void parse_args(int argc, char *argv[],  char **path)
                 break;
 
             case 'b':
-                puts ("option -b\n");
+                *blocksize = strtol(optarg, NULL, 10);
+                printf("Device block size: %d\n", *blocksize);
                 break;
 
             case 'c':
