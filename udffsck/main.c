@@ -35,25 +35,14 @@
 
 #include "udf.h"
 #include "options.h"
+#include "udffsck.h"
+#include "utils.h"
 
 #define PVD 0x10
 #define AVDP 0x100
 
-#define PRIMARY_AVDP 0
-#define SECONDARY_AVDP 1
 
 #define BLOCK_SIZE 2048
-
-static int64_t udf_lseek64(int fd, int64_t offset, int whence)
-{
-#if defined(HAVE_LSEEK64)
-	return lseek64(fd, offset, whence);
-#elif defined(HAVE_LLSEEK)
-	return llseek(fd, offset, whence);
-#else
-	return lseek(fd, offset, whence);
-#endif
-}
 
 int is_udf(int fp) {
     struct volStructDesc vsd;
@@ -109,46 +98,6 @@ int is_udf(int fp) {
     return 0;
 }
 
-int get_pvd(int fd, struct udf_disc *disc, int sectorsize) {
-    int64_t position = 0;
-    position = udf_lseek64(fd, sectorsize*(disc->udf_anchor[0]->mainVolDescSeqExt.extLocation), SEEK_SET);
-    printf("Current position: %x\n", position);
-    
-    disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc)); 
-    read(fd, disc->udf_pvd[0], sizeof(struct primaryVolDesc));
-    printf("PVD: TagIdent: %x\n", disc->udf_pvd[0]->descTag.tagIdent);
-}
-
-int get_avdp(int fd, struct udf_disc *disc, int sectorsize, int avdp) {
-    int64_t position = 0;
-    tag *desc_tag;
-    
-    printf("Error: %s\n", strerror(errno));
-    printf("FD: 0x%x\n", fd);
-    if(avdp == PRIMARY_AVDP)
-        position = udf_lseek64(fd, sectorsize*256, SEEK_SET); // Seek to AVDP point
-    else if(avdp == SECONDARY_AVDP)
-        position = udf_lseek64(fd, sectorsize*256, SEEK_SET); //FIXME seek to last LSN
-    else {
-        fprintf(stderr, "Unknown AVDP type. Exiting.\n");
-        return -1;
-    }
-
-    printf("Error: %s\n", strerror(errno));
-    printf("Current position: %x\n", position);
-    
-    disc->udf_anchor[0] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
-    
-    printf("sizeof anchor: %d\n", sizeof(struct anchorVolDescPtr));
-
-    read(fd, disc->udf_anchor[avdp], sizeof(struct anchorVolDescPtr)); // Load data
-    printf("Error: %s\n", strerror(errno));
-    printf("Current position: %x\n", position);
-    printf("desc_tag ptr: %p\n", disc->udf_anchor[avdp]->descTag);
-    printf("AVDP: TagIdent: %x\n", disc->udf_anchor[avdp]->descTag.tagIdent);
-
-    return 0;
-}
 
 int detect_blocksize(int fd, struct udf_disc *disc)
 {
@@ -243,7 +192,10 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
     status = get_avdp(fd, &disc, blocksize, PRIMARY_AVDP); //load AVDP
     if(status) exit(status);
-    status = get_pvd(fd, &disc, blocksize); //load PVD
+    //status = get_pvd(fd, &disc, blocksize); //load PVD
+    status = get_vds(fd, &disc, blocksize, MAIN_VDS); //load main VDS
+    if(status) exit(status);
+    status = get_vds(fd, &disc, blocksize, RESERVE_VDS); //load reserve VDS
     if(status) exit(status);
     
     close(fd);
