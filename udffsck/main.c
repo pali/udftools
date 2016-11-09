@@ -39,8 +39,6 @@
 #include "utils.h"
 
 #define PVD 0x10
-#define AVDP 0x100
-
 
 #define BLOCK_SIZE 2048
 
@@ -190,7 +188,7 @@ int main(int argc, char *argv[]) {
 
     status = is_udf(fd); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status) exit(status);
-    status = get_avdp(fd, &disc, blocksize, PRIMARY_AVDP); //load AVDP
+    status = get_avdp(fd, &disc, blocksize, FIRST_AVDP); //load AVDP
     if(status) exit(status);
     //status = get_pvd(fd, &disc, blocksize); //load PVD
     status = get_vds(fd, &disc, blocksize, MAIN_VDS); //load main VDS
