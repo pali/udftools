@@ -37,11 +37,11 @@ int get_avdp(int fd, struct udf_disc *disc, int sectorsize, avdp_type_e type) {
 
 #define VDS_STRUCT_AMOUNT 9 //FIXME Move to somewhere else, not keep it here.
 int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
-    int64_t position = 0, vdsPosition = 0;
+    int64_t position = 0;
     int8_t counter = 0;
     tag descTag;
 
-    // Select first address of VDS 
+    // Go to first address of VDS 
     switch(vds) {
         case MAIN_VDS:
             position = udf_lseek64(fd, sectorsize*(disc->udf_anchor[0]->mainVolDescSeqExt.extLocation), SEEK_SET);
@@ -52,6 +52,7 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
     }
     printf("Current position: %x\n", position);
     
+    // Go thru descriptors until TagIdent is 0 or amout is too big to be real
     while(counter < VDS_STRUCT_AMOUNT) {
         counter++;
 
@@ -132,14 +133,6 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
                 fprintf(stderr, "Unknown TAG found at %p. Ending.\n", position);
                 exit(-3);
         }
-
-
     }
-
-    /*
-    disc->udf_pvd[type] = malloc(sizeof(struct primaryVolDesc)); 
-    read(fd, disc->udf_pvd[type], sizeof(struct primaryVolDesc));
-    printf("PVD: TagIdent: %x\n", disc->udf_pvd[type]->descTag.tagIdent);
-    */
     return 0;
 }
