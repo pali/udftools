@@ -23,13 +23,8 @@ int get_avdp(int fd, struct udf_disc *disc, int sectorsize, avdp_type_e type);
 
 // Volume descriptor sequence
 int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
-// load all of these descriptors
+// Load all PVD descriptors into disc structure
 int get_pvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
-int get_lvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
-int get_pd();
-int get_usd();
-int get_iuvd();
-int get_td();
 
 // Logical Volume Integrity Descriptor
 int get_lvid();

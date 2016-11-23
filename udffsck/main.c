@@ -84,7 +84,7 @@ int is_udf(int fp) {
             memcpy(&tea, &vsd, sizeof(tea));
             break;
         } else {
-            fprintf(stderr, "Unknown identifier. Exiting\n");
+            fprintf(stderr, "Unknown identifier: %s. Exiting\n", vsd.stdIdent);
             return(-1);
         }  
     }
@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
     int fd;
     int status = 0;
     int blocksize = 0;
-    struct udf_disc disc;
+    struct udf_disc disc = {0};
     
     parse_args(argc, argv, &path, &blocksize);	
 
@@ -191,11 +191,14 @@ int main(int argc, char *argv[]) {
     status = get_avdp(fd, &disc, blocksize, FIRST_AVDP); //load AVDP
     if(status) exit(status);
     //status = get_pvd(fd, &disc, blocksize); //load PVD
+    printf("\nTrying to load VDS\n");
     status = get_vds(fd, &disc, blocksize, MAIN_VDS); //load main VDS
     if(status) exit(status);
     status = get_vds(fd, &disc, blocksize, RESERVE_VDS); //load reserve VDS
     if(status) exit(status);
     
     close(fd);
+
+    printf("All done\n");
     return status;
 }
