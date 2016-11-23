@@ -199,6 +199,8 @@ int main(int argc, char *argv[]) {
     
     close(fd);
 
+    print_disc(&disc);
+
     printf("All done\n");
     return status;
 }
