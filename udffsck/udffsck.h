@@ -29,5 +29,6 @@ int get_pvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
 // Logical Volume Integrity Descriptor
 int get_lvid();
 
+int verify_vds(struct udf_disc *disc, vds_type_e vds);
 
 #endif //__UDFFSCK_H__

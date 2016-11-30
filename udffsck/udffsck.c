@@ -136,3 +136,31 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
     }
     return 0;
 }
+
+uint8_t calculate_checksum(tag descTag) {
+    uint8_t i;
+    uint8_t tagChecksum = 0;
+    
+    for (i=0; i<16; i++)
+        if (i != 4)
+            tagChecksum += (uint8_t)(((char *)&(descTag))[i]);
+
+    return tagChecksum;
+}
+
+int checksum(tag descTag) {
+    return calculate_checksum(descTag) == descTag.tagChecksum;
+}
+
+int verify_vds(struct udf_disc *disc, vds_type_e vds) {
+    uint8_t tagChecksum = 0;
+   
+    tagChecksum = calculate_checksum(disc->udf_pvd[vds]->descTag);
+
+    printf("Original checksum:   0x%x\n"
+           "Calculated checksum: 0x%x\n", disc->udf_pvd[vds]->descTag.tagChecksum, tagChecksum);
+    printf("Match: %d\n", checksum(disc->udf_pvd[vds]->descTag));
+
+   return tagChecksum; 
+
+}

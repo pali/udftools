@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
     status = get_avdp(fd, &disc, blocksize, FIRST_AVDP); //load AVDP
     if(status) exit(status);
-    //status = get_pvd(fd, &disc, blocksize); //load PVD
+    
     printf("\nTrying to load VDS\n");
     status = get_vds(fd, &disc, blocksize, MAIN_VDS); //load main VDS
     if(status) exit(status);
@@ -200,7 +200,8 @@ int main(int argc, char *argv[]) {
     close(fd);
 
     print_disc(&disc);
-
+    verify_vds(&disc, MAIN_VDS);
+    
     printf("All done\n");
     return status;
 }
