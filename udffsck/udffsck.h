@@ -46,4 +46,6 @@ int get_lvid();
 
 int verify_vds(struct udf_disc *disc, vds_type_e vds);
 
+uint8_t get_fsd(int fd, struct udf_disc *disc, int sectorsize);
+
 #endif //__UDFFSCK_H__

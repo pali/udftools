@@ -196,7 +196,11 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
     status = get_vds(fd, &disc, blocksize, RESERVE_VDS); //load reserve VDS
     if(status) exit(status);
+
+    status = get_fsd(fd, &disc, blocksize);
+    if(status) exit(status);
     
+
     close(fd);
 
     print_disc(&disc);

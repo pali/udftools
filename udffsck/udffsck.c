@@ -137,6 +137,26 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
     return 0;
 }
 
+uint8_t get_fsd(int fd, struct udf_disc *disc, int sectorsize) {
+    long_ad *lap;
+    lap = (long_ad *)disc->udf_lvd[0]->logicalVolContentsUse;
+    lb_addr filesetblock = lap->extLocation;
+    uint32_t filesetlen = lap->extLength;
+    disc->udf_fsd = malloc(sizeof(struct fileSetDesc));
+    udf_lseek64(fd, 257*sectorsize, SEEK_SET);
+    read(fd, disc->udf_fsd, sizeof(struct fileSetDesc));
+    
+    if(disc->udf_fsd->descTag.tagIdent != TAG_IDENT_FSD) {
+        fprintf(stderr, "Error identifiing FSD.\n");
+        free(disc->udf_fsd);
+        return -1;
+    } else {
+        printf("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
+    }
+
+    return 0;
+}
+
 uint8_t calculate_checksum(tag descTag) {
     uint8_t i;
     uint8_t tagChecksum = 0;
