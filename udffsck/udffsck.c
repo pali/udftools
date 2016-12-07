@@ -1,7 +1,7 @@
 
 #include "udffsck.h"
 #include "utils.h"
-
+#include "libudffs.h"
 
 int get_avdp(int fd, struct udf_disc *disc, int sectorsize, avdp_type_e type) {
     int64_t position = 0;
@@ -152,15 +152,68 @@ int checksum(tag descTag) {
     return calculate_checksum(descTag) == descTag.tagChecksum;
 }
 
+int crc(void * desc, uint16_t size) {
+    uint8_t offset = sizeof(tag);
+    tag *descTag = desc;
+    uint16_t crc = 0;
+    return descTag->descCRC != udf_crc((uint8_t *)(desc) + offset, size - offset, crc);
+}
+
 int verify_vds(struct udf_disc *disc, vds_type_e vds) {
-    uint8_t tagChecksum = 0;
-   
-    tagChecksum = calculate_checksum(disc->udf_pvd[vds]->descTag);
+    metadata_err_map_t map;    
+    uint8_t *data;
+    //uint16_t crc = 0;
+    uint16_t offset = sizeof(tag);
 
-    printf("Original checksum:   0x%x\n"
-           "Calculated checksum: 0x%x\n", disc->udf_pvd[vds]->descTag.tagChecksum, tagChecksum);
-    printf("Match: %d\n", checksum(disc->udf_pvd[vds]->descTag));
+    if(!checksum(disc->udf_pvd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at PVD[%d]\n", vds);
+        map.pvd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_lvd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at LVD[%d]\n", vds);
+        map.lvd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_pd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at PD[%d]\n", vds);
+        map.pd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_usd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at USD[%d]\n", vds);
+        map.usd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_iuvd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at IUVD[%d]\n", vds);
+        map.iuvd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_td[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at TD[%d]\n", vds);
+        map.td[vds] |= E_CHECKSUM;
+    }
 
-   return tagChecksum; 
+    if(crc(disc->udf_pvd[vds], sizeof(struct primaryVolDesc))) {
+        printf("CRC error at PVD[%d]\n", vds);
+        map.pvd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_lvd[vds], sizeof(struct logicalVolDesc))) {
+        printf("CRC error at LVD[%d]\n", vds);
+        map.lvd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_pd[vds], sizeof(struct partitionDesc))) {
+        printf("CRC error at PD[%d]\n", vds);
+        map.pd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_usd[vds], sizeof(struct unallocSpaceDesc))) {
+        printf("CRC error at USD[%d]\n", vds);
+        map.usd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_iuvd[vds], sizeof(struct impUseVolDesc))) {
+        printf("CRC error at IUVD[%d]\n", vds);
+        map.iuvd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_td[vds], sizeof(struct terminatingDesc))) {
+        printf("CRC error at TD[%d]\n", vds);
+        map.td[vds] |= E_CRC;
+    }
 
+    return 0;
 }

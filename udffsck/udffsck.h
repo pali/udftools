@@ -18,6 +18,21 @@ typedef enum {
     RESERVE_VDS,
 } vds_type_e;
 
+typedef struct {
+    uint8_t vrs[3];
+    uint8_t anchor[3];
+    uint8_t pvd[2];
+    uint8_t lvd[2];
+    uint8_t pd[2];
+    uint8_t usd[2];
+    uint8_t iuvd[2];
+    uint8_t td[2];
+    uint8_t lvid[2];
+} metadata_err_map_t;
+
+#define E_CHECKSUM 0b00000001
+#define E_CRC      0b00000010
+
 // Anchor volume descriptor points to Mvds and Rvds
 int get_avdp(int fd, struct udf_disc *disc, int sectorsize, avdp_type_e type);
 
