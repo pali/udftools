@@ -199,13 +199,43 @@ int main(int argc, char *argv[]) {
 
     status = get_fsd(fd, &disc, blocksize);
     if(status) exit(status);
-    
+  
+    // Go to ROOT ICB 
+    lb_addr icbloc = disc.udf_fsd->rootDirectoryICB.extLocation; 
+    struct fileEntry *file;
+    file = malloc(sizeof(struct fileEntry));
+    lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
+    read(fd, file, sizeof(struct fileEntry));
+    printf("ROOT ICB IDENT: %x\n", file->descTag.tagIdent);
+/* Tag Identifier (ECMA 167r3 4/7.2.1) 
+#define TAG_IDENT_FSD			0x0100
+#define TAG_IDENT_FID			0x0101
+#define TAG_IDENT_AED			0x0102
+#define TAG_IDENT_IE			0x0103
+#define TAG_IDENT_TE			0x0104
+#define TAG_IDENT_FE			0x0105
+#define TAG_IDENT_EAHD			0x0106
+#define TAG_IDENT_USE			0x0107
+#define TAG_IDENT_SBD			0x0108
+#define TAG_IDENT_PIE			0x0109
+#define TAG_IDENT_EFE			0x010A*/
+    for(int ff=0; ff<10; ff++) {
+        read(fd, file, sizeof(struct fileEntry));
+        if(file->descTag.tagIdent == TAG_IDENT_FE) {
+            printf("UID: %d\n", file->uniqueID);  
+        } else {
+            printf("IDENT: %x\n", file->descTag.tagIdent);
+        }
+        lseek64(fd, 259*blocksize+blocksize*(ff+1), SEEK_SET);
+    }
 
     close(fd);
 
-    print_disc(&disc);
-    verify_vds(&disc, MAIN_VDS);
+    //print_disc(&disc);
+    //verify_vds(&disc, MAIN_VDS);
     
+    printf("ICB LBN: %x\n", icbloc.logicalBlockNum);
+    //printf("ID: %x\n", file->descTag.tagIdent);
     printf("All done\n");
     return status;
 }
