@@ -3,7 +3,7 @@ language: c
 before_script:
     - wget https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
     - tar xf cmocka-1.1.0.tar.xz
-    - cd cmocka-1.1.0.tar.xz
+    - cd cmocka-1.1.0
     - sudo apt-get -y install cmake
     - mkdir build
     - cd build
