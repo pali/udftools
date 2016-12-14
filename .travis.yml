@@ -1,7 +1,8 @@
 language: c
 
 before_script:
-    - ls
+    - pwd
+    - cd ..
     - wget https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
     - tar xf cmocka-1.1.0.tar.xz
     - cd cmocka-1.1.0
@@ -11,8 +12,7 @@ before_script:
     - cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release ..
     - make
     - sudo make install
-    - cd ..
-    - cd ..
+    - cd ../../udftools
 
 script:
     - ./autogen.sh
