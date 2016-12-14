@@ -34,7 +34,7 @@ typedef struct {
 #define E_CRC      0b00000010
 
 // Anchor volume descriptor points to Mvds and Rvds
-int get_avdp(int fd, struct udf_disc *disc, int sectorsize, avdp_type_e type);
+int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize, avdp_type_e type);
 
 // Volume descriptor sequence
 int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
@@ -47,5 +47,5 @@ int get_lvid();
 int verify_vds(struct udf_disc *disc, vds_type_e vds);
 
 uint8_t get_fsd(int fd, struct udf_disc *disc, int sectorsize);
-
+uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc);
 #endif //__UDFFSCK_H__

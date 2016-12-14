@@ -3,17 +3,19 @@
 #include "utils.h"
 #include "libudffs.h"
 
-int get_avdp(int fd, struct udf_disc *disc, int sectorsize, avdp_type_e type) {
+int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize, avdp_type_e type) {
     int64_t position = 0;
     tag *desc_tag;
     
     printf("Error: %s\n", strerror(errno));
-    printf("FD: 0x%x\n", fd);
+    //printf("FD: 0x%x\n", fd);
     if(type == FIRST_AVDP)
-        position = udf_lseek64(fd, sectorsize*256, SEEK_SET); // Seek to AVDP point
+        //position = udf_lseek64(fd, sectorsize*256, SEEK_SET); // Seek to AVDP point
+        position = sectorsize*256;
     else if(type == SECOND_AVDP) {
         fprintf(stderr, "FIXME! Seeking to First AVDP instead of Second\n");
-        position = udf_lseek64(fd, sectorsize*256, SEEK_SET); //FIXME seek to last LSN
+        //position = udf_lseek64(fd, sectorsize*256, SEEK_SET);
+        position = sectorsize*devsize-sectorsize;
     } else {
         fprintf(stderr, "Unknown AVDP type. Exiting.\n");
         return -1;
@@ -26,7 +28,8 @@ int get_avdp(int fd, struct udf_disc *disc, int sectorsize, avdp_type_e type) {
     
     printf("sizeof anchor: %d\n", sizeof(struct anchorVolDescPtr));
 
-    read(fd, disc->udf_anchor[type], sizeof(struct anchorVolDescPtr)); // Load data
+    //read(fd, disc->udf_anchor[type], sizeof(struct anchorVolDescPtr)); // Load data
+    memcpy(disc->udf_anchor[type], dev+position, sizeof(struct anchorVolDescPtr));
     printf("Error: %s\n", strerror(errno));
     printf("Current position: %x\n", position);
     printf("desc_tag ptr: %p\n", disc->udf_anchor[type]->descTag);
@@ -243,5 +246,64 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds) {
         map.td[vds] |= E_CRC;
     }
 
+    return 0;
+}
+
+
+uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
+    uint16_t blocksize = disc->udf_lvd[0]->logicalBlockSize;
+    struct fileEntry *file;
+    tag descTag;
+    uint32_t lbn;
+    // Go to ROOT ICB 
+    lb_addr icbloc = disc->udf_fsd->rootDirectoryICB.extLocation; 
+    
+    file = malloc(sizeof(struct fileEntry));
+    //lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
+    //read(fd, file, sizeof(struct fileEntry));
+    lbn = 257+icbloc.logicalBlockNum;
+    memcpy(file, dev+blocksize*lbn, sizeof(struct fileEntry));
+    printf("ROOT ICB IDENT: %x\n", file->descTag.tagIdent);
+    //printf("NumEntries: %d\n", file->icbTag.numEntries);
+/* Tag Identifier (ECMA 167r3 4/7.2.1) 
+#define TAG_IDENT_FSD			0x0100
+#define TAG_IDENT_FID			0x0101
+#define TAG_IDENT_AED			0x0102
+#define TAG_IDENT_IE			0x0103
+#define TAG_IDENT_TE			0x0104
+#define TAG_IDENT_FE			0x0105
+#define TAG_IDENT_EAHD			0x0106
+#define TAG_IDENT_USE			0x0107
+#define TAG_IDENT_SBD			0x0108
+#define TAG_IDENT_PIE			0x0109
+#define TAG_IDENT_EFE			0x010A*/
+    memcpy(&descTag, dev+blocksize*lbn, sizeof(tag));
+    while(descTag.tagIdent != 0 ) {
+        //read(fd, file, sizeof(struct fileEntry));
+        lbn = lbn + 1;
+        memcpy(&descTag, dev+blocksize*lbn, sizeof(tag));
+        
+        switch(descTag.tagIdent) {
+            case TAG_IDENT_FID:
+                printf("FID, LSN: %d\n", lbn);
+                break;
+            case TAG_IDENT_AED:
+                printf("AED, LSN: %d\n", lbn);
+                break;
+            case TAG_IDENT_FE:
+                printf("FE, LSN: %d\n", lbn);
+                break;  
+            case TAG_IDENT_EAHD:
+                printf("EAHD, LSN: %d\n", lbn);
+                break;
+
+            default:
+                printf("IDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lbn, lbn*blocksize);
+                
+        }
+        //lseek64(fd, 259*blocksize+blocksize*(ff+1), SEEK_SET);
+    }
+
+    //printf("ICB LBN: %x\n", icbloc.logicalBlockNum);
     return 0;
 }

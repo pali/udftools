@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/mman.h>
 
 #include <ecma_167.h>
 #include <libudffs.h>
@@ -42,21 +43,22 @@
 
 #define BLOCK_SIZE 2048
 
-int is_udf(int fp) {
+int is_udf(uint8_t *dev) {
     struct volStructDesc vsd;
     struct beginningExtendedAreaDesc bea;
     struct volStructDesc nsr;
     struct terminatingExtendedAreaDesc tea;
     
-    udf_lseek64(fp,  PVD*BLOCK_SIZE, SEEK_SET); // default block size is 2048B, so PVD will be there
+    //udf_lseek64(fp,  PVD*BLOCK_SIZE, SEEK_SET); // default block size is 2048B, so PVD will be there
     
     
     for(int i = 0; i<6; i++) {
         printf("[DBG] try #%d\n", i);
         
         //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
-        read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
-        
+        //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
+        memcpy(&vsd, dev+PVD*BLOCK_SIZE+i*BLOCK_SIZE, sizeof(vsd));
+
         printf("[DBG] vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
         
         
@@ -69,7 +71,7 @@ int is_udf(int fp) {
         } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CD001, 5)) { 
             //CD001 means there is ISO9660, we try search for UDF at sector 18
             //TODO do check for other parameters here
-            udf_lseek64(fp, BLOCK_SIZE, SEEK_CUR);
+            //udf_lseek64(fp, BLOCK_SIZE, SEEK_CUR);
         } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CDW02, 5)) {
             fprintf(stderr, "CDW02 found, unsuported for now.\n");
             return(-1);
@@ -164,7 +166,9 @@ int main(int argc, char *argv[]) {
     int status = 0;
     int blocksize = 0;
     struct udf_disc disc = {0};
-    
+    uint8_t *dev;
+    struct stat sb;
+
     parse_args(argc, argv, &path, &blocksize);	
 
     if(strlen(path) == 0 || path == NULL) {
@@ -186,9 +190,12 @@ int main(int argc, char *argv[]) {
     printf("FD: 0x%x\n", fd);
     //blocksize = detect_blocksize(fd, NULL);
 
-    status = is_udf(fd); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
+    fstat(fd, &sb);
+    dev = (uint8_t *)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+
+    status = is_udf(dev); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status) exit(status);
-    status = get_avdp(fd, &disc, blocksize, FIRST_AVDP); //load AVDP
+    status = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //load AVDP
     if(status) exit(status);
     
     printf("\nTrying to load VDS\n");
@@ -200,41 +207,14 @@ int main(int argc, char *argv[]) {
     status = get_fsd(fd, &disc, blocksize);
     if(status) exit(status);
   
-    // Go to ROOT ICB 
-    lb_addr icbloc = disc.udf_fsd->rootDirectoryICB.extLocation; 
-    struct fileEntry *file;
-    file = malloc(sizeof(struct fileEntry));
-    lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
-    read(fd, file, sizeof(struct fileEntry));
-    printf("ROOT ICB IDENT: %x\n", file->descTag.tagIdent);
-/* Tag Identifier (ECMA 167r3 4/7.2.1) 
-#define TAG_IDENT_FSD			0x0100
-#define TAG_IDENT_FID			0x0101
-#define TAG_IDENT_AED			0x0102
-#define TAG_IDENT_IE			0x0103
-#define TAG_IDENT_TE			0x0104
-#define TAG_IDENT_FE			0x0105
-#define TAG_IDENT_EAHD			0x0106
-#define TAG_IDENT_USE			0x0107
-#define TAG_IDENT_SBD			0x0108
-#define TAG_IDENT_PIE			0x0109
-#define TAG_IDENT_EFE			0x010A*/
-    for(int ff=0; ff<10; ff++) {
-        read(fd, file, sizeof(struct fileEntry));
-        if(file->descTag.tagIdent == TAG_IDENT_FE) {
-            printf("UID: %d\n", file->uniqueID);  
-        } else {
-            printf("IDENT: %x\n", file->descTag.tagIdent);
-        }
-        lseek64(fd, 259*blocksize+blocksize*(ff+1), SEEK_SET);
-    }
 
     close(fd);
 
+    status = get_file_structure(dev, &disc);
+    if(status) exit(status);
     //print_disc(&disc);
     //verify_vds(&disc, MAIN_VDS);
     
-    printf("ICB LBN: %x\n", icbloc.logicalBlockNum);
     //printf("ID: %x\n", file->descTag.tagIdent);
     printf("All done\n");
     return status;
