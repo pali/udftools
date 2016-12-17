@@ -130,16 +130,15 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds)
     return 0;
 }
 
-uint8_t get_fsd(int fd, struct udf_disc *disc, int sectorsize) {
+uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
     long_ad *lap;
     tag descTag;
     lap = (long_ad *)disc->udf_lvd[0]->logicalVolContentsUse;
     lb_addr filesetblock = lap->extLocation;
     uint32_t filesetlen = lap->extLength;
     disc->udf_fsd = malloc(sizeof(struct fileSetDesc));
-    udf_lseek64(fd, 257*sectorsize, SEEK_SET);
-    read(fd, disc->udf_fsd, sizeof(struct fileSetDesc));
-    
+    memcpy(disc->udf_fsd, dev+257*sectorsize, sizeof(struct fileSetDesc));
+
     if(disc->udf_fsd->descTag.tagIdent != TAG_IDENT_FSD) {
         fprintf(stderr, "Error identifiing FSD.\n");
         free(disc->udf_fsd);
@@ -147,8 +146,7 @@ uint8_t get_fsd(int fd, struct udf_disc *disc, int sectorsize) {
     }
     printf("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
     
-    udf_lseek64(fd, 258*sectorsize, SEEK_SET);
-    read(fd, &descTag, sizeof(tag));
+    memcpy(&descTag, dev+258*sectorsize, sizeof(tag));
     if(descTag.tagIdent != TAG_IDENT_TD) {
         fprintf(stderr, "Error loading FSD sequence. TE descriptor not found. Desc ID: %x\n", descTag.tagIdent);
         free(disc->udf_fsd);

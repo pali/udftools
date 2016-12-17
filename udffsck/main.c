@@ -193,6 +193,8 @@ int main(int argc, char *argv[]) {
     fstat(fd, &sb);
     dev = (uint8_t *)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
 
+    close(fd);
+    
     status = is_udf(dev); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status) exit(status);
     status = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //load AVDP
@@ -204,11 +206,10 @@ int main(int argc, char *argv[]) {
     status = get_vds(dev, &disc, blocksize, RESERVE_VDS); //load reserve VDS
     if(status) exit(status);
 
-    status = get_fsd(fd, &disc, blocksize);
+    status = get_fsd(dev, &disc, blocksize);
     if(status) exit(status);
   
 
-    close(fd);
 
     status = get_file_structure(dev, &disc);
     if(status) exit(status);
