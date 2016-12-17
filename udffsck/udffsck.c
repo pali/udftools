@@ -140,7 +140,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
     memcpy(disc->udf_fsd, dev+257*sectorsize, sizeof(struct fileSetDesc));
 
     if(disc->udf_fsd->descTag.tagIdent != TAG_IDENT_FSD) {
-        fprintf(stderr, "Error identifiing FSD.\n");
+        fprintf(stderr, "Error identifiing FSD. Tag ID: 0x%x\n", disc->udf_fsd->descTag.tagIdent);
         free(disc->udf_fsd);
         return -1;
     }

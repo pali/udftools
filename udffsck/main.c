@@ -206,16 +206,26 @@ int main(int argc, char *argv[]) {
     status = get_vds(dev, &disc, blocksize, RESERVE_VDS); //load reserve VDS
     if(status) exit(status);
 
+    // SBD is not necessarily present, decide how to select
+    // SBD with EFE are at 2.6 implementation
+#ifdef SBD_PRESENT
+    status = get_sbd(dev, &disc, SBD_STRUCTURE_HERE);
+#endif
+
+#ifdef FSD_PRESENT
+    // FSD is not necessarily pressent, decide how to select
+    // Seen at 1.5 implementations
     status = get_fsd(dev, &disc, blocksize);
     if(status) exit(status);
-  
-
-
     status = get_file_structure(dev, &disc);
     if(status) exit(status);
+#endif
+
+#ifdef PRINT_DISC
     print_disc(&disc);
     verify_vds(&disc, MAIN_VDS);
-    
+#endif
+
     //printf("ID: %x\n", file->descTag.tagIdent);
     printf("All done\n");
     return status;
