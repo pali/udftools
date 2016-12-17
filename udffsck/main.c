@@ -213,8 +213,8 @@ int main(int argc, char *argv[]) {
 
     status = get_file_structure(dev, &disc);
     if(status) exit(status);
-    //print_disc(&disc);
-    //verify_vds(&disc, MAIN_VDS);
+    print_disc(&disc);
+    verify_vds(&disc, MAIN_VDS);
     
     //printf("ID: %x\n", file->descTag.tagIdent);
     printf("All done\n");
