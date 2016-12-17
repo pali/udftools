@@ -39,18 +39,18 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devs
 }
 
 #define VDS_STRUCT_AMOUNT 9 //FIXME Move to somewhere else, not keep it here.
-int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
-    int64_t position = 0;
+int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
+    uint8_t *position;
     int8_t counter = 0;
     tag descTag;
 
     // Go to first address of VDS 
     switch(vds) {
         case MAIN_VDS:
-            position = udf_lseek64(fd, sectorsize*(disc->udf_anchor[0]->mainVolDescSeqExt.extLocation), SEEK_SET);
+            position = dev+sectorsize*(disc->udf_anchor[0]->mainVolDescSeqExt.extLocation);
             break;
         case RESERVE_VDS:
-            position = udf_lseek64(fd, sectorsize*(disc->udf_anchor[0]->reserveVolDescSeqExt.extLocation), SEEK_SET);
+            position = dev+sectorsize*(disc->udf_anchor[0]->reserveVolDescSeqExt.extLocation);
             break;
     }
     printf("Current position: %x\n", position);
@@ -60,10 +60,9 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
         counter++;
 
         // Read tag
-        read(fd, &descTag, sizeof(descTag));    
+        memcpy(&descTag, position, sizeof(descTag));
 
         printf("Tag ID: %d\n", descTag.tagIdent);
-        udf_lseek64(fd, -sizeof(descTag), SEEK_CUR); // Go back where descriptor started
         
         // What kind of descriptor is that?
         switch(descTag.tagIdent) {
@@ -73,9 +72,7 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
                     exit(-4);
                 }
                 disc->udf_pvd[vds] = malloc(sizeof(struct primaryVolDesc)); // Prepare memory
-                position += read(fd, disc->udf_pvd[vds], sizeof(struct primaryVolDesc)); // Load data
-                position = udf_lseek64(fd, sectorsize - sizeof(struct primaryVolDesc), SEEK_CUR);
-                printf("New positon is %p\n", position);
+                memcpy(disc->udf_pvd[vds], position, sizeof(struct primaryVolDesc)); 
                 break;
             case TAG_IDENT_IUVD:
                 if(disc->udf_iuvd[vds] != 0) {
@@ -83,9 +80,7 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
                     exit(-4);
                 }
                 disc->udf_iuvd[vds] = malloc(sizeof(struct impUseVolDesc)); // Prepare memory
-                position += read(fd, disc->udf_iuvd[vds], sizeof(struct impUseVolDesc)); // Load data
-                position = udf_lseek64(fd, sectorsize - sizeof(struct impUseVolDesc), SEEK_CUR);
-                printf("New positon is %p\n", position);
+                memcpy(disc->udf_iuvd[vds], position, sizeof(struct impUseVolDesc)); 
                 break;
             case TAG_IDENT_PD:
                 if(disc->udf_pd[vds] != 0) {
@@ -93,9 +88,7 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
                     exit(-4);
                 }
                 disc->udf_pd[vds] = malloc(sizeof(struct partitionDesc)); // Prepare memory
-                position += read(fd, disc->udf_pd[vds], sizeof(struct partitionDesc)); // Load data
-                position = udf_lseek64(fd, sectorsize - sizeof(struct partitionDesc), SEEK_CUR);
-                printf("New positon is %p\n", position);
+                memcpy(disc->udf_pd[vds], position, sizeof(struct partitionDesc)); 
                 break;
             case TAG_IDENT_LVD:
                 if(disc->udf_lvd[vds] != 0) {
@@ -104,9 +97,7 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
                 }
                 printf("LVD size: %p\n", sizeof(struct logicalVolDesc));
                 disc->udf_lvd[vds] = malloc(sizeof(struct logicalVolDesc)); // Prepare memory
-                position += read(fd, disc->udf_lvd[vds], sizeof(struct logicalVolDesc)); // Load data
-                position = udf_lseek64(fd, sectorsize - sizeof(struct logicalVolDesc), SEEK_CUR);
-                printf("New positon is %p\n", position);
+                memcpy(disc->udf_lvd[vds], position, sizeof(struct logicalVolDesc)); 
                 break;
             case TAG_IDENT_USD:
                 if(disc->udf_usd[vds] != 0) {
@@ -114,9 +105,7 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
                     exit(-4);
                 }
                 disc->udf_usd[vds] = malloc(sizeof(struct unallocSpaceDesc)); // Prepare memory
-                position += read(fd, disc->udf_usd[vds], sizeof(struct unallocSpaceDesc)); // Load data
-                position = udf_lseek64(fd, sectorsize - sizeof(struct unallocSpaceDesc), SEEK_CUR);
-                printf("New positon is %p\n", position);
+                memcpy(disc->udf_usd[vds], position, sizeof(struct unallocSpaceDesc)); 
                 break;
             case TAG_IDENT_TD:
                 if(disc->udf_td[vds] != 0) {
@@ -124,9 +113,7 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
                     exit(-4);
                 }
                 disc->udf_td[vds] = malloc(sizeof(struct terminatingDesc)); // Prepare memory
-                position += read(fd, disc->udf_td[vds], sizeof(struct terminatingDesc)); // Load data
-                position = udf_lseek64(fd, sectorsize - sizeof(struct terminatingDesc), SEEK_CUR);
-                printf("New positon is %p\n", position);
+                memcpy(disc->udf_td[vds], position, sizeof(struct terminatingDesc)); 
                 break;
             case 0:
                 // Found end of VDS, ending.
@@ -136,6 +123,9 @@ int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
                 fprintf(stderr, "Unknown TAG found at %p. Ending.\n", position);
                 exit(-3);
         }
+
+        position = position + sectorsize;
+        printf("New positon is %p\n", position);
     }
     return 0;
 }

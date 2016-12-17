@@ -199,9 +199,9 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
     
     printf("\nTrying to load VDS\n");
-    status = get_vds(fd, &disc, blocksize, MAIN_VDS); //load main VDS
+    status = get_vds(dev, &disc, blocksize, MAIN_VDS); //load main VDS
     if(status) exit(status);
-    status = get_vds(fd, &disc, blocksize, RESERVE_VDS); //load reserve VDS
+    status = get_vds(dev, &disc, blocksize, RESERVE_VDS); //load reserve VDS
     if(status) exit(status);
 
     status = get_fsd(fd, &disc, blocksize);

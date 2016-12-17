@@ -37,7 +37,7 @@ typedef struct {
 int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize, avdp_type_e type);
 
 // Volume descriptor sequence
-int get_vds(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
+int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds);
 // Load all PVD descriptors into disc structure
 int get_pvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
 
