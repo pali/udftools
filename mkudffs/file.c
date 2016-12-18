@@ -25,12 +25,13 @@
  * libudffs file and directory handling functions
  */
 
+#include "config.h"
+
 #include <malloc.h>
 
 #include "libudffs.h"
 #include "file.h"
 #include "defaults.h"
-#include "config.h"
 
 /**
  * For a more detailed discussion of partition and extends see the comments

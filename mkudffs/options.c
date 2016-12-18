@@ -26,6 +26,8 @@
  * mkudffs option handling functions
  */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>

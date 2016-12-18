@@ -20,6 +20,8 @@
  *
  */
 
+#include "config.h"
+
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,7 +34,6 @@
 #include <errno.h>
 
 #include "cdrwtool.h"
-#include "config.h"
 #include "options.h"
 
 #include "../mkudffs/defaults.h"

@@ -25,6 +25,8 @@
  * mkudffs default structure initializers
  */
 
+#include "config.h"
+
 #include "mkudffs.h"
 
 struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =

@@ -17,6 +17,9 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
+
+#include "config.h"
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -30,8 +33,6 @@
 #include <stdlib.h>
 
 #include <linux/cdrom.h>
-
-#include "config.h"
 
 /*
  * if we don't have one, we probably have neither

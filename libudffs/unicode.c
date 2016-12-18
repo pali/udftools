@@ -25,8 +25,9 @@
  * libudffs unicode handling functions
  */
 
-#include "libudffs.h"
 #include "config.h"
+
+#include "libudffs.h"
 
 int decode_utf8(char *in, char *out, int inlen)
 {

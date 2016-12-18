@@ -26,6 +26,8 @@
  * mkudffs main program and I/O functions
  */
 
+#include "config.h"
+
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +45,6 @@
 
 #include "mkudffs.h"
 #include "defaults.h"
-#include "config.h"
 #include "options.h"
 
 static int64_t udf_lseek64(int fd, int64_t offset, int whence)

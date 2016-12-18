@@ -26,6 +26,8 @@
  * mkudffs support functions
  */
 
+#include "config.h"
+
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,7 +42,6 @@
 #include "mkudffs.h"
 #include "file.h"
 #include "defaults.h"
-#include "config.h"
 
 void udf_init_disc(struct udf_disc *disc)
 {

@@ -18,6 +18,8 @@
  *	16 Aug 01  ef  Created.
  */
 
+#include "config.h"
+
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
