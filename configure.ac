@@ -19,6 +19,7 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
 AC_HEADER_TIME
 AC_STRUCT_TM
+AC_SYS_LARGEFILE
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(gettimeofday mktime lseek64 llseek)
