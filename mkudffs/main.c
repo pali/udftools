@@ -47,22 +47,11 @@
 #include "defaults.h"
 #include "options.h"
 
-static int64_t udf_lseek64(int fd, int64_t offset, int whence)
-{
-#if defined(HAVE_LSEEK64)
-	return lseek64(fd, offset, whence);
-#elif defined(HAVE_LLSEEK)
-	return llseek(fd, offset, whence);
-#else
-	return lseek(fd, offset, whence);
-#endif
-}
-
-static int valid_offset(int fd, int64_t offset)
+static int valid_offset(int fd, off_t offset)
 {
 	char ch;
 
-	if (udf_lseek64(fd, offset, SEEK_SET) < 0)
+	if (lseek(fd, offset, SEEK_SET) < 0)
 		return 0;
 	if (read(fd, &ch, 1) < 1)
 		return 0;
@@ -102,13 +91,13 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 		blocks = buf.st_size / blocksize;
 	else
 	{
-		int64_t high, low;
+		off_t high, low;
 
 		for (low=0, high = 1024; valid_offset(fd, high); high *= 2)
 			low = high;
 		while (low < high - 1)
 		{
-			const int64_t mid = (low + high) / 2;
+			const off_t mid = (low + high) / 2;
 
 			if (valid_offset(fd, mid))
 				low = mid;
@@ -168,7 +157,7 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 		desc = ext->head;
 		while (desc != NULL)
 		{
-			if (udf_lseek64(fd, (uint64_t)(ext->start + desc->offset) << disc->blocksize_bits, SEEK_SET) < 0)
+			if (lseek(fd, (off_t)(ext->start + desc->offset) << disc->blocksize_bits, SEEK_SET) < 0)
 				return -1;
 			data = desc->data;
 			offset = 0;
