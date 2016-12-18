@@ -22,7 +22,6 @@ AC_STRUCT_TM
 AC_SYS_LARGEFILE
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(gettimeofday mktime lseek64 llseek)
 AC_SUBST(LTLIBOBJS)
 
 AC_CONFIG_FILES(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile wrudf/Makefile doc/Makefile)
