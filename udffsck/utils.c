@@ -86,6 +86,7 @@ int print_disc(struct udf_disc *disc) {
         printf("[%d]\n", i);
         if(disc->udf_lvd[i] != 0) {
             read_tag(disc->udf_lvd[i]->descTag);
+            printf("Partition Maps: %d\n",disc->udf_lvd[i]->partitionMaps[0]);
         }
     }
 

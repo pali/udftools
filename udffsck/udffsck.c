@@ -144,6 +144,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
         free(disc->udf_fsd);
         return -1;
     }
+    printf("LVID: %s\nFSI: %s\n", disc->udf_fsd->logicalVolIdent, disc->udf_fsd->fileSetIdent);
     printf("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
     
     memcpy(&descTag, dev+258*sectorsize, sizeof(tag));
@@ -241,17 +242,26 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds) {
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
     uint16_t blocksize = disc->udf_lvd[0]->logicalBlockSize;
     struct fileEntry *file;
+    struct fileIdentDesc *fid;
     tag descTag;
     uint32_t lbn;
+                
+    uint8_t ptLength = 1;
+    uint32_t extLoc;
+    char *filename;
+    uint16_t pos = 0;
     // Go to ROOT ICB 
     lb_addr icbloc = disc->udf_fsd->rootDirectoryICB.extLocation; 
     
     file = malloc(sizeof(struct fileEntry));
+    fid = malloc(sizeof(struct fileIdentDesc));
     //lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
     //read(fd, file, sizeof(struct fileEntry));
+    printf("ROOT LSN: %d\n", icbloc.logicalBlockNum+257);
     lbn = 257+icbloc.logicalBlockNum;
     memcpy(file, dev+blocksize*lbn, sizeof(struct fileEntry));
     printf("ROOT ICB IDENT: %x\n", file->descTag.tagIdent);
+    printf("Next extent LBN: %d\n", disc->udf_fsd->fileSetNum);
     //printf("NumEntries: %d\n", file->icbTag.numEntries);
 /* Tag Identifier (ECMA 167r3 4/7.2.1) 
 #define TAG_IDENT_FSD			0x0100
@@ -265,6 +275,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
 #define TAG_IDENT_SBD			0x0108
 #define TAG_IDENT_PIE			0x0109
 #define TAG_IDENT_EFE			0x010A*/
+    //Set dectTag to nonzero 
     memcpy(&descTag, dev+blocksize*lbn, sizeof(tag));
     while(descTag.tagIdent != 0 ) {
         //read(fd, file, sizeof(struct fileEntry));
@@ -273,20 +284,30 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
         
         switch(descTag.tagIdent) {
             case TAG_IDENT_FID:
-                printf("FID, LSN: %d\n", lbn);
+                memcpy(fid, dev+blocksize*lbn, sizeof(struct fileIdentDesc));
+                printf("FID, LSN: %d, File LSN: %d\n", lbn, fid->icb.extLocation.logicalBlockNum+257);
                 break;
             case TAG_IDENT_AED:
                 printf("AED, LSN: %d\n", lbn);
                 break;
             case TAG_IDENT_FE:
-                printf("FE, LSN: %d\n", lbn);
+                memcpy(file, dev+blocksize*lbn, sizeof(struct fileEntry));
+                printf("FE, LSN: %d, EntityID: %s ", lbn, file->impIdent.ident);
+                printf("fileLinkCount: %d, LB recorded: %d\n", file->fileLinkCount, file->logicalBlocksRecorded);
                 break;  
             case TAG_IDENT_EAHD:
                 printf("EAHD, LSN: %d\n", lbn);
                 break;
 
             default:
-                printf("IDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lbn, lbn*blocksize);
+                //printf("IDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lbn, lbn*blocksize);
+                do{
+                    ptLength = *(uint8_t *)(dev+lbn*blocksize+pos);
+                    extLoc = *(uint32_t *)(dev+lbn*blocksize+2+pos);
+                    filename = (char *)(dev+lbn*blocksize+8+pos);
+                    printf("extLoc LBN: %d, filename: %s\n", extLoc, filename);
+                    pos += ptLength + 8 + ptLength%2;
+                } while(ptLength > 0);
                 
         }
         //lseek64(fd, 259*blocksize+blocksize*(ff+1), SEEK_SET);

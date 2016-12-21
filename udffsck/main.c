@@ -43,6 +43,9 @@
 
 #define BLOCK_SIZE 2048
 
+#define FSD_PRESENT 
+//#define PRINT_DISC 
+
 int is_udf(uint8_t *dev) {
     struct volStructDesc vsd;
     struct beginningExtendedAreaDesc bea;
@@ -206,15 +209,16 @@ int main(int argc, char *argv[]) {
     status = get_vds(dev, &disc, blocksize, RESERVE_VDS); //load reserve VDS
     if(status) exit(status);
 
+    verify_vds(&disc, MAIN_VDS);
     // SBD is not necessarily present, decide how to select
-    // SBD with EFE are at 2.6 implementation
-#ifdef SBD_PRESENT
+    // SBD with EFE are seen at r2.6 implementation
+#ifdef SBD_PRESENT //FIXME Unfinished
     status = get_sbd(dev, &disc, SBD_STRUCTURE_HERE);
 #endif
 
 #ifdef FSD_PRESENT
     // FSD is not necessarily pressent, decide how to select
-    // Seen at 1.5 implementations
+    // Seen at r1.5 implementations
     status = get_fsd(dev, &disc, blocksize);
     if(status) exit(status);
     status = get_file_structure(dev, &disc);
@@ -223,10 +227,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef PRINT_DISC
     print_disc(&disc);
-    verify_vds(&disc, MAIN_VDS);
 #endif
 
-    //printf("ID: %x\n", file->descTag.tagIdent);
+    
     printf("All done\n");
     return status;
 }
