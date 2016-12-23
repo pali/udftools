@@ -3,37 +3,70 @@
 #include "utils.h"
 #include "libudffs.h"
 
+uint8_t calculate_checksum(tag descTag) {
+    uint8_t i;
+    uint8_t tagChecksum = 0;
+    
+    for (i=0; i<16; i++)
+        if (i != 4)
+            tagChecksum += (uint8_t)(((char *)&(descTag))[i]);
+
+    return tagChecksum;
+}
+
+int checksum(tag descTag) {
+    return calculate_checksum(descTag) == descTag.tagChecksum;
+}
+
+int crc(void * desc, uint16_t size) {
+    uint8_t offset = sizeof(tag);
+    tag *descTag = desc;
+    uint16_t crc = 0;
+    return descTag->descCRC != udf_crc((uint8_t *)(desc) + offset, size - offset, crc);
+}
+
+/**
+ * \brief Locate AVDP on device and store it
+ * \param[in] dev pointer to device array
+ * \param[out] disc AVDP is stored in udf_disc structure
+ * \param[in] sectorsize device logical sector size
+ * \param[in] devsize size of whole device in LSN
+ * \param[in] type selector of AVDP - first or second
+ * \return  0 everything is ok
+ *         -1 unknown type is required
+ *         -2 AVDP tag checksum failed
+ *         -3 AVDP CRC failed 
+ */
 int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize, avdp_type_e type) {
     int64_t position = 0;
     tag *desc_tag;
     
-    printf("Error: %s\n", strerror(errno));
-    //printf("FD: 0x%x\n", fd);
     if(type == FIRST_AVDP)
-        //position = udf_lseek64(fd, sectorsize*256, SEEK_SET); // Seek to AVDP point
-        position = sectorsize*256;
+        position = sectorsize*256; //First AVDP is on LSN=256
     else if(type == SECOND_AVDP) {
-        fprintf(stderr, "FIXME! Seeking to First AVDP instead of Second\n");
-        //position = udf_lseek64(fd, sectorsize*256, SEEK_SET);
-        position = sectorsize*devsize-sectorsize;
+        position = sectorsize*devsize-sectorsize; //Second AVDP is on last LSN
     } else {
         fprintf(stderr, "Unknown AVDP type. Exiting.\n");
         return -1;
     }
 
-    printf("Error: %s\n", strerror(errno));
     printf("Current position: %x\n", position);
     
     disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
-    
-    printf("sizeof anchor: %d\n", sizeof(struct anchorVolDescPtr));
-
-    //read(fd, disc->udf_anchor[type], sizeof(struct anchorVolDescPtr)); // Load data
     memcpy(disc->udf_anchor[type], dev+position, sizeof(struct anchorVolDescPtr));
+    
     printf("Error: %s\n", strerror(errno));
-    printf("Current position: %x\n", position);
-    printf("desc_tag ptr: %p\n", disc->udf_anchor[type]->descTag);
     printf("AVDP: TagIdent: %x\n", disc->udf_anchor[type]->descTag.tagIdent);
+    
+    if(!checksum(disc->udf_anchor[type]->descTag)) {
+        fprintf(stderr, "Checksum failure at AVDP[%d]\n", type);
+        return -2;
+    }
+
+    if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
+        printf("CRC error at AVDP[%d]\n", type);
+        return -3;
+    }
 
     return 0;
 }
@@ -157,27 +190,6 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
     return 0;
 }
 
-uint8_t calculate_checksum(tag descTag) {
-    uint8_t i;
-    uint8_t tagChecksum = 0;
-    
-    for (i=0; i<16; i++)
-        if (i != 4)
-            tagChecksum += (uint8_t)(((char *)&(descTag))[i]);
-
-    return tagChecksum;
-}
-
-int checksum(tag descTag) {
-    return calculate_checksum(descTag) == descTag.tagChecksum;
-}
-
-int crc(void * desc, uint16_t size) {
-    uint8_t offset = sizeof(tag);
-    tag *descTag = desc;
-    uint16_t crc = 0;
-    return descTag->descCRC != udf_crc((uint8_t *)(desc) + offset, size - offset, crc);
-}
 
 int verify_vds(struct udf_disc *disc, vds_type_e vds) {
     metadata_err_map_t map;    
