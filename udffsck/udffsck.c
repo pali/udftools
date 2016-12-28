@@ -86,7 +86,7 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds)
             position = dev+sectorsize*(disc->udf_anchor[0]->reserveVolDescSeqExt.extLocation);
             break;
     }
-    printf("Current position: %x\n", position);
+    printf("Current position: %x\n", position-dev);
     
     // Go thru descriptors until TagIdent is 0 or amout is too big to be real
     while(counter < VDS_STRUCT_AMOUNT) {
@@ -106,6 +106,10 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds)
                 }
                 disc->udf_pvd[vds] = malloc(sizeof(struct primaryVolDesc)); // Prepare memory
                 memcpy(disc->udf_pvd[vds], position, sizeof(struct primaryVolDesc)); 
+                printf("VolNum: %d\n", disc->udf_pvd[vds]->volDescSeqNum);
+                printf("pVolNum: %d\n", disc->udf_pvd[vds]->primaryVolDescNum);
+                printf("seqNum: %d\n", disc->udf_pvd[vds]->volSeqNum);
+                printf("predLoc: %d\n", disc->udf_pvd[vds]->predecessorVolDescSeqLocation);
                 break;
             case TAG_IDENT_IUVD:
                 if(disc->udf_iuvd[vds] != 0) {
@@ -129,16 +133,32 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds)
                     exit(-4);
                 }
                 printf("LVD size: %p\n", sizeof(struct logicalVolDesc));
-                disc->udf_lvd[vds] = malloc(sizeof(struct logicalVolDesc)); // Prepare memory
-                memcpy(disc->udf_lvd[vds], position, sizeof(struct logicalVolDesc)); 
+                
+                struct logicalVolDesc *lvd;
+                lvd = (struct logicalVolDesc *)(position);
+                
+                disc->udf_lvd[vds] = malloc(sizeof(struct logicalVolDesc)+lvd->mapTableLength); // Prepare memory
+                memcpy(disc->udf_lvd[vds], position, sizeof(struct logicalVolDesc)+lvd->mapTableLength);
+                printf("NumOfPartitionMaps: %d\n", disc->udf_lvd[vds]->numPartitionMaps);
+                printf("MapTableLength: %d\n", disc->udf_lvd[vds]->mapTableLength);
+                for(int i=0; i<lvd->mapTableLength; i++) {
+                    printf("[0x%02x] ", disc->udf_lvd[vds]->partitionMaps[i]);
+                }
+                printf("\n");
                 break;
             case TAG_IDENT_USD:
                 if(disc->udf_usd[vds] != 0) {
                     fprintf(stderr, "Structure USD is already set. Probably error at tag or media\n");
                     exit(-4);
                 }
-                disc->udf_usd[vds] = malloc(sizeof(struct unallocSpaceDesc)); // Prepare memory
-                memcpy(disc->udf_usd[vds], position, sizeof(struct unallocSpaceDesc)); 
+
+                struct unallocSpaceDesc *usd;
+                usd = (struct unallocSpaceDesc *)(position);
+                printf("VolDescNum: %d\n", usd->volDescSeqNum);
+                printf("NumAllocDesc: %d\n", usd->numAllocDescs);
+
+                disc->udf_usd[vds] = malloc(sizeof(struct unallocSpaceDesc)+(usd->numAllocDescs)*sizeof(extent_ad)); // Prepare memory
+                memcpy(disc->udf_usd[vds], position, sizeof(struct unallocSpaceDesc)+(usd->numAllocDescs)*sizeof(extent_ad)); 
                 break;
             case TAG_IDENT_TD:
                 if(disc->udf_td[vds] != 0) {
@@ -158,7 +178,7 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds)
         }
 
         position = position + sectorsize;
-        printf("New positon is %p\n", position);
+        printf("New positon is %p\n", position-dev);
     }
     return 0;
 }
@@ -190,6 +210,20 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
     return 0;
 }
 
+uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table) {
+    uint16_t i=0;
+    uint16_t append = 0;
+
+    do {
+        memcpy(&table[i], dev+sectorsize*257+append, sectorsize);
+        append += 8 + table[i].dirIdentLen + (table[i].dirIdentLen%2==0?1:0);
+        printf("PT: %s, len: %d, nextAddr: %p\n", table[i].dirIdent, table[i].dirIdentLen, sectorsize*257+append);
+        i++;
+    } while(table[i-1].dirIdentLen > 0);
+
+    return 0;
+
+}
 
 int verify_vds(struct udf_disc *disc, vds_type_e vds) {
     metadata_err_map_t map;    
@@ -226,7 +260,7 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds) {
         printf("CRC error at PVD[%d]\n", vds);
         map.pvd[vds] |= E_CRC;
     }
-    if(crc(disc->udf_lvd[vds], sizeof(struct logicalVolDesc))) {
+    if(crc(disc->udf_lvd[vds], sizeof(struct logicalVolDesc)+disc->udf_lvd[vds]->mapTableLength)) {
         printf("CRC error at LVD[%d]\n", vds);
         map.lvd[vds] |= E_CRC;
     }
@@ -234,7 +268,7 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds) {
         printf("CRC error at PD[%d]\n", vds);
         map.pd[vds] |= E_CRC;
     }
-    if(crc(disc->udf_usd[vds], sizeof(struct unallocSpaceDesc))) {
+    if(crc(disc->udf_usd[vds], sizeof(struct unallocSpaceDesc)+(disc->udf_usd[vds]->numAllocDescs)*sizeof(extent_ad))) {
         printf("CRC error at USD[%d]\n", vds);
         map.usd[vds] |= E_CRC;
     }

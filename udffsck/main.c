@@ -32,6 +32,7 @@
 #include <sys/mman.h>
 
 #include <ecma_167.h>
+#include <ecma_119.h>
 #include <libudffs.h>
 
 #include "udf.h"
@@ -43,8 +44,9 @@
 
 #define BLOCK_SIZE 2048
 
-#define FSD_PRESENT 
+//#define FSD_PRESENT 
 //#define PRINT_DISC 
+//#define PATH_TABLE
 
 int is_udf(uint8_t *dev) {
     struct volStructDesc vsd;
@@ -210,6 +212,7 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
 
     verify_vds(&disc, MAIN_VDS);
+    verify_vds(&disc, RESERVE_VDS);
     // SBD is not necessarily present, decide how to select
     // SBD with EFE are seen at r2.6 implementation
 #ifdef SBD_PRESENT //FIXME Unfinished
@@ -222,6 +225,12 @@ int main(int argc, char *argv[]) {
     status = get_fsd(dev, &disc, blocksize);
     if(status) exit(status);
     status = get_file_structure(dev, &disc);
+    if(status) exit(status);
+#endif
+
+#ifdef PATH_TABLE
+    pathTableRec table[100]; 
+    status = get_path_table(dev, blocksize, table);
     if(status) exit(status);
 #endif
 

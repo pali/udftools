@@ -2,6 +2,7 @@
 #define __UDFFSCK_H__
 
 #include <ecma_167.h>
+#include <ecma_119.h>
 #include <libudffs.h>
 
 #include <stdio.h>
@@ -48,4 +49,7 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds);
 
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize);
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc);
+
+uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table);
+
 #endif //__UDFFSCK_H__
