@@ -44,7 +44,7 @@
 
 #define BLOCK_SIZE 2048
 
-//#define FSD_PRESENT 
+#define FSD_PRESENT 
 //#define PRINT_DISC 
 //#define PATH_TABLE
 
@@ -209,6 +209,8 @@ int main(int argc, char *argv[]) {
     status = get_vds(dev, &disc, blocksize, MAIN_VDS); //load main VDS
     if(status) exit(status);
     status = get_vds(dev, &disc, blocksize, RESERVE_VDS); //load reserve VDS
+    if(status) exit(status);
+    status = get_lvid(dev, &disc, blocksize); //load LVID
     if(status) exit(status);
 
     verify_vds(&disc, MAIN_VDS);

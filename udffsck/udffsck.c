@@ -183,14 +183,41 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds)
     return 0;
 }
 
+int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
+    if(disc->udf_lvid != 0) {
+        fprintf(stderr, "Structure LVID is already set. Probably error at tag or media\n");
+        exit(-4);
+    }
+    uint32_t loc = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation; //FIXME MAIN_VDS should be verified first
+    uint32_t len = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLength; //FIXME same as previous
+    printf("LVID: loc: %d, len: %d\n", loc, len);
+
+    struct logicalVolIntegrityDesc *lvid;
+    lvid = (struct logicalVolIntegrityDesc *)(dev+loc*sectorsize);
+     
+    disc->udf_lvid = malloc(len);
+    memcpy(disc->udf_lvid, dev+loc*sectorsize, len);
+    printf("LVID: lenOfImpUse: %d\n",disc->udf_lvid->lengthOfImpUse);
+    printf("LVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
+    printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
+   
+    return 0; 
+}
+
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
     long_ad *lap;
     tag descTag;
     lap = (long_ad *)disc->udf_lvd[0]->logicalVolContentsUse;
     lb_addr filesetblock = lap->extLocation;
     uint32_t filesetlen = lap->extLength;
+    uint32_t lsnBase = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation+1; //FIXME MAIN_VDS should be verified first
+    uint32_t lbSize = disc->udf_lvd[MAIN_VDS]->logicalBlockSize; //FIXME same as above
+
+    printf("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
+    printf("LAP: LSN: %d\n", lsnBase+filesetblock.logicalBlockNum);
+    
     disc->udf_fsd = malloc(sizeof(struct fileSetDesc));
-    memcpy(disc->udf_fsd, dev+257*sectorsize, sizeof(struct fileSetDesc));
+    memcpy(disc->udf_fsd, dev+(lsnBase+filesetblock.logicalBlockNum)*lbSize, sizeof(struct fileSetDesc));
 
     if(disc->udf_fsd->descTag.tagIdent != TAG_IDENT_FSD) {
         fprintf(stderr, "Error identifiing FSD. Tag ID: 0x%x\n", disc->udf_fsd->descTag.tagIdent);
@@ -198,15 +225,15 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
         return -1;
     }
     printf("LVID: %s\nFSI: %s\n", disc->udf_fsd->logicalVolIdent, disc->udf_fsd->fileSetIdent);
-    printf("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
-    
-    memcpy(&descTag, dev+258*sectorsize, sizeof(tag));
+ 
+    /* //FIXME Maybe not needed. Investigate. 
+    memcpy(&descTag, dev+(lsnBase+filesetblock.logicalBlockNum+1)*lbSize, sizeof(tag));
     if(descTag.tagIdent != TAG_IDENT_TD) {
         fprintf(stderr, "Error loading FSD sequence. TE descriptor not found. Desc ID: %x\n", descTag.tagIdent);
         free(disc->udf_fsd);
         return -2;
     }
-
+*/
     return 0;
 }
 
@@ -225,64 +252,6 @@ uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table) {
 
 }
 
-int verify_vds(struct udf_disc *disc, vds_type_e vds) {
-    metadata_err_map_t map;    
-    uint8_t *data;
-    //uint16_t crc = 0;
-    uint16_t offset = sizeof(tag);
-
-    if(!checksum(disc->udf_pvd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at PVD[%d]\n", vds);
-        map.pvd[vds] |= E_CHECKSUM;
-    }   
-    if(!checksum(disc->udf_lvd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at LVD[%d]\n", vds);
-        map.lvd[vds] |= E_CHECKSUM;
-    }   
-    if(!checksum(disc->udf_pd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at PD[%d]\n", vds);
-        map.pd[vds] |= E_CHECKSUM;
-    }   
-    if(!checksum(disc->udf_usd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at USD[%d]\n", vds);
-        map.usd[vds] |= E_CHECKSUM;
-    }   
-    if(!checksum(disc->udf_iuvd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at IUVD[%d]\n", vds);
-        map.iuvd[vds] |= E_CHECKSUM;
-    }   
-    if(!checksum(disc->udf_td[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at TD[%d]\n", vds);
-        map.td[vds] |= E_CHECKSUM;
-    }
-
-    if(crc(disc->udf_pvd[vds], sizeof(struct primaryVolDesc))) {
-        printf("CRC error at PVD[%d]\n", vds);
-        map.pvd[vds] |= E_CRC;
-    }
-    if(crc(disc->udf_lvd[vds], sizeof(struct logicalVolDesc)+disc->udf_lvd[vds]->mapTableLength)) {
-        printf("CRC error at LVD[%d]\n", vds);
-        map.lvd[vds] |= E_CRC;
-    }
-    if(crc(disc->udf_pd[vds], sizeof(struct partitionDesc))) {
-        printf("CRC error at PD[%d]\n", vds);
-        map.pd[vds] |= E_CRC;
-    }
-    if(crc(disc->udf_usd[vds], sizeof(struct unallocSpaceDesc)+(disc->udf_usd[vds]->numAllocDescs)*sizeof(extent_ad))) {
-        printf("CRC error at USD[%d]\n", vds);
-        map.usd[vds] |= E_CRC;
-    }
-    if(crc(disc->udf_iuvd[vds], sizeof(struct impUseVolDesc))) {
-        printf("CRC error at IUVD[%d]\n", vds);
-        map.iuvd[vds] |= E_CRC;
-    }
-    if(crc(disc->udf_td[vds], sizeof(struct terminatingDesc))) {
-        printf("CRC error at TD[%d]\n", vds);
-        map.td[vds] |= E_CRC;
-    }
-
-    return 0;
-}
 
 
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
@@ -360,5 +329,64 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
     }
 
     //printf("ICB LBN: %x\n", icbloc.logicalBlockNum);
+    return 0;
+}
+
+int verify_vds(struct udf_disc *disc, vds_type_e vds) {
+    metadata_err_map_t map;    
+    uint8_t *data;
+    //uint16_t crc = 0;
+    uint16_t offset = sizeof(tag);
+
+    if(!checksum(disc->udf_pvd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at PVD[%d]\n", vds);
+        map.pvd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_lvd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at LVD[%d]\n", vds);
+        map.lvd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_pd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at PD[%d]\n", vds);
+        map.pd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_usd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at USD[%d]\n", vds);
+        map.usd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_iuvd[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at IUVD[%d]\n", vds);
+        map.iuvd[vds] |= E_CHECKSUM;
+    }   
+    if(!checksum(disc->udf_td[vds]->descTag)) {
+        fprintf(stderr, "Checksum failure at TD[%d]\n", vds);
+        map.td[vds] |= E_CHECKSUM;
+    }
+
+    if(crc(disc->udf_pvd[vds], sizeof(struct primaryVolDesc))) {
+        printf("CRC error at PVD[%d]\n", vds);
+        map.pvd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_lvd[vds], sizeof(struct logicalVolDesc)+disc->udf_lvd[vds]->mapTableLength)) {
+        printf("CRC error at LVD[%d]\n", vds);
+        map.lvd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_pd[vds], sizeof(struct partitionDesc))) {
+        printf("CRC error at PD[%d]\n", vds);
+        map.pd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_usd[vds], sizeof(struct unallocSpaceDesc)+(disc->udf_usd[vds]->numAllocDescs)*sizeof(extent_ad))) {
+        printf("CRC error at USD[%d]\n", vds);
+        map.usd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_iuvd[vds], sizeof(struct impUseVolDesc))) {
+        printf("CRC error at IUVD[%d]\n", vds);
+        map.iuvd[vds] |= E_CRC;
+    }
+    if(crc(disc->udf_td[vds], sizeof(struct terminatingDesc))) {
+        printf("CRC error at TD[%d]\n", vds);
+        map.td[vds] |= E_CRC;
+    }
+
     return 0;
 }
