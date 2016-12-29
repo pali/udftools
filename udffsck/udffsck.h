@@ -12,6 +12,7 @@
 typedef enum {
     FIRST_AVDP = 0,
     SECOND_AVDP,
+    THIRD_AVDP,
 } avdp_type_e;
 
 typedef enum {

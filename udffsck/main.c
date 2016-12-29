@@ -88,9 +88,12 @@ int is_udf(uint8_t *dev, uint32_t sectorsize) {
             //We found TEA01, so we can end recognition sequence
             memcpy(&tea, &vsd, sizeof(tea));
             break;
+        } else if(vsd.stdIdent[0] == '\0') {
+            fprintf(stderr, "Giving up VRS, maybe unclosed or bridged disc.\n");
+            return 1;
         } else {
             fprintf(stderr, "Unknown identifier: %s. Exiting\n", vsd.stdIdent);
-            return(-1);
+            return -1;
         }  
     }
     
@@ -199,10 +202,21 @@ int main(int argc, char *argv[]) {
     close(fd);
     
     status = is_udf(dev, blocksize); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
+    if(status < 0) {
+        exit(status);
+    } else if(status == 1) { 
+        status = get_avdp(dev, &disc, blocksize, sb.st_size, -1); //load AVDP
+        if(status) exit(status);
+    } else {
+        status = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //load AVDP
+        if(status) exit(status);
+    }
+
+    status = get_avdp(dev, &disc, blocksize, sb.st_size, SECOND_AVDP); //load AVDP
     if(status) exit(status);
-    status = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //load AVDP
+    status = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
     if(status) exit(status);
-    
+
     printf("\nTrying to load VDS\n");
     status = get_vds(dev, &disc, blocksize, MAIN_VDS); //load main VDS
     if(status) exit(status);
