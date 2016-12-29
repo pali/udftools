@@ -211,7 +211,7 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
     return 0; 
 }
 
-uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
+uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn) {
     long_ad *lap;
     tag descTag;
     lap = (long_ad *)disc->udf_lvd[0]->logicalVolContentsUse;
@@ -221,7 +221,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
     uint32_t lbSize = disc->udf_lvd[MAIN_VDS]->logicalBlockSize; //FIXME same as above
 
     printf("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
-    printf("LAP: LSN: %d\n", lsnBase+filesetblock.logicalBlockNum);
+    printf("LAP: LSN: %d\n", lsnBase/*+filesetblock.logicalBlockNum*/);
     
     disc->udf_fsd = malloc(sizeof(struct fileSetDesc));
     memcpy(disc->udf_fsd, dev+(lsnBase+filesetblock.logicalBlockNum)*lbSize, sizeof(struct fileSetDesc));
@@ -231,14 +231,15 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
         free(disc->udf_fsd);
         return -1;
     }
-    printf("LVID: %s\nFSI: %s\n", disc->udf_fsd->logicalVolIdent, disc->udf_fsd->fileSetIdent);
+    printf("LogicVolIdent: %s\nFileSetIdent: %s\n", disc->udf_fsd->logicalVolIdent, disc->udf_fsd->fileSetIdent);
+    *lbnlsn = lsnBase;
  
     //FIXME Maybe not needed. Investigate. 
     memcpy(&descTag, dev+(lsnBase+filesetblock.logicalBlockNum+1)*lbSize, sizeof(tag));
     if(descTag.tagIdent != TAG_IDENT_TD) {
-        fprintf(stderr, "Error loading FSD sequence. TE descriptor not found. Desc ID: %x\n", descTag.tagIdent);
+        fprintf(stderr, "Error loading FSD sequence. TE descriptor not found. LSN: %d, Desc ID: %x\n", lsnBase+filesetblock.logicalBlockNum+1, descTag.tagIdent);
 //        free(disc->udf_fsd);
-//        return -2;
+        return -1;
     }
 
     return 0;
@@ -259,9 +260,106 @@ uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table) {
 
 }
 
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn) {
+    tag descTag;
+    struct fileIdentDesc *fid;
+    struct fileEntry *fe;
+    struct extendedFileEntry *efe;
+    uint32_t lbSize = disc->udf_lvd[MAIN_VDS]->logicalBlockSize; //FIXME MAIN_VDS should be verified first 
+    uint32_t lsnBase = lbnlsn; 
 
+    descTag = *(tag *)(dev+lbSize*lsn);
+    //memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
+    //do {    
+    //read(fd, file, sizeof(struct fileEntry));
+        
+        switch(descTag.tagIdent) {
+            case TAG_IDENT_FID:
+                fprintf(stderr, "Never should get there.\n");
+                exit(-43);
+            case TAG_IDENT_AED:
+                printf("\nAED, LSN: %d\n", lsn);
+                break;
+            case TAG_IDENT_FE:
+                //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
+                fe = (struct fileEntry *)(dev+lbSize*lsn); 
+                printf("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
+                printf("fileLinkCount: %d, LB recorded: %d\n", fe->fileLinkCount, fe->logicalBlocksRecorded);
+                printf("LEA %d, LAD %d\n", fe->lengthExtendedAttr, fe->lengthAllocDescs);
+                if(((fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
+                    printf("SHORT\n");
+                    short_ad *sad = (short_ad *)(fe->allocDescs);
+                    printf("ExtLen: %d, ExtLoc: %d\n", sad->extLength/lbSize, sad->extPosition+lsnBase);
+                    lsn = lsn + sad->extLength/lbSize;
+                } else if(((fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG) {
+                    printf("LONG\n");
+                    long_ad *lad = (long_ad *)(fe->allocDescs);
+                    printf("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
+                    lsn = lsn + lad->extLength/lbSize;
+                    printf("LSN: %d\n", lsn);
+                }
+                for(int i=0; i<fe->lengthAllocDescs; i+=8) {
+                    for(int j=0; j<8; j++)
+                        printf("%02x ", fe->allocDescs[i+j]);
+                   
+                    printf("\n");
+                }
+                printf("\n");
+       
+                for(uint32_t pos=0; pos<fe->lengthAllocDescs; ) {
+                    fid = (struct fileIdentDesc *)(fe->allocDescs + pos);
+                    if (fid->descTag.tagIdent == TAG_IDENT_FID) {
+                        printf("FID found.\n");
+                        //TODO Checksum and CRC here
+                        printf("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
+                        printf("FID: FilenameLen: %d\n", fid->lengthFileIdent);
+                        if(fid->lengthFileIdent == 0) {
+                            printf("ROOT directory\n");
+                        } else {
+                            printf("Filename: %s\n", fid->fileIdent+fid->lengthOfImpUse);
+                        }
 
-uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
+                        printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
+                        if(fid->icb.extLocation.logicalBlockNum + lsnBase == lsn) {
+                            printf("Self. Not following this one\n");
+                        } else {
+                            printf("ICB to follow.\n");
+                            get_file(dev, disc, lbnlsn, fid->icb.extLocation.logicalBlockNum + lsnBase);
+                            printf("Return from ICB\n"); 
+                        }
+                        uint32_t flen = 38 + fid->lengthOfImpUse + fid->lengthFileIdent;
+                        uint16_t padding = 4 * ((fid->lengthOfImpUse + fid->lengthFileIdent + 38 + 3)/4) - (fid->lengthOfImpUse + fid->lengthFileIdent + 38);
+                        printf("FLen: %d, padding: %d\n", flen, padding);
+                        pos = pos + flen + padding;
+                        printf("\n");
+                    } else {
+                        printf("Ident: %x\n", fid->descTag.tagIdent);
+                        break;
+                    }
+                }
+                break;  
+            case TAG_IDENT_EFE:
+                printf("EFE, LSN: %d\n", lsn);
+
+                break;
+
+            default:
+                printf("\nIDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
+                /*do{
+                    ptLength = *(uint8_t *)(dev+lbn*blocksize+pos);
+                    extLoc = *(uint32_t *)(dev+lbn*blocksize+2+pos);
+                    filename = (char *)(dev+lbn*blocksize+8+pos);
+                    printf("extLoc LBN: %d, filename: %s\n", extLoc, filename);
+                    pos += ptLength + 8 + ptLength%2;
+                } while(ptLength > 0);*/
+        }            
+   //     lsn = lsn + 1;
+   //     memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
+    
+   // } while(descTag.tagIdent != 0 );
+}
+
+uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn) {
     struct fileEntry *file;
     struct fileIdentDesc *fid;
     tag descTag;
@@ -271,21 +369,24 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
     uint32_t extLoc;
     char *filename;
     uint16_t pos = 0;
-    uint32_t lsnBase = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation+1; //FIXME MAIN_VDS should be verified first
-    uint32_t lbSize = disc->udf_lvd[MAIN_VDS]->logicalBlockSize; //FIXME same as above
+    uint32_t lsnBase = lbnlsn; 
+    uint32_t lbSize = disc->udf_lvd[MAIN_VDS]->logicalBlockSize; //FIXME MAIN_VDS should be verified first 
     // Go to ROOT ICB 
     lb_addr icbloc = disc->udf_fsd->rootDirectoryICB.extLocation; 
     
     //file = malloc(sizeof(struct fileEntry));
-    fid = malloc(sizeof(struct fileIdentDesc));
     //lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
     //read(fd, file, sizeof(struct fileEntry));
     lsn = icbloc.logicalBlockNum+lsnBase;
     printf("ROOT LSN: %d\n", lsn);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
-    file = (struct FileEntry*)(dev+lbSize*lsn); 
-    printf("ROOT ICB IDENT: %x\n", file->descTag.tagIdent);
-    printf("Next extent LBN: %d\n", disc->udf_fsd->fileSetNum);
+ 
+    return get_file(dev, disc, lbnlsn, lsn);
+
+    //file = (struct FileEntry*)(dev+lbSize*lsn); 
+    //printf("ROOT ICB IDENT: %x\n", file->descTag.tagIdent);
+    //printf("Next extent LBN: %d\n", disc->udf_fsd->fileSetNum);
+    
     //printf("NumEntries: %d\n", file->icbTag.numEntries);
 /* Tag Identifier (ECMA 167r3 4/7.2.1) 
 #define TAG_IDENT_FSD			0x0100
@@ -299,17 +400,18 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
 #define TAG_IDENT_SBD			0x0108
 #define TAG_IDENT_PIE			0x0109
 #define TAG_IDENT_EFE			0x010A*/
+#if 0
     //Set dectTag to nonzero 
     memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
-    while(descTag.tagIdent != 0 ) {
-        //read(fd, file, sizeof(struct fileEntry));
-        lsn = lsn + 1;
-        memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
+    do {    
+    //read(fd, file, sizeof(struct fileEntry));
         
         switch(descTag.tagIdent) {
             case TAG_IDENT_FID:
+                fid = malloc(sizeof(struct fileIdentDesc));
                 memcpy(fid, dev+lbSize*lsn, sizeof(struct fileIdentDesc));
                 printf("\nFID, LSN: %d, File LSN: %d\n", lsn, lsnBase+fid->icb.extLocation.logicalBlockNum);
+                exit(-43); //FIXME IT should NEVER EVER get there. Remove it later.
                 break;
             case TAG_IDENT_AED:
                 printf("\nAED, LSN: %d\n", lsn);
@@ -332,7 +434,39 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
                     lsn = lsn + lad->extLength/lbSize;
                     printf("LSN: %d\n", lsn);
                 }
+                for(int i=0; i<file->lengthAllocDescs; i+=8) {
+                    for(int j=0; j<8; j++)
+                        printf("%02x ", file->allocDescs[i+j]);
+                   
+                    printf("\n");
+                }
+                printf("\n");
+                
+                for(uint32_t pos=0; pos<file->lengthAllocDescs; ) {
+                    fid = (struct FileIdentDesc *)(file->allocDescs + pos);
+                    if (fid->descTag.tagIdent == TAG_IDENT_FID) {
+                        printf("FID found.\n");
+                        //TODO Checksum and CRC here
+                        printf("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
+                        printf("FID: FilenameLen: %d\n", fid->lengthFileIdent);
+                        if(fid->lengthFileIdent == 0) {
+                            printf("ROOT directory\n");
+                        } else {
+                            printf("Filename: %s\n", fid->fileIdent+fid->lengthOfImpUse);
+                        }
 
+                        printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
+
+                        uint32_t flen = 38 + fid->lengthOfImpUse + fid->lengthFileIdent;
+                        uint16_t padding = 4 * ((fid->lengthOfImpUse + fid->lengthFileIdent + 38 + 3)/4) - (fid->lengthOfImpUse + fid->lengthFileIdent + 38);
+                        printf("FLen: %d, padding: %d\n", flen, padding);
+                        pos = pos + flen + padding;
+                        printf("\n");
+                    } else {
+                        printf("Ident: %x\n", fid->descTag.tagIdent);
+                        break;
+                    }
+                }
                 break;  
             case TAG_IDENT_EAHD:
                 printf("\nEAHD, LSN: %d\n", lsn);
@@ -347,13 +481,17 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc) {
                     printf("extLoc LBN: %d, filename: %s\n", extLoc, filename);
                     pos += ptLength + 8 + ptLength%2;
                 } while(ptLength > 0);*/
-                
-        }
+        }            
+        lsn = lsn + 1;
+        memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
+    
+    } while(descTag.tagIdent != 0 );
         //lseek64(fd, 259*blocksize+blocksize*(ff+1), SEEK_SET);
-    }
+    
 
     //printf("ICB LBN: %x\n", icbloc.logicalBlockNum);
     return 0;
+#endif
 }
 
 int verify_vds(struct udf_disc *disc, vds_type_e vds) {

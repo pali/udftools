@@ -236,9 +236,11 @@ int main(int argc, char *argv[]) {
 #ifdef FSD_PRESENT
     // FSD is not necessarily pressent, decide how to select
     // Seen at r1.5 implementations
-    status = get_fsd(dev, &disc, blocksize);
-    if(status) exit(status);
-    status = get_file_structure(dev, &disc);
+    uint32_t lbnlsn = 0;
+    status = get_fsd(dev, &disc, blocksize, &lbnlsn);
+    //if(status) exit(status);
+    printf("LBNLSN: %d\n", lbnlsn);
+    status = get_file_structure(dev, &disc, lbnlsn);
     if(status) exit(status);
 #endif
 
