@@ -40,7 +40,7 @@
 #include "udffsck.h"
 #include "utils.h"
 
-#define PVD 0x10
+//#define PVD 0x10
 
 #define BLOCK_SIZE 2048
 
@@ -48,21 +48,19 @@
 //#define PRINT_DISC 
 //#define PATH_TABLE
 
-int is_udf(uint8_t *dev) {
+int is_udf(uint8_t *dev, uint32_t sectorsize) {
     struct volStructDesc vsd;
     struct beginningExtendedAreaDesc bea;
     struct volStructDesc nsr;
     struct terminatingExtendedAreaDesc tea;
-    
-    //udf_lseek64(fp,  PVD*BLOCK_SIZE, SEEK_SET); // default block size is 2048B, so PVD will be there
-    
+    uint32_t bsize = sectorsize>BLOCK_SIZE ? sectorsize : BLOCK_SIZE; //It is possible to have free sectors between descriptors, but there can't be more than one descriptor in sector. Since there is requirement to comply with 2kB sectors, this is only way.   
     
     for(int i = 0; i<6; i++) {
         printf("[DBG] try #%d\n", i);
         
         //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
         //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
-        memcpy(&vsd, dev+PVD*BLOCK_SIZE+i*BLOCK_SIZE, sizeof(vsd));
+        memcpy(&vsd, dev+16*BLOCK_SIZE+i*bsize, sizeof(vsd));
 
         printf("[DBG] vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
         
@@ -200,7 +198,7 @@ int main(int argc, char *argv[]) {
 
     close(fd);
     
-    status = is_udf(dev); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
+    status = is_udf(dev, blocksize); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status) exit(status);
     status = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //load AVDP
     if(status) exit(status);
