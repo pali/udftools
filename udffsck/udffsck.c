@@ -281,7 +281,6 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 printf("\nAED, LSN: %d\n", lsn);
                 break;
             case TAG_IDENT_FE:
-                //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
                 fe = (struct fileEntry *)(dev+lbSize*lsn); 
                 printf("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
                 printf("fileLinkCount: %d, LB recorded: %d\n", fe->fileLinkCount, fe->logicalBlocksRecorded);
@@ -339,8 +338,65 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 }
                 break;  
             case TAG_IDENT_EFE:
+                fe = 0;
                 printf("EFE, LSN: %d\n", lsn);
+                efe = (struct extendedFileEntry *)(dev+lbSize*lsn); 
+                printf("\nEFE, LSN: %d, EntityID: %s ", lsn, efe->impIdent.ident);
+                printf("fileLinkCount: %d, LB recorded: %d\n", efe->fileLinkCount, efe->logicalBlocksRecorded);
+                printf("LEA %d, LAD %d\n", efe->lengthExtendedAttr, efe->lengthAllocDescs);
+                if(((efe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
+                    printf("SHORT\n");
+                    short_ad *sad = (short_ad *)(efe->allocDescs);
+                    printf("ExtLen: %d, ExtLoc: %d\n", sad->extLength/lbSize, sad->extPosition+lsnBase);
+                    lsn = lsn + sad->extLength/lbSize;
+                } else if(((efe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG) {
+                    printf("LONG\n");
+                    long_ad *lad = (long_ad *)(efe->allocDescs);
+                    printf("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
+                    lsn = lsn + lad->extLength/lbSize;
+                    printf("LSN: %d\n", lsn);
+                }
+                for(int i=0; i<efe->lengthAllocDescs; i+=8) {
+                    for(int j=0; j<8; j++)
+                        printf("%02x ", efe->allocDescs[i+j]);
+                   
+                    printf("\n");
+                }
+                printf("\n");
+       
+                for(uint32_t pos=0; pos<efe->lengthAllocDescs; ) {
+                    fid = (struct fileIdentDesc *)(efe->allocDescs + pos);
+                    if (fid->descTag.tagIdent == TAG_IDENT_FID) {
+                        printf("FID found.\n");
+                        //TODO Checksum and CRC here
+                        printf("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
+                        printf("FID: FilenameLen: %d\n", fid->lengthFileIdent);
+                        if(fid->lengthFileIdent == 0) {
+                            printf("ROOT directory\n");
+                        } else {
+                            printf("Filename: %s\n", fid->fileIdent+fid->lengthOfImpUse);
+                        }
 
+                        printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
+                        if(fid->icb.extLocation.logicalBlockNum + lsnBase == lsn) {
+                            printf("Self. Not following this one\n");
+                        } else if(fid->lengthFileIdent == 0) {
+                            printf("We are not going back to ROOT.\n");
+                        } else {
+                            printf("ICB to follow.\n");
+                            get_file(dev, disc, lbnlsn, fid->icb.extLocation.logicalBlockNum + lsnBase);
+                            printf("Return from ICB\n"); 
+                        }
+                        uint32_t flen = 38 + fid->lengthOfImpUse + fid->lengthFileIdent;
+                        uint16_t padding = 4 * ((fid->lengthOfImpUse + fid->lengthFileIdent + 38 + 3)/4) - (fid->lengthOfImpUse + fid->lengthFileIdent + 38);
+                        printf("FLen: %d, padding: %d\n", flen, padding);
+                        pos = pos + flen + padding;
+                        printf("\n");
+                    } else {
+                        printf("Ident: %x\n", fid->descTag.tagIdent);
+                        break;
+                    }
+                }
                 break;
 
             default:
