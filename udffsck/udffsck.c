@@ -347,44 +347,54 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             }
             printf("\n");
    
-            for(uint32_t pos=0; pos<fe->lengthAllocDescs; ) {
-                //TODO is it directory? If is, continue. Otherwise not.
-                
-                fid = (struct fileIdentDesc *)(fe->allocDescs + pos);
-                if (!checksum(fid->descTag)) {
-                    fprintf(stderr, "FID checksum failed.\n");
-                    return -4;
-                }
-                if (fid->descTag.tagIdent == TAG_IDENT_FID) {
-                    printf("FID found.\n");
-                    if(!crc(fid, sizeof(struct fileIdentDesc))) {
-                        fprintf(stderr, "FID CRC failed.\n");
-                        return -5;
+            //TODO is it directory? If is, continue. Otherwise not.
+            // We can assume that directory have one or more FID inside.
+            // FE have inside long_ad/short_ad.
+            if(fe->lengthAllocDescs >= sizeof(struct fileIdentDesc)) {
+                for(uint32_t pos=0; pos<fe->lengthAllocDescs; ) {
+                    fid = (struct fileIdentDesc *)(fe->allocDescs + pos);
+                    if (!checksum(fid->descTag)) {
+                        fprintf(stderr, "FID checksum failed.\n");
+                        return -4;
                     }
-                    printf("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
-                    printf("FID: FilenameLen: %d\n", fid->lengthFileIdent);
-                    if(fid->lengthFileIdent == 0) {
-                        printf("ROOT directory\n");
-                    } else {
-                        printf("Filename: %s\n", fid->fileIdent+fid->lengthOfImpUse);
-                    }
+                    if (fid->descTag.tagIdent == TAG_IDENT_FID) {
+                        printf("FID found.\n");
+                        if(!crc(fid, sizeof(struct fileIdentDesc))) {
+                            fprintf(stderr, "FID CRC failed.\n");
+                            return -5;
+                        }
+                        printf("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
+                        printf("FID: FilenameLen: %d\n", fid->lengthFileIdent);
+                        if(fid->lengthFileIdent == 0) {
+                            printf("ROOT directory\n");
+                        } else {
+                            printf("Filename: %s\n", fid->fileIdent+fid->lengthOfImpUse);
+                        }
 
-                    printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
-                    if(fid->icb.extLocation.logicalBlockNum + lsnBase == lsn) {
-                        printf("Self. Not following this one\n");
+                        printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
+                        printf("ROOT ICB: LSN: %d\n", disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase);
+                        printf("Actual LSN: %d\n", lsn);
+
+                        if(pos == 0) {
+                            printf("Parent. Not Following this one\n");
+                        }else if(fid->icb.extLocation.logicalBlockNum + lsnBase == lsn) {
+                            printf("Self. Not following this one\n");
+                        } else if(fid->icb.extLocation.logicalBlockNum + lsnBase == disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase) {
+                            printf("ROOT. Not following this one.\n");
+                        } else {
+                            printf("ICB to follow.\n");
+                            get_file(dev, disc, lbnlsn, fid->icb.extLocation.logicalBlockNum + lsnBase);
+                            printf("Return from ICB\n"); 
+                        }
+                        uint32_t flen = 38 + fid->lengthOfImpUse + fid->lengthFileIdent;
+                        uint16_t padding = 4 * ((fid->lengthOfImpUse + fid->lengthFileIdent + 38 + 3)/4) - (fid->lengthOfImpUse + fid->lengthFileIdent + 38);
+                        printf("FLen: %d, padding: %d\n", flen, padding);
+                        pos = pos + flen + padding;
+                        printf("\n");
                     } else {
-                        printf("ICB to follow.\n");
-                        get_file(dev, disc, lbnlsn, fid->icb.extLocation.logicalBlockNum + lsnBase);
-                        printf("Return from ICB\n"); 
+                        printf("Ident: %x\n", fid->descTag.tagIdent);
+                        break;
                     }
-                    uint32_t flen = 38 + fid->lengthOfImpUse + fid->lengthFileIdent;
-                    uint16_t padding = 4 * ((fid->lengthOfImpUse + fid->lengthFileIdent + 38 + 3)/4) - (fid->lengthOfImpUse + fid->lengthFileIdent + 38);
-                    printf("FLen: %d, padding: %d\n", flen, padding);
-                    pos = pos + flen + padding;
-                    printf("\n");
-                } else {
-                    printf("Ident: %x\n", fid->descTag.tagIdent);
-                    break;
                 }
             }
             break;  
