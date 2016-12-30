@@ -244,7 +244,7 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
 #endif
 
-#ifdef PATH_TABLE
+#ifdef PATH_TABLE //FIXME Remove it. Not needed.
     pathTableRec table[100]; 
     status = get_path_table(dev, blocksize, table);
     if(status) exit(status);
