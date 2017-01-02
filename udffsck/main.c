@@ -35,7 +35,6 @@
 #include <ecma_119.h>
 #include <libudffs.h>
 
-#include "udf.h"
 #include "options.h"
 #include "udffsck.h"
 #include "utils.h"
