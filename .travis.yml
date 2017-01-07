@@ -1,0 +1,29 @@
+language: c
+matrix:
+  include:
+    - compiler: gcc
+      env: COVERITY=1
+    - compiler: gcc
+      env: COVERITY=0
+    - compiler: clang
+      env: COVERITY=0
+before_install:
+  - if [ "$COVERITY" = "1" -a "$TRAVIS_BRANCH" != "master" ]; then exit 0; fi
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq -y libreadline-dev
+  - if [ "$COVERITY" = "0" ]; then ./autogen.sh && ./configure && make; exit $?; fi
+script: true
+
+env:
+  global:
+    - secure: "rH+rQS0W+0U3C/W/uRqJ8E5A3KrlbWaDRpZtdT1/SO0kEMnmuG2b0UvoadcIKOEXNHnQeZ3kPQbG2Wjfo/D6up0mXGZLXAvaJZozagxdfF2QPHSpvj2NDRLM71+UaKK/ksq3auPq+o3Y74FZOc4oBr7kPpr01H0pK8/2lljxS2daINRgFfcsaRhKNshtvHBn/KLgbwa5vEB/jadKBKM+mgAYE1sFv8P3yZ3+MzxygpurJ6enU6/9JITF5QgB11ybivYCbqoEf+IhzxgsmELz0zgL+PCVzTvrrNzpCT1UZJ35vWht5Yf7/AmK3sI/rMJm7TYswFKAc7NUbn80oIw6opp7sW1oFqMEHnHNLMNSljg8BwUrbH+y6+yV7sRfG6djCTYUYGYY9ZC2Ef4r3s3ZrRwHuBujZx/DOnFj0nd0AuvETNPkMWD1996bvSQ+WkfZ4JdW335/G61GdQv7kMTutWLKrlDquqxKM1AsoP1d99vCBzpEfRKyZjDUUSmnjdvZ/QgIDidGzH3vYFO81N39HjgKZlxH+oCuoX2ak3A6BrOT7t6mgEXnGM4H9vWhoKb7hseadBsR7YnbFSRmF2FDihEoIJ/BCPykGSZWzxTF94zC3WURI1C3HL0sAHGg3M620FgFj3M4Xkf0CPsmdsjwsnZg6TgVkYwAaKKP0HI2MFs="
+
+addons:
+  coverity_scan:
+    project:
+      name: "pali/udftools"
+      description: "Build submitted via Travis CI"
+    notification_email: pali.rohar@gmail.com
+    build_command_prepend: "./autogen.sh && ./configure"
+    build_command: make
+    branch_pattern: master
