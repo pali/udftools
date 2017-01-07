@@ -238,8 +238,10 @@ int main(int argc, char *argv[])
 
 	dump_space(&disc);
 
-	if (write_disc(&disc) < 0)
-		return -1;
-	else
-		return 0;
+	if (write_disc(&disc) < 0) {
+		fprintf(stderr, "mkudffs: Error: Cannot write to device '%s': %s\n", filename, strerror(errno));
+		return 1;
+	}
+
+	return 0;
 }
