@@ -152,7 +152,7 @@ static int get_misc_minor(void)
 
 	if ((f = fopen("/proc/misc", "r")) == NULL)
 		return -1;
-	while (fscanf(f, " %d %64s", &minor, name) == 2) {
+	while (fscanf(f, " %d %63s", &minor, name) == 2) {
 		if (strcmp(name, "pktcdvd") == 0) {
 			fclose(f);
 			return minor;
