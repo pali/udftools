@@ -1,17 +1,16 @@
 language: c
+compiler:
+  - gcc
+  - clang
 matrix:
   include:
     - compiler: gcc
       env: COVERITY=1
-    - compiler: gcc
-      env: COVERITY=0
-    - compiler: clang
-      env: COVERITY=0
 before_install:
   - if [ "$COVERITY" = "1" -a "$TRAVIS_BRANCH" != "master" ]; then exit 0; fi
   - sudo apt-get update -qq
   - sudo apt-get install -qq -y libreadline-dev
-  - if [ "$COVERITY" = "0" ]; then ./autogen.sh && ./configure && make; exit $?; fi
+  - if [ "$COVERITY" != "1" ]; then ./autogen.sh && ./configure && make; exit $?; fi
 script: true
 
 env:
