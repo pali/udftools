@@ -58,9 +58,9 @@ static int valid_offset(int fd, off_t offset)
 	return 1;
 }
 
-int get_blocks(int fd, int blocksize, int opt_blocks)
+uint32_t get_blocks(int fd, int blocksize, uint32_t opt_blocks)
 {
-	int blocks;
+	uint64_t blocks;
 #ifdef BLKGETSIZE64
 	uint64_t size64;
 #endif
@@ -71,6 +71,9 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 	struct floppy_struct this_floppy;
 #endif
 	struct stat buf;
+
+	if (opt_blocks)
+		return opt_blocks;
 
 #ifdef BLKGETSIZE64
 	if (ioctl(fd, BLKGETSIZE64, &size64) >= 0)
@@ -109,8 +112,12 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 		blocks = (low + 1) / blocksize;
 	}
 
-	if (opt_blocks)
-		blocks = opt_blocks;
+	if (blocks > UINT32_MAX)
+	{
+		fprintf(stderr, "mkudffs: Warning: Disk is too big, using only %lu blocks\n", (unsigned long int)UINT32_MAX);
+		return UINT32_MAX;
+	}
+
 	return blocks;
 }
 
