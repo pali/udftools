@@ -33,6 +33,7 @@
 #include <getopt.h>
 #include <malloc.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "mkudffs.h"
 #include "defaults.h"
@@ -106,6 +107,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	int i;
 	int media = DEFAULT_HD;
 	uint16_t packetlen = 0;
+	unsigned long int blocks = 0;
+	char *endptr = NULL;
 
 	while ((retval = getopt_long(argc, argv, "l:u:b:r:h", long_options, NULL)) != EOF)
 	{
@@ -435,9 +438,16 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	device[NAME_MAX-1] = '\0';
 	optind ++;
 	if (optind < argc)
-		disc->head->blocks = strtoul(argv[optind++], NULL, 0);
-	else
-		disc->head->blocks = 0;
+	{
+		errno = 0;
+		blocks = strtoul(argv[optind++], &endptr, 0);
+		if (errno || *endptr || blocks > UINT32_MAX)
+		{
+			fprintf(stderr, "mkudffs: invalid block-count\n");
+			exit(1);
+		}
+		disc->head->blocks = blocks;
+	}
 	if (optind < argc)
 		usage();
 
