@@ -31,6 +31,7 @@
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <linux/cdrom.h>
 
@@ -169,7 +170,7 @@ static const char *pkt_dev_name(const char *dev)
 	return buf;
 }
 
-static void create_ctl_dev(void)
+static int create_ctl_dev(void)
 {
 	int misc_minor;
 	struct stat stat_buf;
@@ -183,17 +184,23 @@ static void create_ctl_dev(void)
 	}
 	if (misc_minor < 0) {
 		fprintf(stderr, "Can't find pktcdvd character device\n");
-		return;
+		return -1;
 	}
 	dev = MKDEV(MISC_MAJOR, misc_minor);
 
 	if ((stat(pkt_dev_name(CTL_DEV), &stat_buf) >= 0) &&
 	    S_ISCHR(stat_buf.st_mode) && (stat_buf.st_rdev == dev))
-		return;			    /* Already set up */
+		return 0;			    /* Already set up */
 
 	mkdir(CTL_DIR, 0755);
 	unlink(pkt_dev_name(CTL_DEV));
-	mknod(pkt_dev_name(CTL_DEV), S_IFCHR | 0644, dev);
+
+	if (mknod(pkt_dev_name(CTL_DEV), S_IFCHR | 0644, dev) < 0) {
+		fprintf(stderr, "Can't create device %s: %s\n", pkt_dev_name(CTL_DEV), strerror(errno));
+		return -1;
+	}
+
+	return 0;
 }
 
 static int remove_stale_dev_node(int ctl_fd, char *devname)
@@ -233,7 +240,9 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 
 	memset(&c, 0, sizeof(struct pkt_ctrl_command));
 
-	create_ctl_dev();
+	if (create_ctl_dev() < 0)
+		return 1;
+
 	if ((ctl_fd = open(pkt_dev_name(CTL_DEV), O_RDONLY)) < 0) {
 		perror("ctl open");
 		return 1;
@@ -269,7 +278,10 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 			perror("ioctl");
 			goto out_close;
 		}
-		mknod(pkt_dev_name(pkt_device), S_IFBLK | 0640, c.pkt_dev);
+		if (mknod(pkt_dev_name(pkt_device), S_IFBLK | 0640, c.pkt_dev) < 0) {
+			fprintf(stderr, "Can't create device node '%s': %s\n", pkt_dev_name(pkt_device), strerror(errno));
+			goto out_close;
+		}
 		ret = 0;
 	} else {
 		int major, minor, remove_node;
@@ -312,7 +324,9 @@ static void show_mappings(void)
 
 	memset(&c, 0, sizeof(struct pkt_ctrl_command));
 
-	create_ctl_dev();
+	if (create_ctl_dev() < 0)
+		return;
+
 	if ((ctl_fd = open(pkt_dev_name(CTL_DEV), O_RDONLY)) < 0) {
 		perror("ctl open");
 		return;
