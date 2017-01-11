@@ -198,6 +198,7 @@ int set_write_mode(int fd, write_params_t *w)
 			      PAGE_DEFAULT, len)) < 0)
 	{
 		perror("mode_sense_write");
+		free(buffer);
 		return ret;
 	}
 
@@ -256,6 +257,7 @@ int get_write_mode(int fd, write_params_t *w)
 			      PAGE_CURRENT, len)) < 0)
 	{
 		perror("mode_sense_write");
+		free(buffer);
 		return ret;
 	}
 
@@ -324,8 +326,11 @@ int write_file(int fd, struct cdrw_disc *disc)
 	lba = disc->offset;
 
 	buf = (char *) malloc(size+1);
-	if (buf == NULL)
+	if (buf == NULL) {
+		perror("malloc");
+		close(file);
 		return 1;
+	}
 
 	while (!ret && go_on) {
 		blocks = disc->fpacket ? disc->packet_size : size / CDROM_BLOCK;
