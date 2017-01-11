@@ -334,7 +334,7 @@ void dump_space(struct udf_disc *disc)
 
 	while (start_ext != NULL)
 	{
-		printf("start=%d, blocks=%d, type=", start_ext->start, start_ext->blocks);
+		printf("start=%lu, blocks=%lu, type=", (unsigned long int)start_ext->start, (unsigned long int)start_ext->blocks);
 		for (i=0; i<UDF_SPACE_TYPE_SIZE; i++)
 		{
 			if (start_ext->space_type & (1<<i))
