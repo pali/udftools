@@ -194,6 +194,13 @@ int set_write_mode(int fd, write_params_t *w)
 	offset = 8 + (((header[6] & 0xff) << 8) | (header[7] & 0xff));
 	buffer = calloc(len, sizeof(unsigned char));
 
+	if ((len <= offset+13) || (w->data_block == 10 && len <= offset+51))
+	{
+		perror("mode_sense_write");
+		free(buffer);
+		return ret;
+	}
+
 	if ((ret = mode_sense(fd, buffer, GPMODE_WRITE_PARMS_PAGE,
 			      PAGE_DEFAULT, len)) < 0)
 	{
@@ -252,6 +259,13 @@ int get_write_mode(int fd, write_params_t *w)
 	len = 2 + (((header[0] & 0xff) << 8) | (header[1] & 0xff));
 	offset = 8 + (((header[6] & 0xff) << 8) | (header[7] & 0xff));
 	buffer = calloc(len, sizeof(unsigned char));
+
+	if (len <= offset+13)
+	{
+		perror("mode_sense_write");
+		free(buffer);
+		return ret;
+	}
 
 	if ((ret = mode_sense(fd, buffer, GPMODE_WRITE_PARMS_PAGE,
 			      PAGE_CURRENT, len)) < 0)
