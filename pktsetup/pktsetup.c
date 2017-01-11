@@ -90,7 +90,7 @@ static int init_cdrom(int fd)
 
 static int setup_dev(char *pkt_device, char *device, int rem)
 {
-	int pkt_fd, dev_fd, cmd;
+	int pkt_fd, dev_fd, cmd, arg;
 
 	if ((pkt_fd = open(pkt_device, O_RDONLY)) == -1) {
 		perror("open packet device");
@@ -107,21 +107,21 @@ static int setup_dev(char *pkt_device, char *device, int rem)
 		if (init_cdrom(dev_fd)) {
 			close(pkt_fd);
 			close(dev_fd);
-			return 0;
-		} else {
 			return 1;
 		}
+		arg = dev_fd;
 	} else {
 		cmd = PACKET_TEARDOWN_DEV;
-		dev_fd = 0; /* silence gcc */
+		dev_fd = -1;
+		arg = 0;
 	}
 		
-	if (ioctl(pkt_fd, cmd, dev_fd) == -1) {
+	if (ioctl(pkt_fd, cmd, arg) == -1) {
 		perror("ioctl");
 		return 1;
 	}
 
-	if (dev_fd)
+	if (dev_fd >= 0)
 		close(dev_fd);
 	close(pkt_fd);
 	return 0;
