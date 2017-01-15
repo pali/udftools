@@ -379,7 +379,7 @@ int main(int argc, char **argv)
 	if (optind == argc || (!rem && optind+1 == argc) || (rem && optind+1 < argc) || (!rem && optind+2 < argc))
 		return usage();
 	pkt_device = argv[optind];
-	if (rem)
+	if (!rem)
 		device = argv[optind + 1];
 	else
 		device = NULL;
