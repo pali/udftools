@@ -142,8 +142,11 @@ void udf_init_disc(struct udf_disc *disc)
 
 	disc->head->space_type = USPACE;
 	disc->head->start = 0;
+	disc->head->blocks = 0;
 	disc->head->next = NULL;
 	disc->head->prev = NULL;
+	disc->head->head = NULL;
+	disc->head->tail = NULL;
 }
 
 int udf_set_version(struct udf_disc *disc, int udf_rev)
