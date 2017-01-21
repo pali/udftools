@@ -10,6 +10,7 @@ before_install:
   - if [ "$COVERITY" = "1" -a "$TRAVIS_BRANCH" != "master" ]; then exit 0; fi
   - sudo apt-get update -qq
   - sudo apt-get install -qq -y libreadline-dev
+  - export CFLAGS="-W -Wall -O2 -g"
   - if [ "$COVERITY" != "1" ]; then ./autogen.sh && ./configure && make; exit $?; fi
 script: true
 
