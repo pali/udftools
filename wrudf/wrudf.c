@@ -220,6 +220,9 @@ initialise(char *devicename)
     if( (found & FOUND_LVD) == 0 )
 	fail("No LVD found \n");
 
+    if( (found & FOUND_PD) == 0 )
+	fail("No PD found\n");
+
     if( lvd->logicalBlockSize != 2048 )
 	fail("Blocksize not 2048\n");
 
