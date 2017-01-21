@@ -70,7 +70,7 @@ struct unallocSpaceDesc		*usd;
 struct spaceBitmapDesc		*spaceMap;
 struct logicalVolIntegrityDesc	*lvid;
 struct fileSetDesc		*fsd;
-int    				usedSparingEntries;
+unsigned int			usedSparingEntries;
 struct sparingTable		*st;
 
 int	spaceMapDirty, usdDirty, sparingTableDirty;
@@ -234,7 +234,7 @@ initialise(char *devicename)
 	if( spm->partitionMapType == 2 ) {
 
 	    if( strncmp( spm->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE)) == 0 ) {
-		int	j;
+		unsigned int	j;
 
 		if( spm->sizeSparingTable > 2048 )
 		    fail("Cannot handle SparingTable > 2048 bytes");
@@ -363,7 +363,7 @@ initialise(char *devicename)
     curDir = rootDir = (Directory*)malloc(sizeof(Directory));
     memset(rootDir, 0, sizeof(Directory));
     rootDir->dataSize = 4096;
-    rootDir->data = (uint8_t*)malloc(4096);
+    rootDir->data = malloc(4096);
     rootDir->name = "";
     readDirectory( NULL, &fsd->rootDirectoryICB, "");
 

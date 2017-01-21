@@ -48,7 +48,8 @@ char	*hdWorkingDir;
 int
 copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat) 
 {
-    int		fd, i=0, blkno;
+    uint32_t	i=0;
+    int		fd, blkno;
     uint32_t	nBytes, blkInPkt;
     uint32_t	maxVarPktSize;		// in bytes
     struct fileIdentDesc *fid;
@@ -329,7 +330,8 @@ copyDirectory(Directory *dir, char* name)
 int 
 deleteDirectory(Directory *dir, struct fileIdentDesc* fid) 
 {
-    int			i, rv, notEmpty;
+    uint64_t		i;
+    int			rv, notEmpty;
     char		*name;
     struct fileIdentDesc *childFid;
     Directory		*childDir;
@@ -397,7 +399,7 @@ readDirectory(Directory *parentDir, long_ad* icb, char *name)
 	    memset(dir, 0, sizeof(Directory));
 	    dir->parent = parentDir;
 	    dir->dataSize = 4096;
-	    dir->data = (uint8_t*)malloc(4096);
+	    dir->data = malloc(4096);
 	    if( dir->name ) free(dir->name);
 	    dir->name = malloc(strlen(name) + 1);
 	    strcpy(dir->name, name);
@@ -454,7 +456,7 @@ readDirectory(Directory *parentDir, long_ad* icb, char *name)
 int 
 updateDirectory(Directory* dir) 
 {
-    int		i;
+    uint64_t i;
     struct fileIdentDesc *fid;
 
     if( dir->child )
@@ -645,7 +647,7 @@ makeDir(Directory *dir, char* name )
 	memset(newDir, 0, sizeof(Directory));
 	newDir->parent = dir;
 	newDir->dataSize = 4096;
-	newDir->data = (uint8_t*)malloc(4096);
+	newDir->data = malloc(4096);
 	dir->child = newDir;
     }
     
@@ -967,7 +969,8 @@ int lscCommand(void) {
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
     char	*name, filename[512];
-    int		i, state;
+    uint64_t	i;
+    int		state;
 
     if( cmndc > 1 )
 	return WRONG_NO_ARGS;
@@ -1063,7 +1066,7 @@ int lshCommand() {
 int
 directoryIsEmpty(Directory *dir) 
 {
-    int 	i;
+    uint64_t i;
     struct fileIdentDesc *fid;
 
     for( i = 0; i < dir->fe.informationLength;

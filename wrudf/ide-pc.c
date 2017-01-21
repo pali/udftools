@@ -333,7 +333,7 @@ read_trackinfo(int fd, struct cdrom_trackinfo *ti, int trackno)
 
 
 int
-readCD(int fd, int sectortype, int lba, int n, char* buf)
+readCD(int fd, int sectortype, int lba, int n, unsigned char* buf)
 {
     CGC pc;
 
@@ -350,7 +350,7 @@ readCD(int fd, int sectortype, int lba, int n, char* buf)
 }
 
 int
-writeCD(int fd, int lba, int nblks, char* buf)
+writeCD(int fd, int lba, int nblks, unsigned char* buf)
 {
     CGC pc;
 

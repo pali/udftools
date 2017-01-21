@@ -47,7 +47,7 @@ struct packetbuf {
     uint32_t		dirty;
     uint32_t		bufNum;
     uint32_t		start;
-    uint8_t		*pkt;
+    unsigned char	*pkt;
 };
 
 int			lastTrack;
@@ -59,8 +59,8 @@ u_char *cp_buffer;
 
 struct packetbuf pktbuf[MAXPKTBUFS+1];			/* last one special use */
 
-uint8_t	*verifyBuffer;					/* for verify only */
-uint8_t	*blockBuffer;
+unsigned char	*verifyBuffer;					/* for verify only */
+unsigned char	*blockBuffer;
 
 uint32_t	trackStart;
 uint32_t	trackSize;
@@ -199,8 +199,8 @@ int freeLongExtents(long_ad* extents) {
  *	Only used to get new extent for LVID sequence
  *	(Could use to extend sparing blocks as well)
  */
-void getUnallocSpaceExtent(int requestLength, int requestAfter, extent_ad *alloc) {
-    int		i, n;
+void getUnallocSpaceExtent(uint32_t requestLength, uint32_t requestAfter, extent_ad *alloc) {
+    uint32_t i, n;
 
     alloc->extLength = alloc->extLocation = 0;
     n = (requestLength + 2047) & ~2047;
@@ -330,7 +330,7 @@ uint32_t lookupSparingTable(uint32_t original) {
 uint32_t newSparingTableEntry(uint32_t original) {
     struct sparingEntry *se, newEntry, swapEntry;
     uint32_t	mapped;
-    int		i;
+    unsigned int	i;
 
     if( !st ) {
 	printf("No sparing table provided\n");
@@ -373,7 +373,8 @@ uint32_t newSparingTableEntry(uint32_t original) {
  *	Do not verify writing as that would change the table again.
  */
 void updateSparingTable() {
-    int			i, pbn, ret;
+    size_t		i;
+    int			pbn, ret;
     off_t		off;
     ssize_t		len;
     struct generic_desc	*p;

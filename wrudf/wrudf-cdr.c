@@ -12,7 +12,7 @@
 #include "ide-pc.h"
 #include "bswap.h"
 
-char	*blockBuffer;
+unsigned char	*blockBuffer;
 uint32_t	newVATindex;
 uint32_t	sizeVAT;
 uint32_t	prevVATlbn;
@@ -56,7 +56,7 @@ uint32_t getMaxVarPktSize() {
     return ((bc.freeBufferLength >> 11) - 20) << 11;	// - 20 :: keep some spare blocks ???
 }
 
-char*	readCDR(uint32_t lbn, uint16_t partition) {
+unsigned char*	readCDR(uint32_t lbn, uint16_t partition) {
     int		stat;
     uint32_t	pbn = getPhysical(lbn, partition);
 
@@ -81,7 +81,7 @@ char*	readCDR(uint32_t lbn, uint16_t partition) {
 }    
 
 void
-writeHD(uint32_t physical, char* src) 
+writeHD(uint32_t physical, unsigned char* src) 
 {
     int		stat;
 
@@ -199,7 +199,7 @@ flagError(long_ad *extents, long_ad *ext, uint32_t pbn)
 
 int verifyCDR(struct fileEntry *fe) {
     long_ad	*ext, *extents;
-    int		processed;
+    uint32_t	processed;
     int		stat, rv = 0;
     uint32_t	pbn, pbnFE, rewriteBlkno;
 
@@ -310,7 +310,8 @@ writeVATtable()
 {
     regid	*id;
     struct fileEntry *fe;
-    int		stat, i, retries, size;
+    uint64_t	i;
+    int		stat, retries, size;
     uint32_t	startBlk;
     short_ad	*ext;
 
@@ -360,13 +361,13 @@ writeVATtable()
 
 	for( i = 0; i <= fe->logicalBlocksRecorded; i++ ) {	// "<=" so including FileEntry 
 	    if( devicetype == DISK_IMAGE ) {
-		printf("Verify %d\n", startBlk+i);
+		printf("Verify %llu\n", (unsigned long long int)(startBlk+i));
 		stat = 0;
 	    } else
 		stat = readCD(device, sectortype, startBlk + i, 1, blockBuffer);
 
 	    if( stat != 0 ) {
-		printf("writeVATtable verifyError %d : %s\n", startBlk + i, get_sense_string());
+		printf("writeVATtable verifyError %llu : %s\n", (unsigned long long int)(startBlk + i), get_sense_string());
 		break;
 	    }
 	}
