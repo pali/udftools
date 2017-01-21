@@ -64,8 +64,10 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
     printf("Copy file %s\n", inName);
     fid = findFileIdentDesc(dir, newName);
 
-    if( fid  && questionOverwrite(dir, fid, newName) )
+    if( fid  && questionOverwrite(dir, fid, newName) ) {
+	close(fd);
 	return CMND_OK;
+    }
 
     fid = makeFileIdentDesc(newName);				// could reuse FID if overwrite allowed
 	    
@@ -110,6 +112,9 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	
 	if( fe->informationLength / maxVarPktSize > 116 ) {
 	    printf("Cannot handle files longer than %d\n", 116 * maxVarPktSize);
+	    close(fd);
+	    free(fe);
+	    free(fid);
 	    return CMND_FAILED;
 	}
 
@@ -196,6 +201,9 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 
 	if( getExtents(2048, extentFE ) != 16 ) {		/* extent for File Entry */
 	    printf("No space for File Entry\n");
+	    close(fd);
+	    free(fe);
+	    free(fid);
 	    return CMND_FAILED;
 	}
 	fe->descTag.tagLocation = extentFE[0].extPosition;
@@ -206,6 +214,9 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	    getExtents(fe->informationLength, (short_ad*)(fe->allocDescs + fe->lengthExtendedAttr));
 	if( !fe->lengthAllocDescs ) {
 	    printf("No space for file\n");
+	    close(fd);
+	    free(fe);
+	    free(fid);
 	    return CMND_FAILED;
 	}
 	/* write FE */
@@ -259,6 +270,7 @@ copyDirectory(Directory *dir, char* name)
 
     if( chdir(name) != 0 ) {
 	printf("Change dir '%s': %m\n", name);
+	closedir(srcDir);
 	return CMND_FAILED;
     }
 
