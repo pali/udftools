@@ -376,7 +376,7 @@ void updateSparingTable() {
     struct packetbuf	*pb;
     struct sparablePartitionMap *spm = (struct sparablePartitionMap*)lvd->partitionMaps;
 
-    for( i = 0; i < sizeof(spm->locSparingTable); i++ ) {
+    for( i = 0; i < sizeof(spm->locSparingTable)/sizeof(spm->locSparingTable[0]); i++ ) {
 	pbn = spm->locSparingTable[i];
 	if( pbn == 0 )
 	    return;
