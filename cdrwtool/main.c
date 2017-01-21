@@ -41,10 +41,12 @@
 
 int write_func(struct udf_disc *disc, struct udf_extent *ext)
 {
-	static char *buffer = NULL;
-	static int bufferlen = 0, lastpacket = -1;
+	static unsigned char *buffer = NULL;
+	static size_t bufferlen = 0;
+	static int lastpacket = -1;
 	int fd = *(int *)disc->write_data;
-	int offset, packet;
+	size_t offset;
+	int packet;
 	struct udf_desc *desc;
 	struct udf_data *data;
 

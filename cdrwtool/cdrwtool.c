@@ -299,7 +299,7 @@ int sync_cache(int fd)
 	return wait_cmd(fd, &cgc, NULL, CGC_DATA_NONE, WAIT_SYNC);
 }
 
-int write_blocks(int fd, char *buffer, int lba, int blocks)
+int write_blocks(int fd, unsigned char *buffer, int lba, int blocks)
 {
 	struct cdrom_generic_command cgc;
 
@@ -323,7 +323,7 @@ int write_blocks(int fd, char *buffer, int lba, int blocks)
 int write_file(int fd, struct cdrw_disc *disc)
 {
 	int file, lba, size, blocks;
-	char *buf = NULL;
+	unsigned char *buf = NULL;
 	int ret = 0, go_on = 1;
 
 	if ((file = open(disc->filename, O_RDONLY)) < 0) {
@@ -339,7 +339,7 @@ int write_file(int fd, struct cdrw_disc *disc)
 	size = disc->fpacket ? disc->packet_size * CDROM_BLOCK : 63 * CDROM_BLOCK;
 	lba = disc->offset;
 
-	buf = (char *) malloc(size+1);
+	buf = (unsigned char *) malloc(size+1);
 	if (buf == NULL) {
 		perror("malloc");
 		close(file);
