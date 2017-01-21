@@ -177,7 +177,7 @@ static int create_ctl_dev(void)
 {
 	int misc_minor;
 	struct stat stat_buf;
-	int dev;
+	dev_t dev;
 
 	if ((misc_minor = get_misc_minor()) < 0) {
 		if (system("/sbin/modprobe pktcdvd") != 0) {
@@ -209,7 +209,8 @@ static int create_ctl_dev(void)
 static int remove_stale_dev_node(int ctl_fd, char *devname)
 {
 	struct stat stat_buf;
-	int i, dev;
+	unsigned int i;
+	dev_t dev;
 	struct pkt_ctrl_command c;
 
 	if (stat(pkt_dev_name(devname), &stat_buf) < 0)
@@ -323,7 +324,8 @@ out_close:
 static void show_mappings(void)
 {
 	struct pkt_ctrl_command c;
-	int ctl_fd, i;
+	unsigned int i;
+	int ctl_fd;
 
 	memset(&c, 0, sizeof(struct pkt_ctrl_command));
 
