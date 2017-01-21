@@ -232,7 +232,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 					for (i = 0; i < 16; ++i)
 						ts[i] = disc->udf_pvd[0]->volSetIdent[2+(i*2)];
 				else
-					strncpy(ts, &disc->udf_pvd[0]->volSetIdent[1], 16);
+					strncpy(ts, (char *)&disc->udf_pvd[0]->volSetIdent[1], 16);
 				ts[16] = 0;
 				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, ts, optarg, 128);
 				if (!disc->udf_pvd[0]->volSetIdent[127])
@@ -259,7 +259,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 						exit(1);
 					}
 				}
-				strncpy(ts, &disc->udf_pvd[0]->volSetIdent[17], 109);
+				strncpy(ts, (char *)&disc->udf_pvd[0]->volSetIdent[17], 109);
 				ts[109] = 0;
 				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, optarg, ts, 128);
 				if (!disc->udf_pvd[0]->volSetIdent[127])

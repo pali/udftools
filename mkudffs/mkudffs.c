@@ -94,12 +94,12 @@ void udf_init_disc(struct udf_disc *disc)
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
 	sprintf((char *)&disc->udf_pvd[0]->volSetIdent[1], "%08lx%08lx%s",
 		((unsigned long int)mktime(tm))%0xFFFFFFFF, rnd%0xFFFFFFFF, &disc->udf_pvd[0]->volSetIdent[17]);
-	disc->udf_pvd[0]->volIdent[31] = strlen(disc->udf_pvd[0]->volIdent);
-	disc->udf_pvd[0]->volSetIdent[127] = strlen(disc->udf_pvd[0]->volSetIdent);
+	disc->udf_pvd[0]->volIdent[31] = strlen((char *)disc->udf_pvd[0]->volIdent);
+	disc->udf_pvd[0]->volSetIdent[127] = strlen((char *)disc->udf_pvd[0]->volSetIdent);
 
 	disc->udf_lvd[0] = malloc(sizeof(struct logicalVolDesc));
 	memcpy(disc->udf_lvd[0], &default_lvd, sizeof(struct logicalVolDesc));
-	disc->udf_lvd[0]->logicalVolIdent[127] = strlen(disc->udf_lvd[0]->logicalVolIdent);
+	disc->udf_lvd[0]->logicalVolIdent[127] = strlen((char *)disc->udf_lvd[0]->logicalVolIdent);
 
 	disc->udf_pd[0] = malloc(sizeof(struct partitionDesc));
 	memcpy(disc->udf_pd[0], &default_pd, sizeof(struct partitionDesc));
@@ -110,10 +110,10 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->udf_iuvd[0] = malloc(sizeof(struct impUseVolDesc) + sizeof(struct impUseVolDescImpUse));
 	memcpy(disc->udf_iuvd[0], &default_iuvd, sizeof(struct impUseVolDesc));
 	memcpy(query_iuvdiu(disc), &default_iuvdiu, sizeof(struct impUseVolDescImpUse));
-	query_iuvdiu(disc)->logicalVolIdent[127] = strlen(query_iuvdiu(disc)->logicalVolIdent);
-	query_iuvdiu(disc)->LVInfo1[35] = strlen(query_iuvdiu(disc)->LVInfo1);
-	query_iuvdiu(disc)->LVInfo2[35] = strlen(query_iuvdiu(disc)->LVInfo2);
-	query_iuvdiu(disc)->LVInfo3[35] = strlen(query_iuvdiu(disc)->LVInfo3);
+	query_iuvdiu(disc)->logicalVolIdent[127] = strlen((char *)query_iuvdiu(disc)->logicalVolIdent);
+	query_iuvdiu(disc)->LVInfo1[35] = strlen((char *)query_iuvdiu(disc)->LVInfo1);
+	query_iuvdiu(disc)->LVInfo2[35] = strlen((char *)query_iuvdiu(disc)->LVInfo2);
+	query_iuvdiu(disc)->LVInfo3[35] = strlen((char *)query_iuvdiu(disc)->LVInfo3);
 
 	disc->udf_td[0] = malloc(sizeof(struct terminatingDesc));
 	memcpy(disc->udf_td[0], &default_td, sizeof(struct terminatingDesc));
@@ -132,10 +132,10 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->udf_fsd = malloc(sizeof(struct fileSetDesc));
 	memcpy(disc->udf_fsd, &default_fsd, sizeof(struct fileSetDesc));
 	memcpy(&disc->udf_fsd->recordingDateAndTime, &ts, sizeof(timestamp));
-	disc->udf_fsd->logicalVolIdent[127] = strlen(disc->udf_fsd->logicalVolIdent);
-	disc->udf_fsd->fileSetIdent[31] = strlen(disc->udf_fsd->fileSetIdent);
-	disc->udf_fsd->copyrightFileIdent[31] = strlen(disc->udf_fsd->copyrightFileIdent);
-	disc->udf_fsd->abstractFileIdent[31] = strlen(disc->udf_fsd->abstractFileIdent);
+	disc->udf_fsd->logicalVolIdent[127] = strlen((char *)disc->udf_fsd->logicalVolIdent);
+	disc->udf_fsd->fileSetIdent[31] = strlen((char *)disc->udf_fsd->fileSetIdent);
+	disc->udf_fsd->copyrightFileIdent[31] = strlen((char *)disc->udf_fsd->copyrightFileIdent);
+	disc->udf_fsd->abstractFileIdent[31] = strlen((char *)disc->udf_fsd->abstractFileIdent);
 
 	disc->head = malloc(sizeof(struct udf_extent));
 	disc->tail = disc->head;
@@ -170,18 +170,18 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 
 	{
 		disc->flags |= FLAG_EFE;
-		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR03);
+		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR03);
 	}
 	else if (disc->udf_rev == 0x0150)
 	{
 		disc->flags &= ~FLAG_EFE;
-		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
+		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
 	}
 	else // 0x0102
 	{
 		disc->flags &= ~FLAG_VAT;
 		disc->flags &= ~FLAG_EFE;
-		strcpy(disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
+		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
 	}
 
 	((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev);
@@ -704,7 +704,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 			disc->udf_fsd->streamDirectoryICB.extLocation.logicalBlockNum = cpu_to_le32(offset);
 			disc->udf_fsd->streamDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(0);
 #endif
-			nat = udf_create(disc, pspace, "\x08" "*UDF Non-Allocatable Space", 27, offset+1, ss, FID_FILE_CHAR_METADATA, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_STREAM | ICBTAG_FLAG_SYSTEM);
+			nat = udf_create(disc, pspace, (uint8_t *)"\x08" "*UDF Non-Allocatable Space", 27, offset+1, ss, FID_FILE_CHAR_METADATA, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_STREAM | ICBTAG_FLAG_SYSTEM);
 
 			efe = (struct extendedFileEntry *)nat->data->buffer;
 			efe->icbTag.flags = cpu_to_le16((le16_to_cpu(efe->icbTag.flags) & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT);
@@ -714,7 +714,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 		else
 		{
 			struct fileEntry *fe;
-			nat = udf_create(disc, pspace, "\x08" "Non-Allocatable Space", 22, offset+1, desc, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_SYSTEM);
+			nat = udf_create(disc, pspace, (uint8_t *)"\x08" "Non-Allocatable Space", 22, offset+1, desc, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_SYSTEM);
 			fe = (struct fileEntry *)nat->data->buffer;
 			fe->icbTag.flags = cpu_to_le16((le16_to_cpu(fe->icbTag.flags) & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT);
 			fe->descTag = query_tag(disc, pspace, nat, 1);
@@ -998,7 +998,7 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
 		vat20 = data->buffer;
 		vat20->numFiles = query_lvidiu(disc)->numFiles;
 		vat20->numDirs = query_lvidiu(disc)->numDirs;
-		vat20->logicalVolIdent[127] = strlen(vat20->logicalVolIdent);
+		vat20->logicalVolIdent[127] = strlen((char *)vat20->logicalVolIdent);
 		insert_data(disc, ext, vtable, data);
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
 		insert_data(disc, ext, vtable, data);
@@ -1100,7 +1100,7 @@ struct sparablePartitionMap *find_type2_sparable_partition(struct udf_disc *disc
 		if (pm->partitionMapType == 2)
 		{
 			pm2 = (struct udfPartitionMap2 *)&disc->udf_lvd[0]->partitionMaps[mtl];
-			if (!strncmp(pm2->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE)))
+			if (!strncmp((char *)pm2->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE)))
 			{
 				spm = (struct sparablePartitionMap *)&disc->udf_lvd[0]->partitionMaps[mtl];
 				if (le16_to_cpu(spm->partitionNum) == partitionNum)
