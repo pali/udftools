@@ -203,7 +203,7 @@ void split_space(struct udf_disc *disc)
 	uint32_t start, size;
 	struct sparablePartitionMap *spm;
 	struct udf_extent *ext;
-	int i, j;
+	uint32_t i, j;
 
 	if (disc->flags & FLAG_BRIDGE) // UDF-Bridge had both UDF and ISO-9660 filesystems mapping the same files
 	{
