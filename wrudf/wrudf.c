@@ -309,7 +309,7 @@ initialise(char *devicename)
     if ((fsdLen = decode_utf8(fsd->fileSetIdent, fsdOut, fsd->fileSetIdent[31]))>=0)
         fsdOut[fsdLen] = '\0';
 
-    printf("You are going to update fileset '%s'\nProceed (y/N) : ", &fsdOut[1]);
+    printf("You are going to update fileset '%s'\nProceed (y/N) : ", fsdOut);
     readLine(NULL);
 
     if( (line[0] | ' ') != 'y' )
