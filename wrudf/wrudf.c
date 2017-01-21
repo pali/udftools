@@ -189,6 +189,9 @@ initialise(char *devicename)
 		if( p->volDescSeqNum > pd->volDescSeqNum )
 		    memcpy(pd, p, 512);
 		break;
+	    case PD_ACCESS_TYPE_OVERWRITABLE:
+		printf("Partition with overwritable accesstype is not supported\n");
+		break;
 	    default:
 		printf("What to do with an accesstype %d partition?\n", 
 		    ((struct partitionDesc*)p)->accessType);
