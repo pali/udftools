@@ -28,6 +28,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -371,7 +373,9 @@ uint32_t newSparingTableEntry(uint32_t original) {
  *	Do not verify writing as that would change the table again.
  */
 void updateSparingTable() {
-    int			i, pbn, stat;
+    int			i, pbn, ret;
+    off_t		off;
+    ssize_t		len;
     struct generic_desc	*p;
     struct packetbuf	*pb;
     struct sparablePartitionMap *spm = (struct sparablePartitionMap*)lvd->partitionMaps;
@@ -389,14 +393,18 @@ void updateSparingTable() {
 	    sizeof(struct sparingTable) + st->reallocationTableLen * sizeof(struct sparingEntry) - sizeof(tag);
 	setChecksum(p);
 	if( devicetype != DISK_IMAGE ) {
-	    stat = writeCD(device, pbn, 32, pb->pkt);
-	    if( stat )
+	    ret = writeCD(device, pbn, 32, pb->pkt);
+	    if( ret )
 		printf("Write SparingTable at %d: %s\n", pbn, get_sense_string());
 	} else { // DISK_IMAGE
-	    stat= lseek(device, 2048 * pbn, SEEK_SET);
-	    stat = write(device, pb->pkt, 32 * 2048);
-	    if( stat < 0 )
+	    off = lseek(device, 2048 * pbn, SEEK_SET);
+	    if( off == (off_t)-1 )
 		fail("writeSparingTable at %d: %m\n", pbn);
+	    len = write(device, pb->pkt, 32 * 2048);
+	    if( len < 0 )
+		fail("writeSparingTable at %d: %m\n", pbn);
+	    if( len != 32 * 2048 )
+		fail("writeSparingTable at %d: %s\n", pbn, strerror(EIO));
 	}
     }
 }
@@ -405,29 +413,38 @@ void updateSparingTable() {
 int 
 readPacket(struct packetbuf* pb) 
 {
-    int		stat;
+    int		ret;
+    off_t	off;
+    ssize_t	len;
     uint32_t	physical;
 
     physical = lookupSparingTable(pb->start);
 
     if( devicetype != DISK_IMAGE ) {
-	stat = readCD(device, sectortype, physical, 32, pb->pkt);
-	if( stat )
+	ret = readCD(device, sectortype, physical, 32, pb->pkt);
+	if( ret )
 	    printf("readPacket: readCD %s\n", get_sense_string());
     } else {
-	stat = lseek(device, 2048 * physical, SEEK_SET);
-	stat = read(device, pb->pkt, 32 * 2048);
-	if( stat != 32 * 2048 )
+	off = lseek(device, 2048 * physical, SEEK_SET);
+	if( off == (off_t)-1 )
+	    fail("readPacket: lseek failed %m\n");
+	len = read(device, pb->pkt, 32 * 2048);
+	if( len < 0 )
 	    fail("readPacket: read failed %m\n");
+	if( len != 32 * 2048 )
+	    fail("readPacket: read failed %s\n", strerror(EIO));
+	ret = 0;
     }
-    return stat;
+    return ret;
 }
    
 
 int 
 writePacket(struct packetbuf* pb) 
 {
-    int		stat, retry;
+    int		ret, retry;
+    off_t	off;
+    ssize_t	len;
     uint32_t	physical;
 
     pb->dirty = 0;
@@ -438,18 +455,18 @@ writePacket(struct packetbuf* pb)
 	    if( retry != 0 )
 		physical = newSparingTableEntry(pb->start);
 
-	    stat = writeCD(device, physical, 32, pb->pkt);
+	    ret = writeCD(device, physical, 32, pb->pkt);
 
-	    if( stat )
+	    if( ret )
 		fail("writePacket: writeCD %s\n", get_sense_string());
 
 	    // must now verify write operation and spare if necessary
 	    // My HP8100 does not support Verify or WriteAndVerify
 	    // Use ReadCD with strict Read Error Recovery Parameters
 	    setStrictRead(1);
-	    stat = readCD(device, sectortype, physical, 32, verifyBuffer);
+	    ret = readCD(device, sectortype, physical, 32, verifyBuffer);
 
-	    if( stat == 0 ) {
+	    if( ret == 0 ) {
 		setStrictRead(0);
 		return 0;
 	    }
@@ -463,12 +480,17 @@ writePacket(struct packetbuf* pb)
 		physical = newSparingTableEntry(pb->start);
 	}
 #endif
-	stat= lseek(device, 2048 * physical, SEEK_SET);
-	stat = write(device, pb->pkt, 32 * 2048);
-	if( stat < 0 )
+	off = lseek(device, 2048 * physical, SEEK_SET);
+	if( off == (off_t)-1 )
 	    fail("writePacket: writeHD failed %m\n");
+	len = write(device, pb->pkt, 32 * 2048);
+	if( len < 0 )
+	    fail("writePacket: writeHD failed %m\n");
+	if( len != 32 * 2048 )
+	    fail("writePacket: writeHD failed %s\n", strerror(EIO));
+	ret = 0;
     }
-    return stat;
+    return ret;
 }
 
 
@@ -544,20 +566,24 @@ readBlock(uint32_t lbn, uint16_t part)
 void* 
 readSingleBlock(uint32_t pbn) 
 {
-    int stat;
+    int ret;
+    off_t off;
+    ssize_t len;
 
     if( devicetype != DISK_IMAGE ) {
-	stat = readCD(device, sectortype, pbn, 1, blockBuffer);
-	if( stat ) {
+	ret = readCD(device, sectortype, pbn, 1, blockBuffer);
+	if( ret ) {
 	    if( ! ignoreReadError )
 		printf("readSingleBlock: %s\n", get_sense_string());
     	    return NULL;
 	} else 
 	    return blockBuffer;
     } else {
-	stat = lseek(device, 2048 * pbn, SEEK_SET);
-	stat = read(device, blockBuffer, 2048);
-	if( stat != 2048 )
+	off = lseek(device, 2048 * pbn, SEEK_SET);
+	if( off != (off_t)-1 )
+	    return NULL;
+	len = read(device, blockBuffer, 2048);
+	if( len != 2048 )
 	    return NULL;
 	else
 	    return blockBuffer;
@@ -757,6 +783,8 @@ initIO(char *filename)
 {
     struct packetbuf *pb;
     int		rv;
+    off_t	off;
+    ssize_t	len;
     struct stat filestat;
     struct cdrom_discinfo  di;
     u_char *buffer;
@@ -774,8 +802,14 @@ initIO(char *filename)
 	}
 
 	/* heuristically determine medium imitated on disk image based on VAT FileEntry in block 512 */
-	rv = lseek(device, 2048 * 512, SEEK_SET);
-	rv = read(device, &ident, 2);
+	off = lseek(device, 2048 * 512, SEEK_SET);
+	if( off == (off_t)-1 )
+	    fail("initIO: lseek %s failed: %m\n", filename);
+	len = read(device, &ident, 2);
+	if( len < 0 )
+	    fail("initIO: read %s failed: %m\n", filename);
+	if( len != 2 )
+	    fail("initIO: read %s failed: %s\n", filename, strerror(EIO));
 	medium = ident == TAG_IDENT_VDP ? CDR : CDRW;
 
 	if( medium == CDRW ) {
