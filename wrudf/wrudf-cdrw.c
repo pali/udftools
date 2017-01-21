@@ -777,6 +777,16 @@ initIO(char *filename)
 	rv = lseek(device, 2048 * 512, SEEK_SET);
 	rv = read(device, &ident, 2);
 	medium = ident == TAG_IDENT_VDP ? CDR : CDRW;
+
+	if( medium == CDRW ) {
+	    for( pb = pktbuf, rv = 1; pb <= pktbuf + MAXPKTBUFS; pb++ ) {
+		pb->start = 0xFFFFFFFF;
+		pb->pkt = malloc(32*2048);
+		pb->bufNum = rv++;
+		if( pb->pkt == NULL )
+		    fail("malloc packetBuffer failed\n");
+	    }
+	}
     }
 
     if( (blockBuffer = malloc(2048)) == NULL )
