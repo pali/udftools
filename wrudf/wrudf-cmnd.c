@@ -345,7 +345,7 @@ deleteDirectory(Directory *dir, struct fileIdentDesc* fid)
 	return deleteFID(dir, fid);			/* delete regular files */
 
     name = malloc(fid->lengthFileIdent + 1);
-    strncpy(name, fid->fileIdent + fid->lengthOfImpUse, fid->lengthFileIdent);
+    strncpy(name, (char *)(fid->fileIdent + fid->lengthOfImpUse), fid->lengthFileIdent);
     name[fid->lengthFileIdent] = 0;
     readDirectory(dir, &fid->icb, name);
     childDir = dir->child;
@@ -993,7 +993,7 @@ int lscCommand(void) {
 	    strcpy(filename, "..");
 	else {
 	    memset(filename, 0, sizeof(filename));
-	    strncpy(filename, fid->fileIdent + fid->lengthOfImpUse + 1, fid->lengthFileIdent - 1);
+	    strncpy(filename, (char *)(fid->fileIdent + fid->lengthOfImpUse + 1), fid->lengthFileIdent - 1);
 	    /* Look at udf filesystem how to convert dstring to ordinary characters     */
 	}	    
 

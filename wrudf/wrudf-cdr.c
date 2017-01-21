@@ -319,7 +319,7 @@ writeVATtable()
 
     id = (regid*)(&vat[newVATindex]);
     memset(id, 0, sizeof(regid));
-    strcpy(id->ident, UDF_ID_ALLOC);
+    strcpy((char *)id->ident, UDF_ID_ALLOC);
     *(uint16_t*)id->identSuffix = 0x150;
     id->identSuffix[2] = UDF_OS_CLASS_UNIX;
     id->identSuffix[3] = UDF_OS_ID_LINUX;

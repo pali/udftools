@@ -659,7 +659,7 @@ readTaggedBlock(uint32_t lbn, uint16_t partition)
 
     if( block->descTag.tagIdent == 0x0000 ) {
 	/* ignore not ISO 13346 defined descriptors with 0 tags */
-	if( strncmp(((struct sparingTable*)block)->sparingIdent.ident, UDF_ID_SPARING, strlen(UDF_ID_SPARING)) != 0 ) {
+	if( strncmp((char *)((struct sparingTable*)block)->sparingIdent.ident, UDF_ID_SPARING, strlen(UDF_ID_SPARING)) != 0 ) {
 	    for( i = 0; i < 2048; i++ ) {
 		if( ((uint8_t*)block)[i] != 0 ) {
 		    printf("readTaggedBlock: Empty block %d not all zeroes\n", lbn);

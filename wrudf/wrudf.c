@@ -108,15 +108,15 @@ initialise(char *devicename)
 	if( vsd == NULL || memcmp(vsd->stdIdent, zeroes, 5) == 0 )
 	    break;
 
-	if( strncmp(vsd->stdIdent, "BEA01", VSD_STD_ID_LEN) == 0 ) {
+	if( strncmp((char *)vsd->stdIdent, "BEA01", VSD_STD_ID_LEN) == 0 ) {
 	    found |= FOUND_BEA01;
 	    continue;
 	}
-	if( strncmp(vsd->stdIdent, "NSR02", VSD_STD_ID_LEN) == 0 ) {
+	if( strncmp((char *)vsd->stdIdent, "NSR02", VSD_STD_ID_LEN) == 0 ) {
 	    found |= FOUND_NSR02;
 	    continue;
 	}
-	if( strncmp(vsd->stdIdent, "TEA01", 5) == 0 ) {
+	if( strncmp((char *)vsd->stdIdent, "TEA01", 5) == 0 ) {
 	    found |= FOUND_TEA01;
 	    continue;
 	}
@@ -233,7 +233,7 @@ initialise(char *devicename)
     for( i = 0; i < lvd->numPartitionMaps; i++ ) {
 	if( spm->partitionMapType == 2 ) {
 
-	    if( strncmp( spm->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE)) == 0 ) {
+	    if( strncmp((char *)spm->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE)) == 0 ) {
 		unsigned int	j;
 
 		if( spm->sizeSparingTable > 2048 )
@@ -248,7 +248,7 @@ initialise(char *devicename)
 		     if( st->mapEntry[j].origLocation < 0xFFFFFFF0 )
 			 usedSparingEntries++;
 		}
-	    } else if( strncmp( spm->partIdent.ident, UDF_ID_VIRTUAL, strlen(UDF_ID_VIRTUAL)) == 0 )
+	    } else if( strncmp((char *)spm->partIdent.ident, UDF_ID_VIRTUAL, strlen(UDF_ID_VIRTUAL)) == 0 )
 		virtualPartitionNum = i;
 	}
 	spm = (struct sparablePartitionMap*)((char*)spm + spm->partitionMapLength);
