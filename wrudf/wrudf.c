@@ -516,7 +516,7 @@ parseCmnd(char* line)
 	cmndv = malloc(cmndvSize * sizeof(char*));
     }
 
-    if( line[0] == 0 )
+    if( !line || line[0] == 0 )
 	return CMND_FAILED;
 
     cmndc = 0;
