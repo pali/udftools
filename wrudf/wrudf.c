@@ -664,7 +664,6 @@ main(int argc, char** argv)
 
     if( setpriority(PRIO_PROCESS, 0, -10) ) {
 	printf("setpriority(): %m\n");
-	exit(1);
     }
 
     hdWorkingDir = getcwd(NULL, 0);
