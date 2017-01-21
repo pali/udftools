@@ -148,8 +148,9 @@ void detect_blocksize(int fd, struct udf_disc *disc)
 int write_func(struct udf_disc *disc, struct udf_extent *ext)
 {
 	static char *buffer = NULL;
-	static int bufferlen = 0, length, offset;
+	static size_t bufferlen = 0;
 	int fd = *(int *)disc->write_data;
+	ssize_t length, offset;
 	struct udf_desc *desc;
 	struct udf_data *data;
 
