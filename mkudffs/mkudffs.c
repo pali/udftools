@@ -992,7 +992,7 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
 
 	if (disc->udf_rev >= 0x0200)
 	{
-		vtable = udf_create(disc, ext, UDF_ID_ALLOC, strlen(UDF_ID_ALLOC), offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_VAT20, 0);
+		vtable = udf_create(disc, ext, (uint8_t *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_VAT20, 0);
 		len = sizeof(struct virtualAllocationTable20);
 		data = alloc_data(&default_vat20, len);
 		vat20 = data->buffer;
@@ -1005,7 +1005,7 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
 	}
 	else
 	{
-		vtable = udf_create(disc, ext, UDF_ID_ALLOC, strlen(UDF_ID_ALLOC), offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
+		vtable = udf_create(disc, ext, (uint8_t *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
 		len = sizeof(struct virtualAllocationTable15);
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
 		insert_data(disc, ext, vtable, data);
