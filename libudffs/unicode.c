@@ -29,9 +29,9 @@
 
 #include "libudffs.h"
 
-int decode_utf8(char *in, char *out, int inlen)
+size_t decode_utf8(dstring *in, char *out, size_t inlen)
 {
-	int len = 0, i;
+	size_t len = 0, i;
 	unsigned int c;
 
 	if (in[inlen-1] == 0)
@@ -65,10 +65,11 @@ int decode_utf8(char *in, char *out, int inlen)
 	return len;
 }
 
-int encode_utf8(char *out, char *hdr, char *in, int outlen)
+size_t encode_utf8(dstring *out, char *hdr, char *in, size_t outlen)
 {
-	int inlen = strlen(in);
-	int utf_cnt, len = 1, i;
+	size_t inlen = strlen(in);
+	size_t len = 1, i;
+	int utf_cnt;
 	uint32_t utf_char, max_val;
 	unsigned int c;
 
@@ -174,7 +175,7 @@ error_out:
 	return len;
 }
 
-int decode_string(struct udf_disc *disc, char *in, char *out, int inlen)
+size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen)
 {
 	if (disc->flags & FLAG_UTF8)
 		return decode_utf8(in, out, inlen);
@@ -187,9 +188,9 @@ int decode_string(struct udf_disc *disc, char *in, char *out, int inlen)
 		return 0;
 }
 
-int encode_string(struct udf_disc *disc, char *out, char *hdr, char *in, int outlen)
+size_t encode_string(struct udf_disc *disc, dstring *out, char *hdr, char *in, size_t outlen)
 {
-	int i;
+	size_t i;
 
 	memset(out, 0x00, outlen);
 	if (disc->flags & FLAG_UTF8)
