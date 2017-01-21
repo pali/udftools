@@ -298,10 +298,10 @@ initialise(char *devicename)
 	    memcpy( (uint8_t*)spaceMap + i, (uint8_t*) p, 2048);
 	    freeBlock(blkno++, 0);
 	}
-
-	if( spaceMap->descTag.tagIdent != TAG_IDENT_SBD )
-	    fail("SpaceBitmap not found\n");
     }
+
+    if( !spaceMap || spaceMap->descTag.tagIdent != TAG_IDENT_SBD )
+        fail("Unallocated Space Bitmap not found\n");
 
     if ((fsdLen = decode_utf8(fsd->fileSetIdent, fsdOut, fsd->fileSetIdent[31]))>=0)
         fsdOut[fsdLen] = '\0';
