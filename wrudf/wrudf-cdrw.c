@@ -768,7 +768,7 @@ initIO(char *filename)
 
     if( S_ISREG(filestat.st_mode) ) {		/* disk image of a UDF volume */
 	devicetype = DISK_IMAGE;
-	if( !(device = open(filename, O_RDWR)) ) {
+	if( (device = open(filename, O_RDWR)) < 0 ) {
 	    fail("initIO: open %s failed\n", filename);
 	    return 0;
 	}
@@ -785,7 +785,7 @@ initIO(char *filename)
     if( devicetype == DISK_IMAGE )
 	return 0;
 
-    if( !(device = open(filename, O_RDONLY | O_NONBLOCK )) )
+    if( (device = open(filename, O_RDONLY | O_NONBLOCK )) < 0 )
 	fail("initIO: open %s failed\n", filename);
 
     rv = ioctl(device, CDROM_DRIVE_STATUS);

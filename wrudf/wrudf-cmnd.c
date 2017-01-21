@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include "wrudf.h"
 
@@ -268,7 +269,10 @@ copyDirectory(Directory *dir, char* name)
 	if( !strcmp(dirEnt->d_name, ".") || !strcmp(dirEnt->d_name, "..") )
 	    continue;
 	
-	lstat(dirEnt->d_name, &dirEntStat);		// do not follow links
+	if( lstat(dirEnt->d_name, &dirEntStat) != 0 ) {		// do not follow links
+	    printf("Stat dirEnt '%s' failed: %s\n", dirEnt->d_name, strerror(errno));
+	    continue;
+	}
 
 	if( S_ISDIR(dirEntStat.st_mode) ) {
 	    if( !(options & OPT_RECURSIVE) ) {
