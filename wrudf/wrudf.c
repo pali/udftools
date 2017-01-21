@@ -540,7 +540,23 @@ parseCmnd(char* line)
     else if( !strcmp(p, "cdh") )   cmnd = CMND_CDH;
     else if( !strcmp(p, "quit") )  cmnd = CMND_QUIT;
     else if( !strcmp(p, "exit") )  cmnd = CMND_QUIT;
-    else {
+    else if( !strcmp(p, "help") ) {
+	printf(
+	"Available commands:\n"
+	"\tcp\n"
+	"\trm\n"
+	"\tmkdir\n"
+	"\trmdir\n"
+	"\tlsc\n"
+	"\tlsh\n"
+	"\tcdc\n"
+	"\tcdh\n"
+	"Specify cdh/lsh or cdc/lsc to do cd or ls for Harddisk or CompactDisc.\n"
+	"\tquit\n"
+	"\texit\n"
+	);
+	return CMND_FAILED;
+    } else {
 	printf("Invalid command\n");
 	return CMND_FAILED;
     }
