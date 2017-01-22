@@ -1045,7 +1045,7 @@ int lshCommand() {
     strcpy(cmnd, "ls -l ");
 
     if( cmndc == 1 )
-	strcat(cmnd, cmndv[0]);
+	strncat(cmnd, cmndv[0], sizeof(cmnd)-strlen("ls -l ")-1);
 
     if( system(cmnd) != 0 )
 	return CMND_FAILED;

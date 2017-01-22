@@ -652,6 +652,8 @@ main(int argc, char** argv)
     int	 	rv=0;
     int		cmnd;
     char	prompt[256];
+    char	*ptr;
+    size_t	len;
     Directory	*d;
 
     printf("wrudf from " PACKAGE_NAME " " PACKAGE_VERSION "\n");
@@ -672,17 +674,28 @@ main(int argc, char** argv)
     for(;;) {
 	d = rootDir;
 	prompt[0] = 0;
+	ptr = prompt;
 	while( curDir != d ) { 
-	    strcat(prompt, d->name);
-	    strcat(prompt, "/");
+	    len = strlen(d->name);
+	    if( ptr + len + 1 >= prompt + sizeof(prompt) - 7 )
+	        break;
+	    memcpy(ptr, d->name, len);
+	    ptr[len] = '/';
+	    ptr += len + 1;
 	    d = d->child;
 	}
-	if( d->name[0] == 0 )
-	    strcat(prompt, "/");
-	else
-	    strcat(prompt, d->name); 
+	len = strlen(d->name);
+	if( ptr + len + 1 >= prompt + sizeof(prompt) - 7 ) {
+	    memcpy(ptr, "...", 3);
+	    ptr += 3;
+	} else if( d->name[0] == 0 ) {
+	    *(ptr++) = '/';
+	} else {
+	    memcpy(ptr, d->name, len);
+	    ptr += len;
+	}
 
-	strcat(prompt, " > ");
+	memcpy(ptr, " > ", 4);
 	
 	GETLINE(prompt);
 
