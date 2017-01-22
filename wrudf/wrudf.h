@@ -3,17 +3,13 @@
  * PURPOSE
  *  	The header file for wrudf.c and related source files.
  *
- * CONTACTS
- *	E-mail regarding this program to
- *		e.fennema@dataweb.nl
- *
  * COPYRIGHT
  *	This file is distributed under the terms of the GNU General Public
  *	License (GPL). Copies of the GPL can be obtained from:
  *		ftp://prep.ai.mit.edu/pub/gnu/GPL
  *	Each contributing author retains all rights to their own work.
  *
- *	(C) 2001 Enno Fennema
+ *	(C) 2001 Enno Fennema <e.fennema@dataweb.nl>
  *
  * HISTORY
  *  	16 Aug 01  ef  created.

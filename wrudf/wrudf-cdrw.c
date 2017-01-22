@@ -8,17 +8,13 @@
  *	When a new buffer is required preferentially an unused not-dirty buffer gets overwritten.
  *	If not available, then a unused dirty buffer gets written and is then reused.
  *	If no such buffer can be found the system panics.
- *  
- * CONTACTS
- *	E-mail regarding this program may be directed to 
- *		e.fennema@dataweb.nl
  *
  * COPYRIGHT
  *	This file is distributed under the terms of the GNU General Public
  *	License (GPL). Copies of the GPL can be obtained from:
  *		ftp://prep.ai.mit.edu/pub/gnu/GPL
  *
- *  (C) 2001 Enno Fennema
+ *  (C) 2001 Enno Fennema <e.fennema@dataweb.nl>
  *
  * HISTORY
  *  16 Aug 01  ef  Created.

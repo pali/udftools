@@ -6,17 +6,13 @@
  *	maintains structures strictly as defined MMC to facilitate the interface with the CDwriter
  *	at the expense of a simple user interface.
  *
- * CONTACTS
- *	E-mail regarding this program should be addressed to
- *		e.fennema@dataweb.nl
- *
  * COPYRIGHT
  *	This file is distributed under the terms of the GNU General Public
  *	License (GPL). Copies of the GPL can be obtained from:
  *		ftp://prep.ai.mit.edu/pub/gnu/GPL
  *	Each contributing author retains all rights to their own work.
  *
- *	(C) 2001 Enno Fennema
+ *	(C) 2001 Enno Fennema <e.fennema@dataweb.nl>
  *
  * HISTORY
  *
