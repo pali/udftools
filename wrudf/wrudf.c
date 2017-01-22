@@ -312,7 +312,7 @@ initialise(char *devicename)
     printf("You are going to update fileset '%s'\nProceed (y/N) : ", fsdOut);
     readLine(NULL);
 
-    if( (line[0] | ' ') != 'y' )
+    if( !line || line[0] != 'y' )
 	fail("wrudf terminated\n");
 
     /* Read Logical Volume Integrity sequence */
