@@ -1,3 +1,10 @@
+Changes in 1.3
+* Fixed Large File Support
+* Fixed pktsetup to work
+* Fixed wrudf to work with CD-RW disk images
+* Fixed memory leaks & buffer overflows
+* Print error message when mkudffs fails
+
 Changes in 1.2
 * Manpage redirect for mkfs.udf(8)
 * Manpage fix for pktsetup(8)
