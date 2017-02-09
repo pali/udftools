@@ -18,7 +18,7 @@ int checksum(tag descTag) {
     return calculate_checksum(descTag) == descTag.tagChecksum;
 }
 
-int crc(void * desc, uint16_t size) {
+int crc(void * restrict desc, uint16_t size) {
     uint8_t offset = sizeof(tag);
     tag *descTag = desc;
     uint16_t crc = 0;
