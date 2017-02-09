@@ -222,7 +222,7 @@ int mode_sense(int, unsigned char *, int, char, int);
 int set_write_mode(int, write_params_t *);
 int get_write_mode(int, write_params_t *);
 int sync_cache(int);
-int write_blocks(int, char *, int, int);
+int write_blocks(int, unsigned char *, int, int);
 int write_file(int, struct cdrw_disc *);
 int blank_disc(int, int);
 int format_disc(int, struct cdrw_disc *);

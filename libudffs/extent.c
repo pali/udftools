@@ -25,6 +25,8 @@
  * libudffs extend handling functions
  */
 
+#include "config.h"
+
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +39,6 @@
 #include <errno.h>
 
 #include "libudffs.h"
-#include "config.h"
 
 /**
  * This code was very sparsely commented and essentially undocumented as written.

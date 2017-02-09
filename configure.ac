@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(udftools, 1.2, , , [https://github.com/pali/udftools/])
+AC_INIT(udftools, 1.3, , , [https://github.com/pali/udftools/])
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(include/config.h:include/config.in)
 AM_INIT_AUTOMAKE([subdir-objects])
@@ -10,6 +10,7 @@ AC_DISABLE_SHARED
 AM_PROG_LIBTOOL
 
 dnl Checks for libraries.
+AC_CHECK_LIB(readline, readline, , AC_MSG_ERROR([cannot find -lreadline.]))
 
 dnl Checks for header files.
 AC_HEADER_STDC
@@ -19,9 +20,9 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
 AC_HEADER_TIME
 AC_STRUCT_TM
+AC_SYS_LARGEFILE
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(gettimeofday mktime lseek64 llseek)
 AC_SUBST(LTLIBOBJS)
 
 AC_CONFIG_FILES(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile wrudf/Makefile doc/Makefile)

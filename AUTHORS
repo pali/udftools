@@ -14,6 +14,10 @@ cdrwtool
 pktsetup
 	Jens Axboe <axboe@suse.de>
 
+wrudf
+	Enno Fennema <e.fennema@dataweb.nl>
+	Pali Rohár <pali.rohar@gmail.com>
+
 doc
 	Paul Thompson <set@pobox.com>
 	Ben Fennema <bfennema@falcon.csc.calpoly.edu>

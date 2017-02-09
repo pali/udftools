@@ -26,11 +26,14 @@
  * mkudffs option handling functions
  */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
 #include <malloc.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "mkudffs.h"
 #include "defaults.h"
@@ -104,6 +107,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	int i;
 	int media = DEFAULT_HD;
 	uint16_t packetlen = 0;
+	unsigned long int blocks = 0;
+	char *endptr = NULL;
 
 	while ((retval = getopt_long(argc, argv, "l:u:b:r:h", long_options, NULL)) != EOF)
 	{
@@ -227,7 +232,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 					for (i = 0; i < 16; ++i)
 						ts[i] = disc->udf_pvd[0]->volSetIdent[2+(i*2)];
 				else
-					strncpy(ts, &disc->udf_pvd[0]->volSetIdent[1], 16);
+					strncpy(ts, (char *)&disc->udf_pvd[0]->volSetIdent[1], 16);
 				ts[16] = 0;
 				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, ts, optarg, 128);
 				if (!disc->udf_pvd[0]->volSetIdent[127])
@@ -254,7 +259,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 						exit(1);
 					}
 				}
-				strncpy(ts, &disc->udf_pvd[0]->volSetIdent[17], 109);
+				strncpy(ts, (char *)&disc->udf_pvd[0]->volSetIdent[17], 109);
 				ts[109] = 0;
 				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, optarg, ts, 128);
 				if (!disc->udf_pvd[0]->volSetIdent[127])
@@ -433,9 +438,16 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	device[NAME_MAX-1] = '\0';
 	optind ++;
 	if (optind < argc)
-		disc->head->blocks = strtoul(argv[optind++], NULL, 0);
-	else
-		disc->head->blocks = 0;
+	{
+		errno = 0;
+		blocks = strtoul(argv[optind++], &endptr, 0);
+		if (errno || *endptr || blocks > UINT32_MAX)
+		{
+			fprintf(stderr, "mkudffs: invalid block-count\n");
+			exit(1);
+		}
+		disc->head->blocks = blocks;
+	}
 	if (optind < argc)
 		usage();
 

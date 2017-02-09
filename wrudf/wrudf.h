@@ -3,17 +3,13 @@
  * PURPOSE
  *  	The header file for wrudf.c and related source files.
  *
- * CONTACTS
- *	E-mail regarding this program to
- *		e.fennema@dataweb.nl
- *
  * COPYRIGHT
  *	This file is distributed under the terms of the GNU General Public
  *	License (GPL). Copies of the GPL can be obtained from:
  *		ftp://prep.ai.mit.edu/pub/gnu/GPL
  *	Each contributing author retains all rights to their own work.
  *
- *	(C) 2001 Enno Fennema
+ *	(C) 2001 Enno Fennema <e.fennema@dataweb.nl>
  *
  * HISTORY
  *  	16 Aug 01  ef  created.
@@ -85,13 +81,13 @@ extern struct unallocSpaceDesc		*usd;
 extern struct spaceBitmapDesc		*spaceMap;
 extern struct logicalVolIntegrityDesc	*lvid;
 extern struct fileSetDesc		*fsd;
-extern int    				usedSparingEntries;
+extern unsigned int			usedSparingEntries;
 extern struct sparingTable		*st;
 
 typedef struct _dir_ {
     struct _dir_	*parent, *child;
     uint32_t		dataSize;
-    uint8_t		*data;
+    char		*data;
     long_ad		icb;				/* icb of this directory itself */
     char		*name;
     uint32_t		dirDirty;
@@ -139,7 +135,7 @@ int	getExtents(uint32_t requestedLength, short_ad *extents);
 int	freeShortExtents(short_ad* extent);
 int	freeLongExtents(long_ad* extent);
 
-void	getUnallocSpaceExtent(int requestLength, int requestAfter, extent_ad *alloc);
+void	getUnallocSpaceExtent(uint32_t requestLength, uint32_t requestAfter, extent_ad *alloc);
 
 void 	setChecksum(void *descriptor);
 void	updateTimestamp(time_t t, uint32_t  ut);		/* current time if t = 0 */
@@ -174,7 +170,7 @@ uint32_t	getMaxVarPktSize();
 uint32_t	writeCDR(void* src);
 void	syncCDR();
 void	writeHDlink();
-char*	readCDR(uint32_t lbn, uint16_t partition);
+unsigned char*	readCDR(uint32_t lbn, uint16_t partition);
 int	verifyCDR(struct fileEntry *fe);
 void	readVATtable();
 void	writeVATtable();

@@ -20,6 +20,8 @@
  *
  */
 
+#include "config.h"
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -192,10 +194,18 @@ int set_write_mode(int fd, write_params_t *w)
 	offset = 8 + (((header[6] & 0xff) << 8) | (header[7] & 0xff));
 	buffer = calloc(len, sizeof(unsigned char));
 
+	if ((len <= offset+13) || (w->data_block == 10 && len <= offset+51))
+	{
+		perror("mode_sense_write");
+		free(buffer);
+		return ret;
+	}
+
 	if ((ret = mode_sense(fd, buffer, GPMODE_WRITE_PARMS_PAGE,
 			      PAGE_DEFAULT, len)) < 0)
 	{
 		perror("mode_sense_write");
+		free(buffer);
 		return ret;
 	}
 
@@ -250,10 +260,18 @@ int get_write_mode(int fd, write_params_t *w)
 	offset = 8 + (((header[6] & 0xff) << 8) | (header[7] & 0xff));
 	buffer = calloc(len, sizeof(unsigned char));
 
+	if (len <= offset+13)
+	{
+		perror("mode_sense_write");
+		free(buffer);
+		return ret;
+	}
+
 	if ((ret = mode_sense(fd, buffer, GPMODE_WRITE_PARMS_PAGE,
 			      PAGE_CURRENT, len)) < 0)
 	{
 		perror("mode_sense_write");
+		free(buffer);
 		return ret;
 	}
 
@@ -281,7 +299,7 @@ int sync_cache(int fd)
 	return wait_cmd(fd, &cgc, NULL, CGC_DATA_NONE, WAIT_SYNC);
 }
 
-int write_blocks(int fd, char *buffer, int lba, int blocks)
+int write_blocks(int fd, unsigned char *buffer, int lba, int blocks)
 {
 	struct cdrom_generic_command cgc;
 
@@ -305,7 +323,7 @@ int write_blocks(int fd, char *buffer, int lba, int blocks)
 int write_file(int fd, struct cdrw_disc *disc)
 {
 	int file, lba, size, blocks;
-	char *buf = NULL;
+	unsigned char *buf = NULL;
 	int ret = 0, go_on = 1;
 
 	if ((file = open(disc->filename, O_RDONLY)) < 0) {
@@ -321,9 +339,12 @@ int write_file(int fd, struct cdrw_disc *disc)
 	size = disc->fpacket ? disc->packet_size * CDROM_BLOCK : 63 * CDROM_BLOCK;
 	lba = disc->offset;
 
-	buf = (char *) malloc(size+1);
-	if (buf == NULL)
+	buf = (unsigned char *) malloc(size+1);
+	if (buf == NULL) {
+		perror("malloc");
+		close(file);
 		return 1;
+	}
 
 	while (!ret && go_on) {
 		blocks = disc->fpacket ? disc->packet_size : size / CDROM_BLOCK;

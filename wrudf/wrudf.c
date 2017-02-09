@@ -4,6 +4,8 @@
  *
  */
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -68,7 +70,7 @@ struct unallocSpaceDesc		*usd;
 struct spaceBitmapDesc		*spaceMap;
 struct logicalVolIntegrityDesc	*lvid;
 struct fileSetDesc		*fsd;
-int    				usedSparingEntries;
+unsigned int			usedSparingEntries;
 struct sparingTable		*st;
 
 int	spaceMapDirty, usdDirty, sparingTableDirty;
@@ -106,15 +108,15 @@ initialise(char *devicename)
 	if( vsd == NULL || memcmp(vsd->stdIdent, zeroes, 5) == 0 )
 	    break;
 
-	if( strncmp(vsd->stdIdent, "BEA01", VSD_STD_ID_LEN) == 0 ) {
+	if( strncmp((char *)vsd->stdIdent, "BEA01", VSD_STD_ID_LEN) == 0 ) {
 	    found |= FOUND_BEA01;
 	    continue;
 	}
-	if( strncmp(vsd->stdIdent, "NSR02", VSD_STD_ID_LEN) == 0 ) {
+	if( strncmp((char *)vsd->stdIdent, "NSR02", VSD_STD_ID_LEN) == 0 ) {
 	    found |= FOUND_NSR02;
 	    continue;
 	}
-	if( strncmp(vsd->stdIdent, "TEA01", 5) == 0 ) {
+	if( strncmp((char *)vsd->stdIdent, "TEA01", 5) == 0 ) {
 	    found |= FOUND_TEA01;
 	    continue;
 	}
@@ -187,6 +189,9 @@ initialise(char *devicename)
 		if( p->volDescSeqNum > pd->volDescSeqNum )
 		    memcpy(pd, p, 512);
 		break;
+	    case PD_ACCESS_TYPE_OVERWRITABLE:
+		printf("Partition with overwritable accesstype is not supported\n");
+		break;
 	    default:
 		printf("What to do with an accesstype %d partition?\n", 
 		    ((struct partitionDesc*)p)->accessType);
@@ -218,6 +223,9 @@ initialise(char *devicename)
     if( (found & FOUND_LVD) == 0 )
 	fail("No LVD found \n");
 
+    if( (found & FOUND_PD) == 0 )
+	fail("No PD found\n");
+
     if( lvd->logicalBlockSize != 2048 )
 	fail("Blocksize not 2048\n");
 
@@ -225,8 +233,8 @@ initialise(char *devicename)
     for( i = 0; i < lvd->numPartitionMaps; i++ ) {
 	if( spm->partitionMapType == 2 ) {
 
-	    if( strncmp( spm->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE)) == 0 ) {
-		int	j;
+	    if( strncmp((char *)spm->partIdent.ident, UDF_ID_SPARABLE, strlen(UDF_ID_SPARABLE)) == 0 ) {
+		unsigned int	j;
 
 		if( spm->sizeSparingTable > 2048 )
 		    fail("Cannot handle SparingTable > 2048 bytes");
@@ -240,7 +248,7 @@ initialise(char *devicename)
 		     if( st->mapEntry[j].origLocation < 0xFFFFFFF0 )
 			 usedSparingEntries++;
 		}
-	    } else if( strncmp( spm->partIdent.ident, UDF_ID_VIRTUAL, strlen(UDF_ID_VIRTUAL)) == 0 )
+	    } else if( strncmp((char *)spm->partIdent.ident, UDF_ID_VIRTUAL, strlen(UDF_ID_VIRTUAL)) == 0 )
 		virtualPartitionNum = i;
 	}
 	spm = (struct sparablePartitionMap*)((char*)spm + spm->partitionMapLength);
@@ -301,10 +309,10 @@ initialise(char *devicename)
     if ((fsdLen = decode_utf8(fsd->fileSetIdent, fsdOut, fsd->fileSetIdent[31]))>=0)
         fsdOut[fsdLen] = '\0';
 
-    printf("You are going to update fileset '%s'\nProceed (y/N) : ", &fsdOut[1]);
+    printf("You are going to update fileset '%s'\nProceed (y/N) : ", fsdOut);
     readLine(NULL);
 
-    if( (line[0] | ' ') != 'y' )
+    if( !line || line[0] != 'y' )
 	fail("wrudf terminated\n");
 
     /* Read Logical Volume Integrity sequence */
@@ -355,7 +363,7 @@ initialise(char *devicename)
     curDir = rootDir = (Directory*)malloc(sizeof(Directory));
     memset(rootDir, 0, sizeof(Directory));
     rootDir->dataSize = 4096;
-    rootDir->data = (uint8_t*)malloc(4096);
+    rootDir->data = malloc(4096);
     rootDir->name = "";
     readDirectory( NULL, &fsd->rootDirectoryICB, "");
 
@@ -508,7 +516,7 @@ parseCmnd(char* line)
 	cmndv = malloc(cmndvSize * sizeof(char*));
     }
 
-    if( line[0] == 0 )
+    if( !line || line[0] == 0 )
 	return CMND_FAILED;
 
     cmndc = 0;
@@ -532,7 +540,23 @@ parseCmnd(char* line)
     else if( !strcmp(p, "cdh") )   cmnd = CMND_CDH;
     else if( !strcmp(p, "quit") )  cmnd = CMND_QUIT;
     else if( !strcmp(p, "exit") )  cmnd = CMND_QUIT;
-    else {
+    else if( !strcmp(p, "help") ) {
+	printf(
+	"Available commands:\n"
+	"\tcp\n"
+	"\trm\n"
+	"\tmkdir\n"
+	"\trmdir\n"
+	"\tlsc\n"
+	"\tlsh\n"
+	"\tcdc\n"
+	"\tcdh\n"
+	"Specify cdh/lsh or cdc/lsc to do cd or ls for Harddisk or CompactDisc.\n"
+	"\tquit\n"
+	"\texit\n"
+	);
+	return CMND_FAILED;
+    } else {
 	printf("Invalid command\n");
 	return CMND_FAILED;
     }
@@ -628,6 +652,8 @@ main(int argc, char** argv)
     int	 	rv=0;
     int		cmnd;
     char	prompt[256];
+    char	*ptr;
+    size_t	len;
     Directory	*d;
 
     printf("wrudf from " PACKAGE_NAME " " PACKAGE_VERSION "\n");
@@ -640,7 +666,6 @@ main(int argc, char** argv)
 
     if( setpriority(PRIO_PROCESS, 0, -10) ) {
 	printf("setpriority(): %m\n");
-	exit(1);
     }
 
     hdWorkingDir = getcwd(NULL, 0);
@@ -649,17 +674,28 @@ main(int argc, char** argv)
     for(;;) {
 	d = rootDir;
 	prompt[0] = 0;
+	ptr = prompt;
 	while( curDir != d ) { 
-	    strcat(prompt, d->name);
-	    strcat(prompt, "/");
+	    len = strlen(d->name);
+	    if( ptr + len + 1 >= prompt + sizeof(prompt) - 7 )
+	        break;
+	    memcpy(ptr, d->name, len);
+	    ptr[len] = '/';
+	    ptr += len + 1;
 	    d = d->child;
 	}
-	if( d->name[0] == 0 )
-	    strcat(prompt, "/");
-	else
-	    strcat(prompt, d->name); 
+	len = strlen(d->name);
+	if( ptr + len + 1 >= prompt + sizeof(prompt) - 7 ) {
+	    memcpy(ptr, "...", 3);
+	    ptr += 3;
+	} else if( d->name[0] == 0 ) {
+	    *(ptr++) = '/';
+	} else {
+	    memcpy(ptr, d->name, len);
+	    ptr += len;
+	}
 
-	strcat(prompt, " > ");
+	memcpy(ptr, " > ", 4);
 	
 	GETLINE(prompt);
 

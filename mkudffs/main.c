@@ -26,6 +26,8 @@
  * mkudffs main program and I/O functions
  */
 
+#include "config.h"
+
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,34 +45,22 @@
 
 #include "mkudffs.h"
 #include "defaults.h"
-#include "config.h"
 #include "options.h"
 
-static int64_t udf_lseek64(int fd, int64_t offset, int whence)
-{
-#if defined(HAVE_LSEEK64)
-	return lseek64(fd, offset, whence);
-#elif defined(HAVE_LLSEEK)
-	return llseek(fd, offset, whence);
-#else
-	return lseek(fd, offset, whence);
-#endif
-}
-
-static int valid_offset(int fd, int64_t offset)
+static int valid_offset(int fd, off_t offset)
 {
 	char ch;
 
-	if (udf_lseek64(fd, offset, SEEK_SET) < 0)
+	if (lseek(fd, offset, SEEK_SET) < 0)
 		return 0;
 	if (read(fd, &ch, 1) < 1)
 		return 0;
 	return 1;
 }
 
-int get_blocks(int fd, int blocksize, int opt_blocks)
+uint32_t get_blocks(int fd, int blocksize, uint32_t opt_blocks)
 {
-	int blocks;
+	uint64_t blocks;
 #ifdef BLKGETSIZE64
 	uint64_t size64;
 #endif
@@ -81,6 +71,9 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 	struct floppy_struct this_floppy;
 #endif
 	struct stat buf;
+
+	if (opt_blocks)
+		return opt_blocks;
 
 #ifdef BLKGETSIZE64
 	if (ioctl(fd, BLKGETSIZE64, &size64) >= 0)
@@ -101,13 +94,13 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 		blocks = buf.st_size / blocksize;
 	else
 	{
-		int64_t high, low;
+		off_t high, low;
 
 		for (low=0, high = 1024; valid_offset(fd, high); high *= 2)
 			low = high;
 		while (low < high - 1)
 		{
-			const int64_t mid = (low + high) / 2;
+			const off_t mid = (low + high) / 2;
 
 			if (valid_offset(fd, mid))
 				low = mid;
@@ -119,8 +112,12 @@ int get_blocks(int fd, int blocksize, int opt_blocks)
 		blocks = (low + 1) / blocksize;
 	}
 
-	if (opt_blocks)
-		blocks = opt_blocks;
+	if (blocks > UINT32_MAX)
+	{
+		fprintf(stderr, "mkudffs: Warning: Disk is too big, using only %lu blocks\n", (unsigned long int)UINT32_MAX);
+		return UINT32_MAX;
+	}
+
 	return blocks;
 }
 
@@ -151,8 +148,9 @@ void detect_blocksize(int fd, struct udf_disc *disc)
 int write_func(struct udf_disc *disc, struct udf_extent *ext)
 {
 	static char *buffer = NULL;
-	static int bufferlen = 0, length, offset;
+	static size_t bufferlen = 0;
 	int fd = *(int *)disc->write_data;
+	ssize_t length, offset;
 	struct udf_desc *desc;
 	struct udf_data *data;
 
@@ -167,7 +165,7 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 		desc = ext->head;
 		while (desc != NULL)
 		{
-			if (udf_lseek64(fd, (uint64_t)(ext->start + desc->offset) << disc->blocksize_bits, SEEK_SET) < 0)
+			if (lseek(fd, (off_t)(ext->start + desc->offset) << disc->blocksize_bits, SEEK_SET) < 0)
 				return -1;
 			data = desc->data;
 			offset = 0;
@@ -229,9 +227,9 @@ int main(int argc, char *argv[])
 	buf[len] = 0;
 	printf("uuid=%.16s\n", buf);
 
-	printf("blocksize=%u\n", disc.blocksize);
-	printf("blocks=%u\n", disc.head->blocks);
-	printf("udfrev=%x\n", disc.udf_rev);
+	printf("blocksize=%u\n", (unsigned int)disc.blocksize);
+	printf("blocks=%lu\n", (unsigned long int)disc.head->blocks);
+	printf("udfrev=%x\n", (unsigned int)disc.udf_rev);
 
 	if (((disc.flags & FLAG_BRIDGE) && disc.head->blocks < 513) || disc.head->blocks < 281)
 	{
@@ -248,8 +246,10 @@ int main(int argc, char *argv[])
 
 	dump_space(&disc);
 
-	if (write_disc(&disc) < 0)
-		return -1;
-	else
-		return 0;
+	if (write_disc(&disc) < 0) {
+		fprintf(stderr, "mkudffs: Error: Cannot write to device '%s': %s\n", filename, strerror(errno));
+		return 1;
+	}
+
+	return 0;
 }

@@ -2,21 +2,19 @@
  *
  * PURPOSE
  *	Routines to create/find/insert/delete FileIdentDesc's and FileEntries.
- *  
- * CONTACTS
- *	E-mail regarding this program to
- *		e.fennema@dataweb.nl
  *
  * COPYRIGHT
  *	This file is distributed under the terms of the GNU General Public
  *	License (GPL). Copies of the GPL can be obtained from:
  *		ftp://prep.ai.mit.edu/pub/gnu/GPL
  *
- *	(C) 2001 Enno Fennema
+ *	(C) 2001 Enno Fennema <e.fennema@dataweb.nl>
  *
  * HISTORY
  *  	16 Aug 01  ef  Created.
  */
+
+#include "config.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -36,8 +34,8 @@ removeFID(Directory *dir, struct fileIdentDesc *fid)
     uint32_t lenMove;
 
     dir->fe.informationLength -= lenFID;
-    lenMove = dir->fe.informationLength - ((uint8_t*)fid - dir->data);
-    memcpy(fid, (uint8_t*)fid + lenFID, lenMove);
+    lenMove = dir->fe.informationLength - ((char *)fid - dir->data);
+    memcpy(fid, (char *)fid + lenFID, lenMove);
     dir->dirDirty = 1;
     return 0;
 }
@@ -114,11 +112,11 @@ deleteFID(Directory * dir, struct fileIdentDesc * fid)
 struct fileIdentDesc* 
 findFileIdentDesc(Directory *dir, char* name) 
 {
-    int			i;
-    uint8_t		*data;
+    uint64_t		i;
+    char		*data;
     struct fileIdentDesc *fid;
-    char                uName[256];
-    int                 uLen;
+    dstring             uName[256];
+    size_t              uLen;
 
     uLen = encode_utf8(uName, "", name, 256);
 
@@ -188,8 +186,8 @@ makeFileEntry()
 struct fileIdentDesc*
 makeFileIdentDesc(char* name) 
 {
-    char uName[256];
-    int uLen;
+    dstring uName[256];
+    uint8_t uLen;
     struct fileIdentDesc *fid;
 
     fid = (struct fileIdentDesc*) calloc(512,1);

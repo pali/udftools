@@ -177,9 +177,9 @@ void append_data(struct udf_desc *, struct udf_data *);
 struct udf_data *alloc_data(void *, int);
 
 /* unicode.c */
-extern int decode_utf8(char *, char *, int);
-extern int encode_utf8(char *, char *, char *, int);
-extern int decode_string(struct udf_disc *, char *, char *, int);
-extern int encode_string(struct udf_disc *, char *, char *, char *, int);
+extern size_t decode_utf8(dstring *, char *, size_t);
+extern size_t encode_utf8(dstring *, char *, char *, size_t);
+extern size_t decode_string(struct udf_disc *, dstring *, char *, size_t);
+extern size_t encode_string(struct udf_disc *, dstring *, char *, char *, size_t);
 
 #endif /* __LIBUDFFS_H */

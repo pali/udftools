@@ -6,22 +6,20 @@
  *	maintains structures strictly as defined MMC to facilitate the interface with the CDwriter
  *	at the expense of a simple user interface.
  *
- * CONTACTS
- *	E-mail regarding this program should be addressed to
- *		e.fennema@dataweb.nl
- *
  * COPYRIGHT
  *	This file is distributed under the terms of the GNU General Public
  *	License (GPL). Copies of the GPL can be obtained from:
  *		ftp://prep.ai.mit.edu/pub/gnu/GPL
  *	Each contributing author retains all rights to their own work.
  *
- *	(C) 2001 Enno Fennema
+ *	(C) 2001 Enno Fennema <e.fennema@dataweb.nl>
  *
  * HISTORY
  *
  *	16 Aug 01  ef  Created.
  */
+
+#include "config.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -331,7 +329,7 @@ read_trackinfo(int fd, struct cdrom_trackinfo *ti, int trackno)
 
 
 int
-readCD(int fd, int sectortype, int lba, int n, char* buf)
+readCD(int fd, int sectortype, int lba, int n, unsigned char* buf)
 {
     CGC pc;
 
@@ -348,7 +346,7 @@ readCD(int fd, int sectortype, int lba, int n, char* buf)
 }
 
 int
-writeCD(int fd, int lba, int nblks, char* buf)
+writeCD(int fd, int lba, int nblks, unsigned char* buf)
 {
     CGC pc;
 

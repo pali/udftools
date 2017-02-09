@@ -3,20 +3,18 @@
  * PURPOSE
  *	High level wrudf command functions
  *
- * CONTACTS
- *	E-mail regarding this program to 
- *		e.fennema@dataweb.nl
- *
  * COPYRIGHT
  *	This file is distributed under the terms of the GNU General Public
  *	License (GPL). Copies of the GPL can be obtained from:
  *		ftp://prep.ai.mit.edu/pub/gnu/GPL
  *
- *	(C) 2001 Enno Fennema
+ *	(C) 2001 Enno Fennema <e.fennema@dataweb.nl>
  *
  * HISTORY
  *	16 Aug 01  ef  Created.
  */
+
+#include "config.h"
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -26,6 +24,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include "wrudf.h"
 
@@ -45,7 +44,8 @@ char	*hdWorkingDir;
 int
 copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat) 
 {
-    int		fd, i=0, blkno;
+    uint32_t	i=0;
+    int		fd, blkno;
     uint32_t	nBytes, blkInPkt;
     uint32_t	maxVarPktSize;		// in bytes
     struct fileIdentDesc *fid;
@@ -61,8 +61,10 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
     printf("Copy file %s\n", inName);
     fid = findFileIdentDesc(dir, newName);
 
-    if( fid  && questionOverwrite(dir, fid, newName) )
+    if( fid  && questionOverwrite(dir, fid, newName) ) {
+	close(fd);
 	return CMND_OK;
+    }
 
     fid = makeFileIdentDesc(newName);				// could reuse FID if overwrite allowed
 	    
@@ -107,6 +109,9 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	
 	if( fe->informationLength / maxVarPktSize > 116 ) {
 	    printf("Cannot handle files longer than %d\n", 116 * maxVarPktSize);
+	    close(fd);
+	    free(fe);
+	    free(fid);
 	    return CMND_FAILED;
 	}
 
@@ -193,6 +198,9 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 
 	if( getExtents(2048, extentFE ) != 16 ) {		/* extent for File Entry */
 	    printf("No space for File Entry\n");
+	    close(fd);
+	    free(fe);
+	    free(fid);
 	    return CMND_FAILED;
 	}
 	fe->descTag.tagLocation = extentFE[0].extPosition;
@@ -203,6 +211,9 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	    getExtents(fe->informationLength, (short_ad*)(fe->allocDescs + fe->lengthExtendedAttr));
 	if( !fe->lengthAllocDescs ) {
 	    printf("No space for file\n");
+	    close(fd);
+	    free(fe);
+	    free(fid);
 	    return CMND_FAILED;
 	}
 	/* write FE */
@@ -256,6 +267,7 @@ copyDirectory(Directory *dir, char* name)
 
     if( chdir(name) != 0 ) {
 	printf("Change dir '%s': %m\n", name);
+	closedir(srcDir);
 	return CMND_FAILED;
     }
 
@@ -266,7 +278,10 @@ copyDirectory(Directory *dir, char* name)
 	if( !strcmp(dirEnt->d_name, ".") || !strcmp(dirEnt->d_name, "..") )
 	    continue;
 	
-	lstat(dirEnt->d_name, &dirEntStat);		// do not follow links
+	if( lstat(dirEnt->d_name, &dirEntStat) != 0 ) {		// do not follow links
+	    printf("Stat dirEnt '%s' failed: %s\n", dirEnt->d_name, strerror(errno));
+	    continue;
+	}
 
 	if( S_ISDIR(dirEntStat.st_mode) ) {
 	    if( !(options & OPT_RECURSIVE) ) {
@@ -311,7 +326,8 @@ copyDirectory(Directory *dir, char* name)
 int 
 deleteDirectory(Directory *dir, struct fileIdentDesc* fid) 
 {
-    int			i, rv, notEmpty;
+    uint64_t		i;
+    int			rv, notEmpty;
     char		*name;
     struct fileIdentDesc *childFid;
     Directory		*childDir;
@@ -325,7 +341,7 @@ deleteDirectory(Directory *dir, struct fileIdentDesc* fid)
 	return deleteFID(dir, fid);			/* delete regular files */
 
     name = malloc(fid->lengthFileIdent + 1);
-    strncpy(name, fid->fileIdent + fid->lengthOfImpUse, fid->lengthFileIdent);
+    strncpy(name, (char *)(fid->fileIdent + fid->lengthOfImpUse), fid->lengthFileIdent);
     name[fid->lengthFileIdent] = 0;
     readDirectory(dir, &fid->icb, name);
     childDir = dir->child;
@@ -379,7 +395,7 @@ readDirectory(Directory *parentDir, long_ad* icb, char *name)
 	    memset(dir, 0, sizeof(Directory));
 	    dir->parent = parentDir;
 	    dir->dataSize = 4096;
-	    dir->data = (uint8_t*)malloc(4096);
+	    dir->data = malloc(4096);
 	    if( dir->name ) free(dir->name);
 	    dir->name = malloc(strlen(name) + 1);
 	    strcpy(dir->name, name);
@@ -436,7 +452,7 @@ readDirectory(Directory *parentDir, long_ad* icb, char *name)
 int 
 updateDirectory(Directory* dir) 
 {
-    int		i;
+    uint64_t i;
     struct fileIdentDesc *fid;
 
     if( dir->child )
@@ -627,7 +643,7 @@ makeDir(Directory *dir, char* name )
 	memset(newDir, 0, sizeof(Directory));
 	newDir->parent = dir;
 	newDir->dataSize = 4096;
-	newDir->data = (uint8_t*)malloc(4096);
+	newDir->data = malloc(4096);
 	dir->child = newDir;
     }
     
@@ -949,7 +965,8 @@ int lscCommand(void) {
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
     char	*name, filename[512];
-    int		i, state;
+    uint64_t	i;
+    int		state;
 
     if( cmndc > 1 )
 	return WRONG_NO_ARGS;
@@ -972,7 +989,7 @@ int lscCommand(void) {
 	    strcpy(filename, "..");
 	else {
 	    memset(filename, 0, sizeof(filename));
-	    strncpy(filename, fid->fileIdent + fid->lengthOfImpUse + 1, fid->lengthFileIdent - 1);
+	    strncpy(filename, (char *)(fid->fileIdent + fid->lengthOfImpUse + 1), fid->lengthFileIdent - 1);
 	    /* Look at udf filesystem how to convert dstring to ordinary characters     */
 	}	    
 
@@ -1028,7 +1045,7 @@ int lshCommand() {
     strcpy(cmnd, "ls -l ");
 
     if( cmndc == 1 )
-	strcat(cmnd, cmndv[0]);
+	strncat(cmnd, cmndv[0], sizeof(cmnd)-strlen("ls -l ")-1);
 
     if( system(cmnd) != 0 )
 	return CMND_FAILED;
@@ -1045,7 +1062,7 @@ int lshCommand() {
 int
 directoryIsEmpty(Directory *dir) 
 {
-    int 	i;
+    uint64_t i;
     struct fileIdentDesc *fid;
 
     for( i = 0; i < dir->fe.informationLength;
@@ -1074,7 +1091,7 @@ questionOverwrite(Directory *dir, struct fileIdentDesc *fid, char* name)
 #else
     fgets(line, 256, stdin);
 #endif
-    if( (line[0] | 0x20) != 'y' )
+    if( !line || line[0] != 'y' )
 	return 1;
     deleteFID(dir, fid);
     return 0;

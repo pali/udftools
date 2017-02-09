@@ -349,8 +349,8 @@ int	reserve_track(int fd, int size);
 #define SSU_LOAD_START	3
 int	startStopUnit(int fd, int ssu_action);
 
-int	readCD(int fd, int sectortype, int lba, int nblocks, char* buf);
-int	writeCD(int fd, int lba, int nblocks, char* buf);
+int	readCD(int fd, int sectortype, int lba, int nblocks, unsigned char* buf);
+int	writeCD(int fd, int lba, int nblocks, unsigned char* buf);
 
 int	mode_sense(int fd, u_char **buffer, u_char **mode, u_char pageno, int pgctl);
 int	mode_select(int fd, u_char *buffer);

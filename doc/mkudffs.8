@@ -158,6 +158,9 @@ MO (Magneto Optical)
 .TP
 cdrw
 CD\-RW (CD Read\-Write)
+.TP
+cdr
+CD\-R (CD Recordable)
 .RE
 
 .TP
@@ -212,12 +215,13 @@ Must be specified as first argument.
 
 .TP
 .B \-\-closed
-
-.TP
-.B \-\-bridge
+Make cdr media type closed (AVDP is written to start and also end of disk).
+By default cdr media type is unclosed (AVDP is written only to start of disk).
 
 .TP
 .BI \-\-packetlen= " length "
+Packet length in number of sectors for cdrw (default: 32 sectors)
+and dvdrw (default: 16 sectors) media types.
 
 .SH "EXIT STATUS"
 .B mkudffs

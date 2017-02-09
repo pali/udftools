@@ -17,6 +17,9 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
+
+#include "config.h"
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -28,10 +31,9 @@
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <linux/cdrom.h>
-
-#include "config.h"
 
 /*
  * if we don't have one, we probably have neither
@@ -88,7 +90,7 @@ static int init_cdrom(int fd)
 
 static int setup_dev(char *pkt_device, char *device, int rem)
 {
-	int pkt_fd, dev_fd, cmd;
+	int pkt_fd, dev_fd, cmd, arg, ret;
 
 	if ((pkt_fd = open(pkt_device, O_RDONLY)) == -1) {
 		perror("open packet device");
@@ -105,23 +107,26 @@ static int setup_dev(char *pkt_device, char *device, int rem)
 		if (init_cdrom(dev_fd)) {
 			close(pkt_fd);
 			close(dev_fd);
-			return 0;
-		} else {
 			return 1;
 		}
+		arg = dev_fd;
 	} else {
 		cmd = PACKET_TEARDOWN_DEV;
-		dev_fd = 0; /* silence gcc */
+		dev_fd = -1;
+		arg = 0;
 	}
 		
-	if (ioctl(pkt_fd, cmd, dev_fd) == -1) {
+	ret = ioctl(pkt_fd, cmd, arg);
+	if (ret == -1)
 		perror("ioctl");
-		return 1;
-	}
 
-	if (dev_fd)
+	if (dev_fd >= 0)
 		close(dev_fd);
 	close(pkt_fd);
+
+	if (ret == -1)
+		return 1;
+
 	return 0;
 }
 
@@ -151,7 +156,7 @@ static int get_misc_minor(void)
 
 	if ((f = fopen("/proc/misc", "r")) == NULL)
 		return -1;
-	while (fscanf(f, " %d %64s", &minor, name) == 2) {
+	while (fscanf(f, " %d %63s", &minor, name) == 2) {
 		if (strcmp(name, "pktcdvd") == 0) {
 			fclose(f);
 			return minor;
@@ -168,11 +173,11 @@ static const char *pkt_dev_name(const char *dev)
 	return buf;
 }
 
-static void create_ctl_dev(void)
+static int create_ctl_dev(void)
 {
 	int misc_minor;
 	struct stat stat_buf;
-	int dev;
+	dev_t dev;
 
 	if ((misc_minor = get_misc_minor()) < 0) {
 		if (system("/sbin/modprobe pktcdvd") != 0) {
@@ -182,23 +187,30 @@ static void create_ctl_dev(void)
 	}
 	if (misc_minor < 0) {
 		fprintf(stderr, "Can't find pktcdvd character device\n");
-		return;
+		return -1;
 	}
 	dev = MKDEV(MISC_MAJOR, misc_minor);
 
 	if ((stat(pkt_dev_name(CTL_DEV), &stat_buf) >= 0) &&
 	    S_ISCHR(stat_buf.st_mode) && (stat_buf.st_rdev == dev))
-		return;			    /* Already set up */
+		return 0;			    /* Already set up */
 
 	mkdir(CTL_DIR, 0755);
 	unlink(pkt_dev_name(CTL_DEV));
-	mknod(pkt_dev_name(CTL_DEV), S_IFCHR | 0644, dev);
+
+	if (mknod(pkt_dev_name(CTL_DEV), S_IFCHR | 0644, dev) < 0) {
+		fprintf(stderr, "Can't create device %s: %s\n", pkt_dev_name(CTL_DEV), strerror(errno));
+		return -1;
+	}
+
+	return 0;
 }
 
 static int remove_stale_dev_node(int ctl_fd, char *devname)
 {
 	struct stat stat_buf;
-	int i, dev;
+	unsigned int i;
+	dev_t dev;
 	struct pkt_ctrl_command c;
 
 	if (stat(pkt_dev_name(devname), &stat_buf) < 0)
@@ -232,7 +244,9 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 
 	memset(&c, 0, sizeof(struct pkt_ctrl_command));
 
-	create_ctl_dev();
+	if (create_ctl_dev() < 0)
+		return 1;
+
 	if ((ctl_fd = open(pkt_dev_name(CTL_DEV), O_RDONLY)) < 0) {
 		perror("ctl open");
 		return 1;
@@ -268,7 +282,10 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 			perror("ioctl");
 			goto out_close;
 		}
-		mknod(pkt_dev_name(pkt_device), S_IFBLK | 0640, c.pkt_dev);
+		if (mknod(pkt_dev_name(pkt_device), S_IFBLK | 0640, c.pkt_dev) < 0) {
+			fprintf(stderr, "Can't create device node '%s': %s\n", pkt_dev_name(pkt_device), strerror(errno));
+			goto out_close;
+		}
 		ret = 0;
 	} else {
 		int major, minor, remove_node;
@@ -307,11 +324,14 @@ out_close:
 static void show_mappings(void)
 {
 	struct pkt_ctrl_command c;
-	int ctl_fd, i;
+	unsigned int i;
+	int ctl_fd;
 
 	memset(&c, 0, sizeof(struct pkt_ctrl_command));
 
-	create_ctl_dev();
+	if (create_ctl_dev() < 0)
+		return;
+
 	if ((ctl_fd = open(pkt_dev_name(CTL_DEV), O_RDONLY)) < 0) {
 		perror("ctl open");
 		return;
@@ -361,7 +381,7 @@ int main(int argc, char **argv)
 	if (optind == argc || (!rem && optind+1 == argc) || (rem && optind+1 < argc) || (!rem && optind+2 < argc))
 		return usage();
 	pkt_device = argv[optind];
-	if (rem)
+	if (!rem)
 		device = argv[optind + 1];
 	else
 		device = NULL;

@@ -25,6 +25,8 @@
  * mkudffs default structure initializers
  */
 
+#include "config.h"
+
 #include "mkudffs.h"
 
 struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
@@ -69,85 +71,85 @@ struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 
 struct primaryVolDesc default_pvd =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_PVD),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_PVD),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct primaryVolDesc) - sizeof(tag)),
 	},
-	volDescSeqNum : constant_cpu_to_le32(1),
-	primaryVolDescNum : constant_cpu_to_le32(0),
-	volIdent : "\x08" "LinuxUDF",
-	volSeqNum : constant_cpu_to_le16(1),
-	maxVolSeqNum : constant_cpu_to_le16(1),
-	interchangeLvl : constant_cpu_to_le16(3),
-	maxInterchangeLvl : constant_cpu_to_le16(3),
-	charSetList : constant_cpu_to_le32(CS0),
-	maxCharSetList : constant_cpu_to_le32(CS0),
-	volSetIdent : "\x08" "FFFFFFFFFFFFFFFFLinuxUDF",
-	descCharSet :
+	.volDescSeqNum = constant_cpu_to_le32(1),
+	.primaryVolDescNum = constant_cpu_to_le32(0),
+	.volIdent = "\x08" "LinuxUDF",
+	.volSeqNum = constant_cpu_to_le16(1),
+	.maxVolSeqNum = constant_cpu_to_le16(1),
+	.interchangeLvl = constant_cpu_to_le16(3),
+	.maxInterchangeLvl = constant_cpu_to_le16(3),
+	.charSetList = constant_cpu_to_le32(CS0),
+	.maxCharSetList = constant_cpu_to_le32(CS0),
+	.volSetIdent = "\x08" "FFFFFFFFFFFFFFFFLinuxUDF",
+	.descCharSet =
 	{
-		charSetType : UDF_CHAR_SET_TYPE,
-		charSetInfo : UDF_CHAR_SET_INFO,
+		.charSetType = UDF_CHAR_SET_TYPE,
+		.charSetInfo = UDF_CHAR_SET_INFO,
 	},
-	explanatoryCharSet :
+	.explanatoryCharSet =
 	{
-		charSetType : UDF_CHAR_SET_TYPE,
-		charSetInfo : UDF_CHAR_SET_INFO,
+		.charSetType = UDF_CHAR_SET_TYPE,
+		.charSetInfo = UDF_CHAR_SET_INFO,
 	},
-	appIdent :
+	.appIdent =
 	{
-		ident : UDF_ID_APPLICATION,
-		identSuffix :
+		.ident = UDF_ID_APPLICATION,
+		.identSuffix =
 		{
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX,
 		},
 	},
-	impIdent :
+	.impIdent =
 	{
-		ident : UDF_ID_DEVELOPER,
-		identSuffix :
+		.ident = UDF_ID_DEVELOPER,
+		.identSuffix =
 		{
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX
 		},
 	},
-	flags : constant_cpu_to_le16(PVD_FLAGS_VSID_COMMON),
+	.flags = constant_cpu_to_le16(PVD_FLAGS_VSID_COMMON),
 };
 
 struct logicalVolDesc default_lvd =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_LVD),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct logicalVolDesc) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_LVD),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct logicalVolDesc) - sizeof(tag)),
 	},
-	volDescSeqNum : constant_cpu_to_le32(2),
-	descCharSet :
+	.volDescSeqNum = constant_cpu_to_le32(2),
+	.descCharSet =
 	{
-		charSetType : UDF_CHAR_SET_TYPE,
-		charSetInfo : UDF_CHAR_SET_INFO,
+		.charSetType = UDF_CHAR_SET_TYPE,
+		.charSetInfo = UDF_CHAR_SET_INFO,
 	},
-	logicalVolIdent : "\x08" "LinuxUDF",
-	logicalBlockSize : constant_cpu_to_le32(2048),
-	domainIdent :
+	.logicalVolIdent = "\x08" "LinuxUDF",
+	.logicalBlockSize = constant_cpu_to_le32(2048),
+	.domainIdent =
 	{
-		ident : UDF_ID_COMPLIANT,
-		identSuffix :
+		.ident = UDF_ID_COMPLIANT,
+		.identSuffix =
 		{
 			0x01,
 			0x02,
 			0x00,
 		}
 	},
-	impIdent :
+	.impIdent =
 	{
-		ident : UDF_ID_DEVELOPER,
-		identSuffix :
+		.ident = UDF_ID_DEVELOPER,
+		.identSuffix =
 		{
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX,
@@ -157,31 +159,31 @@ struct logicalVolDesc default_lvd =
 
 struct volDescPtr default_vdp =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_VDP),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct volDescPtr) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_VDP),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct volDescPtr) - sizeof(tag)),
 	},
-	volDescSeqNum : constant_cpu_to_le32(3),
+	.volDescSeqNum = constant_cpu_to_le32(3),
 };
 
 struct impUseVolDescImpUse default_iuvdiu =
 {
-	LVICharset :
+	.LVICharset =
 	{
-		charSetType : UDF_CHAR_SET_TYPE,
-		charSetInfo : UDF_CHAR_SET_INFO
+		.charSetType = UDF_CHAR_SET_TYPE,
+		.charSetInfo = UDF_CHAR_SET_INFO
 	},
-	logicalVolIdent : "\x08" "LinuxUDF",
-	LVInfo1 : "\x08" "Linux mkudffs " PACKAGE_VERSION,
-	LVInfo2 : "\x08" "Linux udftools " PACKAGE_VERSION,
-	LVInfo3 : "\x08" PACKAGE_URL,
-	impIdent :
+	.logicalVolIdent = "\x08" "LinuxUDF",
+	.LVInfo1 = "\x08" "Linux mkudffs " PACKAGE_VERSION,
+	.LVInfo2 = "\x08" "Linux udftools " PACKAGE_VERSION,
+	.LVInfo3 = "\x08" PACKAGE_URL,
+	.impIdent =
 	{
-		ident : UDF_ID_DEVELOPER,
-		identSuffix :
+		.ident = UDF_ID_DEVELOPER,
+		.identSuffix =
 		{
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX,
@@ -192,18 +194,18 @@ struct impUseVolDescImpUse default_iuvdiu =
 
 struct impUseVolDesc default_iuvd =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_IUVD),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct impUseVolDesc) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_IUVD),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct impUseVolDesc) - sizeof(tag)),
 	},
-	volDescSeqNum : constant_cpu_to_le32(4),
-	impIdent :
+	.volDescSeqNum = constant_cpu_to_le32(4),
+	.impIdent =
 	{
-		ident : UDF_ID_LV_INFO,
-		identSuffix :
+		.ident = UDF_ID_LV_INFO,
+		.identSuffix =
 		{
 			0x01,
 			0x02,
@@ -215,24 +217,24 @@ struct impUseVolDesc default_iuvd =
 
 struct partitionDesc default_pd =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_PD),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct partitionDesc) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_PD),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct partitionDesc) - sizeof(tag)),
 	},
-	volDescSeqNum : constant_cpu_to_le32(5),
-	partitionFlags : constant_cpu_to_le16(0x0001),
-	partitionContents :
+	.volDescSeqNum = constant_cpu_to_le32(5),
+	.partitionFlags = constant_cpu_to_le16(0x0001),
+	.partitionContents =
 	{
-		ident : PD_PARTITION_CONTENTS_NSR03,
+		.ident = PD_PARTITION_CONTENTS_NSR03,
 	},
-	accessType : constant_cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE),
-	impIdent :
+	.accessType = constant_cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE),
+	.impIdent =
 	{
-		ident : UDF_ID_DEVELOPER,
-		identSuffix :
+		.ident = UDF_ID_DEVELOPER,
+		.identSuffix =
 		{
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX,
@@ -242,71 +244,71 @@ struct partitionDesc default_pd =
 
 struct unallocSpaceDesc default_usd =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_USD),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct unallocSpaceDesc) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_USD),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct unallocSpaceDesc) - sizeof(tag)),
 	},
-	volDescSeqNum : constant_cpu_to_le32(6),
+	.volDescSeqNum = constant_cpu_to_le32(6),
 };
 
 struct terminatingDesc default_td =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_TD),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct terminatingDesc) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_TD),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct terminatingDesc) - sizeof(tag)),
 	},
 };
 
 struct logicalVolIntegrityDesc default_lvid =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_LVID),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct logicalVolIntegrityDesc) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_LVID),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct logicalVolIntegrityDesc) - sizeof(tag)),
 	},
-	integrityType : constant_cpu_to_le32(LVID_INTEGRITY_TYPE_CLOSE),
-	lengthOfImpUse : constant_cpu_to_le32(sizeof(struct logicalVolIntegrityDescImpUse)),
+	.integrityType = constant_cpu_to_le32(LVID_INTEGRITY_TYPE_CLOSE),
+	.lengthOfImpUse = constant_cpu_to_le32(sizeof(struct logicalVolIntegrityDescImpUse)),
 		
 };
 
 struct logicalVolIntegrityDescImpUse default_lvidiu =
 {
-	impIdent :
+	.impIdent =
 	{
-		ident : UDF_ID_DEVELOPER,
-		identSuffix :
+		.ident = UDF_ID_DEVELOPER,
+		.identSuffix =
 		{
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX
 		},
 	},
-	minUDFReadRev : constant_cpu_to_le16(0x0201),
-	minUDFWriteRev : constant_cpu_to_le16(0x0201),
-	maxUDFWriteRev : constant_cpu_to_le16(0x0201),
+	.minUDFReadRev = constant_cpu_to_le16(0x0201),
+	.minUDFWriteRev = constant_cpu_to_le16(0x0201),
+	.maxUDFWriteRev = constant_cpu_to_le16(0x0201),
 };
 
 struct sparingTable default_stable =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(0),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct sparingTable) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(0),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct sparingTable) - sizeof(tag)),
 	},
-	sparingIdent :
+	.sparingIdent =
 	{
-		flags : 0,
-		ident : UDF_ID_SPARING,
-		identSuffix :
+		.flags = 0,
+		.ident = UDF_ID_SPARING,
+		.identSuffix =
 		{
 			0x01,
 			0x02,
@@ -314,19 +316,19 @@ struct sparingTable default_stable =
 			UDF_OS_ID_LINUX
 		},
 	},
-	reallocationTableLen : constant_cpu_to_le16(0),
-	sequenceNum : constant_cpu_to_le32(0)
+	.reallocationTableLen = constant_cpu_to_le16(0),
+	.sequenceNum = constant_cpu_to_le32(0)
 };
 
 struct sparablePartitionMap default_sparmap =
 {
-	partitionMapType : 2,
-	partitionMapLength : sizeof(struct sparablePartitionMap),
-	partIdent :
+	.partitionMapType = 2,
+	.partitionMapLength = sizeof(struct sparablePartitionMap),
+	.partIdent =
 	{
-		flags : 0,
-		ident : UDF_ID_SPARABLE,
-		identSuffix :
+		.flags = 0,
+		.ident = UDF_ID_SPARABLE,
+		.identSuffix =
 		{
 			0x01,
 			0x02,
@@ -334,17 +336,17 @@ struct sparablePartitionMap default_sparmap =
 			UDF_OS_ID_LINUX
 		},
 	},
-	volSeqNum : constant_cpu_to_le16(1),
-	packetLength : constant_cpu_to_le16(32)
+	.volSeqNum = constant_cpu_to_le16(1),
+	.packetLength = constant_cpu_to_le16(32)
 };
 
 struct virtualAllocationTable15 default_vat15 =
 {
-	vatIdent :
+	.vatIdent =
 	{
-		flags : 0,
-		ident : UDF_ID_ALLOC,
-		identSuffix :
+		.flags = 0,
+		.ident = UDF_ID_ALLOC,
+		.identSuffix =
 		{
 			0x01,
 			0x02,
@@ -352,29 +354,29 @@ struct virtualAllocationTable15 default_vat15 =
 			UDF_OS_ID_LINUX
 		},
 	},
-	previousVATICBLoc : constant_cpu_to_le32(0xFFFFFFFF)
+	.previousVATICBLoc = constant_cpu_to_le32(0xFFFFFFFF)
 };
 
 struct virtualAllocationTable20 default_vat20 =
 {
-	lengthHeader : constant_cpu_to_le16(152),
-	lengthImpUse : constant_cpu_to_le16(0),
-	logicalVolIdent : "\x08" "LinuxUDF",
-	previousVATICBLoc : constant_cpu_to_le32(0xFFFFFFFF),
-	minUDFReadRev : constant_cpu_to_le16(0x0201),
-	minUDFWriteRev : constant_cpu_to_le16(0x0201),
-	maxUDFWriteRev : constant_cpu_to_le16(0x0201)
+	.lengthHeader = constant_cpu_to_le16(152),
+	.lengthImpUse = constant_cpu_to_le16(0),
+	.logicalVolIdent = "\x08" "LinuxUDF",
+	.previousVATICBLoc = constant_cpu_to_le32(0xFFFFFFFF),
+	.minUDFReadRev = constant_cpu_to_le16(0x0201),
+	.minUDFWriteRev = constant_cpu_to_le16(0x0201),
+	.maxUDFWriteRev = constant_cpu_to_le16(0x0201)
 };
 
 struct virtualPartitionMap default_virtmap =
 {
-	partitionMapType : 2,
-	partitionMapLength : sizeof(struct virtualPartitionMap),
-	partIdent :
+	.partitionMapType = 2,
+	.partitionMapLength = sizeof(struct virtualPartitionMap),
+	.partIdent =
 	{
-		flags : 0,
-		ident : UDF_ID_VIRTUAL,
-		identSuffix :
+		.flags = 0,
+		.ident = UDF_ID_VIRTUAL,
+		.identSuffix =
 		{
 			0x01,
 			0x02,
@@ -382,40 +384,40 @@ struct virtualPartitionMap default_virtmap =
 			UDF_OS_ID_LINUX
 		},
 	},
-	volSeqNum : constant_cpu_to_le16(1)
+	.volSeqNum = constant_cpu_to_le16(1)
 };
 
 struct fileSetDesc default_fsd =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_FSD),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct fileSetDesc) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_FSD),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct fileSetDesc) - sizeof(tag)),
 	},
-	interchangeLvl : constant_cpu_to_le16(3),
-	maxInterchangeLvl : constant_cpu_to_le16(3),
-	charSetList : constant_cpu_to_le32(CS0),
-	maxCharSetList : constant_cpu_to_le32(CS0),
-	logicalVolIdentCharSet :
+	.interchangeLvl = constant_cpu_to_le16(3),
+	.maxInterchangeLvl = constant_cpu_to_le16(3),
+	.charSetList = constant_cpu_to_le32(CS0),
+	.maxCharSetList = constant_cpu_to_le32(CS0),
+	.logicalVolIdentCharSet =
 	{
-		charSetType : UDF_CHAR_SET_TYPE,
-		charSetInfo : UDF_CHAR_SET_INFO,
+		.charSetType = UDF_CHAR_SET_TYPE,
+		.charSetInfo = UDF_CHAR_SET_INFO,
 	},
-	logicalVolIdent : "\x08" "LinuxUDF",
-	fileSetCharSet :
+	.logicalVolIdent = "\x08" "LinuxUDF",
+	.fileSetCharSet =
 	{
-		charSetType : UDF_CHAR_SET_TYPE,
-		charSetInfo : UDF_CHAR_SET_INFO,
+		.charSetType = UDF_CHAR_SET_TYPE,
+		.charSetInfo = UDF_CHAR_SET_INFO,
 	},
-	fileSetIdent : "\x08" "LinuxUDF",
-	copyrightFileIdent : "\x08" "Copyright",
-	abstractFileIdent : "\x08" "Abstract",
-	domainIdent :
+	.fileSetIdent = "\x08" "LinuxUDF",
+	.copyrightFileIdent = "\x08" "Copyright",
+	.abstractFileIdent = "\x08" "Abstract",
+	.domainIdent =
 	{
-		ident : UDF_ID_COMPLIANT,
-		identSuffix :
+		.ident = UDF_ID_COMPLIANT,
+		.identSuffix =
 		{
 			0x01,
 			0x02,
@@ -426,30 +428,30 @@ struct fileSetDesc default_fsd =
 
 struct fileEntry default_fe =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_FE),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct fileEntry) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_FE),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct fileEntry) - sizeof(tag)),
 	},
-	icbTag :
+	.icbTag =
 	{
-		strategyType : constant_cpu_to_le16(4),
-		strategyParameter : constant_cpu_to_le16(0),
-		numEntries : constant_cpu_to_le16(1),
-		fileType : 0,
-		flags : constant_cpu_to_le16(ICBTAG_FLAG_AD_IN_ICB),
+		.strategyType = constant_cpu_to_le16(4),
+		.strategyParameter = constant_cpu_to_le16(0),
+		.numEntries = constant_cpu_to_le16(1),
+		.fileType = 0,
+		.flags = constant_cpu_to_le16(ICBTAG_FLAG_AD_IN_ICB),
 	},
-	permissions : constant_cpu_to_le32(FE_PERM_U_DELETE|FE_PERM_U_CHATTR|FE_PERM_U_READ|FE_PERM_U_WRITE|FE_PERM_U_EXEC|FE_PERM_G_READ|FE_PERM_G_EXEC|FE_PERM_O_READ|FE_PERM_O_EXEC),
-	fileLinkCount : constant_cpu_to_le16(0),
-	informationLength : constant_cpu_to_le64(0),
-	logicalBlocksRecorded : constant_cpu_to_le64(0),
-	checkpoint : constant_cpu_to_le32(1),
-	impIdent :
+	.permissions = constant_cpu_to_le32(FE_PERM_U_DELETE|FE_PERM_U_CHATTR|FE_PERM_U_READ|FE_PERM_U_WRITE|FE_PERM_U_EXEC|FE_PERM_G_READ|FE_PERM_G_EXEC|FE_PERM_O_READ|FE_PERM_O_EXEC),
+	.fileLinkCount = constant_cpu_to_le16(0),
+	.informationLength = constant_cpu_to_le64(0),
+	.logicalBlocksRecorded = constant_cpu_to_le64(0),
+	.checkpoint = constant_cpu_to_le32(1),
+	.impIdent =
 	{
-		ident : UDF_ID_DEVELOPER,
-		identSuffix :
+		.ident = UDF_ID_DEVELOPER,
+		.identSuffix =
 		{
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX,
@@ -459,31 +461,31 @@ struct fileEntry default_fe =
 
 struct extendedFileEntry default_efe =
 {
-	descTag :
+	.descTag =
 	{
-		tagIdent : constant_cpu_to_le16(TAG_IDENT_EFE),
-		descVersion : constant_cpu_to_le16(3),
-		tagSerialNum : constant_cpu_to_le16(1),
-		descCRC : constant_cpu_to_le16(sizeof(struct extendedFileEntry) - sizeof(tag)),
+		.tagIdent = constant_cpu_to_le16(TAG_IDENT_EFE),
+		.descVersion = constant_cpu_to_le16(3),
+		.tagSerialNum = constant_cpu_to_le16(1),
+		.descCRC = constant_cpu_to_le16(sizeof(struct extendedFileEntry) - sizeof(tag)),
 	},
-	icbTag :
+	.icbTag =
 	{
-		strategyType : constant_cpu_to_le16(4),
-		strategyParameter : constant_cpu_to_le16(0),
-		numEntries : constant_cpu_to_le16(1),
-		fileType : 0,
-		flags : constant_cpu_to_le16(ICBTAG_FLAG_AD_IN_ICB),
+		.strategyType = constant_cpu_to_le16(4),
+		.strategyParameter = constant_cpu_to_le16(0),
+		.numEntries = constant_cpu_to_le16(1),
+		.fileType = 0,
+		.flags = constant_cpu_to_le16(ICBTAG_FLAG_AD_IN_ICB),
 	},
-	permissions : constant_cpu_to_le32(FE_PERM_U_DELETE|FE_PERM_U_CHATTR|FE_PERM_U_READ|FE_PERM_U_WRITE|FE_PERM_U_EXEC|FE_PERM_G_READ|FE_PERM_G_EXEC|FE_PERM_O_READ|FE_PERM_O_EXEC),
-	fileLinkCount : constant_cpu_to_le16(0),
-	informationLength : constant_cpu_to_le64(0),
-	objectSize : constant_cpu_to_le64(0),
-	logicalBlocksRecorded : constant_cpu_to_le64(0),
-	checkpoint : constant_cpu_to_le32(1),
-	impIdent :
+	.permissions = constant_cpu_to_le32(FE_PERM_U_DELETE|FE_PERM_U_CHATTR|FE_PERM_U_READ|FE_PERM_U_WRITE|FE_PERM_U_EXEC|FE_PERM_G_READ|FE_PERM_G_EXEC|FE_PERM_O_READ|FE_PERM_O_EXEC),
+	.fileLinkCount = constant_cpu_to_le16(0),
+	.informationLength = constant_cpu_to_le64(0),
+	.objectSize = constant_cpu_to_le64(0),
+	.logicalBlocksRecorded = constant_cpu_to_le64(0),
+	.checkpoint = constant_cpu_to_le32(1),
+	.impIdent =
 	{
-		ident : UDF_ID_DEVELOPER,
-		identSuffix :
+		.ident = UDF_ID_DEVELOPER,
+		.identSuffix =
 		{
 			UDF_OS_CLASS_UNIX,
 			UDF_OS_ID_LINUX,

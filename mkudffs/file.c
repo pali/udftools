@@ -25,12 +25,13 @@
  * libudffs file and directory handling functions
  */
 
+#include "config.h"
+
 #include <malloc.h>
 
 #include "libudffs.h"
 #include "file.h"
 #include "defaults.h"
-#include "config.h"
 
 /**
  * For a more detailed discussion of partition and extends see the comments
@@ -839,7 +840,7 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 	}
 	else if (disc->flags & FLAG_VAT)
 	{
-		int offset = 0, length = 0;
+		uint32_t offset = 0, length = 0;
 		if (pspace->tail)
 		{
 			offset = pspace->tail->offset;
