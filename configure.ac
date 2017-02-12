@@ -5,7 +5,7 @@ AM_CONFIG_HEADER(include/config.h:include/config.in)
 AM_INIT_AUTOMAKE([subdir-objects])
 
 dnl Checks for programs.
-AC_PROG_CC
+AC_PROG_CC([clang gcc])
 AC_DISABLE_SHARED
 AM_PROG_LIBTOOL
 

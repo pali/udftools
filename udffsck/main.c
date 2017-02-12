@@ -165,6 +165,16 @@ int detect_blocksize(int fd, struct udf_disc *disc)
     return 2048;
 }
 
+/**
+ * • 0 - No error
+ * • 1 - Filesystem errors were fixed
+ * • 2 - Filesystem errors were fixed, reboot is recomended
+ * • 4 - Filesystem errors remained unfixed
+ * • 8 - Program error
+ * • 16 - Wrong input parameters
+ * • 32 - Check was interrupted by user request
+ * • 128 - Shared library error
+ */
 int main(int argc, char *argv[]) {
     char *path = NULL;
     int fd;
@@ -178,18 +188,18 @@ int main(int argc, char *argv[]) {
 
     if(strlen(path) == 0 || path == NULL) {
         fprintf(stderr, "No file given. Exiting.\n");
-        exit(-1);
+        exit(16);
     }
     if(!(blocksize == 512 | blocksize == 1024 | blocksize == 2048 | blocksize == 4096)) {
         fprintf(stderr, "Invalid blocksize. Posible blocksizes are 512, 1024, 2048 and 4096.\n");
-        exit(-2);
+        exit(16);
     }
 
     printf("File to analyze: %s\n", path);
 
     if ((fd = open(path, O_RDONLY, 0660)) == -1) {
         fprintf(stderr, "Error opening %s %s:", path, strerror(errno));
-        return errno;
+        exit(16);
     } 
 
     printf("FD: 0x%x\n", fd);
