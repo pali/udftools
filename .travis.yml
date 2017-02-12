@@ -1,5 +1,7 @@
 language: c
 
+compiler:
+    - clang
 before_script:
     - pwd
     - cd ..
