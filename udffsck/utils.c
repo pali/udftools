@@ -125,4 +125,6 @@ int print_disc(struct udf_disc *disc) {
             read_tag(disc->udf_td[i]->descTag);
         }
     }
+
+    return 0;
 }
