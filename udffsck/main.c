@@ -199,7 +199,16 @@ int main(int argc, char *argv[]) {
 
     printf("File to analyze: %s\n", path);
 
-    if ((fd = open(path, O_RDONLY, 0660)) == -1) {
+
+    int prot = PROT_READ;
+    int flags = O_RDONLY;
+    // If is there some request for corrections, we need read/write access to medium
+    if(interactive || autofix) {
+        prot = prot | PROT_WRITE;
+        flags = O_RDWR;
+    }
+
+    if ((fd = open(path, flags, 0660)) == -1) {
         fprintf(stderr, "Error opening %s %s:", path, strerror(errno));
         exit(16);
     } 
@@ -208,7 +217,7 @@ int main(int argc, char *argv[]) {
     //blocksize = detect_blocksize(fd, NULL);
 
     fstat(fd, &sb);
-    dev = (uint8_t *)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    dev = (uint8_t *)mmap(NULL, sb.st_size, prot, MAP_SHARED, fd, 0);
 
     close(fd);
     
@@ -233,6 +242,9 @@ int main(int argc, char *argv[]) {
            } else if(avdp3 == 0) {
                 memcpy(disc.udf_anchor[FIRST_AVDP], disc.udf_anchor[THIRD_AVDP], sizeof(struct anchorVolDescPtr)); 
                 memcpy(disc.udf_anchor[SECOND_AVDP], disc.udf_anchor[THIRD_AVDP], sizeof(struct anchorVolDescPtr)); 
+           } else {
+                printf("Unrecoverable AVDP failure.\nAborting.\n");
+                exit(0);
            } 
         }
     }
