@@ -29,6 +29,10 @@
 void usage(void);
 void parse_args(int, char *[], char **path, int *blocksize/*, struct cdrw_disc *, char **/);
 
+extern int verbose;
+extern int interactive;
+extern int autofix;
+
 /*
  * Command line option token values.
  *      0x0000-0x00ff   Single characters

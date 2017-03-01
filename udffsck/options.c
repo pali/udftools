@@ -35,18 +35,19 @@
    { 0, 0, NULL, 0 },
    };
    */
-static int verbose_flag;
+
+int verbose = 0;
+int interactive = 0;
+int autofix = 0;
 
 static struct option long_options[] =
 {
     /* These options set a flag. */
-    {"verbose", no_argument,       &verbose_flag, 1},
-    {"brief",   no_argument,       &verbose_flag, 0},
-    /* These options don’t set a flag.
-     *              We distinguish them by their indices. */
+    {"verbose", no_argument,  0, 'v'},
     {"blocksize",  required_argument, 0, 'b'},
-    {"create",  required_argument, 0, 'c'},
-    {"file",    required_argument, 0, 'f'},
+    {"interactive",  no_argument, 0, 'i'},
+    {"fix",    no_argument, 0, 'f'},
+    {"check", no_argument, 0, 'c'},
     {"help",    no_argument,       0, 'h'},
     {0, 0, 0, 0}
 };
@@ -75,7 +76,7 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "ab:hc:d:f:", long_options, &option_index);
+        c = getopt_long (argc, argv, "vb:ifch", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -93,25 +94,29 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
                 printf ("\n");
                 break;
 
-            case 'a':
-                puts ("option -a\n");
-                break;
-
             case 'b':
                 *blocksize = strtol(optarg, NULL, 10);
                 printf("Device block size: %d\n", *blocksize);
                 break;
 
-            case 'c':
-                printf ("option -c with value `%s'\n", optarg);
-                break;
-
-            case 'd':
-                printf ("option -d with value `%s'\n", optarg);
+            case 'i':
+                printf ("Medium will be fixed interactively. Expect questions.\n");
+                interactive = 1;
                 break;
 
             case 'f':
-                printf ("option -f with value `%s'\n", optarg);
+                printf ("We try to fix medium automaticaly.\n");
+                autofix = 1;
+                break;
+
+            case 'c':
+                printf ("Medium will be only checked. No corrections.\n");
+                autofix = 0;
+                break;
+
+            case 'v':
+                printf("Verbose output enabled\n");
+                verbose = 1;
                 break;
 
             case 'h':
@@ -126,12 +131,6 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
                 abort ();
         }
     }
-
-    /* Instead of reporting ‘--verbose’
-     *      and ‘--brief’ as they are encountered,
-     *           we report the final status resulting from them. */
-    if (verbose_flag)
-        puts ("verbose flag is set");
 
     /* Print any remaining command line arguments (not options). */
     if (optind < argc)

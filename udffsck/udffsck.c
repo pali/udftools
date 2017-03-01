@@ -35,7 +35,6 @@ int crc(void * restrict desc, uint16_t size) {
  * @param[in] devsize size of whole device in LSN
  * @param[in] type selector of AVDP - first or second
  * @return  0 everything is ok
- *         -1 unknown type is required
  *         -2 AVDP tag checksum failed
  *         -3 AVDP CRC failed
  *         -4 AVDP not found 
@@ -249,7 +248,14 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     lap = (long_ad *)disc->udf_lvd[0]->logicalVolContentsUse; //FIXME use lela_to_cpu, but not on ptr to disc. Must store it on different place.
     lb_addr filesetblock = lelb_to_cpu(lap->extLocation);
     uint32_t filesetlen = lap->extLength;
+    
+
+        //FIXME some images doesn't work (Apple for example) but works when I put there 257 as lsnBase...
     uint32_t lsnBase = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation)+1; //FIXME MAIN_VDS should be verified first
+    //uint32_t lsnBase = 256+1;
+    
+    
+    
     uint32_t lbSize = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME same as above
 
     printf("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
@@ -495,7 +501,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     //file = malloc(sizeof(struct fileEntry));
     //lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
     //read(fd, file, sizeof(struct fileEntry));
-    lsn = icbloc.logicalBlockNum+lsnBase;
+    lsn = icbloc.logicalBlockNum+lsnBase-1;
     printf("ROOT LSN: %d\n", lsn);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
  

@@ -186,6 +186,8 @@ int main(int argc, char *argv[]) {
 
     parse_args(argc, argv, &path, &blocksize);	
 
+    printf("Verbose: %d, Autofix: %d, Interactive: %d\n", verbose, autofix, interactive);
+
     if(strlen(path) == 0 || path == NULL) {
         fprintf(stderr, "No file given. Exiting.\n");
         exit(16);
@@ -213,18 +215,28 @@ int main(int argc, char *argv[]) {
     status = is_udf(dev, blocksize); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status < 0) {
         exit(status);
-    } else if(status == 1) { 
+    } else if(status == 1) { //Unclosed or bridged medium 
         status = get_avdp(dev, &disc, blocksize, sb.st_size, -1); //load AVDP
         if(status) exit(status);
-    } else {
-        status = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //load AVDP
-        if(status) exit(status);
+    } else { //Normal medium
+        int avdp1 = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //try load FIRST AVDP
+        int avdp2 = get_avdp(dev, &disc, blocksize, sb.st_size, SECOND_AVDP); //load AVDP
+        int avdp3 = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
+
+        if(avdp1 + avdp2 + avdp3 != 0) { //Something went wrong
+           if(avdp1 == 0) {
+                memcpy(disc.udf_anchor[SECOND_AVDP], disc.udf_anchor[FIRST_AVDP], sizeof(struct anchorVolDescPtr)); 
+                memcpy(disc.udf_anchor[THIRD_AVDP], disc.udf_anchor[FIRST_AVDP], sizeof(struct anchorVolDescPtr)); 
+           } else if(avdp2 == 0) {
+                memcpy(disc.udf_anchor[FIRST_AVDP], disc.udf_anchor[SECOND_AVDP], sizeof(struct anchorVolDescPtr)); 
+                memcpy(disc.udf_anchor[THIRD_AVDP], disc.udf_anchor[SECOND_AVDP], sizeof(struct anchorVolDescPtr)); 
+           } else if(avdp3 == 0) {
+                memcpy(disc.udf_anchor[FIRST_AVDP], disc.udf_anchor[THIRD_AVDP], sizeof(struct anchorVolDescPtr)); 
+                memcpy(disc.udf_anchor[SECOND_AVDP], disc.udf_anchor[THIRD_AVDP], sizeof(struct anchorVolDescPtr)); 
+           } 
+        }
     }
 
-    status = get_avdp(dev, &disc, blocksize, sb.st_size, SECOND_AVDP); //load AVDP
-    if(status) exit(status);
-    status = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
-    if(status) exit(status);
 
     printf("\nTrying to load VDS\n");
     status = get_vds(dev, &disc, blocksize, MAIN_VDS); //load main VDS
