@@ -37,6 +37,7 @@ typedef struct {
 
 // Anchor volume descriptor points to Mvds and Rvds
 int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize, avdp_type_e type);
+int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target);
 
 // Volume descriptor sequence
 int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds);

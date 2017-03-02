@@ -206,6 +206,7 @@ int main(int argc, char *argv[]) {
     if(interactive || autofix) {
         prot = prot | PROT_WRITE;
         flags = O_RDWR;
+        printf("RW\n");
     }
 
     if ((fd = open(path, flags, 0660)) == -1) {
@@ -232,20 +233,49 @@ int main(int argc, char *argv[]) {
         int avdp2 = get_avdp(dev, &disc, blocksize, sb.st_size, SECOND_AVDP); //load AVDP
         int avdp3 = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
 
-        if(avdp1 + avdp2 + avdp3 != 0) { //Something went wrong
-           if(avdp1 == 0) {
-                memcpy(disc.udf_anchor[SECOND_AVDP], disc.udf_anchor[FIRST_AVDP], sizeof(struct anchorVolDescPtr)); 
-                memcpy(disc.udf_anchor[THIRD_AVDP], disc.udf_anchor[FIRST_AVDP], sizeof(struct anchorVolDescPtr)); 
-           } else if(avdp2 == 0) {
-                memcpy(disc.udf_anchor[FIRST_AVDP], disc.udf_anchor[SECOND_AVDP], sizeof(struct anchorVolDescPtr)); 
-                memcpy(disc.udf_anchor[THIRD_AVDP], disc.udf_anchor[SECOND_AVDP], sizeof(struct anchorVolDescPtr)); 
-           } else if(avdp3 == 0) {
-                memcpy(disc.udf_anchor[FIRST_AVDP], disc.udf_anchor[THIRD_AVDP], sizeof(struct anchorVolDescPtr)); 
-                memcpy(disc.udf_anchor[SECOND_AVDP], disc.udf_anchor[THIRD_AVDP], sizeof(struct anchorVolDescPtr)); 
-           } else {
+        if(avdp1 + avdp2 + avdp3 != 0) { //Something went wrong with AVDPs
+            int source = -1;
+            int target1 = -1;
+            int target2 = -1;
+            if(avdp1 == 0) {
+                source = FIRST_AVDP;
+                if(avdp2 != 0)
+                    target1 = SECOND_AVDP;
+                if(avdp3 != 0)
+                    target2 = THIRD_AVDP;
+            } else if(avdp2 == 0) {
+                source = SECOND_AVDP;
+                target1 = FIRST_AVDP;
+                if(avdp3 != 0)
+                    target2 = THIRD_AVDP;
+            } else if(avdp3 == 0) {
+                source = THIRD_AVDP;
+                target1 = FIRST_AVDP;
+                target2 = SECOND_AVDP;
+            } else {
                 printf("Unrecoverable AVDP failure.\nAborting.\n");
                 exit(0);
-           } 
+            }
+
+            int fix_avdp = 0;
+            if(interactive) {
+                if(prompt("Found errors at AVDP. Do you want to fix them? [Y/n]") != 0) {
+                    fix_avdp = 1;
+                }
+            }
+            if(autofix)
+                fix_avdp = 1;
+
+            if(fix_avdp) {
+                printf("Source: %d, Target1: %d, Target2: %d\n", source, target1, target2);
+                if(target1 >= 0) {
+                    write_avdp(dev, &disc, blocksize, sb.st_size, source, target1); 
+                } 
+                if(target2 >= 0) {
+                    write_avdp(dev, &disc, blocksize, sb.st_size, source, target2); 
+                }
+            }
+
         }
     }
 

@@ -128,3 +128,33 @@ int print_disc(struct udf_disc *disc) {
 
     return 0;
 }
+
+int prompt(const char *format, ...) {
+    va_list args;
+    char b = 0,c = 0;
+    char again = 0;
+
+    do {
+        again = 0;
+        va_start(args, format);
+
+        vprintf(format, args);
+
+        va_end(args);
+
+        c = getchar();
+        while ((b=getchar()) != EOF && b != '\n');
+
+        if(c == 'y' || c == 'Y') {
+            return 1;
+        } else if(c == 'n' || c == 'N') {
+            return 0;
+        } else if(c == '\n') {
+            return -1;
+        } else {
+            again = 1;
+        }
+    } while(again);
+
+    return -128;
+}

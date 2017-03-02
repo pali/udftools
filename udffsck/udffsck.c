@@ -566,3 +566,50 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds) {
 
     return 0;
 }
+
+
+int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target) {
+    int64_t position = 0;
+    tag desc_tag;
+    avdp_type_e type = target;
+    
+    // Taget type to determine position on media
+    if(type == 0) {
+        position = sectorsize*256; //First AVDP is on LSN=256
+    } else if(type == 1) {
+        position = devsize-sectorsize; //Second AVDP is on last LSN
+    } else if(type == 2) {
+        position = devsize-sectorsize-256*sectorsize; //Third AVDP can be at last LSN-256
+    } else {
+        position = sectorsize*512; //Unclosed disc have AVDP at sector 512
+        type = FIRST_AVDP; //Save it to FIRST_AVDP positon
+    }
+
+    printf("DevSize: %zu\n", devsize);
+    printf("Current position: %lx\n", position);
+    
+    uint8_t * ptr = memcpy(dev+position, disc->udf_anchor[source], sizeof(struct anchorVolDescPtr)); 
+    printf("ptr: %p\n", ptr);
+    
+    free(disc->udf_anchor[type]);
+    disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
+    
+    desc_tag = *(tag *)(dev+position);
+    
+    if(!checksum(desc_tag)) {
+        fprintf(stderr, "Checksum failure at AVDP[%d]\n", type);
+        return -2;
+    } else if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
+        fprintf(stderr, "AVDP not found at 0x%lx\n", position);
+        return -4;
+    }
+    
+    memcpy(disc->udf_anchor[type], dev+position, sizeof(struct anchorVolDescPtr));
+    if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
+        printf("CRC error at AVDP[%d]\n", type);
+        return -3;
+    }
+
+    printf("AVDP[%d] successfully written.\n", type);
+    return 0;
+    }
