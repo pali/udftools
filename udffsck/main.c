@@ -184,6 +184,8 @@ int main(int argc, char *argv[]) {
     uint8_t *dev;
     struct stat sb;
 
+    int source = -1;
+    
     parse_args(argc, argv, &path, &blocksize);	
 
     printf("Verbose: %d, Autofix: %d, Interactive: %d\n", verbose, autofix, interactive);
@@ -220,13 +222,17 @@ int main(int argc, char *argv[]) {
     fstat(fd, &sb);
     dev = (uint8_t *)mmap(NULL, sb.st_size, prot, MAP_SHARED, fd, 0);
 
+    // Close FD. It is kept by mmap now.
     close(fd);
+    // Unalloc path
+    free(path);
     
     status = is_udf(dev, blocksize); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status < 0) {
         exit(status);
     } else if(status == 1) { //Unclosed or bridged medium 
         status = get_avdp(dev, &disc, blocksize, sb.st_size, -1); //load AVDP
+        source = FIRST_AVDP; // Unclosed medium have only one AVDP and that is saved at first position.
         if(status) exit(status);
     } else { //Normal medium
         int avdp1 = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //try load FIRST AVDP
@@ -234,9 +240,9 @@ int main(int argc, char *argv[]) {
         int avdp3 = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
 
         if(avdp1 + avdp2 + avdp3 != 0) { //Something went wrong with AVDPs
-            int source = -1;
             int target1 = -1;
             int target2 = -1;
+            
             if(avdp1 == 0) {
                 source = FIRST_AVDP;
                 if(avdp2 != 0)
@@ -269,22 +275,32 @@ int main(int argc, char *argv[]) {
             if(fix_avdp) {
                 printf("Source: %d, Target1: %d, Target2: %d\n", source, target1, target2);
                 if(target1 >= 0) {
-                    write_avdp(dev, &disc, blocksize, sb.st_size, source, target1); 
+                    if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target1) != 0) {
+                        fprintf(stderr, "AVDP recovery failed. Is medium writable?\n");
+                    } 
                 } 
                 if(target2 >= 0) {
-                    write_avdp(dev, &disc, blocksize, sb.st_size, source, target2); 
+                    if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target2) != 0) {
+                        fprintf(stderr, "AVDP recovery failed. Is medium writable?\n");
+                    }
                 }
             }
 
+        } else {
+            // All AVDPs are OK, so we use first for futher work.
+            source = FIRST_AVDP;
         }
+
     }
 
 
     printf("\nTrying to load VDS\n");
-    status = get_vds(dev, &disc, blocksize, MAIN_VDS); //load main VDS
+    status = get_vds(dev, &disc, blocksize, source, MAIN_VDS); //load main VDS
     if(status) exit(status);
-    status = get_vds(dev, &disc, blocksize, RESERVE_VDS); //load reserve VDS
+    status = get_vds(dev, &disc, blocksize, source, RESERVE_VDS); //load reserve VDS
     if(status) exit(status);
+
+
     status = get_lvid(dev, &disc, blocksize); //load LVID
     if(status) exit(status);
 
@@ -319,7 +335,13 @@ int main(int argc, char *argv[]) {
 #endif
 
 
+    printf("Clean allocations");
+    free(disc.udf_anchor[0]);
+    free(disc.udf_anchor[1]);
+    free(disc.udf_anchor[2]);
     
+
+
     printf("All done\n");
     return status;
 }

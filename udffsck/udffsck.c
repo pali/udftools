@@ -92,19 +92,18 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devs
  *         -3 found unknown tag
  *         -4 structure is already set
  */
-int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, vds_type_e vds) {
+int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds) {
     uint8_t *position;
     int8_t counter = 0;
     tag descTag;
 
     // Go to first address of VDS
-    // FIXME select checked and correct anchor. Not only first one. 
     switch(vds) {
         case MAIN_VDS:
-            position = dev+sectorsize*(disc->udf_anchor[0]->mainVolDescSeqExt.extLocation);
+            position = dev+sectorsize*(disc->udf_anchor[avdp]->mainVolDescSeqExt.extLocation);
             break;
         case RESERVE_VDS:
-            position = dev+sectorsize*(disc->udf_anchor[0]->reserveVolDescSeqExt.extLocation);
+            position = dev+sectorsize*(disc->udf_anchor[avdp]->reserveVolDescSeqExt.extLocation);
             break;
     }
     printf("Current position: %lx\n", position-dev);
