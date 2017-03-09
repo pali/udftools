@@ -53,17 +53,17 @@ int is_udf(uint8_t *dev, uint32_t sectorsize) {
     struct volStructDesc nsr;
     struct terminatingExtendedAreaDesc tea;
     uint32_t bsize = sectorsize>BLOCK_SIZE ? sectorsize : BLOCK_SIZE; //It is possible to have free sectors between descriptors, but there can't be more than one descriptor in sector. Since there is requirement to comply with 2kB sectors, this is only way.   
-    
+
     for(int i = 0; i<6; i++) {
         printf("[DBG] try #%d\n", i);
-        
+
         //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
         //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
         memcpy(&vsd, dev+16*BLOCK_SIZE+i*bsize, sizeof(vsd));
 
         printf("[DBG] vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
-        
-        
+
+
         if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BEA01, 5)) {
             //It's Extended area descriptor, so it might be UDF, check next sector
             memcpy(&bea, &vsd, sizeof(bea)); // store it for later 
@@ -95,7 +95,7 @@ int is_udf(uint8_t *dev, uint32_t sectorsize) {
             return -1;
         }  
     }
-    
+
     printf("bea: type:%d, id:%s, v:%d\n", bea.structType, bea.stdIdent, bea.structVersion);
     printf("nsr: type:%d, id:%s, v:%d\n", nsr.structType, nsr.stdIdent, nsr.structVersion);
     printf("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
@@ -106,60 +106,60 @@ int is_udf(uint8_t *dev, uint32_t sectorsize) {
 
 int detect_blocksize(int fd, struct udf_disc *disc)
 {
-	int size;
-	uint16_t bs;
+    int size;
+    uint16_t bs;
 
-	int blocks;
+    int blocks;
 #ifdef BLKGETSIZE64
-	uint64_t size64;
+    uint64_t size64;
 #endif
 #ifdef BLKGETSIZE
-	long size;
+    long size;
 #endif
 #ifdef FDGETPRM
-	struct floppy_struct this_floppy;
+    struct floppy_struct this_floppy;
 #endif
-	struct stat buf;
-    
-    
+    struct stat buf;
+
+
     printf("detect_blocksize\n");
 
 #ifdef BLKGETSIZE64
-	if (ioctl(fd, BLKGETSIZE64, &size64) >= 0)
-		size = size64;
-	//else
+    if (ioctl(fd, BLKGETSIZE64, &size64) >= 0)
+        size = size64;
+    //else
 #endif
 #ifdef BLKGETSIZE
-	if (ioctl(fd, BLKGETSIZE, &size) >= 0)
-		size = size;
-	//else
+    if (ioctl(fd, BLKGETSIZE, &size) >= 0)
+        size = size;
+    //else
 #endif
 #ifdef FDGETPRM
-	if (ioctl(fd, FDGETPRM, &this_floppy) >= 0)
-		size = this_floppy.size
-	//else
+    if (ioctl(fd, FDGETPRM, &this_floppy) >= 0)
+        size = this_floppy.size
+            //else
 #endif
-	//if (fstat(fd, &buf) == 0 && S_ISREG(buf.st_mode))
-    //    size = buf.st_size;
-	//else
+            //if (fstat(fd, &buf) == 0 && S_ISREG(buf.st_mode))
+            //    size = buf.st_size;
+            //else
 #ifdef BLKSSZGET
-	if (ioctl(fd, BLKSSZGET, &size) != 0)
-	    size=size;
+            if (ioctl(fd, BLKSSZGET, &size) != 0)
+                size=size;
     printf("Error: %s\n", strerror(errno));
     printf("Block size: %d\n", size);
     /*
-	disc->blocksize = size;
-	for (bs=512,disc->blocksize_bits=9; disc->blocksize_bits<13; disc->blocksize_bits++,bs<<=1)
-	{
-		if (disc->blocksize == bs)
-			break;
-	}
-	if (disc->blocksize_bits == 13)
-	{
-		disc->blocksize = 2048;
-		disc->blocksize_bits = 11;
-	}
-	disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);*/
+       disc->blocksize = size;
+       for (bs=512,disc->blocksize_bits=9; disc->blocksize_bits<13; disc->blocksize_bits++,bs<<=1)
+       {
+       if (disc->blocksize == bs)
+       break;
+       }
+       if (disc->blocksize_bits == 13)
+       {
+       disc->blocksize = 2048;
+       disc->blocksize_bits = 11;
+       }
+       disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);*/
 #endif
 
     return 2048;
@@ -183,9 +183,10 @@ int main(int argc, char *argv[]) {
     struct udf_disc disc = {0};
     uint8_t *dev;
     struct stat sb;
+    metadata_err_map_t *errors;
 
     int source = -1;
-    
+
     parse_args(argc, argv, &path, &blocksize);	
 
     printf("Verbose: %d, Autofix: %d, Interactive: %d\n", verbose, autofix, interactive);
@@ -226,71 +227,36 @@ int main(int argc, char *argv[]) {
     close(fd);
     // Unalloc path
     free(path);
-    
+
+//------------- Detections -----------------------
+
+    errors = calloc(1, sizeof(metadata_err_map_t));
+
     status = is_udf(dev, blocksize); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status < 0) {
         exit(status);
     } else if(status == 1) { //Unclosed or bridged medium 
         status = get_avdp(dev, &disc, blocksize, sb.st_size, -1); //load AVDP
         source = FIRST_AVDP; // Unclosed medium have only one AVDP and that is saved at first position.
-        if(status) exit(status);
-    } else { //Normal medium
-        int avdp1 = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //try load FIRST AVDP
-        int avdp2 = get_avdp(dev, &disc, blocksize, sb.st_size, SECOND_AVDP); //load AVDP
-        int avdp3 = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
-
-        if(avdp1 + avdp2 + avdp3 != 0) { //Something went wrong with AVDPs
-            int target1 = -1;
-            int target2 = -1;
-            
-            if(avdp1 == 0) {
-                source = FIRST_AVDP;
-                if(avdp2 != 0)
-                    target1 = SECOND_AVDP;
-                if(avdp3 != 0)
-                    target2 = THIRD_AVDP;
-            } else if(avdp2 == 0) {
-                source = SECOND_AVDP;
-                target1 = FIRST_AVDP;
-                if(avdp3 != 0)
-                    target2 = THIRD_AVDP;
-            } else if(avdp3 == 0) {
-                source = THIRD_AVDP;
-                target1 = FIRST_AVDP;
-                target2 = SECOND_AVDP;
-            } else {
-                printf("Unrecoverable AVDP failure.\nAborting.\n");
-                exit(0);
-            }
-
-            int fix_avdp = 0;
-            if(interactive) {
-                if(prompt("Found errors at AVDP. Do you want to fix them? [Y/n]") != 0) {
-                    fix_avdp = 1;
-                }
-            }
-            if(autofix)
-                fix_avdp = 1;
-
-            if(fix_avdp) {
-                printf("Source: %d, Target1: %d, Target2: %d\n", source, target1, target2);
-                if(target1 >= 0) {
-                    if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target1) != 0) {
-                        fprintf(stderr, "AVDP recovery failed. Is medium writable?\n");
-                    } 
-                } 
-                if(target2 >= 0) {
-                    if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target2) != 0) {
-                        fprintf(stderr, "AVDP recovery failed. Is medium writable?\n");
-                    }
-                }
-            }
-
-        } else {
-            // All AVDPs are OK, so we use first for futher work.
-            source = FIRST_AVDP;
+        if(status) {
+            printf("AVDP is broken.\nAborting.\n");
+            exit(4);
         }
+    } else { //Normal medium
+        errors->anchor[0] = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //try load FIRST AVDP
+        errors->anchor[1] = get_avdp(dev, &disc, blocksize, sb.st_size, SECOND_AVDP); //load AVDP
+        errors->anchor[2] = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
 
+        if(errors->anchor[0] == 0) {
+            source = FIRST_AVDP;
+        } else if(errors->anchor[1] == 0) {
+            source = SECOND_AVDP;
+        } else if(errors->anchor[2] == 0) {
+            source = THIRD_AVDP;
+        } else {
+            printf("All AVDP are broken.\nAborting.\n");
+            exit(4);
+        }
     }
 
 
@@ -304,8 +270,8 @@ int main(int argc, char *argv[]) {
     status = get_lvid(dev, &disc, blocksize); //load LVID
     if(status) exit(status);
 
-    verify_vds(&disc, MAIN_VDS);
-    verify_vds(&disc, RESERVE_VDS);
+    verify_vds(&disc, errors, MAIN_VDS);
+    verify_vds(&disc, errors, RESERVE_VDS);
 
 #ifdef PRINT_DISC
     print_disc(&disc);
@@ -334,12 +300,145 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
 #endif
 
+//---------- Corrections --------------
 
-    printf("Clean allocations");
+    if(errors->anchor[0] + errors->anchor[1] + errors->anchor[2] != 0) { //Something went wrong with AVDPs
+        int target1 = -1;
+        int target2 = -1;
+
+        if(errors->anchor[0] == 0) {
+            source = FIRST_AVDP;
+            if(errors->anchor[1] != 0)
+                target1 = SECOND_AVDP;
+            if(errors->anchor[2] != 0)
+                target2 = THIRD_AVDP;
+        } else if(errors->anchor[1] == 0) {
+            source = SECOND_AVDP;
+            target1 = FIRST_AVDP;
+            if(errors->anchor[2] != 0)
+                target2 = THIRD_AVDP;
+        } else if(errors->anchor[2] == 0) {
+            source = THIRD_AVDP;
+            target1 = FIRST_AVDP;
+            target2 = SECOND_AVDP;
+        } else {
+            printf("Unrecoverable AVDP failure.\nAborting.\n");
+            exit(0);
+        }
+
+        int fix_avdp = 0;
+        if(interactive) {
+            if(prompt("Found errors at AVDP. Do you want to fix them? [Y/n]") != 0) {
+                fix_avdp = 1;
+            }
+        }
+        if(autofix)
+            fix_avdp = 1;
+
+        if(fix_avdp) {
+            printf("Source: %d, Target1: %d, Target2: %d\n", source, target1, target2);
+            if(target1 >= 0) {
+                if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target1) != 0) {
+                    fprintf(stderr, "AVDP recovery failed. Is medium writable?\n");
+                } 
+            } 
+            if(target2 >= 0) {
+                if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target2) != 0) {
+                    fprintf(stderr, "AVDP recovery failed. Is medium writable?\n");
+                }
+            }
+        }
+    }
+
+    if(errors->pvd[MAIN_VDS] + errors->pvd[RESERVE_VDS] != 0) {
+        if(errors->pvd[MAIN_VDS] != 0) { //Main PVD is broken
+            if(errors->pvd[RESERVE_VDS] != 0) {
+                //PVD is doomed.
+            } else {
+                //Fix Main PVD
+            }
+        } else { //Reserve PVD is broken
+            // Fix Reserve PVD
+        }
+    }
+
+
+    if(errors->lvd[MAIN_VDS] + errors->lvd[RESERVE_VDS] != 0) {
+        if(errors->lvd[MAIN_VDS] != 0) { //Main PVD is broken
+            if(errors->lvd[RESERVE_VDS] != 0) {
+                //LVD is doomed.
+            } else {
+                //Fix Main LVD
+            }
+        } else { //Reserve LVD is broken
+            // Fix Reserve LVD
+        }
+    }
+
+
+    if(errors->pd[MAIN_VDS] + errors->pd[RESERVE_VDS] != 0) {
+        if(errors->pd[MAIN_VDS] != 0) { //Main PD is broken
+            if(errors->pd[RESERVE_VDS] != 0) {
+                //PD is doomed.
+            } else {
+                //Fix Main PD
+            }
+        } else { //Reserve PD is broken
+            // Fix Reserve PD
+        }
+    }
+
+
+    if(errors->usd[MAIN_VDS] + errors->usd[RESERVE_VDS] != 0) {
+        if(errors->usd[MAIN_VDS] != 0) { //Main USD is broken
+            if(errors->usd[RESERVE_VDS] != 0) {
+                //USD is doomed.
+            } else {
+                //Fix Main USD
+            }
+        } else { //Reserve USD is broken
+            // Fix Reserve USD
+        }
+    }
+
+
+    if(errors->iuvd[MAIN_VDS] + errors->iuvd[RESERVE_VDS] != 0) {
+        if(errors->iuvd[MAIN_VDS] != 0) { //Main IUVD is broken
+            if(errors->iuvd[RESERVE_VDS] != 0) {
+                //IUVD is doomed.
+            } else {
+                //Fix Main IUVD
+            }
+        } else { //Reserve IUVD is broken
+                // Fix Reserve IUVD
+        }
+    }
+  
+
+    if(errors->td[MAIN_VDS] + errors->td[RESERVE_VDS] != 0) {
+        if(errors->td[MAIN_VDS] != 0) { //Main TD is broken
+            if(errors->td[RESERVE_VDS] != 0) {
+                //TD is doomed.
+                //But TD is not carrying information, so it can be fixed.
+            } else {
+                //Fix Main TD
+            }
+        } else { //Reserve TD is broken
+            // Fix Reserve TD
+        }
+    }
+
+    if(errors->lvid != 0) {
+        //LVID is doomed.
+    }
+
+//---------------- Clean up -----------------
+    
+        printf("Clean allocations\n");
     free(disc.udf_anchor[0]);
     free(disc.udf_anchor[1]);
     free(disc.udf_anchor[2]);
-    
+    free(errors);
 
 
     printf("All done\n");

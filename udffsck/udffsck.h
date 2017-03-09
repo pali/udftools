@@ -29,7 +29,7 @@ typedef struct {
     uint8_t usd[2];
     uint8_t iuvd[2];
     uint8_t td[2];
-    uint8_t lvid[2];
+    uint8_t lvid;
 } metadata_err_map_t;
 
 #define E_CHECKSUM 0b00000001
@@ -48,7 +48,7 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize);
 // Logical Volume Integrity Descriptor
 int get_lvid();
 
-int verify_vds(struct udf_disc *disc, vds_type_e vds);
+int verify_vds(struct udf_disc *disc, metadata_err_map_t *map, vds_type_e vds);
 
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn);
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn);
