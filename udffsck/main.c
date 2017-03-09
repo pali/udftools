@@ -189,18 +189,18 @@ int main(int argc, char *argv[]) {
 
     parse_args(argc, argv, &path, &blocksize);	
 
-    printf("Verbose: %d, Autofix: %d, Interactive: %d\n", verbose, autofix, interactive);
+    note("Verbose: %d, Autofix: %d, Interactive: %d\n", verbose, autofix, interactive);
 
     if(strlen(path) == 0 || path == NULL) {
-        fprintf(stderr, "No file given. Exiting.\n");
+        err("No file given. Exiting.\n");
         exit(16);
     }
     if(!(blocksize == 512 | blocksize == 1024 | blocksize == 2048 | blocksize == 4096)) {
-        fprintf(stderr, "Invalid blocksize. Posible blocksizes are 512, 1024, 2048 and 4096.\n");
+        err("Invalid blocksize. Posible blocksizes are 512, 1024, 2048 and 4096.\n");
         exit(16);
     }
 
-    printf("File to analyze: %s\n", path);
+    msg("File to analyze: %s\n", path);
 
 
     int prot = PROT_READ;
@@ -209,15 +209,15 @@ int main(int argc, char *argv[]) {
     if(interactive || autofix) {
         prot = prot | PROT_WRITE;
         flags = O_RDWR;
-        printf("RW\n");
+        note("RW\n");
     }
 
     if ((fd = open(path, flags, 0660)) == -1) {
-        fprintf(stderr, "Error opening %s %s:", path, strerror(errno));
+        fatal("Error opening %s %s:", path, strerror(errno));
         exit(16);
     } 
 
-    printf("FD: 0x%x\n", fd);
+    note("FD: 0x%x\n", fd);
     //blocksize = detect_blocksize(fd, NULL);
 
     fstat(fd, &sb);
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
     // Unalloc path
     free(path);
 
-//------------- Detections -----------------------
+    //------------- Detections -----------------------
 
     errors = calloc(1, sizeof(metadata_err_map_t));
 
@@ -239,7 +239,7 @@ int main(int argc, char *argv[]) {
         status = get_avdp(dev, &disc, blocksize, sb.st_size, -1); //load AVDP
         source = FIRST_AVDP; // Unclosed medium have only one AVDP and that is saved at first position.
         if(status) {
-            printf("AVDP is broken.\nAborting.\n");
+            err("AVDP is broken. Aborting.\n");
             exit(4);
         }
     } else { //Normal medium
@@ -254,13 +254,13 @@ int main(int argc, char *argv[]) {
         } else if(errors->anchor[2] == 0) {
             source = THIRD_AVDP;
         } else {
-            printf("All AVDP are broken.\nAborting.\n");
+            err("All AVDP are broken. Aborting.\n");
             exit(4);
         }
     }
 
 
-    printf("\nTrying to load VDS\n");
+    note("\nTrying to load VDS\n");
     status = get_vds(dev, &disc, blocksize, source, MAIN_VDS); //load main VDS
     if(status) exit(status);
     status = get_vds(dev, &disc, blocksize, source, RESERVE_VDS); //load reserve VDS
@@ -289,7 +289,7 @@ int main(int argc, char *argv[]) {
     uint32_t lbnlsn = 0;
     status = get_fsd(dev, &disc, blocksize, &lbnlsn);
     //if(status) exit(status);
-    printf("LBNLSN: %d\n", lbnlsn);
+    note("LBNLSN: %d\n", lbnlsn);
     status = get_file_structure(dev, &disc, lbnlsn);
     if(status) exit(status);
 #endif
@@ -300,7 +300,7 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
 #endif
 
-//---------- Corrections --------------
+    //---------- Corrections --------------
 
     if(errors->anchor[0] + errors->anchor[1] + errors->anchor[2] != 0) { //Something went wrong with AVDPs
         int target1 = -1;
@@ -322,7 +322,7 @@ int main(int argc, char *argv[]) {
             target1 = FIRST_AVDP;
             target2 = SECOND_AVDP;
         } else {
-            printf("Unrecoverable AVDP failure.\nAborting.\n");
+            err("Unrecoverable AVDP failure. Aborting.\n");
             exit(0);
         }
 
@@ -336,15 +336,15 @@ int main(int argc, char *argv[]) {
             fix_avdp = 1;
 
         if(fix_avdp) {
-            printf("Source: %d, Target1: %d, Target2: %d\n", source, target1, target2);
+            msg("Source: %d, Target1: %d, Target2: %d\n", source, target1, target2);
             if(target1 >= 0) {
                 if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target1) != 0) {
-                    fprintf(stderr, "AVDP recovery failed. Is medium writable?\n");
+                    fatal("AVDP recovery failed. Is medium writable?\n");
                 } 
             } 
             if(target2 >= 0) {
                 if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target2) != 0) {
-                    fprintf(stderr, "AVDP recovery failed. Is medium writable?\n");
+                    fatal("AVDP recovery failed. Is medium writable?\n");
                 }
             }
         }
@@ -354,6 +354,7 @@ int main(int argc, char *argv[]) {
         if(errors->pvd[MAIN_VDS] != 0) { //Main PVD is broken
             if(errors->pvd[RESERVE_VDS] != 0) {
                 //PVD is doomed.
+                err("Both PVDs are broken. Recovery is not possible.\n");
             } else {
                 //Fix Main PVD
             }
@@ -367,6 +368,7 @@ int main(int argc, char *argv[]) {
         if(errors->lvd[MAIN_VDS] != 0) { //Main PVD is broken
             if(errors->lvd[RESERVE_VDS] != 0) {
                 //LVD is doomed.
+                err("Both LVDs are broken. Recovery is not possible.\n");
             } else {
                 //Fix Main LVD
             }
@@ -380,6 +382,7 @@ int main(int argc, char *argv[]) {
         if(errors->pd[MAIN_VDS] != 0) { //Main PD is broken
             if(errors->pd[RESERVE_VDS] != 0) {
                 //PD is doomed.
+                err("Both PDs are broken. Recovery is not possible.\n");
             } else {
                 //Fix Main PD
             }
@@ -393,6 +396,7 @@ int main(int argc, char *argv[]) {
         if(errors->usd[MAIN_VDS] != 0) { //Main USD is broken
             if(errors->usd[RESERVE_VDS] != 0) {
                 //USD is doomed.
+                err("Both USDs are broken. Recovery is not possible.\n");
             } else {
                 //Fix Main USD
             }
@@ -406,14 +410,15 @@ int main(int argc, char *argv[]) {
         if(errors->iuvd[MAIN_VDS] != 0) { //Main IUVD is broken
             if(errors->iuvd[RESERVE_VDS] != 0) {
                 //IUVD is doomed.
+                err("Both IUVDs are broken. Recovery is not possible.\n");
             } else {
                 //Fix Main IUVD
             }
         } else { //Reserve IUVD is broken
-                // Fix Reserve IUVD
+            // Fix Reserve IUVD
         }
     }
-  
+
 
     if(errors->td[MAIN_VDS] + errors->td[RESERVE_VDS] != 0) {
         if(errors->td[MAIN_VDS] != 0) { //Main TD is broken
@@ -430,17 +435,18 @@ int main(int argc, char *argv[]) {
 
     if(errors->lvid != 0) {
         //LVID is doomed.
+        err("LVID is broken. Recovery is not possible.\n");
     }
 
-//---------------- Clean up -----------------
-    
-        printf("Clean allocations\n");
+    //---------------- Clean up -----------------
+
+    note("Clean allocations\n");
     free(disc.udf_anchor[0]);
     free(disc.udf_anchor[1]);
     free(disc.udf_anchor[2]);
     free(errors);
 
 
-    printf("All done\n");
+    msg("All done\n");
     return status;
 }

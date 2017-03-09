@@ -1,5 +1,26 @@
 #include "utils.h"
 
+#include <stdio.h>
+#include <stdarg.h>
+
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
+#define EOL ""
+
+typedef enum {
+	show = 0,
+	message,
+	important,
+	warning,
+	error,
+	faterr
+} message_type;
 
 int64_t udf_lseek64(int fd, int64_t offset, int whence) {
 #if defined(HAVE_LSEEK64)
@@ -157,4 +178,107 @@ int prompt(const char *format, ...) {
     } while(again);
 
     return -128;
+}
+
+
+
+
+
+/* Private function prototypes -----------------------------------------------*/
+#ifdef __GNUC__
+  /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
+     set to 'Yes') calls __io_putchar() */
+  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif /* __GNUC__ */
+
+/* USER CODE END PFP */
+
+void logger(message_type type, const char *format, va_list arg) {
+	//va_list arg;
+	//char *msg;
+	char *prefix;
+	char *color;
+    FILE *stream;
+
+	switch(type) {
+		case message:
+			prefix = "MSG";
+			color = "";
+            stream = stdout;
+			break;
+		case important:
+			prefix = "MSG";
+			color = ANSI_COLOR_GREEN;
+            stream = stdout;
+			break;
+		case warning:
+			prefix = "WARN";
+			color = ANSI_COLOR_YELLOW;
+            stream = stdout;
+			break;
+		case error:
+			prefix = "ERROR";
+			color = ANSI_COLOR_RED;
+            stream = stderr;
+			break;
+		case faterr:
+			prefix = "FATAL";
+			color = ANSI_COLOR_RED;
+            stream = stderr;
+			break;
+		default:
+			prefix = 0;
+			color = "";
+            stream = stderr;
+			break;
+	}
+
+	if(prefix > 0)
+		fprintf(stream, "%s[%s] ", color, prefix);
+	vfprintf (stream, format, arg);
+	fprintf(stream, ANSI_COLOR_RESET EOL);
+}
+
+void note(const char *format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	logger(show, format, arg);
+	va_end (arg);
+}
+
+void msg(const char *format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	logger(message, format, arg);
+	va_end (arg);
+}
+
+void imp(const char *format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	logger(important, format, arg);
+	va_end (arg);
+}
+
+void warn(const char *format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	logger(warning, format, arg);
+	va_end (arg);
+}
+
+void err(const char *format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	logger(error, format, arg);
+	va_end (arg);
+}
+
+void fatal(const char *format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	logger(faterr, format, arg);
+	va_end (arg);
 }
