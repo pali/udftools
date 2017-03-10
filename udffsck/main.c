@@ -262,7 +262,7 @@ int main(int argc, char *argv[]) {
 
 
     note("\nTrying to load VDS\n");
-    vds_seq = malloc(sizeof(vds_sequence_t));
+    vds_seq = calloc(1, sizeof(vds_sequence_t));
     status = get_vds(dev, &disc, blocksize, source, MAIN_VDS, vds_seq); //load main VDS
     if(status) exit(status);
     status = get_vds(dev, &disc, blocksize, source, RESERVE_VDS, vds_seq); //load reserve VDS
@@ -352,6 +352,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
+
+    print_metadata_sequence(vds_seq);
+
     fix_vds(dev, &disc, blocksize, source, vds_seq); 
     
     
@@ -359,7 +362,9 @@ int main(int argc, char *argv[]) {
             //LVID is doomed.
             err("LVID is broken. Recovery is not possible.\n");
         }
-    
+   
+
+
     
     //---------------- Clean up -----------------
 

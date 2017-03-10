@@ -661,17 +661,18 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
     for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
         if(seq->main[i].error != 0 && seq->reserve[i].error != 0) {
             //Both descriptors are broken
-            //FIXME Deal with it somehow        
+            //FIXME Deal with it somehow   
+            err("[%d] Both descriptors are broken.\n",i);     
         } else if(seq->main[i].error != 0) {
             //Copy Reserve -> Main
+            warn("[%d] Fixing Main\n",i);
             memcpy(position_main + (i+1)*sectorsize, position_reserve + (i+1)*sectorsize, sectorsize);
         } else if(seq->reserve[i].error != 0) {
             //Copy Main -> Reserve
+            warn("[%i] Fixing Reserve\n", i);
             memcpy(position_reserve + (i+1)*sectorsize, position_main + (i+1)*sectorsize, sectorsize);
         } else {
-           //Shloud not happen. Die.
-           printf("Logical paradox. Should not ever happend. Exiting.\n");
-           exit(8);
+            printf("VDS is fine. No fixing needed.\n");
         }
     }
 

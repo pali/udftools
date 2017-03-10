@@ -282,3 +282,12 @@ void fatal(const char *format, ...) {
 	logger(faterr, format, arg);
 	va_end (arg);
 }
+
+
+void print_metadata_sequence(vds_sequence_t *seq) {
+    printf("Main             Reserve\n");
+    printf("ident | Errors | ident | Errors \n");     
+    for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
+        printf("%5d |   0x%02x | %5d |   0x%02x \n", seq->main[i].tagIdent, seq->main[i].error, seq->reserve[i].tagIdent, seq->reserve[i].error);
+    }
+}
