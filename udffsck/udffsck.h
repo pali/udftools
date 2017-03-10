@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#define VDS_STRUCT_AMOUNT 8 //FIXME Move to somewhere else, not keep it here.
+
 typedef enum {
     FIRST_AVDP = 0,
     SECOND_AVDP,
@@ -21,14 +23,24 @@ typedef enum {
 } vds_type_e;
 
 typedef struct {
+    uint16_t tagIdent;
+    uint8_t error;
+} metadata_t;
+
+typedef struct {
+    metadata_t main[VDS_STRUCT_AMOUNT];
+    metadata_t reserve[VDS_STRUCT_AMOUNT];    
+} vds_sequence_t;
+
+typedef struct {
     uint8_t vrs[3];
     uint8_t anchor[3];
-    uint8_t pvd[2];
+/*    uint8_t pvd[2];
     uint8_t lvd[2];
     uint8_t pd[2];
     uint8_t usd[2];
     uint8_t iuvd[2];
-    uint8_t td[2];
+    uint8_t td[2];*/
     uint8_t lvid;
 } metadata_err_map_t;
 
@@ -40,7 +52,7 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devs
 int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target);
 
 // Volume descriptor sequence
-int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds);
+int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq);
 int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize);
 // Load all PVD descriptors into disc structure
 //int get_pvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
@@ -48,11 +60,12 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize);
 // Logical Volume Integrity Descriptor
 int get_lvid();
 
-int verify_vds(struct udf_disc *disc, metadata_err_map_t *map, vds_type_e vds);
+int verify_vds(struct udf_disc *disc, metadata_err_map_t *map, vds_type_e vds, vds_sequence_t *seq);
 
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn);
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn);
 
 uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table);
+int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq); 
 
 #endif //__UDFFSCK_H__

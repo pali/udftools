@@ -184,6 +184,7 @@ int main(int argc, char *argv[]) {
     uint8_t *dev;
     struct stat sb;
     metadata_err_map_t *errors;
+    vds_sequence_t *vds_seq; 
 
     int source = -1;
 
@@ -261,17 +262,18 @@ int main(int argc, char *argv[]) {
 
 
     note("\nTrying to load VDS\n");
-    status = get_vds(dev, &disc, blocksize, source, MAIN_VDS); //load main VDS
+    vds_seq = malloc(sizeof(vds_sequence_t));
+    status = get_vds(dev, &disc, blocksize, source, MAIN_VDS, vds_seq); //load main VDS
     if(status) exit(status);
-    status = get_vds(dev, &disc, blocksize, source, RESERVE_VDS); //load reserve VDS
+    status = get_vds(dev, &disc, blocksize, source, RESERVE_VDS, vds_seq); //load reserve VDS
     if(status) exit(status);
 
 
     status = get_lvid(dev, &disc, blocksize); //load LVID
     if(status) exit(status);
 
-    verify_vds(&disc, errors, MAIN_VDS);
-    verify_vds(&disc, errors, RESERVE_VDS);
+    verify_vds(&disc, errors, MAIN_VDS, vds_seq);
+    verify_vds(&disc, errors, RESERVE_VDS, vds_seq);
 
 #ifdef PRINT_DISC
     print_disc(&disc);
@@ -350,94 +352,15 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if(errors->pvd[MAIN_VDS] + errors->pvd[RESERVE_VDS] != 0) {
-        if(errors->pvd[MAIN_VDS] != 0) { //Main PVD is broken
-            if(errors->pvd[RESERVE_VDS] != 0) {
-                //PVD is doomed.
-                err("Both PVDs are broken. Recovery is not possible.\n");
-            } else {
-                //Fix Main PVD
-            }
-        } else { //Reserve PVD is broken
-            // Fix Reserve PVD
+    fix_vds(dev, &disc, blocksize, source, vds_seq); 
+    
+    
+        if(errors->lvid != 0) {
+            //LVID is doomed.
+            err("LVID is broken. Recovery is not possible.\n");
         }
-    }
-
-
-    if(errors->lvd[MAIN_VDS] + errors->lvd[RESERVE_VDS] != 0) {
-        if(errors->lvd[MAIN_VDS] != 0) { //Main PVD is broken
-            if(errors->lvd[RESERVE_VDS] != 0) {
-                //LVD is doomed.
-                err("Both LVDs are broken. Recovery is not possible.\n");
-            } else {
-                //Fix Main LVD
-            }
-        } else { //Reserve LVD is broken
-            // Fix Reserve LVD
-        }
-    }
-
-
-    if(errors->pd[MAIN_VDS] + errors->pd[RESERVE_VDS] != 0) {
-        if(errors->pd[MAIN_VDS] != 0) { //Main PD is broken
-            if(errors->pd[RESERVE_VDS] != 0) {
-                //PD is doomed.
-                err("Both PDs are broken. Recovery is not possible.\n");
-            } else {
-                //Fix Main PD
-            }
-        } else { //Reserve PD is broken
-            // Fix Reserve PD
-        }
-    }
-
-
-    if(errors->usd[MAIN_VDS] + errors->usd[RESERVE_VDS] != 0) {
-        if(errors->usd[MAIN_VDS] != 0) { //Main USD is broken
-            if(errors->usd[RESERVE_VDS] != 0) {
-                //USD is doomed.
-                err("Both USDs are broken. Recovery is not possible.\n");
-            } else {
-                //Fix Main USD
-            }
-        } else { //Reserve USD is broken
-            // Fix Reserve USD
-        }
-    }
-
-
-    if(errors->iuvd[MAIN_VDS] + errors->iuvd[RESERVE_VDS] != 0) {
-        if(errors->iuvd[MAIN_VDS] != 0) { //Main IUVD is broken
-            if(errors->iuvd[RESERVE_VDS] != 0) {
-                //IUVD is doomed.
-                err("Both IUVDs are broken. Recovery is not possible.\n");
-            } else {
-                //Fix Main IUVD
-            }
-        } else { //Reserve IUVD is broken
-            // Fix Reserve IUVD
-        }
-    }
-
-
-    if(errors->td[MAIN_VDS] + errors->td[RESERVE_VDS] != 0) {
-        if(errors->td[MAIN_VDS] != 0) { //Main TD is broken
-            if(errors->td[RESERVE_VDS] != 0) {
-                //TD is doomed.
-                //But TD is not carrying information, so it can be fixed.
-            } else {
-                //Fix Main TD
-            }
-        } else { //Reserve TD is broken
-            // Fix Reserve TD
-        }
-    }
-
-    if(errors->lvid != 0) {
-        //LVID is doomed.
-        err("LVID is broken. Recovery is not possible.\n");
-    }
-
+    
+    
     //---------------- Clean up -----------------
 
     note("Clean allocations\n");
@@ -445,6 +368,7 @@ int main(int argc, char *argv[]) {
     free(disc.udf_anchor[1]);
     free(disc.udf_anchor[2]);
     free(errors);
+    free(vds_seq);
 
 
     msg("All done\n");
