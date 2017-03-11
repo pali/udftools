@@ -355,7 +355,7 @@ int main(int argc, char *argv[]) {
 
     print_metadata_sequence(vds_seq);
 
-    fix_vds(dev, &disc, blocksize, source, vds_seq); 
+    fix_vds(dev, &disc, blocksize, source, vds_seq, interactive, autofix); 
     
     
         if(errors->lvid != 0) {

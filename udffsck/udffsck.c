@@ -648,10 +648,34 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
     return 0;
 }
 
-int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq) { 
+char * descriptor_name(uint16_t descIdent) {
+    switch(descIdent) {
+        case TAG_IDENT_PVD:
+            return "PVD";
+        case TAG_IDENT_LVD:
+            return "LVD";
+        case TAG_IDENT_PD:
+            return "PD";
+        case TAG_IDENT_USD:
+            return "USD";
+        case TAG_IDENT_IUVD:
+            return "IUVD";
+        case TAG_IDENT_TD:
+            return "TD";
+        case TAG_IDENT_AVDP:
+            return "AVDP";
+        case TAG_IDENT_LVID:
+            return "LVID";
+        default:
+            return "Unknown";
+    }
+}
+
+int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq, uint8_t interactive, uint8_t autofix) { 
     uint8_t *position_main, *position_reserve;
     int8_t counter = 0;
     tag descTag;
+    uint8_t fix=0;
 
     // Go to first address of VDS
     position_main = dev+sectorsize*(disc->udf_anchor[source]->mainVolDescSeqExt.extLocation);
@@ -665,14 +689,36 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
             err("[%d] Both descriptors are broken.\n",i);     
         } else if(seq->main[i].error != 0) {
             //Copy Reserve -> Main
-            warn("[%d] Fixing Main\n",i);
-            memcpy(position_main + (i+1)*sectorsize, position_reserve + (i+1)*sectorsize, sectorsize);
+            if(interactive) {
+                fix = prompt("%s is broken. Fix it? [Y/n]", descriptor_name(seq->reserve[i].tagIdent)); 
+            } else if (autofix) {
+                fix = 1;
+            }
+
+            if(fix) {
+                warn("[%d] Fixing Main %s\n",i,descriptor_name(seq->reserve[i].tagIdent));
+                memcpy(position_main + (i+1)*sectorsize, position_reserve + (i+1)*sectorsize, sectorsize);
+            } else {
+                warn("[%i] %s is broken.\n", i,descriptor_name(seq->reserve[i].tagIdent));
+            }
+            fix = 0;
         } else if(seq->reserve[i].error != 0) {
             //Copy Main -> Reserve
-            warn("[%i] Fixing Reserve\n", i);
-            memcpy(position_reserve + (i+1)*sectorsize, position_main + (i+1)*sectorsize, sectorsize);
+            if(interactive) {
+                fix = prompt("%s is broken. Fix it? [Y/n]", descriptor_name(seq->main[i].tagIdent)); 
+            } else if (autofix) {
+                fix = 1;
+            }
+
+            if(fix) {
+                warn("[%i] Fixing Reserve %s\n", i,descriptor_name(seq->main[i].tagIdent));
+                memcpy(position_reserve + (i+1)*sectorsize, position_main + (i+1)*sectorsize, sectorsize);
+            } else {
+                warn("[%i] %s is broken.\n", i,descriptor_name(seq->main[i].tagIdent));
+            }
+            fix = 0;
         } else {
-            printf("VDS is fine. No fixing needed.\n");
+            printf("[%d] %s is fine. No fixing needed.\n", i, descriptor_name(seq->main[i].tagIdent));
         }
     }
 
