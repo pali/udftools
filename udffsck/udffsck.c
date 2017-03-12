@@ -697,7 +697,10 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
 
             if(fix) {
                 warn("[%d] Fixing Main %s\n",i,descriptor_name(seq->reserve[i].tagIdent));
-                memcpy(position_main + (i+1)*sectorsize, position_reserve + (i+1)*sectorsize, sectorsize);
+                warn("sectorsize: %d\n", sectorsize);
+                warn("src pos: 0x%x\n", position_reserve + i*sectorsize - dev);
+                warn("dest pos: 0x%x\n", position_main + i*sectorsize - dev);
+                memcpy(position_main + i*sectorsize, position_reserve + i*sectorsize, sectorsize);
             } else {
                 warn("[%i] %s is broken.\n", i,descriptor_name(seq->reserve[i].tagIdent));
             }
@@ -712,7 +715,7 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
 
             if(fix) {
                 warn("[%i] Fixing Reserve %s\n", i,descriptor_name(seq->main[i].tagIdent));
-                memcpy(position_reserve + (i+1)*sectorsize, position_main + (i+1)*sectorsize, sectorsize);
+                memcpy(position_reserve + i*sectorsize, position_main + i*sectorsize, sectorsize);
             } else {
                 warn("[%i] %s is broken.\n", i,descriptor_name(seq->main[i].tagIdent));
             }

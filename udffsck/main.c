@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
     int flags = O_RDONLY;
     // If is there some request for corrections, we need read/write access to medium
     if(interactive || autofix) {
-        prot = prot | PROT_WRITE;
+        prot |= PROT_WRITE;
         flags = O_RDWR;
         note("RW\n");
     }
