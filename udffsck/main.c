@@ -167,9 +167,9 @@ int detect_blocksize(int fd, struct udf_disc *disc)
 
 /**
  * • 0 - No error
- * • 1 - Filesystem errors were fixed
- * • 2 - Filesystem errors were fixed, reboot is recomended
- * • 4 - Filesystem errors remained unfixed
+ * • 1 - Filesystem seq were fixed
+ * • 2 - Filesystem seq were fixed, reboot is recomended
+ * • 4 - Filesystem seq remained unfixed
  * • 8 - Program error
  * • 16 - Wrong input parameters
  * • 32 - Check was interrupted by user request
@@ -183,8 +183,8 @@ int main(int argc, char *argv[]) {
     struct udf_disc disc = {0};
     uint8_t *dev;
     struct stat sb;
-    metadata_err_map_t *errors;
-    vds_sequence_t *vds_seq; 
+    //metadata_err_map_t *seq;
+    vds_sequence_t *seq; 
 
     int source = -1;
 
@@ -231,7 +231,8 @@ int main(int argc, char *argv[]) {
 
     //------------- Detections -----------------------
 
-    errors = calloc(1, sizeof(metadata_err_map_t));
+    seq = calloc(1, sizeof(vds_sequence_t));
+    //seq = calloc(1, sizeof(metadata_err_map_t));
 
     status = is_udf(dev, blocksize); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
     if(status < 0) {
@@ -244,15 +245,15 @@ int main(int argc, char *argv[]) {
             exit(4);
         }
     } else { //Normal medium
-        errors->anchor[0] = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //try load FIRST AVDP
-        errors->anchor[1] = get_avdp(dev, &disc, blocksize, sb.st_size, SECOND_AVDP); //load AVDP
-        errors->anchor[2] = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
+        seq->anchor[0].error = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //try load FIRST AVDP
+        seq->anchor[1].error = get_avdp(dev, &disc, blocksize, sb.st_size, SECOND_AVDP); //load AVDP
+        seq->anchor[2].error = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
 
-        if(errors->anchor[0] == 0) {
+        if(seq->anchor[0].error == 0) {
             source = FIRST_AVDP;
-        } else if(errors->anchor[1] == 0) {
+        } else if(seq->anchor[1].error == 0) {
             source = SECOND_AVDP;
-        } else if(errors->anchor[2] == 0) {
+        } else if(seq->anchor[2].error == 0) {
             source = THIRD_AVDP;
         } else {
             err("All AVDP are broken. Aborting.\n");
@@ -262,18 +263,17 @@ int main(int argc, char *argv[]) {
 
 
     note("\nTrying to load VDS\n");
-    vds_seq = calloc(1, sizeof(vds_sequence_t));
-    status = get_vds(dev, &disc, blocksize, source, MAIN_VDS, vds_seq); //load main VDS
+    status = get_vds(dev, &disc, blocksize, source, MAIN_VDS, seq); //load main VDS
     if(status) exit(status);
-    status = get_vds(dev, &disc, blocksize, source, RESERVE_VDS, vds_seq); //load reserve VDS
+    status = get_vds(dev, &disc, blocksize, source, RESERVE_VDS, seq); //load reserve VDS
     if(status) exit(status);
 
 
     status = get_lvid(dev, &disc, blocksize); //load LVID
     if(status) exit(status);
 
-    verify_vds(&disc, errors, MAIN_VDS, vds_seq);
-    verify_vds(&disc, errors, RESERVE_VDS, vds_seq);
+    verify_vds(&disc, seq, MAIN_VDS, seq);
+    verify_vds(&disc, seq, RESERVE_VDS, seq);
 
 #ifdef PRINT_DISC
     print_disc(&disc);
@@ -304,22 +304,22 @@ int main(int argc, char *argv[]) {
 
     //---------- Corrections --------------
 
-    if(errors->anchor[0] + errors->anchor[1] + errors->anchor[2] != 0) { //Something went wrong with AVDPs
+    if(seq->anchor[0].error + seq->anchor[1].error + seq->anchor[2].error != 0) { //Something went wrong with AVDPs
         int target1 = -1;
         int target2 = -1;
 
-        if(errors->anchor[0] == 0) {
+        if(seq->anchor[0].error == 0) {
             source = FIRST_AVDP;
-            if(errors->anchor[1] != 0)
+            if(seq->anchor[1].error != 0)
                 target1 = SECOND_AVDP;
-            if(errors->anchor[2] != 0)
+            if(seq->anchor[2].error != 0)
                 target2 = THIRD_AVDP;
-        } else if(errors->anchor[1] == 0) {
+        } else if(seq->anchor[1].error == 0) {
             source = SECOND_AVDP;
             target1 = FIRST_AVDP;
-            if(errors->anchor[2] != 0)
+            if(seq->anchor[2].error != 0)
                 target2 = THIRD_AVDP;
-        } else if(errors->anchor[2] == 0) {
+        } else if(seq->anchor[2].error == 0) {
             source = THIRD_AVDP;
             target1 = FIRST_AVDP;
             target2 = SECOND_AVDP;
@@ -330,7 +330,7 @@ int main(int argc, char *argv[]) {
 
         int fix_avdp = 0;
         if(interactive) {
-            if(prompt("Found errors at AVDP. Do you want to fix them? [Y/n]") != 0) {
+            if(prompt("Found seq at AVDP. Do you want to fix them? [Y/n]") != 0) {
                 fix_avdp = 1;
             }
         }
@@ -353,12 +353,12 @@ int main(int argc, char *argv[]) {
     }
 
 
-    print_metadata_sequence(vds_seq);
+    print_metadata_sequence(seq);
 
-    fix_vds(dev, &disc, blocksize, source, vds_seq, interactive, autofix); 
+    fix_vds(dev, &disc, blocksize, source, seq, interactive, autofix); 
     
     
-        if(errors->lvid != 0) {
+        if(seq->lvid.error != 0) {
             //LVID is doomed.
             err("LVID is broken. Recovery is not possible.\n");
         }
@@ -372,8 +372,7 @@ int main(int argc, char *argv[]) {
     free(disc.udf_anchor[0]);
     free(disc.udf_anchor[1]);
     free(disc.udf_anchor[2]);
-    free(errors);
-    free(vds_seq);
+    free(seq);
 
 
     msg("All done\n");

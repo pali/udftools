@@ -24,17 +24,20 @@ typedef enum {
 
 typedef struct {
     uint16_t tagIdent;
+    uint32_t tagLocation;
     uint8_t error;
 } metadata_t;
 
 typedef struct {
+    metadata_t anchor[3];
     metadata_t main[VDS_STRUCT_AMOUNT];
-    metadata_t reserve[VDS_STRUCT_AMOUNT];    
+    metadata_t reserve[VDS_STRUCT_AMOUNT];   
+    metadata_t lvid; 
 } vds_sequence_t;
 
 typedef struct {
     uint8_t vrs[3];
-    uint8_t anchor[3];
+ //   uint8_t anchor[3];
 /*    uint8_t pvd[2];
     uint8_t lvd[2];
     uint8_t pd[2];
@@ -44,8 +47,10 @@ typedef struct {
     uint8_t lvid;
 } metadata_err_map_t;
 
-#define E_CHECKSUM 0b00000001
-#define E_CRC      0b00000010
+#define E_CHECKSUM  0b00000001
+#define E_CRC       0b00000010
+#define E_POSITION  0b00000100
+#define E_WRONGDESC 0b00001000
 
 // Anchor volume descriptor points to Mvds and Rvds
 int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize, avdp_type_e type);
@@ -60,7 +65,7 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize);
 // Logical Volume Integrity Descriptor
 int get_lvid();
 
-int verify_vds(struct udf_disc *disc, metadata_err_map_t *map, vds_type_e vds, vds_sequence_t *seq);
+int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq);
 
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn);
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn);
