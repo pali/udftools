@@ -19,7 +19,8 @@ typedef enum {
 	important,
 	warning,
 	error,
-	faterr
+	faterr,
+    debug
 } message_type;
 
 int64_t udf_lseek64(int fd, int64_t offset, int whence) {
@@ -203,6 +204,11 @@ void logger(message_type type, const char *format, va_list arg) {
     FILE *stream;
 
 	switch(type) {
+		case debug:
+			prefix = "DBG";
+			color = "";
+            stream = stdout;
+			break;
 		case message:
 			prefix = "MSG";
 			color = "";
@@ -239,6 +245,13 @@ void logger(message_type type, const char *format, va_list arg) {
 		fprintf(stream, "%s[%s] ", color, prefix);
 	vfprintf (stream, format, arg);
 	fprintf(stream, ANSI_COLOR_RESET EOL);
+}
+
+void dbg(const char *format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	logger(debug, format, arg);
+	va_end (arg);
 }
 
 void note(const char *format, ...) {
