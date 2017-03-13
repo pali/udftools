@@ -372,6 +372,24 @@ int main(int argc, char *argv[]) {
     free(disc.udf_anchor[0]);
     free(disc.udf_anchor[1]);
     free(disc.udf_anchor[2]);
+    
+    free(disc.udf_pvd[0]);
+    free(disc.udf_lvd[0]);
+    free(disc.udf_usd[0]);
+    free(disc.udf_iuvd[0]);
+    free(disc.udf_pd[0]);
+    free(disc.udf_td[0]);
+
+    free(disc.udf_pvd[1]);
+    free(disc.udf_lvd[1]);
+    free(disc.udf_usd[1]);
+    free(disc.udf_iuvd[1]);
+    free(disc.udf_pd[1]);
+    free(disc.udf_td[1]);
+
+    free(disc.udf_lvid);
+    free(disc.udf_fsd);
+
     free(seq);
 
 
