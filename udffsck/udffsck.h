@@ -73,4 +73,5 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
 uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table);
 int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq, uint8_t interactive, uint8_t autofix); 
 
+int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount);
 #endif //__UDFFSCK_H__

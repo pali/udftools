@@ -127,8 +127,10 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
 
         if(vds == MAIN_VDS) {
             seq->main[counter].tagIdent = descTag.tagIdent;
+            seq->main[counter].tagLocation = (position-dev)/sectorsize;
         } else {
             seq->reserve[counter].tagIdent = descTag.tagIdent;
+            seq->reserve[counter].tagLocation = (position-dev)/sectorsize;
         }
 
         counter++;
@@ -540,6 +542,21 @@ int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t
     return -1;
 }
 
+uint32_t get_tag_location(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds) {
+    for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
+        if(vds == MAIN_VDS) {
+            if(seq->main[i].tagIdent == tagIdent) {
+                return seq->main[i].tagLocation;
+            }
+        } else {
+            if(seq->reserve[i].tagIdent == tagIdent) {
+                return seq->reserve[i].tagLocation;
+            }
+        }
+    }
+    return -1;
+}
+
 int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq) {
     //metadata_err_map_t map;    
     uint8_t *data;
@@ -577,6 +594,37 @@ int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_s
         append_error(seq, TAG_IDENT_TD, vds, E_CHECKSUM);
     }
 
+    if(check_position(disc->udf_pvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_PVD, vds))) {
+        fprintf(stderr, "Position failure at PVD[%d]\n", vds);
+        //map->pvd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_PVD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_lvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_LVD, vds))) {
+        fprintf(stderr, "Position failure at LVD[%d]\n", vds);
+        //map->lvd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_LVD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_pd[vds]->descTag, get_tag_location(seq, TAG_IDENT_PD, vds))) {
+        fprintf(stderr, "Position failure at PD[%d]\n", vds);
+        //map->pd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_PD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_usd[vds]->descTag, get_tag_location(seq, TAG_IDENT_USD, vds))) {
+        fprintf(stderr, "Position failure at USD[%d]\n", vds);
+        //map->usd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_USD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_iuvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_IUVD, vds))) {
+        fprintf(stderr, "Position failure at IUVD[%d]\n", vds);
+        //map->iuvd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_IUVD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_td[vds]->descTag, get_tag_location(seq, TAG_IDENT_TD, vds))) {
+        fprintf(stderr, "Position failure at TD[%d]\n", vds);
+        //map->td[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_TD, vds, E_POSITION);
+    }
+    
     if(crc(disc->udf_pvd[vds], sizeof(struct primaryVolDesc))) {
         printf("CRC error at PVD[%d]\n", vds);
         //map->pvd[vds] |= E_CRC;
@@ -720,14 +768,14 @@ char * descriptor_name(uint16_t descIdent) {
 }
 
 int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq, uint8_t interactive, uint8_t autofix) { 
-    uint8_t *position_main, *position_reserve;
+    uint32_t position_main, position_reserve;
     int8_t counter = 0;
     tag descTag;
     uint8_t fix=0;
 
     // Go to first address of VDS
-    position_main = dev+sectorsize*(disc->udf_anchor[source]->mainVolDescSeqExt.extLocation);
-    position_reserve = dev+sectorsize*(disc->udf_anchor[source]->reserveVolDescSeqExt.extLocation);
+    position_main = (disc->udf_anchor[source]->mainVolDescSeqExt.extLocation);
+    position_reserve = (disc->udf_anchor[source]->reserveVolDescSeqExt.extLocation);
 
 
     for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
@@ -743,12 +791,14 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
                 fix = 1;
             }
 
+//int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount);
             if(fix) {
                 warn("[%d] Fixing Main %s\n",i,descriptor_name(seq->reserve[i].tagIdent));
                 warn("sectorsize: %d\n", sectorsize);
-                warn("src pos: 0x%x\n", position_reserve + i*sectorsize - dev);
-                warn("dest pos: 0x%x\n", position_main + i*sectorsize - dev);
-                memcpy(position_main + i*sectorsize, position_reserve + i*sectorsize, sectorsize);
+                warn("src pos: 0x%x\n", position_reserve + i);
+                warn("dest pos: 0x%x\n", position_main + i);
+//                memcpy(position_main + i*sectorsize, position_reserve + i*sectorsize, sectorsize);
+                copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
             } else {
                 warn("[%i] %s is broken.\n", i,descriptor_name(seq->reserve[i].tagIdent));
             }
@@ -763,7 +813,8 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
 
             if(fix) {
                 warn("[%i] Fixing Reserve %s\n", i,descriptor_name(seq->main[i].tagIdent));
-                memcpy(position_reserve + i*sectorsize, position_main + i*sectorsize, sectorsize);
+                //memcpy(position_reserve + i*sectorsize, position_main + i*sectorsize, sectorsize);
+                copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
             } else {
                 warn("[%i] %s is broken.\n", i,descriptor_name(seq->main[i].tagIdent));
             }
