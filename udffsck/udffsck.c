@@ -266,11 +266,20 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     lb_addr filesetblock = lelb_to_cpu(lap->extLocation);
     uint32_t filesetlen = lap->extLength;
 
+    printf("FSD at (%d, p%d)\n", 
+            lap->extLocation.logicalBlockNum,
+            lap->extLocation.partitionReferenceNum);
 
     //FIXME some images doesn't work (Apple for example) but works when I put there 257 as lsnBase...
-    uint32_t lsnBase = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation)+1; //FIXME MAIN_VDS should be verified first
-    //uint32_t lsnBase = 256+1;
+    //uint32_t lsnBase = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation)+1; //FIXME MAIN_VDS should be verified first
+    uint32_t lsnBase = 0;
+    if(lap->extLocation.partitionReferenceNum == disc->udf_pd[MAIN_VDS]->partitionNumber)
+        lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;
+    else {
+        return -1;
+    }
 
+    printf("LSN base: %d\n", lsnBase);
 
 
     uint32_t lbSize = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME same as above
