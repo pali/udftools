@@ -332,7 +332,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         return -4;
     }
     if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
-        printf("FID found.\n");
+        printf("FID found (%d)\n",*pos);
         flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
         padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
 
@@ -345,7 +345,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         if(fid->lengthFileIdent == 0) {
             printf("ROOT directory\n");
         } else {
-            printf("Filename: %s\n", fid->fileIdent+fid->lengthOfImpUse);
+            printf("Filename: %s\n", fid->fileIdent);
         }
 
         printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
@@ -362,7 +362,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase);
             printf("Return from ICB\n"); 
         }
-        printf("FLen: %d, padding: %d\n", flen, padding);
+        printf("Len: %d, padding: %d\n", flen, padding);
         *pos = *pos + flen + padding;
         printf("\n");
     } else {
@@ -466,24 +466,29 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     } else {
                         err("EAHD mismatch. Expected APP, found %d\n", gf->attrType);
 
+                            for(uint32_t pos=0; ; ) {
+                                if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + eahd.appAttrLocation, &pos) != 0) {
+                                    break;
+                                }
+                            }
                     }
                 }
 
             } else {
                 printf("ICB TAG->flags: 0x%02x\n", fe->icbTag.flags);
             }
-            for(int i=0; i<le32_to_cpu(fe->lengthAllocDescs); i+=8) {
-                for(int j=0; j<8; j++)
-                    printf("%02x ", fe->allocDescs[i+j]);
-
-                printf("\n");
-            }
-            printf("\n");
 
             //TODO is it directory? If is, continue. Otherwise not.
             // We can assume that directory have one or more FID inside.
             // FE have inside long_ad/short_ad.
             if(fe->lengthAllocDescs >= sizeof(struct fileIdentDesc)) {
+                /*for(int i=0; i<le32_to_cpu(fe->lengthAllocDescs); i+=8) {
+                    for(int j=0; j<8; j++)
+                        printf("%02x ", fe->allocDescs[i+j]);
+
+                    printf("\n");
+                }*/
+                printf("\n");
                 for(uint32_t pos=0; pos<fe->lengthAllocDescs; ) {
                     if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs, &pos) != 0) {
                         break;
