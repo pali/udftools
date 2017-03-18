@@ -416,6 +416,52 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             printf("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
             printf("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, fe->logicalBlocksRecorded);
             printf("LEA %d, LAD %d\n", fe->lengthExtendedAttr, fe->lengthAllocDescs);
+            
+            switch(fe->icbTag.fileType) {
+                case ICBTAG_FILE_TYPE_UNDEF:
+                    imp("Filetype: undef\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_USE:
+                    imp("Filetype: USE\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_PIE:
+                    imp("Filetype: PIE\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_IE:
+                    imp("Filetype: IE\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_DIRECTORY:
+                    imp("Filetype: DIR\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_REGULAR:
+                    imp("Filetype: REGULAR\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_BLOCK:
+                    imp("Filetype: BLOCK\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_CHAR:
+                    imp("Filetype: CHAR\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_EA:
+                    imp("Filetype: EA\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_FIFO:
+                    imp("Filetype: FIFO\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_SOCKET:
+                    imp("Filetype: SOCKET\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_TE:
+                    imp("Filetype: TE\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_SYMLINK:
+                    imp("Filetype: SYMLINK\n");
+                    break;  
+                case ICBTAG_FILE_TYPE_STREAMDIR:
+                    imp("Filetype: STRAMDIR\n");
+                    break;  
+            } 
+            
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
                 printf("SHORT\n");
                 short_ad *sad = (short_ad *)(fe->allocDescs);
@@ -477,6 +523,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             } else {
                 printf("ICB TAG->flags: 0x%02x\n", fe->icbTag.flags);
             }
+
 
             //TODO is it directory? If is, continue. Otherwise not.
             // We can assume that directory have one or more FID inside.
