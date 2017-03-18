@@ -3,6 +3,8 @@
 #include "utils.h"
 #include "libudffs.h"
 
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn);
+
 uint8_t calculate_checksum(tag descTag) {
     uint8_t i;
     uint8_t tagChecksum = 0;
@@ -296,19 +298,80 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
         return -1;
     }
     printf("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
-    *lbnlsn = lsnBase;
+
+
+    /*struct spaceBitmapDesc sbd;
+      uint32_t counter = 1;
+      memcpy(&descTag, dev+(lsnBase+filesetblock.logicalBlockNum+counter)*lbSize, sizeof(tag));
+      if(descTag.tagIdent == TAG_IDENT_SBD) {
+      sbd = *(struct spaceBitmapDesc *)((lsnBase+filesetblock.logicalBlockNum+counter)*lbSize);
+      counter++;
+      }
 
     //FIXME Maybe not needed. Investigate. 
-    memcpy(&descTag, dev+(lsnBase+filesetblock.logicalBlockNum+1)*lbSize, sizeof(tag));
+    memcpy(&descTag, dev+(lsnBase+filesetblock.logicalBlockNum+counter)*lbSize, sizeof(tag));
     if(le16_to_cpu(descTag.tagIdent) != TAG_IDENT_TD) {
-        fprintf(stderr, "Error loading FSD sequence. TE descriptor not found. LSN: %d, Desc ID: %x\n", lsnBase+filesetblock.logicalBlockNum+1, le16_to_cpu(descTag.tagIdent));
-        //        free(disc->udf_fsd);
-        return -1;
+    fprintf(stderr, "Error loading FSD sequence. TE descriptor not found. LSN: %d, Desc ID: %x\n", lsnBase+filesetblock.logicalBlockNum+1, le16_to_cpu(descTag.tagIdent));
+    //        free(disc->udf_fsd);
+    //   return -1;
+    } else {
+    counter++;
+    }*/
+
+    *lbnlsn = lsnBase;
+    return 0;
+}
+
+uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos) {
+    uint32_t flen, padding;
+    uint32_t lsnBase = lbnlsn; 
+    struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
+
+    if (!checksum(fid->descTag)) {
+        fprintf(stderr, "FID checksum failed.\n");
+        return -4;
+    }
+    if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
+        printf("FID found.\n");
+        flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
+        padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
+
+        if(crc(fid, flen + padding)) {
+            fprintf(stderr, "FID CRC failed.\n");
+            return -5;
+        }
+        printf("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
+        printf("FID: FilenameLen: %d\n", fid->lengthFileIdent);
+        if(fid->lengthFileIdent == 0) {
+            printf("ROOT directory\n");
+        } else {
+            printf("Filename: %s\n", fid->fileIdent+fid->lengthOfImpUse);
+        }
+
+        printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
+        printf("ROOT ICB: LSN: %d\n", disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase);
+
+        if(*pos == 0) {
+            printf("Parent. Not Following this one\n");
+        }else if(fid->icb.extLocation.logicalBlockNum + lsnBase == lsn) {
+            printf("Self. Not following this one\n");
+        } else if(fid->icb.extLocation.logicalBlockNum + lsnBase == disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase) {
+            printf("ROOT. Not following this one.\n");
+        } else {
+            printf("ICB to follow.\n");
+            get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase);
+            printf("Return from ICB\n"); 
+        }
+        printf("FLen: %d, padding: %d\n", flen, padding);
+        *pos = *pos + flen + padding;
+        printf("\n");
+    } else {
+        printf("Ident: %x\n", le16_to_cpu(fid->descTag.tagIdent));
+        return 1;
     }
 
     return 0;
 }
-
 
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn) {
     tag descTag;
@@ -329,6 +392,15 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     //read(fd, file, sizeof(struct fileEntry));
 
     switch(le16_to_cpu(descTag.tagIdent)) {
+        case TAG_IDENT_SBD:
+            printf("SBD found.\n");
+            //FIXME Used for examination of used sectors
+            get_file(dev, disc, lbnlsn, lsn+1); 
+            break;
+        case TAG_IDENT_EAHD:
+            printf("EAHD found.\n");
+            //FIXME WTF is that?
+            get_file(dev, disc, lbnlsn, lsn+1); 
         case TAG_IDENT_FID:
             fprintf(stderr, "Never should get there.\n");
             exit(-43);
@@ -355,6 +427,50 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 printf("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
                 lsn = lsn + lad->extLength/lbSize;
                 printf("LSN: %d\n", lsn);
+            } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_EXTENDED) {
+                err("Extended ICB in FE.\n");
+            } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB) {
+                printf("AD in ICB\n");
+
+                struct extendedAttrHeaderDesc eahd;
+                struct genericFormat *gf;
+                struct impUseExtAttr *impAttr;
+                struct appUseExtAttr *appAttr;
+                eahd = *(struct extendedAttrHeaderDesc *)(fe->allocDescs);
+                if(eahd.descTag.tagIdent == TAG_IDENT_EAHD) {
+                    printf("impAttrLoc: %d, appAttrLoc: %d\n", eahd.impAttrLocation, eahd.appAttrLocation);
+                    gf = (struct genericFormat *)(fe->allocDescs + eahd.impAttrLocation);
+
+                    printf("AttrType: %d\n", gf->attrType);
+                    printf("AttrLength: %d\n", gf->attrLength);
+                    if(gf->attrType == EXTATTR_IMP_USE) {
+                        impAttr = (struct impUseExtAttr *)gf;
+                        printf("ImpUseLength: %d\n", impAttr->impUseLength);
+                        printf("ImpIdent: Flags: 0x%02x\n", impAttr->impIdent.flags);
+                        printf("ImpIdent: Ident: %s\n", impAttr->impIdent.ident);
+                        printf("ImpIdent: IdentSuffix: "); 
+                        for(int k=0; k<8; k++) {
+                            printf("0x%02x ", impAttr->impIdent.identSuffix[k]);
+                        }
+                        printf("\n");
+                    } else {
+                        err("EAHD mismatch. Expected IMP, found %d\n", gf->attrType);
+                    }
+
+                    gf = (struct genericFormat *)(fe->allocDescs + eahd.appAttrLocation);
+
+                    printf("AttrType: %d\n", gf->attrType);
+                    printf("AttrLength: %d\n", gf->attrLength);
+                    if(gf->attrType == EXTATTR_APP_USE) {
+                        appAttr = (struct appUseExtAttr *)gf;
+                    } else {
+                        err("EAHD mismatch. Expected APP, found %d\n", gf->attrType);
+
+                    }
+                }
+
+            } else {
+                printf("ICB TAG->flags: 0x%02x\n", fe->icbTag.flags);
             }
             for(int i=0; i<le32_to_cpu(fe->lengthAllocDescs); i+=8) {
                 for(int j=0; j<8; j++)
@@ -369,48 +485,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             // FE have inside long_ad/short_ad.
             if(fe->lengthAllocDescs >= sizeof(struct fileIdentDesc)) {
                 for(uint32_t pos=0; pos<fe->lengthAllocDescs; ) {
-                    fid = (struct fileIdentDesc *)(fe->allocDescs + pos);
-                    if (!checksum(fid->descTag)) {
-                        fprintf(stderr, "FID checksum failed.\n");
-                        return -4;
-                    }
-                    if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
-                        printf("FID found.\n");
-                        flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
-                        padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
-
-                        if(crc(fid, flen + padding)) {
-                            fprintf(stderr, "FID CRC failed.\n");
-                            return -5;
-                        }
-                        printf("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
-                        printf("FID: FilenameLen: %d\n", fid->lengthFileIdent);
-                        if(fid->lengthFileIdent == 0) {
-                            printf("ROOT directory\n");
-                        } else {
-                            printf("Filename: %s\n", fid->fileIdent+fid->lengthOfImpUse);
-                        }
-
-                        printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
-                        printf("ROOT ICB: LSN: %d\n", disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase);
-                        printf("Actual LSN: %d\n", lsn);
-
-                        if(pos == 0) {
-                            printf("Parent. Not Following this one\n");
-                        }else if(fid->icb.extLocation.logicalBlockNum + lsnBase == lsn) {
-                            printf("Self. Not following this one\n");
-                        } else if(fid->icb.extLocation.logicalBlockNum + lsnBase == disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase) {
-                            printf("ROOT. Not following this one.\n");
-                        } else {
-                            printf("ICB to follow.\n");
-                            get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase);
-                            printf("Return from ICB\n"); 
-                        }
-                        printf("FLen: %d, padding: %d\n", flen, padding);
-                        pos = pos + flen + padding;
-                        printf("\n");
-                    } else {
-                        printf("Ident: %x\n", le16_to_cpu(fid->descTag.tagIdent));
+                    if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs, &pos) != 0) {
                         break;
                     }
                 }
@@ -527,7 +602,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     //file = malloc(sizeof(struct fileEntry));
     //lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
     //read(fd, file, sizeof(struct fileEntry));
-    lsn = icbloc.logicalBlockNum+lsnBase-1;
+    lsn = icbloc.logicalBlockNum+lsnBase;
     printf("ROOT LSN: %d\n", lsn);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
 
@@ -633,7 +708,7 @@ int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_s
         //map->td[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_TD, vds, E_POSITION);
     }
-    
+
     if(crc(disc->udf_pvd[vds], sizeof(struct primaryVolDesc))) {
         printf("CRC error at PVD[%d]\n", vds);
         //map->pvd[vds] |= E_CRC;
@@ -708,7 +783,7 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
     } else {
         sourcePosition = sectorsize*512; //Unclosed disc have AVDP at sector 512
     }
-    
+
     // Taget type to determine position on media
     if(target == 0) {
         targetPosition = sectorsize*256; //First AVDP is on LSN=256
@@ -800,13 +875,13 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
                 fix = 1;
             }
 
-//int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount);
+            //int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount);
             if(fix) {
                 warn("[%d] Fixing Main %s\n",i,descriptor_name(seq->reserve[i].tagIdent));
                 warn("sectorsize: %d\n", sectorsize);
                 warn("src pos: 0x%x\n", position_reserve + i);
                 warn("dest pos: 0x%x\n", position_main + i);
-//                memcpy(position_main + i*sectorsize, position_reserve + i*sectorsize, sectorsize);
+                //                memcpy(position_main + i*sectorsize, position_reserve + i*sectorsize, sectorsize);
                 copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
             } else {
                 warn("[%i] %s is broken.\n", i,descriptor_name(seq->reserve[i].tagIdent));
