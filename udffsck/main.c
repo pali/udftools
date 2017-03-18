@@ -366,10 +366,20 @@ int main(int argc, char *argv[]) {
     fix_vds(dev, &disc, blocksize, source, seq, interactive, autofix); 
     
     
-        if(seq->lvid.error != 0) {
-            //LVID is doomed.
-            err("LVID is broken. Recovery is not possible.\n");
+    if(seq->lvid.error != 0) {
+        //LVID is doomed.
+        err("LVID is broken. Recovery is not possible.\n");
+    } else {
+        if(disc.udf_lvid->integrityType == LVID_INTEGRITY_TYPE_OPEN) {
+            //There are some unfinished writes
+            err("Opened integrity type. Some writes may be unfinished.\n");
+        } else if(disc.udf_lvid->integrityType == LVID_INTEGRITY_TYPE_CLOSE) {
+            //Evrything is closed. Continue.
+        } else {
+            //Unknown type. It is just wrong.
+            err("Unknown integrity type: %d\n", disc.udf_lvid->integrityType);
         }
+    }
    
 
 
