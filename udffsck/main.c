@@ -47,6 +47,9 @@
 #define PRINT_DISC 
 //#define PATH_TABLE
 
+#define MAX_VERSION 2
+
+
 int is_udf(uint8_t *dev, uint32_t sectorsize) {
     struct volStructDesc vsd;
     struct beginningExtendedAreaDesc bea;
@@ -99,6 +102,11 @@ int is_udf(uint8_t *dev, uint32_t sectorsize) {
     printf("bea: type:%d, id:%s, v:%d\n", bea.structType, bea.stdIdent, bea.structVersion);
     printf("nsr: type:%d, id:%s, v:%d\n", nsr.structType, nsr.stdIdent, nsr.structVersion);
     printf("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
+
+    if( (int)( (nsr.stdIdent)[4]-'0') > MAX_VERSION) {
+        err("Medium is newer than supported version. We can verify medium up to NSR0%d\n", MAX_VERSION);
+        return -1;
+    }
 
     return 0;
 }
