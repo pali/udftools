@@ -369,7 +369,7 @@ int main(int argc, char *argv[]) {
 
         int fix_avdp = 0;
         if(interactive) {
-            if(prompt("Found seq at AVDP. Do you want to fix them? [Y/n]") != 0) {
+            if(prompt("Found error at AVDP. Do you want to fix them? [Y/n]") != 0) {
                 fix_avdp = 1;
             }
         }

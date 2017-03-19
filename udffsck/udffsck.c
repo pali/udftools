@@ -207,7 +207,8 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
                 }
                 disc->udf_td[vds] = malloc(sizeof(struct terminatingDesc)); // Prepare memory
                 memcpy(disc->udf_td[vds], position, sizeof(struct terminatingDesc)); 
-                break;
+                // Found terminator, ending.
+                return 0;
             case 0:
                 // Found end of VDS, ending.
                 return 0;
