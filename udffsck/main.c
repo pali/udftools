@@ -19,6 +19,7 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
+#define _POSIX_C_SOURCE 200808L
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,7 +48,7 @@
 #define PRINT_DISC 
 //#define PATH_TABLE
 
-#define MAX_VERSION 2
+#define MAX_VERSION 3
 
 
 int is_udf(uint8_t *dev, uint32_t sectorsize) {
@@ -58,12 +59,12 @@ int is_udf(uint8_t *dev, uint32_t sectorsize) {
     uint32_t bsize = sectorsize>BLOCK_SIZE ? sectorsize : BLOCK_SIZE; //It is possible to have free sectors between descriptors, but there can't be more than one descriptor in sector. Since there is requirement to comply with 2kB sectors, this is only way.   
 
     for(int i = 0; i<6; i++) {
-        printf("[DBG] try #%d\n", i);
+        printf("[DBG] try #%d at address 0x%x\n", i, 16*BLOCK_SIZE+i*bsize);
 
         //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
         //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
         memcpy(&vsd, dev+16*BLOCK_SIZE+i*bsize, sizeof(vsd));
-
+        
         printf("[DBG] vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
 
 
@@ -186,11 +187,13 @@ int detect_blocksize(int fd, struct udf_disc *disc)
 int main(int argc, char *argv[]) {
     char *path = NULL;
     int fd;
+    FILE *fp;
     int status = 0;
     int blocksize = 0;
     struct udf_disc disc = {0};
     uint8_t *dev;
-    struct stat sb;
+    //struct stat sb;
+    off_t st_size;
     //metadata_err_map_t *seq;
     vds_sequence_t *seq; 
 
@@ -222,15 +225,43 @@ int main(int argc, char *argv[]) {
     }
 
     if ((fd = open(path, flags, 0660)) == -1) {
-        fatal("Error opening %s %s:", path, strerror(errno));
+        fatal("Error opening %s: %s.", path, strerror(errno));
+        exit(16);
+    } 
+    if ((fp = fopen(path, "r")) == NULL) {
+        fatal("Error opening %s: %s.", path, strerror(errno));
         exit(16);
     } 
 
     note("FD: 0x%x\n", fd);
     //blocksize = detect_blocksize(fd, NULL);
 
-    fstat(fd, &sb);
-    dev = (uint8_t *)mmap(NULL, sb.st_size, prot, MAP_SHARED, fd, 0);
+    //stat(path, &sb);
+    if(fseeko(fp, 0 , SEEK_END) != 0) {
+        /* Handle error */
+    } 
+    st_size = ftello(fp);
+    printf("Size: 0x%lx\n", (long)st_size);
+    dev = (uint8_t *)mmap(NULL, st_size, prot, MAP_SHARED, fd, 0);
+    if(dev == MAP_FAILED) {
+        switch(errno) {
+            case EACCES: printf("EACCES\n"); break;
+            case EAGAIN: printf("EAGAIN\n"); break;
+            case EBADF: printf("EBADF\n"); break;
+            case EINVAL: printf("EINVAL\n"); break;
+            case ENFILE: printf("ENFILE\n"); break;
+            case ENODEV: printf("ENODEV\n"); break;
+            case ENOMEM: printf("ENOMEM\n"); break;
+            case EPERM: printf("EPERM\n"); break;
+            case ETXTBSY: printf("ETXTBSY\n"); break;
+            case EOVERFLOW: printf("EOVERFLOW\n"); break;
+            default: printf("EUnknown\n"); break;
+        }
+    
+
+        fatal("Error maping %s: %s.", path, strerror(errno));
+        exit(16);
+    }
 
     // Close FD. It is kept by mmap now.
     close(fd);
@@ -246,16 +277,16 @@ int main(int argc, char *argv[]) {
     if(status < 0) {
         exit(status);
     } else if(status == 1) { //Unclosed or bridged medium 
-        status = get_avdp(dev, &disc, blocksize, sb.st_size, -1); //load AVDP
+        status = get_avdp(dev, &disc, blocksize, st_size, -1); //load AVDP
         source = FIRST_AVDP; // Unclosed medium have only one AVDP and that is saved at first position.
         if(status) {
             err("AVDP is broken. Aborting.\n");
             exit(4);
         }
     } else { //Normal medium
-        seq->anchor[0].error = get_avdp(dev, &disc, blocksize, sb.st_size, FIRST_AVDP); //try load FIRST AVDP
-        seq->anchor[1].error = get_avdp(dev, &disc, blocksize, sb.st_size, SECOND_AVDP); //load AVDP
-        seq->anchor[2].error = get_avdp(dev, &disc, blocksize, sb.st_size, THIRD_AVDP); //load AVDP
+        seq->anchor[0].error = get_avdp(dev, &disc, blocksize, st_size, FIRST_AVDP); //try load FIRST AVDP
+        seq->anchor[1].error = get_avdp(dev, &disc, blocksize, st_size, SECOND_AVDP); //load AVDP
+        seq->anchor[2].error = get_avdp(dev, &disc, blocksize, st_size, THIRD_AVDP); //load AVDP
 
         if(seq->anchor[0].error == 0) {
             source = FIRST_AVDP;
@@ -348,12 +379,12 @@ int main(int argc, char *argv[]) {
         if(fix_avdp) {
             msg("Source: %d, Target1: %d, Target2: %d\n", source, target1, target2);
             if(target1 >= 0) {
-                if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target1) != 0) {
+                if(write_avdp(dev, &disc, blocksize, st_size, source, target1) != 0) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
                 } 
             } 
             if(target2 >= 0) {
-                if(write_avdp(dev, &disc, blocksize, sb.st_size, source, target2) != 0) {
+                if(write_avdp(dev, &disc, blocksize, st_size, source, target2) != 0) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
                 }
             }
