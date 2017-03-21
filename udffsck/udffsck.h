@@ -35,6 +35,17 @@ typedef struct {
     metadata_t lvid; 
 } vds_sequence_t;
 
+// Implementation Use for Logical Volume Integrity Descriptor (ECMA 167r3 TODO, UDF 2.2.6.4)
+struct impUseLVID {
+    regid impID;
+    uint32_t numOfFiles;
+    uint32_t numOfDirs;
+    uint16_t minUDFReadRev;
+    uint16_t minUDFWriteRev;
+    uint16_t maxUDFWriteRev;
+    uint8_t  impUse[0]; 
+} __attribute__ ((packed));
+
 typedef struct {
     uint8_t vrs[3];
  //   uint8_t anchor[3];

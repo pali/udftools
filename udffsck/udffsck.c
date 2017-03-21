@@ -249,6 +249,15 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
     printf("LVID: lenOfImpUse: %d\n",disc->udf_lvid->lengthOfImpUse);
     printf("LVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
     printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
+    printf("LVID: numOfPartitions: %d\n", disc->udf_lvid->numOfPartitions);
+
+    struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
+    uint8_t *impUseArr = (uint8_t *)impUse;
+    printf("LVID: number of files: %d\n", impUse->numOfFiles);
+    printf("LVID: number of dirs:  %d\n", impUse->numOfDirs);
+    printf("LVID: UDF rev: min read:  %04x\n", impUse->minUDFReadRev);
+    printf("               min write: %04x\n", impUse->minUDFWriteRev);
+    printf("               max write: %04x\n", impUse->maxUDFWriteRev);
 
     return 0; 
 }
