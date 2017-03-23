@@ -35,6 +35,16 @@ typedef struct {
     metadata_t lvid; 
 } vds_sequence_t;
 
+struct filesystemStats {
+    uint32_t expNumOfFiles;
+    uint32_t countNumOfFiles;
+    uint32_t expNumOfDirs;
+    uint32_t countNumOfDirs;
+    uint16_t minUDFReadRev;
+    uint16_t minUDFWriteRev;
+    uint16_t maxUDFWriteRev;
+};
+
 // Implementation Use for Logical Volume Integrity Descriptor (ECMA 167r3 TODO, UDF 2.2.6.4)
 struct impUseLVID {
     regid impID;
@@ -69,17 +79,15 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
 
 // Volume descriptor sequence
 int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq);
-int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize);
+int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats);
 // Load all PVD descriptors into disc structure
 //int get_pvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
 
-// Logical Volume Integrity Descriptor
-int get_lvid();
 
 int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq);
 
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn);
-uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn);
+uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats);
 
 uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table);
 int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq, uint8_t interactive, uint8_t autofix); 

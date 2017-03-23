@@ -3,7 +3,7 @@
 #include "utils.h"
 #include "libudffs.h"
 
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn);
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats);
 
 uint8_t calculate_checksum(tag descTag) {
     uint8_t i;
@@ -232,7 +232,7 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
  * @return 0 everything ok
  *         -4 structure is already set
  */
-int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
+int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats) {
     if(disc->udf_lvid != 0) {
         fprintf(stderr, "Structure LVID is already set. Probably error at tag or media\n");
         return -4;
@@ -258,6 +258,14 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize) {
     printf("LVID: UDF rev: min read:  %04x\n", impUse->minUDFReadRev);
     printf("               min write: %04x\n", impUse->minUDFWriteRev);
     printf("               max write: %04x\n", impUse->maxUDFWriteRev);
+
+    
+    stats->expNumOfFiles = impUse->numOfFiles;
+    stats->expNumOfDirs = impUse->numOfDirs;
+    
+    stats->minUDFReadRev = impUse->minUDFReadRev;
+    stats->minUDFWriteRev = impUse->minUDFWriteRev;
+    stats->maxUDFWriteRev = impUse->maxUDFWriteRev;
 
     return 0; 
 }
@@ -332,7 +340,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     return 0;
 }
 
-uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos) {
+uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats) {
     uint32_t flen, padding;
     uint32_t lsnBase = lbnlsn; 
     struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
@@ -358,6 +366,15 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             printf("Filename: %s\n", fid->fileIdent);
         }
 
+        /*
+        if(fid->fileCharacteristics & FID_FILE_CHAR_DIRECTORY) {
+            stats->countNumOfDirs ++;
+            warn("DIR++\n");
+        } else {
+            stats->countNumOfFiles ++;
+        }
+*/
+
         printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
         printf("ROOT ICB: LSN: %d\n", disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase);
 
@@ -369,7 +386,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             printf("ROOT. Not following this one.\n");
         } else {
             printf("ICB to follow.\n");
-            get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase);
+            get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase, stats);
             printf("Return from ICB\n"); 
         }
         printf("Len: %d, padding: %d\n", flen, padding);
@@ -383,7 +400,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     return 0;
 }
 
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn) {
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats) {
     tag descTag;
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
@@ -405,12 +422,12 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
         case TAG_IDENT_SBD:
             printf("SBD found.\n");
             //FIXME Used for examination of used sectors
-            get_file(dev, disc, lbnlsn, lsn+1); 
+            get_file(dev, disc, lbnlsn, lsn+1, stats); 
             break;
         case TAG_IDENT_EAHD:
             printf("EAHD found.\n");
             //FIXME WTF is that?
-            get_file(dev, disc, lbnlsn, lsn+1); 
+            get_file(dev, disc, lbnlsn, lsn+1, stats); 
         case TAG_IDENT_FID:
             fprintf(stderr, "Never should get there.\n");
             exit(-43);
@@ -442,9 +459,11 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     break;  
                 case ICBTAG_FILE_TYPE_DIRECTORY:
                     imp("Filetype: DIR\n");
+                    stats->countNumOfDirs ++;
                     break;  
                 case ICBTAG_FILE_TYPE_REGULAR:
                     imp("Filetype: REGULAR\n");
+                    stats->countNumOfFiles ++;
                     break;  
                 case ICBTAG_FILE_TYPE_BLOCK:
                     imp("Filetype: BLOCK\n");
@@ -523,7 +542,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         err("EAHD mismatch. Expected APP, found %d\n", gf->attrType);
 
                             for(uint32_t pos=0; ; ) {
-                                if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + eahd.appAttrLocation, &pos) != 0) {
+                                if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + eahd.appAttrLocation, &pos, stats) != 0) {
                                     break;
                                 }
                             }
@@ -547,7 +566,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 }*/
                 printf("\n");
                 for(uint32_t pos=0; pos<fe->lengthAllocDescs; ) {
-                    if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs, &pos) != 0) {
+                    if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs, &pos, stats) != 0) {
                         break;
                     }
                 }
@@ -614,7 +633,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         printf("We are not going back to ROOT.\n");
                     } else {
                         printf("ICB to follow.\n");
-                        get_file(dev, disc, lbnlsn, fid->icb.extLocation.logicalBlockNum + lsnBase);
+                        get_file(dev, disc, lbnlsn, fid->icb.extLocation.logicalBlockNum + lsnBase, stats);
                         printf("Return from ICB\n"); 
                     }
                     uint32_t flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
@@ -646,7 +665,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     return 0;
 }
 
-uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn) {
+uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats) {
     struct fileEntry *file;
     struct fileIdentDesc *fid;
     tag descTag;
@@ -668,7 +687,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     printf("ROOT LSN: %d\n", lsn);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
 
-    return get_file(dev, disc, lbnlsn, lsn);
+    return get_file(dev, disc, lbnlsn, lsn, stats);
 }
 
 int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error) {

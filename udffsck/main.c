@@ -196,7 +196,8 @@ int main(int argc, char *argv[]) {
     off_t st_size;
     //metadata_err_map_t *seq;
     vds_sequence_t *seq; 
-
+    struct filesystemStats stats =  {0};
+    
     int source = -1;
 
     parse_args(argc, argv, &path, &blocksize);	
@@ -308,7 +309,7 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
 
 
-    status = get_lvid(dev, &disc, blocksize); //load LVID
+    status = get_lvid(dev, &disc, blocksize, &stats); //load LVID
     if(status) exit(status);
 
     verify_vds(&disc, seq, MAIN_VDS, seq);
@@ -331,7 +332,7 @@ int main(int argc, char *argv[]) {
     status = get_fsd(dev, &disc, blocksize, &lbnlsn);
     //if(status) exit(status);
     note("LBNLSN: %d\n", lbnlsn);
-    status = get_file_structure(dev, &disc, lbnlsn);
+    status = get_file_structure(dev, &disc, lbnlsn, &stats);
     if(status) exit(status);
 #endif
 
@@ -413,6 +414,13 @@ int main(int argc, char *argv[]) {
     }
    
 
+    printf("expected number of files: %d\n", stats.expNumOfFiles);
+    printf("expected number of dirs:  %d\n", stats.expNumOfDirs);
+    printf("counted number of files: %d\n", stats.countNumOfFiles);
+    printf("counted number of dirs:  %d\n", stats.countNumOfDirs);
+    printf("UDF rev: min read:  %04x\n", stats.minUDFReadRev);
+    printf("         min write: %04x\n", stats.minUDFWriteRev);
+    printf("         max write: %04x\n", stats.maxUDFWriteRev);
 
     
     //---------------- Clean up -----------------
