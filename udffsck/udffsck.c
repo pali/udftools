@@ -435,7 +435,12 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             printf("\nAED, LSN: %d\n", lsn);
             break;
         case TAG_IDENT_FE:
+        case TAG_IDENT_EFE:
             fe = (struct fileEntry *)(dev+lbSize*lsn);
+            efe = (struct extendedFileEntry *)fe;
+            if(le16_to_cpu(descTag.tagIdent) == TAG_IDENT_EFE) {
+                printf("[EFE]\n");
+            }
             if(crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs))) {
                 fprintf(stderr, "FE CRC failed.\n");
                 return -3;
@@ -572,7 +577,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 }
             }
             break;  
-        case TAG_IDENT_EFE:
+       /* case TAG_IDENT_EFE:
             fe = 0;
             printf("EFE, LSN: %d\n", lsn);
             efe = (struct extendedFileEntry *)(dev+lbSize*lsn); 
@@ -647,7 +652,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 }
             }
             break;
-
+*/
         default:
             printf("\nIDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
             /*do{
