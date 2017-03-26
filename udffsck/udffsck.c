@@ -17,7 +17,9 @@ uint8_t calculate_checksum(tag descTag) {
 }
 
 int checksum(tag descTag) {
-    return calculate_checksum(descTag) == descTag.tagChecksum;
+    uint8_t checksum =  calculate_checksum(descTag);
+    printf("Calc checksum: 0x%02x Tag checksum: 0x%02x\n", checksum, descTag.tagChecksum);
+    return checksum == descTag.tagChecksum;
 }
 
 int crc(void * restrict desc, uint16_t size) {
@@ -346,8 +348,9 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
 
     if (!checksum(fid->descTag)) {
-        fprintf(stderr, "FID checksum failed.\n");
-        return -4;
+        err("[inspect fid] FID checksum failed.\n");
+       // return -4;
+        warn("DISABLED ERROR RETURN\n");
     }
     if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
         printf("FID found (%d)\n",*pos);
@@ -394,6 +397,13 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         printf("\n");
     } else {
         printf("Ident: %x\n", le16_to_cpu(fid->descTag.tagIdent));
+        uint8_t *fidarray = (uint8_t *)fid;
+        for(int i=0; i<80;) {
+            for(int j=0; j<8; j++, i++) {
+                printf("%02x ", fidarray[i]);
+            }
+            printf("\n");
+        }
         return 1;
     }
 
@@ -408,6 +418,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     uint32_t lbSize = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first 
     uint32_t lsnBase = lbnlsn; 
     uint32_t flen, padding;
+    uint8_t dir = 0;
 
     descTag = *(tag *)(dev+lbSize*lsn);
     if(!checksum(descTag)) {
@@ -436,14 +447,20 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             break;
         case TAG_IDENT_FE:
         case TAG_IDENT_EFE:
+            dir = 0;
             fe = (struct fileEntry *)(dev+lbSize*lsn);
             efe = (struct extendedFileEntry *)fe;
             if(le16_to_cpu(descTag.tagIdent) == TAG_IDENT_EFE) {
-                printf("[EFE]\n");
-            }
-            if(crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs))) {
-                fprintf(stderr, "FE CRC failed.\n");
-                return -3;
+                warn("[EFE]\n");
+                if(crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs))) {
+                    err("FE CRC failed.\n");
+                    return -3;
+                }
+            } else {
+                if(crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs))) {
+                    err("FE CRC failed.\n");
+                    return -3;
+                }
             }
             printf("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
             printf("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, fe->logicalBlocksRecorded);
@@ -465,6 +482,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 case ICBTAG_FILE_TYPE_DIRECTORY:
                     imp("Filetype: DIR\n");
                     stats->countNumOfDirs ++;
+                    dir = 1;
                     break;  
                 case ICBTAG_FILE_TYPE_REGULAR:
                     imp("Filetype: REGULAR\n");
@@ -562,7 +580,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             //TODO is it directory? If is, continue. Otherwise not.
             // We can assume that directory have one or more FID inside.
             // FE have inside long_ad/short_ad.
-            if(fe->lengthAllocDescs >= sizeof(struct fileIdentDesc)) {
+            if(dir) {
                 /*for(int i=0; i<le32_to_cpu(fe->lengthAllocDescs); i+=8) {
                     for(int j=0; j<8; j++)
                         printf("%02x ", fe->allocDescs[i+j]);
