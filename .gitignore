@@ -19,6 +19,7 @@ include/config.h
 include/config.in
 include/stamp-h1
 config.status
+*.in~
 
 # Binaries
 wrudf/wrudf
