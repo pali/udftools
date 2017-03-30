@@ -18,7 +18,7 @@ uint8_t calculate_checksum(tag descTag) {
 
 int checksum(tag descTag) {
     uint8_t checksum =  calculate_checksum(descTag);
-    printf("Calc checksum: 0x%02x Tag checksum: 0x%02x\n", checksum, descTag.tagChecksum);
+    dbg("Calc checksum: 0x%02x Tag checksum: 0x%02x\n", checksum, descTag.tagChecksum);
     return checksum == descTag.tagChecksum;
 }
 
@@ -27,7 +27,7 @@ int crc(void * restrict desc, uint16_t size) {
     tag *descTag = desc;
     uint16_t crc = 0;
     uint16_t calcCrc = udf_crc((uint8_t *)(desc) + offset, size - offset, crc);
-    printf("Calc CRC: 0x%04x, TagCRC: 0x%04x\n", calcCrc, descTag->descCRC);
+    dbg("Calc CRC: 0x%04x, TagCRC: 0x%04x\n", calcCrc, descTag->descCRC);
     return le16_to_cpu(descTag->descCRC) != calcCrc;
 }
 
@@ -63,25 +63,25 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devs
         type = 0; //Save it to FIRST_AVDP positon
     }
 
-    printf("DevSize: %zu\n", devsize);
-    printf("Current position: %lx\n", position);
+    dbg("DevSize: %zu\n", devsize);
+    dbg("Current position: %lx\n", position);
 
     disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
 
     desc_tag = *(tag *)(dev+position);
 
     if(!checksum(desc_tag)) {
-        fprintf(stderr, "Checksum failure at AVDP[%d]\n", type);
+        err("Checksum failure at AVDP[%d]\n", type);
         return E_CHECKSUM;
     } else if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
-        fprintf(stderr, "AVDP not found at 0x%lx\n", position);
+        err("AVDP not found at 0x%lx\n", position);
         return E_WRONGDESC;
     }
 
     memcpy(disc->udf_anchor[type], dev+position, sizeof(struct anchorVolDescPtr));
 
     if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
-        printf("CRC error at AVDP[%d]\n", type);
+        err("CRC error at AVDP[%d]\n", type);
         return E_CRC;
     }
 
@@ -90,7 +90,7 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devs
         return E_POSITION;
     }
 
-    printf("AVDP[%d] successfully loaded.\n", type);
+    msg("AVDP[%d] successfully loaded.\n", type);
     return 0;
 }
 
@@ -119,7 +119,7 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
             position = dev+sectorsize*(disc->udf_anchor[avdp]->reserveVolDescSeqExt.extLocation);
             break;
     }
-    printf("Current position: %lx\n", position-dev);
+    dbg("Current position: %lx\n", position-dev);
 
     // Go thru descriptors until TagIdent is 0 or amout is too big to be real
     while(counter < VDS_STRUCT_AMOUNT) {
@@ -127,7 +127,7 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
         // Read tag
         memcpy(&descTag, position, sizeof(descTag));
 
-        printf("Tag ID: %d\n", descTag.tagIdent);
+        msg("Tag ID: %d\n", descTag.tagIdent);
 
         if(vds == MAIN_VDS) {
             seq->main[counter].tagIdent = descTag.tagIdent;
@@ -143,19 +143,19 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
         switch(le16_to_cpu(descTag.tagIdent)) {
             case TAG_IDENT_PVD:
                 if(disc->udf_pvd[vds] != 0) {
-                    fprintf(stderr, "Structure PVD is already set. Probably error at tag or media\n");
+                    err("Structure PVD is already set. Probably error at tag or media\n");
                     return -4;
                 }
                 disc->udf_pvd[vds] = malloc(sizeof(struct primaryVolDesc)); // Prepare memory
                 memcpy(disc->udf_pvd[vds], position, sizeof(struct primaryVolDesc)); 
-                printf("VolNum: %d\n", disc->udf_pvd[vds]->volDescSeqNum);
-                printf("pVolNum: %d\n", disc->udf_pvd[vds]->primaryVolDescNum);
-                printf("seqNum: %d\n", disc->udf_pvd[vds]->volSeqNum);
-                printf("predLoc: %d\n", disc->udf_pvd[vds]->predecessorVolDescSeqLocation);
+                msg("VolNum: %d\n", disc->udf_pvd[vds]->volDescSeqNum);
+                msg("pVolNum: %d\n", disc->udf_pvd[vds]->primaryVolDescNum);
+                msg("seqNum: %d\n", disc->udf_pvd[vds]->volSeqNum);
+                msg("predLoc: %d\n", disc->udf_pvd[vds]->predecessorVolDescSeqLocation);
                 break;
             case TAG_IDENT_IUVD:
                 if(disc->udf_iuvd[vds] != 0) {
-                    fprintf(stderr, "Structure IUVD is already set. Probably error at tag or media\n");
+                    err("Structure IUVD is already set. Probably error at tag or media\n");
                     return -4;
                 }
                 disc->udf_iuvd[vds] = malloc(sizeof(struct impUseVolDesc)); // Prepare memory
@@ -163,7 +163,7 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
                 break;
             case TAG_IDENT_PD:
                 if(disc->udf_pd[vds] != 0) {
-                    fprintf(stderr, "Structure PD is already set. Probably error at tag or media\n");
+                    err("Structure PD is already set. Probably error at tag or media\n");
                     return -4;
                 }
                 disc->udf_pd[vds] = malloc(sizeof(struct partitionDesc)); // Prepare memory
@@ -171,40 +171,40 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
                 break;
             case TAG_IDENT_LVD:
                 if(disc->udf_lvd[vds] != 0) {
-                    fprintf(stderr, "Structure LVD is already set. Probably error at tag or media\n");
+                    err("Structure LVD is already set. Probably error at tag or media\n");
                     return -4;
                 }
-                printf("LVD size: 0x%lx\n", sizeof(struct logicalVolDesc));
+                dbg("LVD size: 0x%lx\n", sizeof(struct logicalVolDesc));
 
                 struct logicalVolDesc *lvd;
                 lvd = (struct logicalVolDesc *)(position);
 
                 disc->udf_lvd[vds] = malloc(sizeof(struct logicalVolDesc)+lvd->mapTableLength); // Prepare memory
                 memcpy(disc->udf_lvd[vds], position, sizeof(struct logicalVolDesc)+lvd->mapTableLength);
-                printf("NumOfPartitionMaps: %d\n", disc->udf_lvd[vds]->numPartitionMaps);
-                printf("MapTableLength: %d\n", disc->udf_lvd[vds]->mapTableLength);
+                msg("NumOfPartitionMaps: %d\n", disc->udf_lvd[vds]->numPartitionMaps);
+                msg("MapTableLength: %d\n", disc->udf_lvd[vds]->mapTableLength);
                 for(int i=0; i<le32_to_cpu(lvd->mapTableLength); i++) {
-                    printf("[0x%02x] ", disc->udf_lvd[vds]->partitionMaps[i]);
+                    msg("[0x%02x] ", disc->udf_lvd[vds]->partitionMaps[i]);
                 }
-                printf("\n");
+                msg("\n");
                 break;
             case TAG_IDENT_USD:
                 if(disc->udf_usd[vds] != 0) {
-                    fprintf(stderr, "Structure USD is already set. Probably error at tag or media\n");
+                    err("Structure USD is already set. Probably error at tag or media\n");
                     return -4;
                 }
 
                 struct unallocSpaceDesc *usd;
                 usd = (struct unallocSpaceDesc *)(position);
-                printf("VolDescNum: %d\n", usd->volDescSeqNum);
-                printf("NumAllocDesc: %d\n", usd->numAllocDescs);
+                msg("VolDescNum: %d\n", usd->volDescSeqNum);
+                msg("NumAllocDesc: %d\n", usd->numAllocDescs);
 
                 disc->udf_usd[vds] = malloc(sizeof(struct unallocSpaceDesc)+(usd->numAllocDescs)*sizeof(extent_ad)); // Prepare memory
                 memcpy(disc->udf_usd[vds], position, sizeof(struct unallocSpaceDesc)+(usd->numAllocDescs)*sizeof(extent_ad)); 
                 break;
             case TAG_IDENT_TD:
                 if(disc->udf_td[vds] != 0) {
-                    fprintf(stderr, "Structure TD is already set. Probably error at tag or media\n");
+                    err("Structure TD is already set. Probably error at tag or media\n");
                     return -4;
                 }
                 disc->udf_td[vds] = malloc(sizeof(struct terminatingDesc)); // Prepare memory
@@ -216,12 +216,12 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
                 return 0;
             default:
                 // Unkown TAG
-                fprintf(stderr, "Unknown TAG found at %p. Ending.\n", position);
+                fatal("Unknown TAG found at %p. Ending.\n", position);
                 return -3;
         }
 
         position = position + sectorsize;
-        printf("New positon is 0x%lx\n", position-dev);
+        dbg("New positon is 0x%lx\n", position-dev);
     }
     return 0;
 }
@@ -236,30 +236,30 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
  */
 int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats) {
     if(disc->udf_lvid != 0) {
-        fprintf(stderr, "Structure LVID is already set. Probably error at tag or media\n");
+        err("Structure LVID is already set. Probably error at tag or media\n");
         return -4;
     }
     uint32_t loc = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation; //FIXME MAIN_VDS should be verified first
     uint32_t len = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLength; //FIXME same as previous
-    printf("LVID: loc: %d, len: %d\n", loc, len);
+    dbg("LVID: loc: %d, len: %d\n", loc, len);
 
     struct logicalVolIntegrityDesc *lvid;
     lvid = (struct logicalVolIntegrityDesc *)(dev+loc*sectorsize);
 
     disc->udf_lvid = malloc(len);
     memcpy(disc->udf_lvid, dev+loc*sectorsize, len);
-    printf("LVID: lenOfImpUse: %d\n",disc->udf_lvid->lengthOfImpUse);
+    msg("LVID: lenOfImpUse: %d\n",disc->udf_lvid->lengthOfImpUse);
     //printf("LVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
     //printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
-    printf("LVID: numOfPartitions: %d\n", disc->udf_lvid->numOfPartitions);
+    msg("LVID: numOfPartitions: %d\n", disc->udf_lvid->numOfPartitions);
 
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
     uint8_t *impUseArr = (uint8_t *)impUse;
-    printf("LVID: number of files: %d\n", impUse->numOfFiles);
-    printf("LVID: number of dirs:  %d\n", impUse->numOfDirs);
-    printf("LVID: UDF rev: min read:  %04x\n", impUse->minUDFReadRev);
-    printf("               min write: %04x\n", impUse->minUDFWriteRev);
-    printf("               max write: %04x\n", impUse->maxUDFWriteRev);
+    msg("LVID: number of files: %d\n", impUse->numOfFiles);
+    msg("LVID: number of dirs:  %d\n", impUse->numOfDirs);
+    msg("LVID: UDF rev: min read:  %04x\n", impUse->minUDFReadRev);
+    msg("               min write: %04x\n", impUse->minUDFWriteRev);
+    msg("               max write: %04x\n", impUse->maxUDFWriteRev);
 
     
     stats->expNumOfFiles = impUse->numOfFiles;
@@ -269,20 +269,20 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     stats->minUDFWriteRev = impUse->minUDFWriteRev;
     stats->maxUDFWriteRev = impUse->maxUDFWriteRev;
 
-    printf("Logical Volume Contents Use\n");
+    dbg("Logical Volume Contents Use\n");
     for(int i=0; i<32; ) {
         for(int j=0; j<8; j++, i++) {
-            printf("%02x ", disc->udf_lvid->logicalVolContentsUse[i]);
+            note("%02x ", disc->udf_lvid->logicalVolContentsUse[i]);
         }
-        printf("\n");
+        note("\n");
     }
-    printf("Free Space Table\n");
+    dbg("Free Space Table\n");
     for(int i=0; i<disc->udf_lvid->numOfPartitions * 4; i++) {
-            printf("0x%08x, %d\n", disc->udf_lvid->freeSpaceTable[i], disc->udf_lvid->freeSpaceTable[i]);
+            note("0x%08x, %d\n", disc->udf_lvid->freeSpaceTable[i], disc->udf_lvid->freeSpaceTable[i]);
     }
-    printf("Size Table\n");
+    dbg("Size Table\n");
     for(int i=disc->udf_lvid->numOfPartitions * 4; i<disc->udf_lvid->numOfPartitions * 4 * 2; i++) {
-            printf("0x%08x, %d\n", disc->udf_lvid->freeSpaceTable[i],disc->udf_lvid->freeSpaceTable[i]);
+            note("0x%08x, %d\n", disc->udf_lvid->freeSpaceTable[i],disc->udf_lvid->freeSpaceTable[i]);
     }
 
     if(disc->udf_lvid->nextIntegrityExt.extLength > 0) {
@@ -310,7 +310,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     lb_addr filesetblock = lelb_to_cpu(lap->extLocation);
     uint32_t filesetlen = lap->extLength;
 
-    printf("FSD at (%d, p%d)\n", 
+    msg("FSD at (%d, p%d)\n", 
             lap->extLocation.logicalBlockNum,
             lap->extLocation.partitionReferenceNum);
 
@@ -323,23 +323,23 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
         return -1;
     }
 
-    printf("LSN base: %d\n", lsnBase);
+    dbg("LSN base: %d\n", lsnBase);
 
 
     uint32_t lbSize = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME same as above
 
-    printf("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
-    printf("LAP: LSN: %d\n", lsnBase/*+filesetblock.logicalBlockNum*/);
+    dbg("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
+    dbg("LAP: LSN: %d\n", lsnBase/*+filesetblock.logicalBlockNum*/);
 
     disc->udf_fsd = malloc(sizeof(struct fileSetDesc));
     memcpy(disc->udf_fsd, dev+(lsnBase+filesetblock.logicalBlockNum)*lbSize, sizeof(struct fileSetDesc));
 
     if(le16_to_cpu(disc->udf_fsd->descTag.tagIdent) != TAG_IDENT_FSD) {
-        fprintf(stderr, "Error identifiing FSD. Tag ID: 0x%x\n", disc->udf_fsd->descTag.tagIdent);
+        err("Error identifiing FSD. Tag ID: 0x%x\n", disc->udf_fsd->descTag.tagIdent);
         free(disc->udf_fsd);
         return -1;
     }
-    printf("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
+    msg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
 
 
     /*struct spaceBitmapDesc sbd;
@@ -375,20 +375,20 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         warn("DISABLED ERROR RETURN\n");
     }
     if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
-        printf("FID found (%d)\n",*pos);
+        msg("FID found (%d)\n",*pos);
         flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
         padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
 
         if(crc(fid, flen + padding)) {
-            fprintf(stderr, "FID CRC failed.\n");
+            err("FID CRC failed.\n");
             return -5;
         }
-        printf("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
-        printf("FID: FilenameLen: %d\n", fid->lengthFileIdent);
+        msg("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
+        msg("FID: FilenameLen: %d\n", fid->lengthFileIdent);
         if(fid->lengthFileIdent == 0) {
-            printf("ROOT directory\n");
+            msg("ROOT directory\n");
         } else {
-            printf("Filename: %s\n", fid->fileIdent);
+            msg("Filename: %s\n", fid->fileIdent);
         }
 
         /*
@@ -400,31 +400,31 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         }
 */
 
-        printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
-        printf("ROOT ICB: LSN: %d\n", disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase);
+        dbg("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
+        dbg("ROOT ICB: LSN: %d\n", disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase);
 
         if(*pos == 0) {
-            printf("Parent. Not Following this one\n");
+            dbg("Parent. Not Following this one\n");
         }else if(fid->icb.extLocation.logicalBlockNum + lsnBase == lsn) {
-            printf("Self. Not following this one\n");
+            dbg("Self. Not following this one\n");
         } else if(fid->icb.extLocation.logicalBlockNum + lsnBase == disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase) {
-            printf("ROOT. Not following this one.\n");
+            dbg("ROOT. Not following this one.\n");
         } else {
-            printf("ICB to follow.\n");
+            dbg("ICB to follow.\n");
             get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase, stats);
-            printf("Return from ICB\n"); 
+            dbg("Return from ICB\n"); 
         }
-        printf("Len: %d, padding: %d\n", flen, padding);
+        dbg("Len: %d, padding: %d\n", flen, padding);
         *pos = *pos + flen + padding;
-        printf("\n");
+        note("\n");
     } else {
-        printf("Ident: %x\n", le16_to_cpu(fid->descTag.tagIdent));
+        msg("Ident: %x\n", le16_to_cpu(fid->descTag.tagIdent));
         uint8_t *fidarray = (uint8_t *)fid;
         for(int i=0; i<80;) {
             for(int j=0; j<8; j++, i++) {
-                printf("%02x ", fidarray[i]);
+                note("%02x ", fidarray[i]);
             }
-            printf("\n");
+            note("\n");
         }
         return 1;
     }
@@ -444,7 +444,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
     descTag = *(tag *)(dev+lbSize*lsn);
     if(!checksum(descTag)) {
-        fprintf(stderr, "Tag checksum failed. Unable to continue.\n");
+        err("Tag checksum failed. Unable to continue.\n");
         return -2;
     }
     //memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
@@ -453,19 +453,19 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
     switch(le16_to_cpu(descTag.tagIdent)) {
         case TAG_IDENT_SBD:
-            printf("SBD found.\n");
+            dbg("SBD found.\n");
             //FIXME Used for examination of used sectors
             get_file(dev, disc, lbnlsn, lsn+1, stats); 
             break;
         case TAG_IDENT_EAHD:
-            printf("EAHD found.\n");
+            dbg("EAHD found.\n");
             //FIXME WTF is that?
             get_file(dev, disc, lbnlsn, lsn+1, stats); 
         case TAG_IDENT_FID:
-            fprintf(stderr, "Never should get there.\n");
+            fatal("Never should get there.\n");
             exit(-43);
         case TAG_IDENT_AED:
-            printf("\nAED, LSN: %d\n", lsn);
+            dbg("\nAED, LSN: %d\n", lsn);
             break;
         case TAG_IDENT_FE:
         case TAG_IDENT_EFE:
@@ -484,9 +484,9 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     return -3;
                 }
             }
-            printf("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
-            printf("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, fe->logicalBlocksRecorded);
-            printf("LEA %d, LAD %d\n", fe->lengthExtendedAttr, fe->lengthAllocDescs);
+            dbg("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
+            dbg("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, fe->logicalBlocksRecorded);
+            dbg("LEA %d, LAD %d\n", fe->lengthExtendedAttr, fe->lengthAllocDescs);
             
             stats->usedSpace += fe->informationLength + lbSize-fe->informationLength%lbSize;
             warn("Size: %d, BSize: %d\n", fe->informationLength, fe->informationLength + lbSize-fe->informationLength%lbSize);
@@ -542,20 +542,20 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             } 
             
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
-                printf("SHORT\n");
+                dbg("SHORT\n");
                 short_ad *sad = (short_ad *)(fe->allocDescs);
-                printf("ExtLen: %d, ExtLoc: %d\n", sad->extLength/lbSize, sad->extPosition+lsnBase);
+                dbg("ExtLen: %d, ExtLoc: %d\n", sad->extLength/lbSize, sad->extPosition+lsnBase);
                 lsn = lsn + sad->extLength/lbSize;
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG) {
-                printf("LONG\n");
+                dbg("LONG\n");
                 long_ad *lad = (long_ad *)(fe->allocDescs);
-                printf("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
+                dbg("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
                 lsn = lsn + lad->extLength/lbSize;
-                printf("LSN: %d\n", lsn);
+                dbg("LSN: %d\n", lsn);
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_EXTENDED) {
                 err("Extended ICB in FE.\n");
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB) {
-                printf("AD in ICB\n");
+                dbg("AD in ICB\n");
 
                 struct extendedAttrHeaderDesc eahd;
                 struct genericFormat *gf;
@@ -563,29 +563,29 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 struct appUseExtAttr *appAttr;
                 eahd = *(struct extendedAttrHeaderDesc *)(fe->allocDescs);
                 if(eahd.descTag.tagIdent == TAG_IDENT_EAHD) {
-                    printf("impAttrLoc: %d, appAttrLoc: %d\n", eahd.impAttrLocation, eahd.appAttrLocation);
+                    dbg("impAttrLoc: %d, appAttrLoc: %d\n", eahd.impAttrLocation, eahd.appAttrLocation);
                     gf = (struct genericFormat *)(fe->allocDescs + eahd.impAttrLocation);
 
-                    printf("AttrType: %d\n", gf->attrType);
-                    printf("AttrLength: %d\n", gf->attrLength);
+                    dbg("AttrType: %d\n", gf->attrType);
+                    dbg("AttrLength: %d\n", gf->attrLength);
                     if(gf->attrType == EXTATTR_IMP_USE) {
                         impAttr = (struct impUseExtAttr *)gf;
-                        printf("ImpUseLength: %d\n", impAttr->impUseLength);
-                        printf("ImpIdent: Flags: 0x%02x\n", impAttr->impIdent.flags);
-                        printf("ImpIdent: Ident: %s\n", impAttr->impIdent.ident);
-                        printf("ImpIdent: IdentSuffix: "); 
+                        dbg("ImpUseLength: %d\n", impAttr->impUseLength);
+                        dbg("ImpIdent: Flags: 0x%02x\n", impAttr->impIdent.flags);
+                        dbg("ImpIdent: Ident: %s\n", impAttr->impIdent.ident);
+                        dbg("ImpIdent: IdentSuffix: "); 
                         for(int k=0; k<8; k++) {
-                            printf("0x%02x ", impAttr->impIdent.identSuffix[k]);
+                            note("0x%02x ", impAttr->impIdent.identSuffix[k]);
                         }
-                        printf("\n");
+                        note("\n");
                     } else {
                         err("EAHD mismatch. Expected IMP, found %d\n", gf->attrType);
                     }
 
                     gf = (struct genericFormat *)(fe->allocDescs + eahd.appAttrLocation);
 
-                    printf("AttrType: %d\n", gf->attrType);
-                    printf("AttrLength: %d\n", gf->attrLength);
+                    dbg("AttrType: %d\n", gf->attrType);
+                    dbg("AttrLength: %d\n", gf->attrLength);
                     if(gf->attrType == EXTATTR_APP_USE) {
                         appAttr = (struct appUseExtAttr *)gf;
                     } else {
@@ -600,7 +600,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 }
 
             } else {
-                printf("ICB TAG->flags: 0x%02x\n", fe->icbTag.flags);
+                dbg("ICB TAG->flags: 0x%02x\n", fe->icbTag.flags);
             }
 
 
@@ -614,7 +614,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
                     printf("\n");
                 }*/
-                printf("\n");
+                //printf("\n");
                 for(uint32_t pos=0; pos<fe->lengthAllocDescs; ) {
                     if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs, &pos, stats) != 0) {
                         break;
@@ -699,7 +699,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             break;
 */
         default:
-            printf("\nIDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
+            dbg("\nIDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
             /*do{
               ptLength = *(uint8_t *)(dev+lbn*blocksize+pos);
               extLoc = *(uint32_t *)(dev+lbn*blocksize+2+pos);
@@ -734,7 +734,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     //lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
     //read(fd, file, sizeof(struct fileEntry));
     lsn = icbloc.logicalBlockNum+lsnBase;
-    printf("ROOT LSN: %d\n", lsn);
+    dbg("ROOT LSN: %d\n", lsn);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
 
     return get_file(dev, disc, lbnlsn, lsn, stats);
@@ -779,94 +779,94 @@ int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_s
     uint16_t offset = sizeof(tag);
 
     if(!checksum(disc->udf_pvd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at PVD[%d]\n", vds);
+        err("Checksum failure at PVD[%d]\n", vds);
         //map->pvd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_PVD, vds, E_CHECKSUM);
     }   
     if(!checksum(disc->udf_lvd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at LVD[%d]\n", vds);
+        err("Checksum failure at LVD[%d]\n", vds);
         //map->lvd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_LVD, vds, E_CHECKSUM);
     }   
     if(!checksum(disc->udf_pd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at PD[%d]\n", vds);
+        err("Checksum failure at PD[%d]\n", vds);
         //map->pd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_PD, vds, E_CHECKSUM);
     }   
     if(!checksum(disc->udf_usd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at USD[%d]\n", vds);
+        err("Checksum failure at USD[%d]\n", vds);
         //map->usd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_USD, vds, E_CHECKSUM);
     }   
     if(!checksum(disc->udf_iuvd[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at IUVD[%d]\n", vds);
+        err("Checksum failure at IUVD[%d]\n", vds);
         //map->iuvd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_IUVD, vds, E_CHECKSUM);
     }   
     if(!checksum(disc->udf_td[vds]->descTag)) {
-        fprintf(stderr, "Checksum failure at TD[%d]\n", vds);
+        err("Checksum failure at TD[%d]\n", vds);
         //map->td[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_TD, vds, E_CHECKSUM);
     }
 
     if(check_position(disc->udf_pvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_PVD, vds))) {
-        fprintf(stderr, "Position failure at PVD[%d]\n", vds);
+        err("Position failure at PVD[%d]\n", vds);
         //map->pvd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_PVD, vds, E_POSITION);
     }   
     if(check_position(disc->udf_lvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_LVD, vds))) {
-        fprintf(stderr, "Position failure at LVD[%d]\n", vds);
+        err("Position failure at LVD[%d]\n", vds);
         //map->lvd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_LVD, vds, E_POSITION);
     }   
     if(check_position(disc->udf_pd[vds]->descTag, get_tag_location(seq, TAG_IDENT_PD, vds))) {
-        fprintf(stderr, "Position failure at PD[%d]\n", vds);
+        err("Position failure at PD[%d]\n", vds);
         //map->pd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_PD, vds, E_POSITION);
     }   
     if(check_position(disc->udf_usd[vds]->descTag, get_tag_location(seq, TAG_IDENT_USD, vds))) {
-        fprintf(stderr, "Position failure at USD[%d]\n", vds);
+        err("Position failure at USD[%d]\n", vds);
         //map->usd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_USD, vds, E_POSITION);
     }   
     if(check_position(disc->udf_iuvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_IUVD, vds))) {
-        fprintf(stderr, "Position failure at IUVD[%d]\n", vds);
+        err("Position failure at IUVD[%d]\n", vds);
         //map->iuvd[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_IUVD, vds, E_POSITION);
     }   
     if(check_position(disc->udf_td[vds]->descTag, get_tag_location(seq, TAG_IDENT_TD, vds))) {
-        fprintf(stderr, "Position failure at TD[%d]\n", vds);
+        err("Position failure at TD[%d]\n", vds);
         //map->td[vds] |= E_CHECKSUM;
         append_error(seq, TAG_IDENT_TD, vds, E_POSITION);
     }
 
     if(crc(disc->udf_pvd[vds], sizeof(struct primaryVolDesc))) {
-        printf("CRC error at PVD[%d]\n", vds);
+        err("CRC error at PVD[%d]\n", vds);
         //map->pvd[vds] |= E_CRC;
         append_error(seq, TAG_IDENT_PVD, vds, E_CRC);
     }
     if(crc(disc->udf_lvd[vds], sizeof(struct logicalVolDesc)+disc->udf_lvd[vds]->mapTableLength)) {
-        printf("CRC error at LVD[%d]\n", vds);
+        err("CRC error at LVD[%d]\n", vds);
         //map->lvd[vds] |= E_CRC;
         append_error(seq, TAG_IDENT_LVD, vds, E_CRC);
     }
     if(crc(disc->udf_pd[vds], sizeof(struct partitionDesc))) {
-        printf("CRC error at PD[%d]\n", vds);
+        err("CRC error at PD[%d]\n", vds);
         //map->pd[vds] |= E_CRC;
         append_error(seq, TAG_IDENT_PD, vds, E_CRC);
     }
     if(crc(disc->udf_usd[vds], sizeof(struct unallocSpaceDesc)+(disc->udf_usd[vds]->numAllocDescs)*sizeof(extent_ad))) {
-        printf("CRC error at USD[%d]\n", vds);
+        err("CRC error at USD[%d]\n", vds);
         //map->usd[vds] |= E_CRC;
         append_error(seq, TAG_IDENT_USD, vds, E_CRC);
     }
     if(crc(disc->udf_iuvd[vds], sizeof(struct impUseVolDesc))) {
-        printf("CRC error at IUVD[%d]\n", vds);
+        err("CRC error at IUVD[%d]\n", vds);
         //map->iuvd[vds] |= E_CRC;
         append_error(seq, TAG_IDENT_IUVD, vds, E_CRC);
     }
     if(crc(disc->udf_td[vds], sizeof(struct terminatingDesc))) {
-        printf("CRC error at TD[%d]\n", vds);
+        err("CRC error at TD[%d]\n", vds);
         //map->td[vds] |= E_CRC;
         append_error(seq, TAG_IDENT_TD, vds, E_CRC);
     }
@@ -927,8 +927,8 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
         type = FIRST_AVDP; //Save it to FIRST_AVDP positon
     }
 
-    printf("DevSize: %zu\n", devsize);
-    printf("Current position: %lx\n", targetPosition);
+    dbg("DevSize: %zu\n", devsize);
+    dbg("Current position: %lx\n", targetPosition);
 
     //uint8_t * ptr = memcpy(dev+position, disc->udf_anchor[source], sizeof(struct anchorVolDescPtr)); 
     //printf("ptr: %p\n", ptr);
@@ -941,21 +941,21 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
     desc_tag = *(tag *)(dev+targetPosition);
 
     if(!checksum(desc_tag)) {
-        fprintf(stderr, "Checksum failure at AVDP[%d]\n", type);
+        err("Checksum failure at AVDP[%d]\n", type);
         return -2;
     } else if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
-        fprintf(stderr, "AVDP not found at 0x%lx\n", targetPosition);
+        err("AVDP not found at 0x%lx\n", targetPosition);
         return -4;
     }
 
     memcpy(disc->udf_anchor[type], dev+targetPosition, sizeof(struct anchorVolDescPtr));
 
     if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
-        printf("CRC error at AVDP[%d]\n", type);
+        err("CRC error at AVDP[%d]\n", type);
         return -3;
     }
 
-    printf("AVDP[%d] successfully written.\n", type);
+    msg("AVDP[%d] successfully written.\n", type);
     return 0;
 }
 
@@ -1035,7 +1035,7 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
             }
             fix = 0;
         } else {
-            printf("[%d] %s is fine. No fixing needed.\n", i, descriptor_name(seq->main[i].tagIdent));
+            msg("[%d] %s is fine. No fixing needed.\n", i, descriptor_name(seq->main[i].tagIdent));
         }
     }
 

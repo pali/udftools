@@ -25,13 +25,14 @@
 #define _OPTIONS_H
 
 #include <getopt.h>
+#include "utils.h"
 
 void usage(void);
 void parse_args(int, char *[], char **path, int *blocksize/*, struct cdrw_disc *, char **/);
 
-extern int verbose;
 extern int interactive;
 extern int autofix;
+extern verbosity_e verbosity;
 
 /*
  * Command line option token values.

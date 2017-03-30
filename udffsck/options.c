@@ -27,7 +27,7 @@
 
 #include "libudffs.h"
 #include "options.h"
-
+#include "utils.h"
 /*
    struct option long_options[] = {
    { "help", no_argument, NULL, OPT_HELP },
@@ -36,7 +36,7 @@
    };
    */
 
-int verbose = 0;
+verbosity_e verbose = NONE;
 int interactive = 0;
 int autofix = 0;
 
@@ -115,8 +115,10 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
                 break;
 
             case 'v':
-                printf("Verbose output enabled\n");
-                verbose = 1;
+                verbosity ++;
+                if(verbosity > DBG)
+                    verbosity = DBG;
+                printf("Verbosity increased to %s.\n", verbosity_level_str(verbosity));
                 break;
 
             case 'h':

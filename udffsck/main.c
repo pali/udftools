@@ -36,9 +36,9 @@
 #include <ecma_119.h>
 #include <libudffs.h>
 
+#include "utils.h"
 #include "options.h"
 #include "udffsck.h"
-#include "utils.h"
 
 //#define PVD 0x10
 
@@ -59,27 +59,27 @@ int is_udf(uint8_t *dev, uint32_t sectorsize) {
     uint32_t bsize = sectorsize>BLOCK_SIZE ? sectorsize : BLOCK_SIZE; //It is possible to have free sectors between descriptors, but there can't be more than one descriptor in sector. Since there is requirement to comply with 2kB sectors, this is only way.   
 
     for(int i = 0; i<6; i++) {
-        printf("[DBG] try #%d at address 0x%x\n", i, 16*BLOCK_SIZE+i*bsize);
+        dbg("try #%d at address 0x%x\n", i, 16*BLOCK_SIZE+i*bsize);
 
         //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
         //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
         memcpy(&vsd, dev+16*BLOCK_SIZE+i*bsize, sizeof(vsd));
         
-        printf("[DBG] vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
+        dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
 
 
         if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BEA01, 5)) {
             //It's Extended area descriptor, so it might be UDF, check next sector
             memcpy(&bea, &vsd, sizeof(bea)); // store it for later 
         } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BOOT2, 5)) {
-            fprintf(stderr, "BOOT2 found, unsuported for now.\n");
+            err("BOOT2 found, unsuported for now.\n");
             return(-1);
         } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CD001, 5)) { 
             //CD001 means there is ISO9660, we try search for UDF at sector 18
             //TODO do check for other parameters here
             //udf_lseek64(fp, BLOCK_SIZE, SEEK_CUR);
         } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CDW02, 5)) {
-            fprintf(stderr, "CDW02 found, unsuported for now.\n");
+            err("CDW02 found, unsuported for now.\n");
             return(-1);
         } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR01, 5)) {
             memcpy(&nsr, &vsd, sizeof(nsr));
@@ -92,17 +92,17 @@ int is_udf(uint8_t *dev, uint32_t sectorsize) {
             memcpy(&tea, &vsd, sizeof(tea));
             break;
         } else if(vsd.stdIdent[0] == '\0') {
-            fprintf(stderr, "Giving up VRS, maybe unclosed or bridged disc.\n");
+            err("Giving up VRS, maybe unclosed or bridged disc.\n");
             return 1;
         } else {
-            fprintf(stderr, "Unknown identifier: %s. Exiting\n", vsd.stdIdent);
+            err("Unknown identifier: %s. Exiting\n", vsd.stdIdent);
             return -1;
         }  
     }
 
-    printf("bea: type:%d, id:%s, v:%d\n", bea.structType, bea.stdIdent, bea.structVersion);
-    printf("nsr: type:%d, id:%s, v:%d\n", nsr.structType, nsr.stdIdent, nsr.structVersion);
-    printf("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
+    dbg("bea: type:%d, id:%s, v:%d\n", bea.structType, bea.stdIdent, bea.structVersion);
+    dbg("nsr: type:%d, id:%s, v:%d\n", nsr.structType, nsr.stdIdent, nsr.structVersion);
+    dbg("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
 
     return 0;
 }
@@ -126,7 +126,7 @@ int detect_blocksize(int fd, struct udf_disc *disc)
     struct stat buf;
 
 
-    printf("detect_blocksize\n");
+    dbg("detect_blocksize\n");
 
 #ifdef BLKGETSIZE64
     if (ioctl(fd, BLKGETSIZE64, &size64) >= 0)
@@ -149,8 +149,8 @@ int detect_blocksize(int fd, struct udf_disc *disc)
 #ifdef BLKSSZGET
             if (ioctl(fd, BLKSSZGET, &size) != 0)
                 size=size;
-    printf("Error: %s\n", strerror(errno));
-    printf("Block size: %d\n", size);
+    err("Error: %s\n", strerror(errno));
+    dbg("Block size: %d\n", size);
     /*
        disc->blocksize = size;
        for (bs=512,disc->blocksize_bits=9; disc->blocksize_bits<13; disc->blocksize_bits++,bs<<=1)
@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
 
     parse_args(argc, argv, &path, &blocksize);	
 
-    note("Verbose: %d, Autofix: %d, Interactive: %d\n", verbose, autofix, interactive);
+    note("Verbose: %d, Autofix: %d, Interactive: %d\n", verbosity, autofix, interactive);
 
     if(strlen(path) == 0 || path == NULL) {
         err("No file given. Exiting.\n");
@@ -237,21 +237,21 @@ int main(int argc, char *argv[]) {
         /* Handle error */
     } 
     st_size = ftello(fp);
-    printf("Size: 0x%lx\n", (long)st_size);
+    dbg("Size: 0x%lx\n", (long)st_size);
     dev = (uint8_t *)mmap(NULL, st_size, prot, MAP_SHARED, fd, 0);
     if(dev == MAP_FAILED) {
         switch(errno) {
-            case EACCES: printf("EACCES\n"); break;
-            case EAGAIN: printf("EAGAIN\n"); break;
-            case EBADF: printf("EBADF\n"); break;
-            case EINVAL: printf("EINVAL\n"); break;
-            case ENFILE: printf("ENFILE\n"); break;
-            case ENODEV: printf("ENODEV\n"); break;
-            case ENOMEM: printf("ENOMEM\n"); break;
-            case EPERM: printf("EPERM\n"); break;
-            case ETXTBSY: printf("ETXTBSY\n"); break;
-            case EOVERFLOW: printf("EOVERFLOW\n"); break;
-            default: printf("EUnknown\n"); break;
+            case EACCES: dbg("EACCES\n"); break;
+            case EAGAIN: dbg("EAGAIN\n"); break;
+            case EBADF: dbg("EBADF\n"); break;
+            case EINVAL: dbg("EINVAL\n"); break;
+            case ENFILE: dbg("ENFILE\n"); break;
+            case ENODEV: dbg("ENODEV\n"); break;
+            case ENOMEM: dbg("ENOMEM\n"); break;
+            case EPERM: dbg("EPERM\n"); break;
+            case ETXTBSY: dbg("ETXTBSY\n"); break;
+            case EOVERFLOW: dbg("EOVERFLOW\n"); break;
+            default: dbg("EUnknown\n"); break;
         }
     
 
@@ -342,13 +342,13 @@ int main(int argc, char *argv[]) {
     if(status) exit(status);
 #endif
 
-    printf("USD Alloc Descs\n");
+    dbg("USD Alloc Descs\n");
     extent_ad *usdext;
     uint8_t *usdarr;
     for(int i=0; i<disc.udf_usd[0]->numAllocDescs; i++) {
         usdext = &disc.udf_usd[0]->allocDescs[i];
-        printf("Len: %d, Loc: 0x%x\n",usdext->extLength, usdext->extLocation);
-        printf("LSN loc: 0x%x\n", lbnlsn+usdext->extLocation);
+        dbg("Len: %d, Loc: 0x%x\n",usdext->extLength, usdext->extLocation);
+        dbg("LSN loc: 0x%x\n", lbnlsn+usdext->extLocation);
         usdarr = (dev+(lbnlsn + usdext->extLocation)*blocksize);
         /*for(int j=0; j<usdext->extLength; ) {
             for(int k=0; k<2*8; k++,j++) {
@@ -358,12 +358,12 @@ int main(int argc, char *argv[]) {
         }*/
     }
 
-    printf("PD PartitionsContentsUse\n");
+    dbg("PD PartitionsContentsUse\n");
     for(int i=0; i<128; ) {
         for(int j=0; j<8; j++, i++) {
-            printf("%02x ", disc.udf_pd[0]->partitionContentsUse[i]);
+            note("%02x ", disc.udf_pd[0]->partitionContentsUse[i]);
         }
-        printf("\n");
+        note("\n");
     }
 
     //---------- Corrections --------------
@@ -438,14 +438,14 @@ int main(int argc, char *argv[]) {
     }
    
 
-    printf("expected number of files: %d\n", stats.expNumOfFiles);
-    printf("expected number of dirs:  %d\n", stats.expNumOfDirs);
-    printf("counted number of files: %d\n", stats.countNumOfFiles);
-    printf("counted number of dirs:  %d\n", stats.countNumOfDirs);
-    printf("UDF rev: min read:  %04x\n", stats.minUDFReadRev);
-    printf("         min write: %04x\n", stats.minUDFWriteRev);
-    printf("         max write: %04x\n", stats.maxUDFWriteRev);
-    printf("Used Space: %lu (%lu)\n\n", stats.usedSpace, stats.usedSpace/blocksize);
+    msg("expected number of files: %d\n", stats.expNumOfFiles);
+    msg("expected number of dirs:  %d\n", stats.expNumOfDirs);
+    msg("counted number of files: %d\n", stats.countNumOfFiles);
+    msg("counted number of dirs:  %d\n", stats.countNumOfDirs);
+    msg("UDF rev: min read:  %04x\n", stats.minUDFReadRev);
+    msg("         min write: %04x\n", stats.minUDFWriteRev);
+    msg("         max write: %04x\n", stats.maxUDFWriteRev);
+    msg("Used Space: %lu (%lu)\n\n", stats.usedSpace, stats.usedSpace/blocksize);
     
     //---------------- Clean up -----------------
 

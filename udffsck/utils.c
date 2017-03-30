@@ -23,6 +23,8 @@ typedef enum {
     debug
 } message_type;
 
+verbosity_e verbosity;
+
 int64_t udf_lseek64(int fd, int64_t offset, int whence) {
 #if defined(HAVE_LSEEK64)
 	return lseek64(fd, offset, whence);
@@ -35,115 +37,115 @@ int64_t udf_lseek64(int fd, int64_t offset, int whence) {
 
 
 void read_tag(tag id) {
-    printf("\tIdentification Tag\n"
+    msg("\tIdentification Tag\n"
            "\t==================\n");
-    printf("\tID: %d (", id.tagIdent);
+    msg("\tID: %d (", id.tagIdent);
     switch(id.tagIdent) {
         case TAG_IDENT_PVD:
-            printf("PVD");
+            msg("PVD");
             break;
         case TAG_IDENT_AVDP:
-            printf("AVDP");
+            msg("AVDP");
             break;
         case TAG_IDENT_VDP:
-            printf("VDP");
+            msg("VDP");
             break;
         case TAG_IDENT_IUVD:
-            printf("IUVD");
+            msg("IUVD");
             break;
         case TAG_IDENT_PD:
-            printf("PD");
+            msg("PD");
             break;
         case TAG_IDENT_LVD:
-            printf("LVD");
+            msg("LVD");
             break;
         case TAG_IDENT_USD:
-            printf("USD");
+            msg("USD");
             break;
         case TAG_IDENT_TD:
-            printf("TD");
+            msg("TD");
             break;    
         case TAG_IDENT_LVID:
-            printf("LVID");
+            msg("LVID");
             break;
     }
-    printf(")\n");
-    printf("\tVersion: %d\n", id.descVersion);
-    printf("\tChecksum: 0x%x\n", id.tagChecksum);
-    printf("\tSerial Number: 0x%x\n", id.tagSerialNum);
-    printf("\tDescriptor CRC: 0x%x, Length: %d\n", id.descCRC, id.descCRCLength);
-    printf("\tTag Location: 0x%x\n", id.tagLocation);
+    msg(")\n");
+    msg("\tVersion: %d\n", id.descVersion);
+    msg("\tChecksum: 0x%x\n", id.tagChecksum);
+    msg("\tSerial Number: 0x%x\n", id.tagSerialNum);
+    msg("\tDescriptor CRC: 0x%x, Length: %d\n", id.descCRC, id.descCRCLength);
+    msg("\tTag Location: 0x%x\n", id.tagLocation);
 }
 
 int print_disc(struct udf_disc *disc) {
-    printf("UDF Metadata Overview\n"
+    msg("UDF Metadata Overview\n"
            "=====================\n");
-    printf("UDF revision: %d\n", disc->udf_rev);
-    printf("Disc blocksize: %d\n", disc->blocksize);
-    printf("Disc blocksize bits: %d\n", disc->blocksize_bits);
-    printf("Flags: %X\n\n", disc->flags);
+    msg("UDF revision: %d\n", disc->udf_rev);
+    msg("Disc blocksize: %d\n", disc->blocksize);
+    msg("Disc blocksize bits: %d\n", disc->blocksize_bits);
+    msg("Flags: %X\n\n", disc->flags);
 
 
-    printf("AVDP\n"
-           "----\n");
+    msg("AVDP\n"
+        "----\n");
     for(int i=0; i<3; i++) {
-        printf("[%d]\n", i);
+        msg("[%d]\n", i);
         if(disc->udf_anchor[i] != 0) {
             read_tag(disc->udf_anchor[i]->descTag);
         }
     }
     
-    printf("PVD\n"
-           "---\n");
+    msg("PVD\n"
+        "---\n");
     for(int i=0; i<2; i++) {
-        printf("[%d]\n", i);
+        msg("[%d]\n", i);
         if(disc->udf_pvd[i] != 0) {
             read_tag(disc->udf_pvd[i]->descTag);
         }
     }
 
-    printf("LVD\n"
-           "---\n");
+    msg("LVD\n"
+        "---\n");
     for(int i=0; i<2; i++) {
-        printf("[%d]\n", i);
+        msg("[%d]\n", i);
         if(disc->udf_lvd[i] != 0) {
             read_tag(disc->udf_lvd[i]->descTag);
-            printf("\tPartition Maps: %d\n",disc->udf_lvd[i]->partitionMaps[0]);
+            msg("\tPartition Maps: %d\n",disc->udf_lvd[i]->partitionMaps[0]);
         }
     }
 
-    printf("PD\n"
-           "--\n");
+    msg("PD\n"
+        "--\n");
     for(int i=0; i<2; i++) {
-        printf("[%d]\n", i);
+        msg("[%d]\n", i);
         if(disc->udf_pd[i] != 0) {
             read_tag(disc->udf_pd[i]->descTag);
         }
     }
 
-    printf("USD\n"
-           "---\n");
+    msg("USD\n"
+        "---\n");
     for(int i=0; i<2; i++) {
-        printf("[%d]\n", i);
+        msg("[%d]\n", i);
         if(disc->udf_usd[i] != 0) {
             read_tag(disc->udf_usd[i]->descTag);
-            printf("\tNumOfAllocDescs: %d\n", disc->udf_usd[i]->numAllocDescs);
+            msg("\tNumOfAllocDescs: %d\n", disc->udf_usd[i]->numAllocDescs);
         }
     }
 
-    printf("IUVD\n"
-           "----\n");
+    msg("IUVD\n"
+        "----\n");
     for(int i=0; i<2; i++) {
-        printf("[%d]\n", i);
+        msg("[%d]\n", i);
         if(disc->udf_iuvd[i] != 0) {
             read_tag(disc->udf_iuvd[i]->descTag);
         }
     }
 
-    printf("TD\n"
-           "--\n");
+    msg("TD\n"
+        "--\n");
     for(int i=0; i<2; i++) {
-        printf("[%d]\n", i);
+        msg("[%d]\n", i);
         if(disc->udf_td[i] != 0) {
             read_tag(disc->udf_td[i]->descTag);
         }
@@ -203,49 +205,61 @@ void logger(message_type type, const char *format, va_list arg) {
 	char *prefix;
 	char *color;
     FILE *stream;
+    verbosity_e verblvl;  
 
 	switch(type) {
 		case debug:
 			prefix = "DBG";
 			color = "";
             stream = stdout;
+            verblvl = DBG;
 			break;
 		case message:
-			prefix = "MSG";
+			prefix = 0;
 			color = "";
             stream = stdout;
+            verblvl = MSG;
 			break;
 		case important:
-			prefix = "MSG";
+			prefix = 0;
 			color = ANSI_COLOR_GREEN;
             stream = stdout;
+            verblvl = MSG;
 			break;
 		case warning:
 			prefix = "WARN";
 			color = ANSI_COLOR_YELLOW;
             stream = stdout;
+            verblvl = WARN;
 			break;
 		case error:
 			prefix = "ERROR";
 			color = ANSI_COLOR_RED;
             stream = stderr;
+            verblvl = NONE;
 			break;
 		case faterr:
 			prefix = "FATAL";
 			color = ANSI_COLOR_RED;
             stream = stderr;
+            verblvl = NONE;
 			break;
 		default:
 			prefix = 0;
 			color = "";
             stream = stderr;
+            verblvl = DBG;
 			break;
 	}
 
-	if(prefix > 0)
-		fprintf(stream, "%s[%s] ", color, prefix);
-	vfprintf (stream, format, arg);
-	fprintf(stream, ANSI_COLOR_RESET EOL);
+    if(verbosity >= verblvl) {
+        if(prefix > 0)
+            fprintf(stream, "%s[%s] ", color, prefix);
+        else
+            fprintf(stream, "%s", color);
+        vfprintf (stream, format, arg);
+        fprintf(stream, ANSI_COLOR_RESET EOL);
+    }
 }
 
 void dbg(const char *format, ...) {
@@ -297,11 +311,32 @@ void fatal(const char *format, ...) {
 	va_end (arg);
 }
 
+char * verbosity_level_str(verbosity_e lvl) {
+    
+/*typedef enum {
+    NONE=0,
+    WARN,
+    MSG,
+    DBG
+} verbosity_e;*/
+    switch(lvl) {
+        case NONE:
+            return "NONE";
+        case WARN:
+            return "WARNING";
+        case MSG:
+            return "MESSAGE";
+        case DBG:
+            return "DEBUG";
+        default: 
+            return "UNKNOWN";
+    }
+}
 
 void print_metadata_sequence(vds_sequence_t *seq) {
-    printf("Main             Reserve\n");
-    printf("ident | Errors | ident | Errors \n");     
+    msg("Main             Reserve\n");
+    msg("ident | Errors | ident | Errors \n");     
     for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
-        printf("%5d |   0x%02x | %5d |   0x%02x \n", seq->main[i].tagIdent, seq->main[i].error, seq->reserve[i].tagIdent, seq->reserve[i].error);
+        msg("%5d |   0x%02x | %5d |   0x%02x \n", seq->main[i].tagIdent, seq->main[i].error, seq->reserve[i].tagIdent, seq->reserve[i].error);
     }
 }
