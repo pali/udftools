@@ -318,6 +318,7 @@ int main(int argc, char *argv[]) {
     print_disc(&disc);
 #endif
 
+
     // SBD is not necessarily present, decide how to select
     // SBD with EFE are seen at r2.6 implementation
 #ifdef SBD_PRESENT //FIXME Unfinished
@@ -340,6 +341,30 @@ int main(int argc, char *argv[]) {
     status = get_path_table(dev, blocksize, table);
     if(status) exit(status);
 #endif
+
+    printf("USD Alloc Descs\n");
+    extent_ad *usdext;
+    uint8_t *usdarr;
+    for(int i=0; i<disc.udf_usd[0]->numAllocDescs; i++) {
+        usdext = &disc.udf_usd[0]->allocDescs[i];
+        printf("Len: %d, Loc: 0x%x\n",usdext->extLength, usdext->extLocation);
+        printf("LSN loc: 0x%x\n", lbnlsn+usdext->extLocation);
+        usdarr = (dev+(lbnlsn + usdext->extLocation)*blocksize);
+        /*for(int j=0; j<usdext->extLength; ) {
+            for(int k=0; k<2*8; k++,j++) {
+                printf("%02x ", usdarr[j]);
+            }
+            printf("\n");
+        }*/
+    }
+
+    printf("PD PartitionsContentsUse\n");
+    for(int i=0; i<128; ) {
+        for(int j=0; j<8; j++, i++) {
+            printf("%02x ", disc.udf_pd[0]->partitionContentsUse[i]);
+        }
+        printf("\n");
+    }
 
     //---------- Corrections --------------
 
@@ -420,7 +445,7 @@ int main(int argc, char *argv[]) {
     printf("UDF rev: min read:  %04x\n", stats.minUDFReadRev);
     printf("         min write: %04x\n", stats.minUDFWriteRev);
     printf("         max write: %04x\n", stats.maxUDFWriteRev);
-
+    printf("Used Space: %lu (%lu)\n\n", stats.usedSpace, stats.usedSpace/blocksize);
     
     //---------------- Clean up -----------------
 

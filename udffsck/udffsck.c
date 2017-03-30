@@ -249,8 +249,8 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     disc->udf_lvid = malloc(len);
     memcpy(disc->udf_lvid, dev+loc*sectorsize, len);
     printf("LVID: lenOfImpUse: %d\n",disc->udf_lvid->lengthOfImpUse);
-    printf("LVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
-    printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
+    //printf("LVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
+    //printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
     printf("LVID: numOfPartitions: %d\n", disc->udf_lvid->numOfPartitions);
 
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
@@ -268,6 +268,28 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     stats->minUDFReadRev = impUse->minUDFReadRev;
     stats->minUDFWriteRev = impUse->minUDFWriteRev;
     stats->maxUDFWriteRev = impUse->maxUDFWriteRev;
+
+    printf("Logical Volume Contents Use\n");
+    for(int i=0; i<32; ) {
+        for(int j=0; j<8; j++, i++) {
+            printf("%02x ", disc->udf_lvid->logicalVolContentsUse[i]);
+        }
+        printf("\n");
+    }
+    printf("Free Space Table\n");
+    for(int i=0; i<disc->udf_lvid->numOfPartitions * 4; i++) {
+            printf("0x%08x, %d\n", disc->udf_lvid->freeSpaceTable[i], disc->udf_lvid->freeSpaceTable[i]);
+    }
+    printf("Size Table\n");
+    for(int i=disc->udf_lvid->numOfPartitions * 4; i<disc->udf_lvid->numOfPartitions * 4 * 2; i++) {
+            printf("0x%08x, %d\n", disc->udf_lvid->freeSpaceTable[i],disc->udf_lvid->freeSpaceTable[i]);
+    }
+
+    if(disc->udf_lvid->nextIntegrityExt.extLength > 0) {
+        msg("Next integrity extent found.\n");
+    } else {
+        msg("No other integrity extents are here.\n");
+    }
 
     return 0; 
 }
@@ -466,6 +488,11 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             printf("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, fe->logicalBlocksRecorded);
             printf("LEA %d, LAD %d\n", fe->lengthExtendedAttr, fe->lengthAllocDescs);
             
+            stats->usedSpace += fe->informationLength + lbSize-fe->informationLength%lbSize;
+            warn("Size: %d, BSize: %d\n", fe->informationLength, fe->informationLength + lbSize-fe->informationLength%lbSize);
+            stats->usedSpace += lbSize;
+
+
             switch(fe->icbTag.fileType) {
                 case ICBTAG_FILE_TYPE_UNDEF:
                     imp("Filetype: undef\n");
