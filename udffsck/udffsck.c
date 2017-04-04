@@ -489,8 +489,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             dbg("LEA %d, LAD %d\n", fe->lengthExtendedAttr, fe->lengthAllocDescs);
             
             stats->usedSpace += fe->informationLength + lbSize-fe->informationLength%lbSize;
-            warn("Size: %d, BSize: %d\n", fe->informationLength, fe->informationLength + lbSize-fe->informationLength%lbSize);
-            stats->usedSpace += lbSize;
+            warn("Size: %d, Blocks: %d\n", fe->informationLength, (fe->informationLength + lbSize-fe->informationLength%lbSize)/lbSize);
 
 
             switch(fe->icbTag.fileType) {
@@ -509,6 +508,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 case ICBTAG_FILE_TYPE_DIRECTORY:
                     imp("Filetype: DIR\n");
                     stats->countNumOfDirs ++;
+                    stats->usedSpace += lbSize;
                     dir = 1;
                     break;  
                 case ICBTAG_FILE_TYPE_REGULAR:
@@ -735,6 +735,8 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     //read(fd, file, sizeof(struct fileEntry));
     lsn = icbloc.logicalBlockNum+lsnBase;
     dbg("ROOT LSN: %d\n", lsn);
+    stats->usedSpace = (lsn-lsnBase)*le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first
+    dbg("Used space offset: %d\n", stats->usedSpace);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
 
     return get_file(dev, disc, lbnlsn, lsn, stats);
