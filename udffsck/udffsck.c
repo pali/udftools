@@ -539,7 +539,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     break;  
                 case ICBTAG_FILE_TYPE_STREAMDIR:
                     imp("Filetype: STRAMDIR\n");
-                    stats->usedSpace += lbSize;
+                    //stats->usedSpace += lbSize;
                     break;  
             } 
             
