@@ -445,8 +445,17 @@ int main(int argc, char *argv[]) {
     msg("UDF rev: min read:  %04x\n", stats.minUDFReadRev);
     msg("         min write: %04x\n", stats.minUDFWriteRev);
     msg("         max write: %04x\n", stats.maxUDFWriteRev);
-    msg("Used Space: %lu (%lu)\n\n", stats.usedSpace, stats.usedSpace/blocksize);
-    
+    msg("Used Space: %lu (%lu)\n", stats.usedSpace, stats.usedSpace/blocksize);
+    msg("Free Space: %lu (%lu)\n", stats.freeSpaceBlocks*blocksize, stats.freeSpaceBlocks);
+    msg("Partition size: %lu (%lu)\n", stats.partitionSizeBlocks*blocksize, stats.partitionSizeBlocks);
+    uint64_t expUsedSpace = (stats.partitionSizeBlocks-stats.freeSpaceBlocks)*blocksize;
+    msg("Expected Used Space: %lu (%lu)\n", expUsedSpace, expUsedSpace/blocksize);
+    int64_t usedSpaceDiff = expUsedSpace-stats.usedSpace;
+    if(usedSpaceDiff != 0) {
+        err("%d blocks is unused but not marked as unallocated.\n", usedSpaceDiff/blocksize);
+        err("Correct free space: %lu\n", stats.freeSpaceBlocks + usedSpaceDiff/blocksize);
+    }
+
     //---------------- Clean up -----------------
 
     note("Clean allocations\n");

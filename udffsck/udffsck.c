@@ -280,6 +280,9 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     for(int i=0; i<disc->udf_lvid->numOfPartitions * 4; i++) {
             note("0x%08x, %d\n", disc->udf_lvid->freeSpaceTable[i], disc->udf_lvid->freeSpaceTable[i]);
     }
+    stats->freeSpaceBlocks = disc->udf_lvid->freeSpaceTable[0];
+    stats->partitionSizeBlocks = disc->udf_lvid->freeSpaceTable[1];
+
     dbg("Size Table\n");
     for(int i=disc->udf_lvid->numOfPartitions * 4; i<disc->udf_lvid->numOfPartitions * 4 * 2; i++) {
             note("0x%08x, %d\n", disc->udf_lvid->freeSpaceTable[i],disc->udf_lvid->freeSpaceTable[i]);
@@ -375,7 +378,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         warn("DISABLED ERROR RETURN\n");
     }
     if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
-        msg("FID found (%d)\n",*pos);
+        imp("FID found (%d)\n",*pos);
         flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
         padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
 
@@ -388,7 +391,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         if(fid->lengthFileIdent == 0) {
             msg("ROOT directory\n");
         } else {
-            msg("Filename: %s\n", fid->fileIdent);
+            imp("Filename: %s\n", fid->fileIdent);
         }
 
         /*
@@ -400,19 +403,23 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         }
 */
 
-        dbg("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
-        dbg("ROOT ICB: LSN: %d\n", disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase);
+        if((fid->fileCharacteristics & FID_FILE_CHAR_DELETED) == 0) { //NOT deleted, continue
+            dbg("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
+            dbg("ROOT ICB: LSN: %d\n", disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase);
 
-        if(*pos == 0) {
-            dbg("Parent. Not Following this one\n");
-        }else if(fid->icb.extLocation.logicalBlockNum + lsnBase == lsn) {
-            dbg("Self. Not following this one\n");
-        } else if(fid->icb.extLocation.logicalBlockNum + lsnBase == disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase) {
-            dbg("ROOT. Not following this one.\n");
+            if(*pos == 0) {
+                dbg("Parent. Not Following this one\n");
+            }else if(fid->icb.extLocation.logicalBlockNum + lsnBase == lsn) {
+                dbg("Self. Not following this one\n");
+            } else if(fid->icb.extLocation.logicalBlockNum + lsnBase == disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase) {
+                dbg("ROOT. Not following this one.\n");
+            } else {
+                dbg("ICB to follow.\n");
+                get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase, stats);
+                dbg("Return from ICB\n"); 
+            }
         } else {
-            dbg("ICB to follow.\n");
-            get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase, stats);
-            dbg("Return from ICB\n"); 
+            dbg("DELETED FID\n");
         }
         dbg("Len: %d, padding: %d\n", flen, padding);
         *pos = *pos + flen + padding;
@@ -432,6 +439,11 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     return 0;
 }
 
+void incrementUsedSize(struct filesystemStats *stats, uint32_t increment) {
+    stats->usedSpace += increment;
+    warn("INCREMENT to %d (%d)\n", stats->usedSpace, stats->usedSpace/2048);
+}
+
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats) {
     tag descTag;
     struct fileIdentDesc *fid;
@@ -442,6 +454,9 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     uint32_t flen, padding;
     uint8_t dir = 0;
 
+
+    imp("\n(%d) ---------------------------------------------------\n", lsn);
+
     descTag = *(tag *)(dev+lbSize*lsn);
     if(!checksum(descTag)) {
         err("Tag checksum failed. Unable to continue.\n");
@@ -451,6 +466,10 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     //do {    
     //read(fd, file, sizeof(struct fileEntry));
 
+    dbg("global FE increment.\n");
+    dbg("usedSpace: %d\n", stats->usedSpace);
+    incrementUsedSize(stats, lbSize);
+    dbg("usedSpace: %d\n", stats->usedSpace);
     switch(le16_to_cpu(descTag.tagIdent)) {
         case TAG_IDENT_SBD:
             dbg("SBD found.\n");
@@ -488,9 +507,10 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             dbg("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, fe->logicalBlocksRecorded);
             dbg("LEA %d, LAD %d\n", fe->lengthExtendedAttr, fe->lengthAllocDescs);
             
-            stats->usedSpace += fe->informationLength + lbSize-fe->informationLength%lbSize;
-            warn("Size: %d, Blocks: %d\n", fe->informationLength, (fe->informationLength + lbSize-fe->informationLength%lbSize)/lbSize);
-
+    dbg("usedSpace: %d\n", stats->usedSpace);
+            incrementUsedSize(stats, (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize)));
+    dbg("usedSpace: %d\n", stats->usedSpace);
+            warn("Size: %d, Blocks: %d\n", fe->informationLength, (fe->informationLength%lbSize == 0 ? fe->informationLength/lbSize : (fe->informationLength + lbSize - fe->informationLength%lbSize)/lbSize));
 
             switch(fe->icbTag.fileType) {
                 case ICBTAG_FILE_TYPE_UNDEF:
@@ -509,12 +529,13 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     imp("Filetype: DIR\n");
                     stats->countNumOfDirs ++;
                    // stats->usedSpace += lbSize;
+                    //incrementUsedSize(stats, lbSize);
                     dir = 1;
                     break;  
                 case ICBTAG_FILE_TYPE_REGULAR:
                     imp("Filetype: REGULAR\n");
                     stats->countNumOfFiles ++;
-                    stats->usedSpace += lbSize;
+//                    stats->usedSpace += lbSize;
                     break;  
                 case ICBTAG_FILE_TYPE_BLOCK:
                     imp("Filetype: BLOCK\n");
@@ -558,7 +579,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 err("Extended ICB in FE.\n");
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB) {
                 dbg("AD in ICB\n");
-
+                stats->usedSpace -= lbSize;
                 struct extendedAttrHeaderDesc eahd;
                 struct genericFormat *gf;
                 struct impUseExtAttr *impAttr;
@@ -595,6 +616,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
                             for(uint32_t pos=0; ; ) {
                                 if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + eahd.appAttrLocation, &pos, stats) != 0) {
+                                    imp("FID inspection over\n");
                                     break;
                                 }
                             }
@@ -699,9 +721,11 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 }
             }
             break;
-*/
+*
+    *
+    */
         default:
-            dbg("\nIDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
+            err("IDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
             /*do{
               ptLength = *(uint8_t *)(dev+lbn*blocksize+pos);
               extLoc = *(uint32_t *)(dev+lbn*blocksize+2+pos);

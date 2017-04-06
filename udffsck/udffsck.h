@@ -44,6 +44,8 @@ struct filesystemStats {
     uint16_t minUDFWriteRev;
     uint16_t maxUDFWriteRev;
     uint64_t usedSpace;
+    uint64_t freeSpaceBlocks;
+    uint64_t partitionSizeBlocks;
 };
 
 // Implementation Use for Logical Volume Integrity Descriptor (ECMA 167r3 TODO, UDF 2.2.6.4)
