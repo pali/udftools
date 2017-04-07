@@ -421,22 +421,28 @@ int main(int argc, char *argv[]) {
 
     fix_vds(dev, &disc, blocksize, source, seq, interactive, autofix); 
     
-    
+    int fixlvid = 0;
     if(seq->lvid.error != 0) {
         //LVID is doomed.
         err("LVID is broken. Recovery is not possible.\n");
     } else {
-        if(disc.udf_lvid->integrityType == LVID_INTEGRITY_TYPE_OPEN) {
+        if(disc.udf_lvid->integrityType != LVID_INTEGRITY_TYPE_CLOSE) {
             //There are some unfinished writes
             err("Opened integrity type. Some writes may be unfinished.\n");
-        } else if(disc.udf_lvid->integrityType == LVID_INTEGRITY_TYPE_CLOSE) {
-            //Evrything is closed. Continue.
-        } else {
-            //Unknown type. It is just wrong.
-            err("Unknown integrity type: %d\n", disc.udf_lvid->integrityType);
+            if(interactive) {
+                if(prompt("Fix it? [Y/n]") != 0) {
+                    fixlvid = 1;
+                }
+            }
+            if(autofix)
+                fixlvid = 1;
         }
     }
    
+    if(fixlvid == 1) {
+        fix_lvid(dev, &disc, blocksize, &stats); 
+    }
+
 
     msg("expected number of files: %d\n", stats.expNumOfFiles);
     msg("expected number of dirs:  %d\n", stats.expNumOfDirs);

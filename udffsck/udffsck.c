@@ -22,11 +22,17 @@ int checksum(tag descTag) {
     return checksum == descTag.tagChecksum;
 }
 
-int crc(void * restrict desc, uint16_t size) {
+uint16_t calculate_crc(void * restrict desc, uint16_t size) {
     uint8_t offset = sizeof(tag);
     tag *descTag = desc;
     uint16_t crc = 0;
     uint16_t calcCrc = udf_crc((uint8_t *)(desc) + offset, size - offset, crc);
+    return calcCrc;
+}
+
+int crc(void * restrict desc, uint16_t size) {
+    uint16_t calcCrc = calculate_crc(desc, size);
+    tag *descTag = desc;
     dbg("Calc CRC: 0x%04x, TagCRC: 0x%04x\n", calcCrc, descTag->descCRC);
     return le16_to_cpu(descTag->descCRC) != calcCrc;
 }
@@ -1067,6 +1073,55 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
         }
     }
 
+
+    return 0;
+}
+
+int fix_usd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
+    uint32_t numAllocDescs = disc->udf_usd[MAIN_VDS]->numAllocDescs;
+    extent_ad allocDesc;
+    uint8_t *array;
+    for(int i=0; i<numAllocDescs; i++) {
+        allocDesc = disc->udf_usd[MAIN_VDS]->allocDescs[i];
+        dbg("[USD] ExtLen: %d, ExtLoc: %d\n", allocDesc.extLength, allocDesc.extLocation);
+        array = dev+(allocDesc.extLocation*2048);
+        for(int k=0; k<allocDesc.extLength; ) {
+            for(int j=0; j<16; j++, k++) {
+                note("%02x ", array[k]);
+            }
+            note("\n");
+        }
+    }
+
+    return 0; 
+}
+
+int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
+
+    uint32_t newFreeSpace = disc->udf_lvid->freeSpaceTable[1] - stats->usedSpace/sectorsize;
+    uint32_t loc = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation; //FIXME MAIN_VDS should be verified first
+    uint32_t len = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLength; //FIXME same as previous
+    uint16_t size = sizeof(struct logicalVolIntegrityDesc) + disc->udf_lvid->numOfPartitions*4*2 + disc->udf_lvid->lengthOfImpUse;
+    dbg("LVID: loc: %d, len: %d, size: %d\n", loc, len, size);
+
+    struct logicalVolIntegrityDesc *lvid = (struct logicalVolIntegrityDesc *)(dev+loc*sectorsize);
+    struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
+    
+    dbg("New Free Space: %d\n", newFreeSpace);
+    
+    disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(newFreeSpace);
+    //Fix USD too
+    fix_usd(dev, disc, sectorsize, stats);
+    disc->udf_lvid->integrityType = LVID_INTEGRITY_TYPE_CLOSE;
+    impUse->numOfFiles = stats->countNumOfFiles;
+    impUse->numOfDirs = stats->countNumOfDirs;
+    //TODO Fix Unique ID according highest found UID+1
+
+    //Recalculate CRC and checksum
+    disc->udf_lvid->descTag.descCRC = calculate_crc(disc->udf_lvid, size);
+    disc->udf_lvid->descTag.tagChecksum = calculate_checksum(disc->udf_lvid->descTag);
+    //Write changes back to medium
+    //FIXME memcpy(lvid, disc->udf_lvid, size);
 
     return 0;
 }
