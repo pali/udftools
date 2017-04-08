@@ -380,6 +380,9 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
 
     if (!checksum(fid->descTag)) {
         err("[inspect fid] FID checksum failed.\n");
+
+        
+
        // return -4;
         warn("DISABLED ERROR RETURN\n");
     }
@@ -497,12 +500,15 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             dir = 0;
             fe = (struct fileEntry *)(dev+lbSize*lsn);
             efe = (struct extendedFileEntry *)fe;
+            uint8_t ext = 0;
+
             if(le16_to_cpu(descTag.tagIdent) == TAG_IDENT_EFE) {
                 warn("[EFE]\n");
                 if(crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs))) {
                     err("FE CRC failed.\n");
                     return -3;
                 }
+                ext = 1;
             } else {
                 if(crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs))) {
                     err("FE CRC failed.\n");
@@ -510,12 +516,12 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 }
             }
             dbg("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
-            dbg("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, fe->logicalBlocksRecorded);
-            dbg("LEA %d, LAD %d\n", fe->lengthExtendedAttr, fe->lengthAllocDescs);
+            dbg("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, ext ? efe->logicalBlocksRecorded: fe->logicalBlocksRecorded);
+            dbg("LEA %d, LAD %d\n", ext ? efe->lengthExtendedAttr : fe->lengthExtendedAttr, ext ? efe->lengthAllocDescs : fe->lengthAllocDescs);
             
-    dbg("usedSpace: %d\n", stats->usedSpace);
+            dbg("usedSpace: %d\n", stats->usedSpace);
             incrementUsedSize(stats, (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize)));
-    dbg("usedSpace: %d\n", stats->usedSpace);
+            dbg("usedSpace: %d\n", stats->usedSpace);
             warn("Size: %d, Blocks: %d\n", fe->informationLength, (fe->informationLength%lbSize == 0 ? fe->informationLength/lbSize : (fe->informationLength + lbSize - fe->informationLength%lbSize)/lbSize));
 
             switch(fe->icbTag.fileType) {
@@ -590,8 +596,23 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 struct genericFormat *gf;
                 struct impUseExtAttr *impAttr;
                 struct appUseExtAttr *appAttr;
-                eahd = *(struct extendedAttrHeaderDesc *)(fe->allocDescs);
-                if(eahd.descTag.tagIdent == TAG_IDENT_EAHD) {
+                tag *descTag;
+                uint8_t *array;
+                uint8_t *base = NULL;
+                if(ext) {
+                    eahd = *(struct extendedAttrHeaderDesc *)(efe + sizeof(struct extendedFileEntry) + efe->lengthExtendedAttr);
+                    descTag = (tag *)((uint8_t *)(efe) + sizeof(struct extendedFileEntry) + efe->lengthExtendedAttr); 
+                    dbg("efe: %p, POS: %d, descTag: %p\n",efe,  sizeof(struct extendedFileEntry) + efe->lengthExtendedAttr, descTag);
+                } else {    
+                    eahd = *(struct extendedAttrHeaderDesc *)(fe + sizeof(struct fileEntry) + fe->lengthExtendedAttr);
+                    descTag = (tag *)((uint8_t *)(fe) + sizeof(struct fileEntry) + fe->lengthExtendedAttr); 
+                    dbg("fe: %p, POS: %d, descTag: %p\n", fe, sizeof(struct fileEntry) + fe->lengthExtendedAttr, descTag);
+                }
+                array = (uint8_t *)descTag;
+
+                if(descTag->tagIdent == TAG_IDENT_EAHD) {
+                    base = (ext ? efe->allocDescs : fe->allocDescs) + eahd.appAttrLocation;
+                    
                     dbg("impAttrLoc: %d, appAttrLoc: %d\n", eahd.impAttrLocation, eahd.appAttrLocation);
                     gf = (struct genericFormat *)(fe->allocDescs + eahd.impAttrLocation);
 
@@ -621,12 +642,28 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         err("EAHD mismatch. Expected APP, found %d\n", gf->attrType);
 
                             for(uint32_t pos=0; ; ) {
-                                if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + eahd.appAttrLocation, &pos, stats) != 0) {
+                                if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats) != 0) {
                                     imp("FID inspection over\n");
                                     break;
                                 }
                             }
                     }
+                } else {
+                    dbg("ID: 0x%02x\n",descTag->tagIdent);
+/*
+                    for(int i=0; i<160; ) {
+                        for(int j=0; j<8; j++, i++) {
+                            note("%02x", array[i]); 
+                        }
+                        note("\n");
+                    }
+                    for(uint32_t pos=0; ; ) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats) != 0) {
+                            imp("FID inspection over\n");
+                                break;
+                        
+                        }
+                    }*/
                 }
 
             } else {
@@ -645,9 +682,19 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     printf("\n");
                 }*/
                 //printf("\n");
-                for(uint32_t pos=0; pos<fe->lengthAllocDescs; ) {
-                    if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs, &pos, stats) != 0) {
-                        break;
+                if(ext) {
+                    dbg("[EFE DIR] lengthExtendedAttr: %d\n", efe->lengthExtendedAttr);
+                    for(uint32_t pos=0; pos < efe->lengthAllocDescs; ) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats) != 0) {
+                            break;
+                        }
+                    }
+                } else {
+                    dbg("[FE DIR] lengthExtendedAttr: %d\n", fe->lengthExtendedAttr);
+                    for(uint32_t pos=0; pos < fe->lengthAllocDescs; ) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats) != 0) {
+                            break;
+                        }
                     }
                 }
             }
