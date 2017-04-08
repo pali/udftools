@@ -1124,28 +1124,68 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
     return 0;
 }
 
-int fix_usd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
-    uint32_t numAllocDescs = disc->udf_usd[MAIN_VDS]->numAllocDescs;
-    extent_ad allocDesc;
-    uint8_t *array;
-    for(int i=0; i<numAllocDescs; i++) {
-        allocDesc = disc->udf_usd[MAIN_VDS]->allocDescs[i];
-        dbg("[USD] ExtLen: %d, ExtLoc: %d\n", allocDesc.extLength, allocDesc.extLocation);
-        array = dev+(allocDesc.extLocation*2048);
-        for(int k=0; k<allocDesc.extLength; ) {
-            for(int j=0; j<16; j++, k++) {
-                note("%02x ", array[k]);
-            }
-            note("\n");
-        }
-    }
+static const unsigned char BitsSetTable256[256] = 
+{
+#define B2(n) n,     n+1,     n+1,     n+2
+#define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2)
+#define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2)
+        B6(0), B6(1), B6(1), B6(2)
+};
 
-    return 0; 
+int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
+    //TODO complete bitmap correction
+    return -1;   
+}
+
+int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
+    struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[MAIN_VDS]->partitionContentsUse);
+    dbg("[USD] UST pos: %d, len: %d\n", phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength);
+    dbg("[USD] USB pos: %d, len: %d\n", phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength);
+    dbg("[USD] FST pos: %d, len: %d\n", phd->freedSpaceTable.extPosition, phd->freedSpaceTable.extLength);
+    dbg("[USD] FSB pos: %d, len: %d\n", phd->freedSpaceBitmap.extPosition, phd->freedSpaceBitmap.extLength);
+
+    //TODO Only USB is handled now. 
+    if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
+        uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;       
+        struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
+        if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
+            err("SBD not found\n");
+            return -1;
+        }
+        if(!checksum(sbd->descTag)) {
+            err("SBD checksum error\n");
+            return -2;
+        }
+        if(crc(sbd, sizeof(struct spaceBitmapDesc) + sbd->numOfBytes)) {
+            err("SBD CRC error\n");
+//FIXME            return -3;
+        }
+        dbg("SBD is ok\n");
+        dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
+        dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
+        uint32_t usedBlocks = 0;
+        uint32_t unusedBlocks = 0;
+        uint8_t count = 0;
+        uint8_t v = 0;
+        for(int i=0; i<sbd->numOfBytes; ) {
+            for(int j=0; j<16; j++, i++) {
+        //        note("%02x ", sbd->bitmap[i]);
+                v = sbd->bitmap[i];
+                count = BitsSetTable256[v & 0xff] + BitsSetTable256[(v >> 8) & 0xff] + BitsSetTable256[(v >> 16) & 0xff] + BitsSetTable256[v >> 24];     
+                usedBlocks += 8-count;
+                unusedBlocks += count;
+            }
+           // note("\n");
+        }
+        usedBlocks -= usedBlocks + unusedBlocks - sbd->numOfBits;
+        stats->expUsedBlocks = usedBlocks;
+        stats->expUnusedBlocks = unusedBlocks;
+        return 0;
+    }
+    return 1; 
 }
 
 int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
-
-    uint32_t newFreeSpace = disc->udf_lvid->freeSpaceTable[1] - stats->usedSpace/sectorsize;
     uint32_t loc = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation; //FIXME MAIN_VDS should be verified first
     uint32_t len = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLength; //FIXME same as previous
     uint16_t size = sizeof(struct logicalVolIntegrityDesc) + disc->udf_lvid->numOfPartitions*4*2 + disc->udf_lvid->lengthOfImpUse;
@@ -1154,21 +1194,31 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     struct logicalVolIntegrityDesc *lvid = (struct logicalVolIntegrityDesc *)(dev+loc*sectorsize);
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
     
-    dbg("New Free Space: %d\n", newFreeSpace);
+    // Fix PD too
+    fix_pd(dev, disc, sectorsize, stats);
     
-    disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(newFreeSpace);
-    //Fix USD too
-    fix_usd(dev, disc, sectorsize, stats);
-    disc->udf_lvid->integrityType = LVID_INTEGRITY_TYPE_CLOSE;
+    // Fix files/dir amounts
     impUse->numOfFiles = stats->countNumOfFiles;
     impUse->numOfDirs = stats->countNumOfDirs;
     //TODO Fix Unique ID according highest found UID+1
-
+    
+    //int32_t usedSpaceDiff = stats->expUsedBlocks - stats->usedSpace/sectorsize;
+    //dbg("Diff: %d\n", usedSpaceDiff);
+    //dbg("Old Free Space: %d\n", disc->udf_lvid->freeSpaceTable[0]);
+    //uint32_t newFreeSpace = disc->udf_lvid->freeSpaceTable[0] + usedSpaceDiff;
+    uint32_t newFreeSpace = disc->udf_lvid->freeSpaceTable[1] - stats->usedSpace/sectorsize;
+    disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(newFreeSpace);
+    dbg("New Free Space: %d\n", disc->udf_lvid->freeSpaceTable[0]);
+    
+    // Close integrity (last thing before write)
+    disc->udf_lvid->integrityType = LVID_INTEGRITY_TYPE_CLOSE;
+    
     //Recalculate CRC and checksum
     disc->udf_lvid->descTag.descCRC = calculate_crc(disc->udf_lvid, size);
     disc->udf_lvid->descTag.tagChecksum = calculate_checksum(disc->udf_lvid->descTag);
     //Write changes back to medium
-    //FIXME memcpy(lvid, disc->udf_lvid, size);
+    //FIXME 
+    memcpy(lvid, disc->udf_lvid, size);
 
     return 0;
 }

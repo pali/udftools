@@ -64,7 +64,7 @@ int is_udf(uint8_t *dev, uint32_t sectorsize) {
         //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
         //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
         memcpy(&vsd, dev+16*BLOCK_SIZE+i*bsize, sizeof(vsd));
-        
+
         dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
 
 
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
     //metadata_err_map_t *seq;
     vds_sequence_t *seq; 
     struct filesystemStats stats =  {0};
-    
+
     int source = -1;
 
     parse_args(argc, argv, &path, &blocksize);	
@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
             case EOVERFLOW: dbg("EOVERFLOW\n"); break;
             default: dbg("EUnknown\n"); break;
         }
-    
+
 
         fatal("Error maping %s: %s.", path, strerror(errno));
         exit(16);
@@ -351,11 +351,11 @@ int main(int argc, char *argv[]) {
         dbg("LSN loc: 0x%x\n", lbnlsn+usdext->extLocation);
         usdarr = (dev+(lbnlsn + usdext->extLocation)*blocksize);
         /*for(int j=0; j<usdext->extLength; ) {
-            for(int k=0; k<2*8; k++,j++) {
-                printf("%02x ", usdarr[j]);
-            }
-            printf("\n");
-        }*/
+          for(int k=0; k<2*8; k++,j++) {
+          printf("%02x ", usdarr[j]);
+          }
+          printf("\n");
+          }*/
     }
 
     dbg("PD PartitionsContentsUse\n");
@@ -364,6 +364,11 @@ int main(int argc, char *argv[]) {
             note("%02x ", disc.udf_pd[0]->partitionContentsUse[i]);
         }
         note("\n");
+    }
+
+    if(get_pd(dev, &disc, blocksize, &stats)) {
+        err("PD error\n");
+        exit(8);
     }
 
     //---------- Corrections --------------
@@ -420,7 +425,7 @@ int main(int argc, char *argv[]) {
     print_metadata_sequence(seq);
 
     fix_vds(dev, &disc, blocksize, source, seq, interactive, autofix); 
-    
+
     int fixlvid = 0;
     if(seq->lvid.error != 0) {
         //LVID is doomed.
@@ -438,7 +443,7 @@ int main(int argc, char *argv[]) {
                 fixlvid = 1;
         }
     }
-   
+
     if(fixlvid == 1) {
         fix_lvid(dev, &disc, blocksize, &stats); 
     }
@@ -456,19 +461,23 @@ int main(int argc, char *argv[]) {
     msg("Partition size: %lu (%lu)\n", stats.partitionSizeBlocks*blocksize, stats.partitionSizeBlocks);
     uint64_t expUsedSpace = (stats.partitionSizeBlocks-stats.freeSpaceBlocks)*blocksize;
     msg("Expected Used Space: %lu (%lu)\n", expUsedSpace, expUsedSpace/blocksize);
+    msg("Expected Used Blocks: %d\nExpected Unused Blocks: %d\n", stats.expUsedBlocks, stats.expUnusedBlocks);
     int64_t usedSpaceDiff = expUsedSpace-stats.usedSpace;
     if(usedSpaceDiff != 0) {
-        err("%d blocks is unused but not marked as unallocated.\n", usedSpaceDiff/blocksize);
+        err("%d blocks is unused but not marked as unallocated in Free Space Table.\n", usedSpaceDiff/blocksize);
         err("Correct free space: %lu\n", stats.freeSpaceBlocks + usedSpaceDiff/blocksize);
     }
-
+    int32_t usedSpaceDiffBlocks = stats.expUsedBlocks - stats.usedSpace/blocksize;
+    if(usedSpaceDiffBlocks != 0) {
+        err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
+    }
     //---------------- Clean up -----------------
 
     note("Clean allocations\n");
     free(disc.udf_anchor[0]);
     free(disc.udf_anchor[1]);
     free(disc.udf_anchor[2]);
-    
+
     free(disc.udf_pvd[0]);
     free(disc.udf_lvd[0]);
     free(disc.udf_usd[0]);

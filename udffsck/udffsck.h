@@ -44,8 +44,10 @@ struct filesystemStats {
     uint16_t minUDFWriteRev;
     uint16_t maxUDFWriteRev;
     uint64_t usedSpace;
-    uint64_t freeSpaceBlocks;
-    uint64_t partitionSizeBlocks;
+    uint32_t freeSpaceBlocks;
+    uint32_t partitionSizeBlocks;
+    uint32_t expUsedBlocks;
+    uint32_t expUnusedBlocks;
 };
 
 // Implementation Use for Logical Volume Integrity Descriptor (ECMA 167r3 TODO, UDF 2.2.6.4)
@@ -74,6 +76,7 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
 // Load all PVD descriptors into disc structure
 //int get_pvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
 
+int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
 
 int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq);
 
