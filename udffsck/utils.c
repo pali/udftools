@@ -247,7 +247,7 @@ void logger(message_type type, const char *format, va_list arg) {
 		default:
 			prefix = 0;
 			color = "";
-            stream = stderr;
+            stream = stdout;
             verblvl = DBG;
 			break;
 	}

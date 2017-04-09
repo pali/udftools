@@ -36,4 +36,5 @@ void fatal(const char *format, ...);
 char * verbosity_level_str(verbosity_e lvl);
 
 void print_metadata_sequence(vds_sequence_t *seq);
+
 #endif //__UTILS_H__

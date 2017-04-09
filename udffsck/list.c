@@ -1,6 +1,11 @@
-#include "list.h"
+#include <stdlib.h>
 #include "utils.h"
+#include "list.h"
 
+#define dbg(...) dummy(__VA_ARGS__)
+void dummy(const char *format, ...) {
+    return;
+}
 
 uint8_t list_init(list_t *list) {
     uint8_t status = 0;
@@ -48,8 +53,8 @@ uint8_t list_remove_first(list_t *list) {
         list->act = NULL;
     }
     dbg("free: %p\n", oldfirst);
+    free(oldfirst->content);
     free(oldfirst);
-
     return 0;
 }
 

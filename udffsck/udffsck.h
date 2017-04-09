@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include "list.h"
+
 #define VDS_STRUCT_AMOUNT 8 //FIXME Move to somewhere else, not keep it here.
 
 typedef enum {
@@ -35,7 +37,15 @@ typedef struct {
     metadata_t lvid; 
 } vds_sequence_t;
 
+typedef struct {
+    uint16_t flags;
+    uint32_t lsn;
+    uint32_t blocks;
+    uint32_t size;
+} file_t;
+
 struct filesystemStats {
+    uint16_t blocksize;
     uint32_t expNumOfFiles;
     uint32_t countNumOfFiles;
     uint32_t expNumOfDirs;
@@ -48,6 +58,11 @@ struct filesystemStats {
     uint32_t partitionSizeBlocks;
     uint32_t expUsedBlocks;
     uint32_t expUnusedBlocks;
+    uint32_t partitionNumOfBytes;
+    uint32_t partitionNumOfBits;
+    uint8_t * actPartitionBitmap;
+    uint8_t * expPartitionBitmap;
+    list_t allocationTable;
 };
 
 // Implementation Use for Logical Volume Integrity Descriptor (ECMA 167r3 TODO, UDF 2.2.6.4)
@@ -78,6 +93,7 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
 
 int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
 
+int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
 int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq);
 
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn);
@@ -89,4 +105,11 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
 int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount);
 int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
 int fix_usd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
+
+
+void print_file_chunks(struct filesystemStats *stats);
+
+
+void test_list(void);
+
 #endif //__UDFFSCK_H__

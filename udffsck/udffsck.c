@@ -2,6 +2,7 @@
 #include "udffsck.h"
 #include "utils.h"
 #include "libudffs.h"
+#include "list.h"
 
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats);
 
@@ -303,6 +304,26 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     return 0; 
 }
 
+uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size) {
+    if(lbn+size < stats->partitionNumOfBits) {
+        uint32_t byte = lbn/8;
+        uint8_t bit = lbn%8;
+
+        dbg("Marked LBN %d with size %d\n", lbn, size);
+
+        for(int i = 0; i<size; i++) {
+            stats->actPartitionBitmap[byte] &= ~(1<<bit);
+            lbn++;
+            byte = lbn/8;
+            bit = lbn%8;
+        }
+    } else {
+        err("MARKING USED BLOCK TO BITMAP FAILED\n");
+        return -1;
+    }
+    return 0;
+}
+
 /**
  * @brief Loads File Set Descriptor and stores it at struct udf_disc
  * @param[in] dev pointer to device array
@@ -448,9 +469,41 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     return 0;
 }
 
-void incrementUsedSize(struct filesystemStats *stats, uint32_t increment) {
+void print_file_chunks(struct filesystemStats *stats) {
+    file_t *file;
+
+    list_first(&stats->allocationTable);
+    
+    uint32_t last = 0, first = 0;
+    do {
+        file = list_get(&stats->allocationTable);
+        if(file == NULL)
+            break;
+        first = file->lsn;
+        last = file->lsn + file->blocks;
+        dbg("Used space from: %d to %d, blocks: %d\n", first, last, last-first);
+    } while(list_next(&stats->allocationTable) == 0);
+}
+
+void incrementUsedSize(struct filesystemStats *stats, uint32_t increment, uint32_t position) {
     stats->usedSpace += increment;
-    warn("INCREMENT to %d (%d)\n", stats->usedSpace, stats->usedSpace/2048);
+    warn("INCREMENT to %d\n", stats->usedSpace);
+    markUsedBlock(stats, position, increment/stats->blocksize);
+    /*file_t *previous, *file = malloc(sizeof(file_t));
+    
+    previous = list_get(&stats->allocationTable);
+    uint32_t prevBlocks = 0, prevLsn = 0;
+    if(previous != NULL) {
+        prevBlocks = previous->blocks;
+        prevLsn = previous->lsn;
+    }
+    
+    file->lsn = position;
+    file->blocks = increment/stats->blocksize;
+   
+    if(file->blocks != prevBlocks) 
+        list_insert_first(&stats->allocationTable, file);
+        */
 }
 
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats) {
@@ -462,7 +515,6 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     uint32_t lsnBase = lbnlsn; 
     uint32_t flen, padding;
     uint8_t dir = 0;
-
 
     imp("\n(%d) ---------------------------------------------------\n", lsn);
 
@@ -477,7 +529,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
     dbg("global FE increment.\n");
     dbg("usedSpace: %d\n", stats->usedSpace);
-    incrementUsedSize(stats, lbSize);
+    incrementUsedSize(stats, lbSize, lsn);
     dbg("usedSpace: %d\n", stats->usedSpace);
     switch(le16_to_cpu(descTag.tagIdent)) {
         case TAG_IDENT_SBD:
@@ -520,7 +572,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             dbg("LEA %d, LAD %d\n", ext ? efe->lengthExtendedAttr : fe->lengthExtendedAttr, ext ? efe->lengthAllocDescs : fe->lengthAllocDescs);
             
             dbg("usedSpace: %d\n", stats->usedSpace);
-            incrementUsedSize(stats, (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize)));
+            incrementUsedSize(stats, (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize)), lsn);
             dbg("usedSpace: %d\n", stats->usedSpace);
             warn("Size: %d, Blocks: %d\n", fe->informationLength, (fe->informationLength%lbSize == 0 ? fe->informationLength/lbSize : (fe->informationLength + lbSize - fe->informationLength%lbSize)/lbSize));
 
@@ -815,6 +867,8 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     lsn = icbloc.logicalBlockNum+lsnBase;
     dbg("ROOT LSN: %d\n", lsn);
     stats->usedSpace = (lsn-lsnBase)*le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first
+//uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size) {
+    markUsedBlock(stats, 0, lsn-lsnBase);
     dbg("Used space offset: %d\n", stats->usedSpace);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
 
@@ -1134,7 +1188,32 @@ static const unsigned char BitsSetTable256[256] =
 
 int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
     //TODO complete bitmap correction
-    return -1;   
+     
+    struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[MAIN_VDS]->partitionContentsUse);
+    dbg("[USD] UST pos: %d, len: %d\n", phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength);
+    dbg("[USD] USB pos: %d, len: %d\n", phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength);
+    dbg("[USD] FST pos: %d, len: %d\n", phd->freedSpaceTable.extPosition, phd->freedSpaceTable.extLength);
+    dbg("[USD] FSB pos: %d, len: %d\n", phd->freedSpaceBitmap.extPosition, phd->freedSpaceBitmap.extLength);
+
+    //TODO Only USB is handled now. 
+    if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
+        uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;       
+        struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
+        if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
+            err("SBD not found\n");
+            return -1;
+        }
+        dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
+        dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
+
+        memcpy(sbd->bitmap, stats->actPartitionBitmap, sbd->numOfBytes);
+        
+        //Recalculate CRC and checksum
+        sbd->descTag.descCRC = calculate_crc(sbd, sizeof(struct spaceBitmapDesc) + sbd->numOfBytes);
+        sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
+        return 0;
+    }
+    return 1; 
 }
 
 int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
@@ -1163,23 +1242,32 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         dbg("SBD is ok\n");
         dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
         dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
+
+        //Create array for used/unused blocks counting
+        stats->actPartitionBitmap = calloc(sbd->numOfBytes, 1);
+        memset(stats->actPartitionBitmap, 0xff, sbd->numOfBytes);
+        stats->partitionNumOfBytes = sbd->numOfBytes;
+        stats->partitionNumOfBits = sbd->numOfBits;
+
+        //Get actual bitmap statistics
         uint32_t usedBlocks = 0;
         uint32_t unusedBlocks = 0;
         uint8_t count = 0;
         uint8_t v = 0;
         for(int i=0; i<sbd->numOfBytes; ) {
             for(int j=0; j<16; j++, i++) {
-        //        note("%02x ", sbd->bitmap[i]);
+            //    note("%02x ", sbd->bitmap[i]);
                 v = sbd->bitmap[i];
                 count = BitsSetTable256[v & 0xff] + BitsSetTable256[(v >> 8) & 0xff] + BitsSetTable256[(v >> 16) & 0xff] + BitsSetTable256[v >> 24];     
                 usedBlocks += 8-count;
                 unusedBlocks += count;
             }
-           // note("\n");
+          //  note("\n");
         }
         usedBlocks -= usedBlocks + unusedBlocks - sbd->numOfBits;
         stats->expUsedBlocks = usedBlocks;
         stats->expUnusedBlocks = unusedBlocks;
+        stats->expPartitionBitmap = sbd->bitmap;
         return 0;
     }
     return 1; 
@@ -1221,4 +1309,39 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     memcpy(lvid, disc->udf_lvid, size);
 
     return 0;
+}
+
+void test_list(void) {
+    list_t list;
+
+    uint8_t a = 5, b = 7, c = 10;
+    uint8_t * d;
+
+    list_init(&list);
+
+    dbg("a: %p\n", &a);
+    list_insert_first(&list, &a);
+    dbg("b: %p\n", &b);
+    list_insert_first(&list, &b);
+    dbg("c: %p\n", &c);
+    list_insert_first(&list, &c);
+
+    d = list_get(&list);
+    dbg("Actual: %p, %d\n", d, *d );
+    list_next(&list);
+    dbg("Go get\n");
+    d = list_get(&list);
+    dbg("Actual: %p, %d\n", d, *d );
+    list_next(&list);
+    dbg("Go get\n");
+    d = list_get(&list);
+    dbg("Actual: %p, %d\n", d, *d );
+    list_next(&list);
+    dbg("Go get\n");
+    d = list_get(&list);
+    dbg("Actual: %p\n", d);
+
+
+    list_destoy(&list);
+
 }

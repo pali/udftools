@@ -39,6 +39,7 @@
 #include "utils.h"
 #include "options.h"
 #include "udffsck.h"
+#include "list.h"
 
 //#define PVD 0x10
 
@@ -318,14 +319,14 @@ int main(int argc, char *argv[]) {
     print_disc(&disc);
 #endif
 
+    list_init(&stats.allocationTable);
+    stats.blocksize = blocksize;
 
-    // SBD is not necessarily present, decide how to select
-    // SBD with EFE are seen at r2.6 implementation
-#ifdef SBD_PRESENT //FIXME Unfinished
-    status = get_sbd(dev, &disc, SBD_STRUCTURE_HERE);
-#endif
-
-#ifdef FSD_PRESENT
+    if(get_pd(dev, &disc, blocksize, &stats)) {
+        err("PD error\n");
+        exit(8);
+    }
+    
     // FSD is not necessarily pressent, decide how to select
     // Seen at r1.5 implementations
     uint32_t lbnlsn = 0;
@@ -334,13 +335,6 @@ int main(int argc, char *argv[]) {
     note("LBNLSN: %d\n", lbnlsn);
     status = get_file_structure(dev, &disc, lbnlsn, &stats);
     if(status) exit(status);
-#endif
-
-#ifdef PATH_TABLE //FIXME Remove it. Not needed.
-    pathTableRec table[100]; 
-    status = get_path_table(dev, blocksize, table);
-    if(status) exit(status);
-#endif
 
     dbg("USD Alloc Descs\n");
     extent_ad *usdext;
@@ -366,11 +360,11 @@ int main(int argc, char *argv[]) {
         note("\n");
     }
 
-    if(get_pd(dev, &disc, blocksize, &stats)) {
+/*    if(get_pd(dev, &disc, blocksize, &stats)) {
         err("PD error\n");
         exit(8);
     }
-
+*/
     //---------- Corrections --------------
 
     if(seq->anchor[0].error + seq->anchor[1].error + seq->anchor[2].error != 0) { //Something went wrong with AVDPs
@@ -446,8 +440,27 @@ int main(int argc, char *argv[]) {
 
     if(fixlvid == 1) {
         fix_lvid(dev, &disc, blocksize, &stats); 
+        fix_pd(dev, &disc, blocksize, &stats);  
     }
 
+
+/*
+    note("\n ACT \t EXP\n");
+    for(int i=0; i<50000; ) {
+        for(int j=0; j<16; j++, i++) {
+            note("%02x ", stats.actPartitionBitmap[i]);
+        }
+        note("\t"); 
+        for(int j=0; j<16; j++, i++) {
+            note("%02x ", stats.expPartitionBitmap[i]);
+        }
+        note("\n");
+    }
+    note("\n");
+*/
+    //test_list();
+
+    //print_file_chunks(&stats);
 
     msg("expected number of files: %d\n", stats.expNumOfFiles);
     msg("expected number of dirs:  %d\n", stats.expNumOfDirs);
@@ -496,7 +509,9 @@ int main(int argc, char *argv[]) {
     free(disc.udf_fsd);
 
     free(seq);
-
+    free(stats.actPartitionBitmap);
+    
+    list_destoy(&stats.allocationTable);
 
     msg("All done\n");
     return status;
