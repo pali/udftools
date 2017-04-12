@@ -309,9 +309,10 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
         uint32_t byte = lbn/8;
         uint8_t bit = lbn%8;
 
-        dbg("Marked LBN %d with size %d\n", lbn, size);
+        dbg("Marked LBN %d with size %d\n", lbn, size+1);
 
-        for(int i = 0; i<size; i++) {
+        for(int i = 0; i<size+1; i++) {
+            //stats->actPartitionBitmap[byte] &= 0x00;
             stats->actPartitionBitmap[byte] &= ~(1<<bit);
             lbn++;
             byte = lbn/8;
@@ -529,7 +530,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
     dbg("global FE increment.\n");
     dbg("usedSpace: %d\n", stats->usedSpace);
-    incrementUsedSize(stats, lbSize, lsn);
+    incrementUsedSize(stats, lbSize, lsn-lbnlsn);
     dbg("usedSpace: %d\n", stats->usedSpace);
     switch(le16_to_cpu(descTag.tagIdent)) {
         case TAG_IDENT_SBD:
@@ -572,7 +573,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             dbg("LEA %d, LAD %d\n", ext ? efe->lengthExtendedAttr : fe->lengthExtendedAttr, ext ? efe->lengthAllocDescs : fe->lengthAllocDescs);
             
             dbg("usedSpace: %d\n", stats->usedSpace);
-            incrementUsedSize(stats, (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize)), lsn);
+            incrementUsedSize(stats, (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize)), lsn-lbnlsn);
             dbg("usedSpace: %d\n", stats->usedSpace);
             warn("Size: %d, Blocks: %d\n", fe->informationLength, (fe->informationLength%lbSize == 0 ? fe->informationLength/lbSize : (fe->informationLength + lbSize - fe->informationLength%lbSize)/lbSize));
 

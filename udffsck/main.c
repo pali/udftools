@@ -444,20 +444,20 @@ int main(int argc, char *argv[]) {
     }
 
 
-/*
+
     note("\n ACT \t EXP\n");
-    for(int i=0; i<50000; ) {
+    for(int i=0, k=0; i<stats.partitionSizeBlocks/8 && i < 1000; ) {
         for(int j=0; j<16; j++, i++) {
             note("%02x ", stats.actPartitionBitmap[i]);
         }
-        note("\t"); 
-        for(int j=0; j<16; j++, i++) {
-            note("%02x ", stats.expPartitionBitmap[i]);
+        note("| "); 
+        for(int j=0; j<16; j++, k++) {
+            note("%02x ", stats.expPartitionBitmap[k]);
         }
         note("\n");
     }
     note("\n");
-*/
+
     //test_list();
 
     //print_file_chunks(&stats);
