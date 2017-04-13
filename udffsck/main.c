@@ -446,7 +446,8 @@ int main(int argc, char *argv[]) {
 
 
     note("\n ACT \t EXP\n");
-    for(int i=0, k=0; i<stats.partitionSizeBlocks/8 && i < 1000; ) {
+    uint32_t shift = 0;
+    for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < 100+shift; ) {
         for(int j=0; j<16; j++, i++) {
             note("%02x ", stats.actPartitionBitmap[i]);
         }
@@ -456,8 +457,20 @@ int main(int argc, char *argv[]) {
         }
         note("\n");
     }
+   /* note("\n");
+    shift = 4400;
+    for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < 100+shift; ) {
+        for(int j=0; j<16 && i<stats.partitionSizeBlocks/8; j++, i++) {
+            note("%02x ", stats.actPartitionBitmap[i]);
+        }
+        note("| "); 
+        for(int j=0; j<16 && k<stats.partitionSizeBlocks/8; j++, k++) {
+            note("%02x ", stats.expPartitionBitmap[k]);
+        }
+        note("\n");
+    }
     note("\n");
-
+*/
     //test_list();
 
     //print_file_chunks(&stats);

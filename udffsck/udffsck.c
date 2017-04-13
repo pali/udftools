@@ -306,18 +306,47 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
 
 uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size) {
     if(lbn+size < stats->partitionNumOfBits) {
-        uint32_t byte = lbn/8;
-        uint8_t bit = lbn%8;
+        uint32_t byte = 0;
+        uint8_t bit = 0;
 
-        dbg("Marked LBN %d with size %d\n", lbn, size+1);
-
-        for(int i = 0; i<size+1; i++) {
-            //stats->actPartitionBitmap[byte] &= 0x00;
-            stats->actPartitionBitmap[byte] &= ~(1<<bit);
-            lbn++;
+        dbg("Marked LBN %d with size %d\n", lbn, size);
+        int i = 0;
+        do {
             byte = lbn/8;
             bit = lbn%8;
+            stats->actPartitionBitmap[byte] &= ~(1<<bit);
+            lbn++;
+            i++;
+        } while(i < size);
+        dbg("Last LBN: %d, Byte: %d, Bit: %d\n", lbn, byte, bit);
+        dbg("Real size: %d\n", i);
+        
+        note("\n ACT \t EXP\n");
+        uint32_t shift = 0;
+        for(int i=0+shift, k=0+shift; i<stats->partitionSizeBlocks/8 && i < 100+shift; ) {
+            for(int j=0; j<16; j++, i++) {
+                note("%02x ", stats->actPartitionBitmap[i]);
+            }
+            note("| "); 
+            for(int j=0; j<16; j++, k++) {
+                note("%02x ", stats->expPartitionBitmap[k]);
+            }
+            note("\n");
         }
+        note("\n");
+        shift = 4400;
+        for(int i=0+shift, k=0+shift; i<stats->partitionSizeBlocks/8 && i < 100+shift; ) {
+            for(int j=0; j<16; j++, i++) {
+                note("%02x ", stats->actPartitionBitmap[i]);
+            }
+            note("| "); 
+            for(int j=0; j<16; j++, k++) {
+                note("%02x ", stats->expPartitionBitmap[k]);
+            }
+            note("\n");
+        }
+        note("\n");
+
     } else {
         err("MARKING USED BLOCK TO BITMAP FAILED\n");
         return -1;
@@ -572,11 +601,6 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             dbg("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, ext ? efe->logicalBlocksRecorded: fe->logicalBlocksRecorded);
             dbg("LEA %d, LAD %d\n", ext ? efe->lengthExtendedAttr : fe->lengthExtendedAttr, ext ? efe->lengthAllocDescs : fe->lengthAllocDescs);
             
-            dbg("usedSpace: %d\n", stats->usedSpace);
-            incrementUsedSize(stats, (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize)), lsn-lbnlsn);
-            dbg("usedSpace: %d\n", stats->usedSpace);
-            warn("Size: %d, Blocks: %d\n", fe->informationLength, (fe->informationLength%lbSize == 0 ? fe->informationLength/lbSize : (fe->informationLength + lbSize - fe->informationLength%lbSize)/lbSize));
-
             switch(fe->icbTag.fileType) {
                 case ICBTAG_FILE_TYPE_UNDEF:
                     imp("Filetype: undef\n");
@@ -627,7 +651,16 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     imp("Filetype: STRAMDIR\n");
                     //stats->usedSpace += lbSize;
                     break;  
-            } 
+            }
+
+            dbg("usedSpace: %d\n", stats->usedSpace);
+            uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
+            //usedsize = usedsize + lbSize;
+            if(dir == 0)
+                incrementUsedSize(stats, usedsize, lsn-lbnlsn+1);
+            dbg("usedSpace: %d\n", stats->usedSpace);
+            warn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
+
             
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
                 dbg("SHORT\n");
@@ -644,7 +677,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 err("Extended ICB in FE.\n");
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB) {
                 dbg("AD in ICB\n");
-                stats->usedSpace -= lbSize;
+                //stats->usedSpace -= lbSize;
                 struct extendedAttrHeaderDesc eahd;
                 struct genericFormat *gf;
                 struct impUseExtAttr *impAttr;
@@ -1255,20 +1288,37 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         uint32_t unusedBlocks = 0;
         uint8_t count = 0;
         uint8_t v = 0;
-        for(int i=0; i<sbd->numOfBytes; ) {
-            for(int j=0; j<16; j++, i++) {
-            //    note("%02x ", sbd->bitmap[i]);
+        for(int i=0; i<sbd->numOfBytes-1; i++) {
                 v = sbd->bitmap[i];
                 count = BitsSetTable256[v & 0xff] + BitsSetTable256[(v >> 8) & 0xff] + BitsSetTable256[(v >> 16) & 0xff] + BitsSetTable256[v >> 24];     
                 usedBlocks += 8-count;
                 unusedBlocks += count;
-            }
-          //  note("\n");
         }
-        usedBlocks -= usedBlocks + unusedBlocks - sbd->numOfBits;
+        dbg("Unused blocks: %d\n", unusedBlocks);
+        dbg("Used Blocks: %d\n", usedBlocks);
+        
+        uint8_t bitCorrection = sbd->numOfBytes*8-sbd->numOfBits;
+        dbg("BitCorrection: %d\n", bitCorrection);
+        v = sbd->bitmap[sbd->numOfBytes-1];
+        dbg("Bitmap last: 0x%02x\n", v);
+        for(int i=0; i<8 - bitCorrection; i++) {
+            dbg("Mask: 0x%02x, Result: 0x%02x\n", (1 << i), v & (1 << i));
+            if(v & (1 << i))
+                unusedBlocks++;
+            else
+                usedBlocks++;
+        }
+        
+        
+        //dbg("Total Count: %d\n", totalcount);
+        //usedBlocks -= ((usedBlocks + unusedBlocks)/8 - sbd->numOfBytes)*8;
+        //unusedBlocks -= bitCorrection;
         stats->expUsedBlocks = usedBlocks;
         stats->expUnusedBlocks = unusedBlocks;
         stats->expPartitionBitmap = sbd->bitmap;
+        //dbg("Total Count: %d\n", totalcount);
+        dbg("Unused blocks: %d\n", unusedBlocks);
+        dbg("Used Blocks: %d\n", usedBlocks);
         return 0;
     }
     return 1; 
