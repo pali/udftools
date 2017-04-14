@@ -137,7 +137,8 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
     /* Print any remaining command line arguments (not options). */
     if (optind < argc)
     {
-        printf ("non-option ARGV-elements: ");
+        dbg("non-option ARGV-elements: ");
+        dbg("Optind: %d\n", optind);
         while (optind < argc) { //TODO deal with other unrecognized params somehow...
             *path = (char*)malloc(strlen(argv[optind])+1);
             strcpy(*path, argv[optind]);
@@ -146,5 +147,6 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
         }
         putchar ('\n');
     }
+    dbg("Param parse done.\n");
 }
 

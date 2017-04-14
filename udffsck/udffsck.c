@@ -438,7 +438,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         warn("DISABLED ERROR RETURN\n");
     }
     if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
-        imp("FID found (%d)\n",*pos);
+        dwarn("FID found (%d)\n",*pos);
         flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
         padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
 
@@ -446,8 +446,8 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             err("FID CRC failed.\n");
             return -5;
         }
-        msg("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
-        msg("FID: FilenameLen: %d\n", fid->lengthFileIdent);
+        dbg("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
+        dbg("FID: FilenameLen: %d\n", fid->lengthFileIdent);
         if(fid->lengthFileIdent == 0) {
             msg("ROOT directory\n");
         } else {
@@ -517,7 +517,7 @@ void print_file_chunks(struct filesystemStats *stats) {
 
 void incrementUsedSize(struct filesystemStats *stats, uint32_t increment, uint32_t position) {
     stats->usedSpace += increment;
-    warn("INCREMENT to %d\n", stats->usedSpace);
+    dwarn("INCREMENT to %d\n", stats->usedSpace);
     markUsedBlock(stats, position, increment/stats->blocksize);
     /*file_t *previous, *file = malloc(sizeof(file_t));
     
@@ -546,7 +546,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     uint32_t flen, padding;
     uint8_t dir = 0;
 
-    imp("\n(%d) ---------------------------------------------------\n", lsn);
+    dwarn("\n(%d) ---------------------------------------------------\n", lsn);
 
     descTag = *(tag *)(dev+lbSize*lsn);
     if(!checksum(descTag)) {
@@ -585,7 +585,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             uint8_t ext = 0;
 
             if(le16_to_cpu(descTag.tagIdent) == TAG_IDENT_EFE) {
-                warn("[EFE]\n");
+                dwarn("[EFE]\n");
                 if(crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs))) {
                     err("FE CRC failed.\n");
                     return -3;
@@ -659,7 +659,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             if(dir == 0)
                 incrementUsedSize(stats, usedsize, lsn-lbnlsn+1);
             dbg("usedSpace: %d\n", stats->usedSpace);
-            warn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
+            dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
 
             
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
@@ -1243,7 +1243,7 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         memcpy(sbd->bitmap, stats->actPartitionBitmap, sbd->numOfBytes);
         
         //Recalculate CRC and checksum
-        sbd->descTag.descCRC = calculate_crc(sbd, sizeof(struct spaceBitmapDesc) + sbd->numOfBytes);
+        sbd->descTag.descCRC = calculate_crc(sbd, sizeof(struct spaceBitmapDesc));
         sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
         return 0;
     }
@@ -1259,7 +1259,8 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
 
     //TODO Only USB is handled now. 
     if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
-        uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;       
+        uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;      
+        dbg("LSNBase: %d\n", lsnBase); 
         struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
         if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
             err("SBD not found\n");
@@ -1269,9 +1270,9 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
             err("SBD checksum error\n");
             return -2;
         }
-        if(crc(sbd, sizeof(struct spaceBitmapDesc) + sbd->numOfBytes)) {
+        if(crc(sbd, sizeof(struct spaceBitmapDesc))) {
             err("SBD CRC error\n");
-//FIXME            return -3;
+            return -3;
         }
         dbg("SBD is ok\n");
         dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);

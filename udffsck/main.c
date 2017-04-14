@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
     int fd;
     FILE *fp;
     int status = 0;
-    int blocksize = 0;
+    int blocksize = -1;
     struct udf_disc disc = {0};
     uint8_t *dev;
     //struct stat sb;
@@ -200,14 +200,20 @@ int main(int argc, char *argv[]) {
 
     note("Verbose: %d, Autofix: %d, Interactive: %d\n", verbosity, autofix, interactive);
 
-    if(strlen(path) == 0 || path == NULL) {
-        err("No file given. Exiting.\n");
+    if(path == NULL) {
+        err("No medium given. Use -h for help.\n");
+        exit(16);
+    }
+    
+    if(blocksize == -1) {
+        err("Device blocksize is not defined. Please define it with -b BLOCKSIZE parameter\n");
         exit(16);
     }
     if(!(blocksize == 512 | blocksize == 1024 | blocksize == 2048 | blocksize == 4096)) {
         err("Invalid blocksize. Posible blocksizes are 512, 1024, 2048 and 4096.\n");
         exit(16);
     }
+
 
     msg("File to analyze: %s\n", path);
 
@@ -256,7 +262,7 @@ int main(int argc, char *argv[]) {
         }
 
 
-        fatal("Error maping %s: %s.", path, strerror(errno));
+        fatal("Error maping %s: %s.\n", path, strerror(errno));
         exit(16);
     }
 
