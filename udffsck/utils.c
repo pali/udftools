@@ -199,60 +199,62 @@ int prompt(const char *format, ...) {
 
 /* USER CODE END PFP */
 
-void logger(message_type type, const char *format, va_list arg) {
+void logger(message_type type, char *color, const char *format, va_list arg) {
 	//va_list arg;
 	//char *msg;
 	char *prefix;
-	char *color;
+	//char *color;
     FILE *stream;
     verbosity_e verblvl;  
 
 	switch(type) {
 		case debug:
 			prefix = "DBG";
-			color = "";
+//			color = "";
             stream = stdout;
             verblvl = DBG;
 			break;
 		case message:
 			prefix = 0;
-			color = "";
+//			color = "";
             stream = stdout;
             verblvl = MSG;
 			break;
 		case important:
 			prefix = 0;
-			color = ANSI_COLOR_GREEN;
+//			color = ANSI_COLOR_GREEN;
             stream = stdout;
             verblvl = MSG;
 			break;
 		case warning:
 			prefix = "WARN";
-			color = ANSI_COLOR_YELLOW;
+//			color = ANSI_COLOR_YELLOW;
             stream = stdout;
             verblvl = WARN;
 			break;
 		case error:
 			prefix = "ERROR";
-			color = ANSI_COLOR_RED;
+//			color = ANSI_COLOR_RED;
             stream = stderr;
             verblvl = NONE;
 			break;
 		case faterr:
 			prefix = "FATAL";
-			color = ANSI_COLOR_RED;
+//			color = ANSI_COLOR_RED;
             stream = stderr;
             verblvl = NONE;
 			break;
 		default:
 			prefix = 0;
-			color = "";
+//			color = "";
             stream = stdout;
             verblvl = DBG;
 			break;
 	}
 
     if(verbosity >= verblvl) {
+        if(color == NULL)
+            color = "";
         if(prefix > 0)
             fprintf(stream, "%s[%s] ", color, prefix);
         else
@@ -265,49 +267,56 @@ void logger(message_type type, const char *format, va_list arg) {
 void dbg(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
-	logger(debug, format, arg);
+	logger(debug, "", format, arg);
+	va_end (arg);
+}
+
+void dwarn(const char *format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	logger(debug, ANSI_COLOR_YELLOW, format, arg);
 	va_end (arg);
 }
 
 void note(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
-	logger(show, format, arg);
+	logger(show, "", format, arg);
 	va_end (arg);
 }
 
 void msg(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
-	logger(message, format, arg);
+	logger(message, "", format, arg);
 	va_end (arg);
 }
 
 void imp(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
-	logger(important, format, arg);
+	logger(important, ANSI_COLOR_GREEN, format, arg);
 	va_end (arg);
 }
 
 void warn(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
-	logger(warning, format, arg);
+	logger(warning, ANSI_COLOR_YELLOW, format, arg);
 	va_end (arg);
 }
 
 void err(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
-	logger(error, format, arg);
+	logger(error, ANSI_COLOR_RED, format, arg);
 	va_end (arg);
 }
 
 void fatal(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
-	logger(faterr, format, arg);
+	logger(faterr, ANSI_COLOR_RED, format, arg);
 	va_end (arg);
 }
 
@@ -334,9 +343,9 @@ char * verbosity_level_str(verbosity_e lvl) {
 }
 
 void print_metadata_sequence(vds_sequence_t *seq) {
-    msg("Main             Reserve\n");
-    msg("ident | Errors | ident | Errors \n");     
+    note("Main             Reserve\n");
+    note("ident | Errors | ident | Errors \n");     
     for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
-        msg("%5d |   0x%02x | %5d |   0x%02x \n", seq->main[i].tagIdent, seq->main[i].error, seq->reserve[i].tagIdent, seq->reserve[i].error);
+        note("%5d |   0x%02x | %5d |   0x%02x \n", seq->main[i].tagIdent, seq->main[i].error, seq->reserve[i].tagIdent, seq->reserve[i].error);
     }
 }

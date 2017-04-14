@@ -26,6 +26,7 @@ int print_disc(struct udf_disc *disc);
 int prompt(const char *format, ...);
 
 void dbg(const char *format, ...);
+void dwarn(const char *format, ...);
 void note(const char *format, ...);
 void msg(const char *format, ...);
 void imp(const char *format, ...);
