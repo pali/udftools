@@ -172,9 +172,9 @@ int detect_blocksize(int fd, struct udf_disc *disc)
 
 /**
  * • 0 - No error
- * • 1 - Filesystem seq were fixed
- * • 2 - Filesystem seq were fixed, reboot is recomended
- * • 4 - Filesystem seq remained unfixed
+ * • 1 - Filesystem errors were fixed
+ * • 2 - Filesystem errors were fixed, reboot is recomended
+ * • 4 - Filesystem errors remained unfixed
  * • 8 - Program error
  * • 16 - Wrong input parameters
  * • 32 - Check was interrupted by user request
@@ -328,7 +328,7 @@ int main(int argc, char *argv[]) {
     list_init(&stats.allocationTable);
     stats.blocksize = blocksize;
 
-    if(get_pd(dev, &disc, blocksize, &stats)) {
+    if(get_pd(dev, &disc, blocksize, &stats, seq)) {
         err("PD error\n");
         exit(8);
     }
@@ -427,6 +427,7 @@ int main(int argc, char *argv[]) {
     fix_vds(dev, &disc, blocksize, source, seq, interactive, autofix); 
 
     int fixlvid = 0;
+    int fixpd = 0;
     if(seq->lvid.error != 0) {
         //LVID is doomed.
         err("LVID is broken. Recovery is not possible.\n");
@@ -444,16 +445,29 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if(seq->pd.error != 0) {
+        if(interactive) {
+            if(prompt("Fix PD? [Y/n]") != 0)
+                fixpd = 1;
+        }
+        if(autofix)
+            fixpd = 1;
+    }
+
+
     if(fixlvid == 1) {
         fix_lvid(dev, &disc, blocksize, &stats); 
         fix_pd(dev, &disc, blocksize, &stats);  
+    } else if(fixlvid == 0 && fixpd == 1) {
+        fix_pd(dev, &disc, blocksize, &stats);  
     }
+    
 
 
 
     note("\n ACT \t EXP\n");
     uint32_t shift = 0;
-    for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8/* && i < 100+shift*/; ) {
+    for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < 100+shift; ) {
         for(int j=0; j<16; j++, i++) {
             note("%02x ", stats.actPartitionBitmap[i]);
         }

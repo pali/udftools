@@ -34,7 +34,8 @@ typedef struct {
     metadata_t anchor[3];
     metadata_t main[VDS_STRUCT_AMOUNT];
     metadata_t reserve[VDS_STRUCT_AMOUNT];   
-    metadata_t lvid; 
+    metadata_t lvid;
+    metadata_t pd; 
 } vds_sequence_t;
 
 typedef struct {
@@ -91,7 +92,7 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
 // Load all PVD descriptors into disc structure
 //int get_pvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
 
-int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
+int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq); 
 
 int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
 int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq);

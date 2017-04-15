@@ -680,7 +680,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 dbg("usedSpace: %d\n", stats->usedSpace);
                 uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
                 if(dir == 0)
-                    incrementUsedSize(stats, usedsize, lsn-lbnlsn);
+                    incrementUsedSize(stats, usedsize, lad->extLocation.logicalBlockNum);
                 dbg("usedSpace: %d\n", stats->usedSpace);
                 dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_EXTENDED) {
@@ -1257,9 +1257,11 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         }
         dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
         dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
-
-        memcpy(sbd->bitmap, stats->actPartitionBitmap, sbd->numOfBytes);
         
+        dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
+        memcpy(sbd->bitmap, stats->actPartitionBitmap, sbd->numOfBytes);
+        dbg("MEMCPY DONE\n");
+            
         //Recalculate CRC and checksum
         sbd->descTag.descCRC = calculate_crc(sbd, sizeof(struct spaceBitmapDesc));
         sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
@@ -1268,7 +1270,7 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
     return 1; 
 }
 
-int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
+int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
     struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[MAIN_VDS]->partitionContentsUse);
     dbg("[USD] UST pos: %d, len: %d\n", phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength);
     dbg("[USD] USB pos: %d, len: %d\n", phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength);
@@ -1285,16 +1287,17 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
             return -1;
         }
         if(!checksum(sbd->descTag)) {
-            err("SBD checksum error\n");
-            return -2;
+            err("SBD checksum error. Continue with caution.\n");
+            seq->pd.error |= E_CHECKSUM;
         }
         if(crc(sbd, sizeof(struct spaceBitmapDesc))) {
-            err("SBD CRC error\n");
-           // return -3;
+            err("SBD CRC error. Continue with caution.\n");
+            seq->pd.error |= E_CRC; 
         }
         dbg("SBD is ok\n");
         dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
         dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
+        dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
 
         //Create array for used/unused blocks counting
         stats->actPartitionBitmap = calloc(sbd->numOfBytes, 1);
