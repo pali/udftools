@@ -517,7 +517,7 @@ void print_file_chunks(struct filesystemStats *stats) {
 
 void incrementUsedSize(struct filesystemStats *stats, uint32_t increment, uint32_t position) {
     stats->usedSpace += increment;
-    dwarn("INCREMENT to %d\n", stats->usedSpace);
+    dwarn("INCREMENT to %d (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize);
     markUsedBlock(stats, position, increment/stats->blocksize);
     /*file_t *previous, *file = malloc(sizeof(file_t));
     
@@ -599,7 +599,9 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             }
             dbg("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
             dbg("fileLinkCount: %d, LB recorded: %lu\n", fe->fileLinkCount, ext ? efe->logicalBlocksRecorded: fe->logicalBlocksRecorded);
-            dbg("LEA %d, LAD %d\n", ext ? efe->lengthExtendedAttr : fe->lengthExtendedAttr, ext ? efe->lengthAllocDescs : fe->lengthAllocDescs);
+            uint32_t lea = ext ? efe->lengthExtendedAttr : fe->lengthExtendedAttr;
+            uint32_t lad =  ext ? efe->lengthAllocDescs : fe->lengthAllocDescs;
+            dbg("LEA %d, LAD %d\n", lea, lad);
             
             switch(fe->icbTag.fileType) {
                 case ICBTAG_FILE_TYPE_UNDEF:
@@ -653,29 +655,45 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     break;  
             }
 
-            dbg("usedSpace: %d\n", stats->usedSpace);
-            uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
-            //usedsize = usedsize + lbSize;
-            if(dir == 0)
-                incrementUsedSize(stats, usedsize, lsn-lbnlsn+1);
-            dbg("usedSpace: %d\n", stats->usedSpace);
-            dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
 
-            
+            uint8_t *allocDescs = (ext ? efe->allocDescs : fe->allocDescs) + lea; 
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
                 dbg("SHORT\n");
-                short_ad *sad = (short_ad *)(fe->allocDescs);
+                short_ad *sad = (short_ad *)(allocDescs);
                 dbg("ExtLen: %d, ExtLoc: %d\n", sad->extLength/lbSize, sad->extPosition+lsnBase);
                 lsn = lsn + sad->extLength/lbSize;
+                dbg("LSN: %d, ExtLocOrig: %d\n", lsn, sad->extPosition);
+                
+                dbg("usedSpace: %d\n", stats->usedSpace);
+                uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
+                if(dir == 0)
+                    incrementUsedSize(stats, usedsize, sad->extPosition);
+                dbg("usedSpace: %d\n", stats->usedSpace);
+                dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG) {
                 dbg("LONG\n");
-                long_ad *lad = (long_ad *)(fe->allocDescs);
+                long_ad *lad = (long_ad *)(allocDescs);
                 dbg("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
                 lsn = lsn + lad->extLength/lbSize;
                 dbg("LSN: %d\n", lsn);
+                
+                dbg("usedSpace: %d\n", stats->usedSpace);
+                uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
+                if(dir == 0)
+                    incrementUsedSize(stats, usedsize, lsn-lbnlsn);
+                dbg("usedSpace: %d\n", stats->usedSpace);
+                dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_EXTENDED) {
                 err("Extended ICB in FE.\n");
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB) {
+                
+               /* dbg("usedSpace: %d\n", stats->usedSpace);
+                uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
+                if(dir == 0)
+                    incrementUsedSize(stats, usedsize, lsn-lbnlsn+1);
+                dbg("usedSpace: %d\n", stats->usedSpace);
+                dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
+                */
                 dbg("AD in ICB\n");
                 //stats->usedSpace -= lbSize;
                 struct extendedAttrHeaderDesc eahd;
@@ -735,7 +753,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                             }
                     }
                 } else {
-                    dbg("ID: 0x%02x\n",descTag->tagIdent);
+                    dwarn("ID: 0x%02x\n",descTag->tagIdent);
 /*
                     for(int i=0; i<160; ) {
                         for(int j=0; j<8; j++, i++) {
@@ -1272,7 +1290,7 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         }
         if(crc(sbd, sizeof(struct spaceBitmapDesc))) {
             err("SBD CRC error\n");
-            return -3;
+           // return -3;
         }
         dbg("SBD is ok\n");
         dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
