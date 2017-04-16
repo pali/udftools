@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
+#include <sys/file.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -227,14 +228,19 @@ int main(int argc, char *argv[]) {
         note("RW\n");
     }
 
-    if ((fd = open(path, flags, 0660)) == -1) {
+    if((fd = open(path, flags, 0660)) == -1) {
         fatal("Error opening %s: %s.", path, strerror(errno));
         exit(16);
     } 
-    if ((fp = fopen(path, "r")) == NULL) {
+    if((fp = fopen(path, "r")) == NULL) {
         fatal("Error opening %s: %s.", path, strerror(errno));
         exit(16);
     } 
+    //Lock medium to ensure no-one is going to change during our operation. Make nonblocking, so it will fail when medium is already locked.
+    if(flock(fd, LOCK_EX | LOCK_NB)) { 
+        fatal("Error locking %s, %s. Is antoher process using it?\n", path, strerror(errno));
+        exit(16);
+    }
 
     note("FD: 0x%x\n", fd);
     //blocksize = detect_blocksize(fd, NULL);
@@ -266,8 +272,6 @@ int main(int argc, char *argv[]) {
         exit(16);
     }
 
-    // Close FD. It is kept by mmap now.
-    close(fd);
     // Unalloc path
     free(path);
 
@@ -372,6 +376,28 @@ int main(int argc, char *argv[]) {
     }
 */
     //---------- Corrections --------------
+    msg("expected number of files: %d\n", stats.expNumOfFiles);
+    msg("expected number of dirs:  %d\n", stats.expNumOfDirs);
+    msg("counted number of files: %d\n", stats.countNumOfFiles);
+    msg("counted number of dirs:  %d\n", stats.countNumOfDirs);
+    msg("UDF rev: min read:  %04x\n", stats.minUDFReadRev);
+    msg("         min write: %04x\n", stats.minUDFWriteRev);
+    msg("         max write: %04x\n", stats.maxUDFWriteRev);
+    msg("Used Space: %lu (%lu)\n", stats.usedSpace, stats.usedSpace/blocksize);
+    msg("Free Space: %lu (%lu)\n", stats.freeSpaceBlocks*blocksize, stats.freeSpaceBlocks);
+    msg("Partition size: %lu (%lu)\n", stats.partitionSizeBlocks*blocksize, stats.partitionSizeBlocks);
+    uint64_t expUsedSpace = (stats.partitionSizeBlocks-stats.freeSpaceBlocks)*blocksize;
+    msg("Expected Used Space: %lu (%lu)\n", expUsedSpace, expUsedSpace/blocksize);
+    msg("Expected Used Blocks: %d\nExpected Unused Blocks: %d\n", stats.expUsedBlocks, stats.expUnusedBlocks);
+    int64_t usedSpaceDiff = expUsedSpace-stats.usedSpace;
+    if(usedSpaceDiff != 0) {
+        err("%d blocks is unused but not marked as unallocated in Free Space Table.\n", usedSpaceDiff/blocksize);
+        err("Correct free space: %lu\n", stats.freeSpaceBlocks + usedSpaceDiff/blocksize);
+    }
+    int32_t usedSpaceDiffBlocks = stats.expUsedBlocks - stats.usedSpace/blocksize;
+    if(usedSpaceDiffBlocks != 0) {
+        err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
+    }
 
     if(seq->anchor[0].error + seq->anchor[1].error + seq->anchor[2].error != 0) { //Something went wrong with AVDPs
         int target1 = -1;
@@ -495,28 +521,6 @@ int main(int argc, char *argv[]) {
 
     //print_file_chunks(&stats);
 
-    msg("expected number of files: %d\n", stats.expNumOfFiles);
-    msg("expected number of dirs:  %d\n", stats.expNumOfDirs);
-    msg("counted number of files: %d\n", stats.countNumOfFiles);
-    msg("counted number of dirs:  %d\n", stats.countNumOfDirs);
-    msg("UDF rev: min read:  %04x\n", stats.minUDFReadRev);
-    msg("         min write: %04x\n", stats.minUDFWriteRev);
-    msg("         max write: %04x\n", stats.maxUDFWriteRev);
-    msg("Used Space: %lu (%lu)\n", stats.usedSpace, stats.usedSpace/blocksize);
-    msg("Free Space: %lu (%lu)\n", stats.freeSpaceBlocks*blocksize, stats.freeSpaceBlocks);
-    msg("Partition size: %lu (%lu)\n", stats.partitionSizeBlocks*blocksize, stats.partitionSizeBlocks);
-    uint64_t expUsedSpace = (stats.partitionSizeBlocks-stats.freeSpaceBlocks)*blocksize;
-    msg("Expected Used Space: %lu (%lu)\n", expUsedSpace, expUsedSpace/blocksize);
-    msg("Expected Used Blocks: %d\nExpected Unused Blocks: %d\n", stats.expUsedBlocks, stats.expUnusedBlocks);
-    int64_t usedSpaceDiff = expUsedSpace-stats.usedSpace;
-    if(usedSpaceDiff != 0) {
-        err("%d blocks is unused but not marked as unallocated in Free Space Table.\n", usedSpaceDiff/blocksize);
-        err("Correct free space: %lu\n", stats.freeSpaceBlocks + usedSpaceDiff/blocksize);
-    }
-    int32_t usedSpaceDiffBlocks = stats.expUsedBlocks - stats.usedSpace/blocksize;
-    if(usedSpaceDiffBlocks != 0) {
-        err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
-    }
     //---------------- Clean up -----------------
 
     note("Clean allocations\n");
@@ -545,6 +549,9 @@ int main(int argc, char *argv[]) {
     free(stats.actPartitionBitmap);
     
     list_destoy(&stats.allocationTable);
+
+    flock(fd, LOCK_UN);
+    close(fd);
 
     msg("All done\n");
     return status;
