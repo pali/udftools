@@ -4,7 +4,20 @@
 #include "libudffs.h"
 #include "list.h"
 
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats);
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth);
+
+#define MAX_DEPTH 100
+char * depth2str(uint32_t depth) {
+    static char prefix[MAX_DEPTH] = {0};
+    if(depth < MAX_DEPTH) {
+        int i;
+        for(i=0; i<depth; i++) {
+            prefix[i] = ' ';
+        }
+        prefix[i] = 0;
+    }
+    return prefix;
+}
 
 uint8_t calculate_checksum(tag descTag) {
     uint8_t i;
@@ -424,14 +437,14 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     return 0;
 }
 
-uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats) {
+uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth) {
     uint32_t flen, padding;
     uint32_t lsnBase = lbnlsn; 
     struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
 
     if (!checksum(fid->descTag)) {
         err("[inspect fid] FID checksum failed.\n");
-
+//FIXME WHERE THE HELL IS CRC CHECK?
         
 
        // return -4;
@@ -451,7 +464,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         if(fid->lengthFileIdent == 0) {
             msg("ROOT directory\n");
         } else {
-            imp("Filename: %s\n", fid->fileIdent);
+            imp("%sFilename: %s\n", depth2str(depth), fid->fileIdent);
         }
 
         /*
@@ -475,7 +488,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                 dbg("ROOT. Not following this one.\n");
             } else {
                 dbg("ICB to follow.\n");
-                get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase, stats);
+                get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth);
                 dbg("Return from ICB\n"); 
             }
         } else {
@@ -536,7 +549,7 @@ void incrementUsedSize(struct filesystemStats *stats, uint32_t increment, uint32
         */
 }
 
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats) {
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth) {
     tag descTag;
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
@@ -565,12 +578,12 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
         case TAG_IDENT_SBD:
             dbg("SBD found.\n");
             //FIXME Used for examination of used sectors
-            get_file(dev, disc, lbnlsn, lsn+1, stats); 
+            get_file(dev, disc, lbnlsn, lsn+1, stats, depth); 
             break;
         case TAG_IDENT_EAHD:
             dbg("EAHD found.\n");
             //FIXME WTF is that?
-            get_file(dev, disc, lbnlsn, lsn+1, stats); 
+            get_file(dev, disc, lbnlsn, lsn+1, stats, depth); 
         case TAG_IDENT_FID:
             fatal("Never should get there.\n");
             exit(-43);
@@ -746,7 +759,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         err("EAHD mismatch. Expected APP, found %d\n", gf->attrType);
 
                             for(uint32_t pos=0; ; ) {
-                                if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats) != 0) {
+                                if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats, depth) != 0) {
                                     imp("FID inspection over\n");
                                     break;
                                 }
@@ -789,14 +802,14 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 if(ext) {
                     dbg("[EFE DIR] lengthExtendedAttr: %d\n", efe->lengthExtendedAttr);
                     for(uint32_t pos=0; pos < efe->lengthAllocDescs; ) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats) != 0) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats, depth+1) != 0) {
                             break;
                         }
                     }
                 } else {
                     dbg("[FE DIR] lengthExtendedAttr: %d\n", fe->lengthExtendedAttr);
                     for(uint32_t pos=0; pos < fe->lengthAllocDescs; ) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats) != 0) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats, depth+1) != 0) {
                             break;
                         }
                     }
@@ -924,7 +937,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     dbg("Used space offset: %d\n", stats->usedSpace);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
 
-    return get_file(dev, disc, lbnlsn, lsn, stats);
+    return get_file(dev, disc, lbnlsn, lsn, stats, 0);
 }
 
 int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error) {

@@ -225,7 +225,7 @@ int main(int argc, char *argv[]) {
     if(interactive || autofix) {
         prot |= PROT_WRITE;
         flags = O_RDWR;
-        note("RW\n");
+        dbg("RW\n");
     }
 
     if((fd = open(path, flags, 0660)) == -1) {
