@@ -343,7 +343,7 @@ int main(int argc, char *argv[]) {
     status = get_fsd(dev, &disc, blocksize, &lbnlsn);
     //if(status) exit(status);
     note("LBNLSN: %d\n", lbnlsn);
-    status = get_file_structure(dev, &disc, lbnlsn, &stats);
+    status = get_file_structure(dev, &disc, lbnlsn, &stats, seq);
     if(status) exit(status);
 
     dbg("USD Alloc Descs\n");
@@ -376,6 +376,8 @@ int main(int argc, char *argv[]) {
     }
 */
     //---------- Corrections --------------
+    msg("LVID UniqueID: %d\n", stats.actUUID);
+    msg("Max UniqueID: %d\n", stats.maxUUID);
     msg("expected number of files: %d\n", stats.expNumOfFiles);
     msg("expected number of dirs:  %d\n", stats.expNumOfDirs);
     msg("counted number of files: %d\n", stats.countNumOfFiles);
@@ -454,10 +456,20 @@ int main(int argc, char *argv[]) {
 
     int fixlvid = 0;
     int fixpd = 0;
-    if(seq->lvid.error != 0) {
+    if(seq->lvid.error == (E_CRC | E_CHECKSUM)) {
         //LVID is doomed.
         err("LVID is broken. Recovery is not possible.\n");
     } else {
+        if(stats.maxUUID >= stats.actUUID || seq->lvid.error == E_UUID) {
+            err("Max found Unique ID is same or bigger that Unique ID found at LVID.\n");
+            if(interactive) {
+                if(prompt("Fix it? [Y/n]")) {
+                    fixlvid = 1;
+                }
+            }
+            if(autofix)
+                fixlvid = 1;
+        }
         if(disc.udf_lvid->integrityType != LVID_INTEGRITY_TYPE_CLOSE) {
             //There are some unfinished writes
             err("Opened integrity type. Some writes may be unfinished.\n");

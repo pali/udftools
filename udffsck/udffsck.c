@@ -1,10 +1,14 @@
 
+#include <math.h>
+
 #include "udffsck.h"
 #include "utils.h"
 #include "libudffs.h"
 #include "list.h"
+#include "options.h"
 
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth);
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, vds_sequence_t *seq );
+uint64_t uuid_decoder(uint64_t uuid);
 
 #define MAX_DEPTH 100
 char * depth2str(uint32_t depth) {
@@ -246,6 +250,16 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
     return 0;
 }
 
+uint64_t uuid_decoder(uint64_t uuid) {
+    uint64_t result = 0;
+    dbg("UUID: 0x%x\n", uuid);
+    for(int i=0; i<sizeof(uint64_t); i++) {
+        result += ((uuid >> i*4) & 0xF) * pow(10,i);
+        dbg("r: %d, mask: 0x%08x, power: %f\n", result, ((uuid >> i*4) & 0xF), pow(10,i));
+    }
+    return result;
+}
+
 /**
  * @brief Loads Logical Volume Integrity Descriptor (LVID) and stores it at struct udf_disc
  * @param[in] dev pointer to device array
@@ -275,12 +289,13 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
 
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
     uint8_t *impUseArr = (uint8_t *)impUse;
+    stats->actUUID = (((struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse))->uniqueID);
     msg("LVID: number of files: %d\n", impUse->numOfFiles);
     msg("LVID: number of dirs:  %d\n", impUse->numOfDirs);
     msg("LVID: UDF rev: min read:  %04x\n", impUse->minUDFReadRev);
     msg("               min write: %04x\n", impUse->minUDFWriteRev);
     msg("               max write: %04x\n", impUse->maxUDFWriteRev);
-
+    msg("Next Unique ID: %d\n", stats->actUUID); 
     
     stats->expNumOfFiles = impUse->numOfFiles;
     stats->expNumOfDirs = impUse->numOfDirs;
@@ -437,16 +452,13 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     return 0;
 }
 
-uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth) {
+uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq ) {
     uint32_t flen, padding;
     uint32_t lsnBase = lbnlsn; 
     struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
 
     if (!checksum(fid->descTag)) {
         err("[inspect fid] FID checksum failed.\n");
-//FIXME WHERE THE HELL IS CRC CHECK?
-        
-
        // return -4;
         warn("DISABLED ERROR RETURN\n");
     }
@@ -466,6 +478,8 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         } else {
             imp("%sFilename: %s\n", depth2str(depth), fid->fileIdent);
         }
+
+        dbg("FileVersionNum: %d\n", fid->fileVersionNum);
 
         /*
         if(fid->fileCharacteristics & FID_FILE_CHAR_DIRECTORY) {
@@ -487,8 +501,45 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             } else if(fid->icb.extLocation.logicalBlockNum + lsnBase == disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase) {
                 dbg("ROOT. Not following this one.\n");
             } else {
+                uint32_t uuid = (fid->icb).impUse[2];
+                dbg("UUID: %d\n", uuid);
+                if(stats->maxUUID < uuid) {
+                    stats->maxUUID = uuid;
+                    dwarn("New MAX UUID\n");
+                }
+                int fixuuid = 0;
+                if(uuid == 0) {
+                    err("FID Unique ID is 0. There should be %d.\n", stats->actUUID);
+                    if(interactive) {
+                        if(prompt("Fix it? [Y/n] ")) {
+                            fixuuid = 1;
+                        }
+                    }       
+                    if(autofix) {
+                        fixuuid = 1;
+                    }
+                    if(fixuuid) {
+                        uuid = stats->actUUID;
+                        stats->maxUUID = uuid;
+                        stats->actUUID++;
+                        seq->lvid.error |= E_UUID;
+                        fid->icb.impUse[2] = uuid;
+                        fid->descTag.descCRC = calculate_crc(fid, flen+padding);             
+                        fid->descTag.tagChecksum = calculate_checksum(fid->descTag);
+                        dbg("Location: %d\n", fid->descTag.tagLocation);
+                        struct fileEntry *fe = (struct fileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
+                        struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
+                        if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
+                            efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
+                            efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
+                        } else {
+                            fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
+                            fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
+                        }
+                    }
+                }
                 dbg("ICB to follow.\n");
-                get_file(dev, disc, lbnlsn, lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth);
+                get_file(dev, disc, lbnlsn, (fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth, uuid, seq);
                 dbg("Return from ICB\n"); 
             }
         } else {
@@ -549,7 +600,7 @@ void incrementUsedSize(struct filesystemStats *stats, uint32_t increment, uint32
         */
 }
 
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth) {
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, vds_sequence_t *seq ) {
     tag descTag;
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
@@ -578,12 +629,12 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
         case TAG_IDENT_SBD:
             dbg("SBD found.\n");
             //FIXME Used for examination of used sectors
-            get_file(dev, disc, lbnlsn, lsn+1, stats, depth); 
+            get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, seq); 
             break;
         case TAG_IDENT_EAHD:
             dbg("EAHD found.\n");
             //FIXME WTF is that?
-            get_file(dev, disc, lbnlsn, lsn+1, stats, depth); 
+            get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, seq); 
         case TAG_IDENT_FID:
             fatal("Never should get there.\n");
             exit(-43);
@@ -600,13 +651,16 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             if(le16_to_cpu(descTag.tagIdent) == TAG_IDENT_EFE) {
                 dwarn("[EFE]\n");
                 if(crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs))) {
-                    err("FE CRC failed.\n");
+                    err("EFE CRC failed.\n");
+                    //TODO add question about "Continue with caution. yes?"
                     return -3;
                 }
                 ext = 1;
             } else {
                 if(crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs))) {
                     err("FE CRC failed.\n");
+                    //TODO add question about "Continue with caution. yes?"
+                    return -3;
                     return -3;
                 }
             }
@@ -668,6 +722,36 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     break;  
             }
 
+
+            uint64_t feUUID = (ext ? efe->uniqueID : fe->uniqueID);
+            dbg("Unique ID: %d\n", (feUUID));
+            //(stats->maxUUID < uuid) {
+            //  stats->maxUUID = uuid;
+            //  dwarn("New MAX UUID\n");
+            //
+            int fixuuid = 0;
+            if(uuid != feUUID) {
+                err("FE Unique ID differs from FID Unique ID.\n");
+                if(interactive) {
+                    if(prompt("Fix it (set Unique ID to %d, value according FID)? [Y/n] ", uuid) != 0) {
+                        fixuuid = 1;
+                    }
+                }
+                if(autofix) {
+                    fixuuid = 1;
+                }
+            }
+            if(fixuuid) {
+                if(ext) {
+                    efe->uniqueID = uuid;
+                    efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
+                    efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
+                } else {
+                    fe->uniqueID = uuid;
+                    fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
+                    fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
+                }
+            }
 
             uint8_t *allocDescs = (ext ? efe->allocDescs : fe->allocDescs) + lea; 
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
@@ -759,7 +843,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         err("EAHD mismatch. Expected APP, found %d\n", gf->attrType);
 
                             for(uint32_t pos=0; ; ) {
-                                if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats, depth) != 0) {
+                                if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats, depth, seq) != 0) {
                                     imp("FID inspection over\n");
                                     break;
                                 }
@@ -802,14 +886,14 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 if(ext) {
                     dbg("[EFE DIR] lengthExtendedAttr: %d\n", efe->lengthExtendedAttr);
                     for(uint32_t pos=0; pos < efe->lengthAllocDescs; ) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats, depth+1) != 0) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats, depth+1, seq) != 0) {
                             break;
                         }
                     }
                 } else {
                     dbg("[FE DIR] lengthExtendedAttr: %d\n", fe->lengthExtendedAttr);
                     for(uint32_t pos=0; pos < fe->lengthAllocDescs; ) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats, depth+1) != 0) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats, depth+1, seq) != 0) {
                             break;
                         }
                     }
@@ -911,7 +995,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     return 0;
 }
 
-uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats) {
+uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq ) {
     struct fileEntry *file;
     struct fileIdentDesc *fid;
     tag descTag;
@@ -937,7 +1021,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     dbg("Used space offset: %d\n", stats->usedSpace);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
 
-    return get_file(dev, disc, lbnlsn, lsn, stats, 0);
+    return get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, seq);
 }
 
 int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error) {
@@ -1374,8 +1458,10 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     // Fix files/dir amounts
     impUse->numOfFiles = stats->countNumOfFiles;
     impUse->numOfDirs = stats->countNumOfDirs;
-    //TODO Fix Unique ID according highest found UID+1
     
+    // Fix Next Unique ID by maximal found +1
+    ((struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse))->uniqueID = stats->maxUUID+1;
+
     //int32_t usedSpaceDiff = stats->expUsedBlocks - stats->usedSpace/sectorsize;
     //dbg("Diff: %d\n", usedSpaceDiff);
     //dbg("Old Free Space: %d\n", disc->udf_lvid->freeSpaceTable[0]);

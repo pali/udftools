@@ -47,6 +47,8 @@ typedef struct {
 
 struct filesystemStats {
     uint16_t blocksize;
+    uint64_t actUUID;
+    uint64_t maxUUID;
     uint32_t expNumOfFiles;
     uint32_t countNumOfFiles;
     uint32_t expNumOfDirs;
@@ -81,6 +83,7 @@ struct impUseLVID {
 #define E_CRC           0b00000010
 #define E_POSITION      0b00000100
 #define E_WRONGDESC     0b00001000
+#define E_UUID          0b00010000
 
 // Anchor volume descriptor points to Mvds and Rvds
 int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize, avdp_type_e type);
@@ -98,7 +101,7 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
 int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq);
 
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn);
-uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats);
+uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq );
 
 uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table);
 int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq, uint8_t interactive, uint8_t autofix); 
