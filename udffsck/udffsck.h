@@ -66,6 +66,7 @@ struct filesystemStats {
     uint8_t * actPartitionBitmap;
     uint8_t * expPartitionBitmap;
     list_t allocationTable;
+    timestamp LVIDtimestamp;
 };
 
 // Implementation Use for Logical Volume Integrity Descriptor (ECMA 167r3 TODO, UDF 2.2.6.4)
@@ -84,6 +85,7 @@ struct impUseLVID {
 #define E_POSITION      0b00000100
 #define E_WRONGDESC     0b00001000
 #define E_UUID          0b00010000
+#define E_TIMESTAMP     0b00100000
 
 // Anchor volume descriptor points to Mvds and Rvds
 int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize, avdp_type_e type);

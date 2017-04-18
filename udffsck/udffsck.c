@@ -1,5 +1,6 @@
 
 #include <math.h>
+#include <time.h>
 
 #include "udffsck.h"
 #include "utils.h"
@@ -58,6 +59,27 @@ int crc(void * restrict desc, uint16_t size) {
 int check_position(tag descTag, uint32_t position) {
     dbg("tag pos: 0x%x, pos: 0x%x\n", descTag.tagLocation, position);
     return (descTag.tagLocation != position);
+}
+
+char * print_timestamp(timestamp ts) {
+    static char str[30] = {0};
+    sprintf(str, "%d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds);
+    return str; 
+}
+
+time_t timestamp2epoch(timestamp t) {
+    struct tm tm;
+    tm.tm_year = t.year - 1900;
+    tm.tm_mon = t.month - 1; 
+    tm.tm_mday = t.day;
+    tm.tm_hour = t.hour;
+    tm.tm_min = t.minute;
+    tm.tm_sec = t.second;
+    return mktime(&tm);
+}
+
+double compare_timestamps(timestamp a, timestamp b) {
+    return difftime(timestamp2epoch(a), timestamp2epoch(b));
 }
 
 /**
@@ -290,13 +312,17 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
     uint8_t *impUseArr = (uint8_t *)impUse;
     stats->actUUID = (((struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse))->uniqueID);
+
+    stats->LVIDtimestamp = lvid->recordingDateAndTime;
+
     msg("LVID: number of files: %d\n", impUse->numOfFiles);
     msg("LVID: number of dirs:  %d\n", impUse->numOfDirs);
     msg("LVID: UDF rev: min read:  %04x\n", impUse->minUDFReadRev);
     msg("               min write: %04x\n", impUse->minUDFWriteRev);
     msg("               max write: %04x\n", impUse->maxUDFWriteRev);
     msg("Next Unique ID: %d\n", stats->actUUID); 
-    
+    msg("LVID recording timestamp: %s\n", print_timestamp(stats->LVIDtimestamp)); 
+
     stats->expNumOfFiles = impUse->numOfFiles;
     stats->expNumOfDirs = impUse->numOfDirs;
     
@@ -722,6 +748,11 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     break;  
             }
 
+            if(compare_timestamps(stats->LVIDtimestamp, ext ? efe->modificationTime : fe->modificationTime) < 0) {
+                err("File timestamp is later than LVID timestamp.\n");
+                seq->lvid.error |= E_TIMESTAMP; 
+            }
+            
 
             uint64_t feUUID = (ext ? efe->uniqueID : fe->uniqueID);
             dbg("Unique ID: %d\n", (feUUID));
@@ -1461,6 +1492,20 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     
     // Fix Next Unique ID by maximal found +1
     ((struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse))->uniqueID = stats->maxUUID+1;
+
+    // Set recording date and time to now. 
+    time_t t = time(NULL);
+    struct tm tm = *gmtime(&t);
+    timestamp *ts = &(disc->udf_lvid->recordingDateAndTime);
+    ts->year = tm.tm_year + 1900;
+    ts->month = tm.tm_mon + 1;
+    ts->day = tm.tm_mday;
+    ts->hour = tm.tm_hour;
+    ts->minute = tm.tm_min;
+    ts->second = tm.tm_sec;
+    ts->centiseconds = 0;
+    ts->hundredsOfMicroseconds = 0;
+    ts->microseconds = 0;
 
     //int32_t usedSpaceDiff = stats->expUsedBlocks - stats->usedSpace/sectorsize;
     //dbg("Diff: %d\n", usedSpaceDiff);

@@ -456,23 +456,25 @@ int main(int argc, char *argv[]) {
 
     int fixlvid = 0;
     int fixpd = 0;
+    int lviderr = 0;
     if(seq->lvid.error == (E_CRC | E_CHECKSUM)) {
         //LVID is doomed.
         err("LVID is broken. Recovery is not possible.\n");
     } else {
-        if(stats.maxUUID >= stats.actUUID || seq->lvid.error == E_UUID) {
+        if(stats.maxUUID >= stats.actUUID || (seq->lvid.error & E_UUID)) {
             err("Max found Unique ID is same or bigger that Unique ID found at LVID.\n");
-            if(interactive) {
-                if(prompt("Fix it? [Y/n]")) {
-                    fixlvid = 1;
-                }
-            }
-            if(autofix)
-                fixlvid = 1;
+            lviderr = 1;
         }
         if(disc.udf_lvid->integrityType != LVID_INTEGRITY_TYPE_CLOSE) {
             //There are some unfinished writes
             err("Opened integrity type. Some writes may be unfinished.\n");
+            lviderr = 1;
+        }
+        if(seq->lvid.error & E_TIMESTAMP) {
+            err("LVID timestamp is older than timestamps of files.\n");
+            lviderr=1;
+        }
+        if(lviderr) {
             if(interactive) {
                 if(prompt("Fix it? [Y/n]") != 0) {
                     fixlvid = 1;
