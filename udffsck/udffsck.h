@@ -69,6 +69,15 @@ struct filesystemStats {
     timestamp LVIDtimestamp;
 };
 
+struct fileInfo {
+    char * filename;
+    uint8_t fileCharacteristics;
+    uint8_t fileType;
+    uint32_t permissions;
+    uint32_t size;
+    timestamp modTime;
+};
+
 // Implementation Use for Logical Volume Integrity Descriptor (ECMA 167r3 TODO, UDF 2.2.6.4)
 struct impUseLVID {
     regid impID;

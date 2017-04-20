@@ -8,7 +8,7 @@
 #include "list.h"
 #include "options.h"
 
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, vds_sequence_t *seq );
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq );
 uint64_t uuid_decoder(uint64_t uuid);
 
 #define MAX_DEPTH 100
@@ -16,8 +16,9 @@ char * depth2str(uint32_t depth) {
     static char prefix[MAX_DEPTH] = {0};
     if(depth < MAX_DEPTH) {
         int i;
-        for(i=0; i<depth; i++) {
+        for(i=0; i<depth*2; i+=2) {
             prefix[i] = ' ';
+            prefix[i+1] = ' ';
         }
         prefix[i] = 0;
     }
@@ -63,7 +64,7 @@ int check_position(tag descTag, uint32_t position) {
 
 char * print_timestamp(timestamp ts) {
     static char str[30] = {0};
-    sprintf(str, "%d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds);
+    sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds);
     return str; 
 }
 
@@ -80,6 +81,79 @@ time_t timestamp2epoch(timestamp t) {
 
 double compare_timestamps(timestamp a, timestamp b) {
     return difftime(timestamp2epoch(a), timestamp2epoch(b));
+}
+
+void print_file_info(struct fileInfo info, uint32_t depth) {
+    msg("%s", depth2str(depth));
+    
+    //Print file char
+    uint8_t deleted = 0;
+    for(int i=0; i<5; i++) {
+        switch(info.fileCharacteristics & (1 << i)) {
+            case FID_FILE_CHAR_HIDDEN:   msg("H"); break;
+            case FID_FILE_CHAR_DIRECTORY:msg("d"); break;
+            case FID_FILE_CHAR_DELETED:  msg("D"); deleted = 1; break;
+            case FID_FILE_CHAR_PARENT:   msg("P"); break;
+            case FID_FILE_CHAR_METADATA: msg("M"); break;
+            default:                     msg(".");
+        }
+    }
+
+    if(deleted == 0) {
+    msg(":");
+    
+    //Print permissions
+    for(int i=14; i>=0; i--) {
+        switch(info.permissions & (1 << i)) {
+            case FE_PERM_O_EXEC:    msg("x");  break;
+            case FE_PERM_O_WRITE:   msg("w");  break;
+            case FE_PERM_O_READ:    msg("r");  break;
+            case FE_PERM_O_CHATTR:  msg("a");  break;
+            case FE_PERM_O_DELETE:  msg("d");  break;
+            case FE_PERM_G_EXEC:    msg("x");  break;
+            case FE_PERM_G_WRITE:   msg("w");  break;
+            case FE_PERM_G_READ:    msg("r");  break;
+            case FE_PERM_G_CHATTR:  msg("a");  break;
+            case FE_PERM_G_DELETE:  msg("d");  break;
+            case FE_PERM_U_EXEC:    msg("x");  break;
+            case FE_PERM_U_WRITE:   msg("w");  break;
+            case FE_PERM_U_READ:    msg("r");  break;
+            case FE_PERM_U_CHATTR:  msg("a");  break;
+            case FE_PERM_U_DELETE:  msg("d");  break;
+             
+            default:                msg(".");
+        }
+        if(i == 4 || i == 9 ) {
+            msg(":");
+        }
+    }
+
+    switch(info.fileType) {
+        case ICBTAG_FILE_TYPE_DIRECTORY: msg(" DIR    "); break;
+        case ICBTAG_FILE_TYPE_REGULAR:   msg(" FILE   "); break;
+        case ICBTAG_FILE_TYPE_BLOCK:     msg(" BLOCK  "); break;
+        case ICBTAG_FILE_TYPE_CHAR:      msg(" CHAR   "); break;
+        case ICBTAG_FILE_TYPE_FIFO:      msg(" FIFO   "); break;
+        case ICBTAG_FILE_TYPE_SOCKET:    msg(" SOCKET "); break;
+        case ICBTAG_FILE_TYPE_SYMLINK:   msg(" SYMLIN "); break;
+        case ICBTAG_FILE_TYPE_STREAMDIR: msg(" STREAM "); break;
+        default:                     msg(" UNKNOWN   "); break;
+    }
+
+    //Print timestamp
+    msg(" %s ", print_timestamp(info.modTime));
+
+    //Print size
+    msg(" %8d ", info.size);
+
+    } else {
+        msg("          <Unused FID>                                          ");
+    }
+
+    //Print filename
+    msg(" \" %s\"", info.filename);
+
+    msg("\n");
 }
 
 /**
@@ -482,6 +556,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     uint32_t flen, padding;
     uint32_t lsnBase = lbnlsn; 
     struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
+    struct fileInfo info = {0};
 
     if (!checksum(fid->descTag)) {
         err("[inspect fid] FID checksum failed.\n");
@@ -500,9 +575,10 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         dbg("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
         dbg("FID: FilenameLen: %d\n", fid->lengthFileIdent);
         if(fid->lengthFileIdent == 0) {
-            msg("ROOT directory\n");
+            dbg("ROOT directory\n");
         } else {
-            imp("%sFilename: %s\n", depth2str(depth), fid->fileIdent);
+            dbg("%sFilename: %s\n", depth2str(depth), fid->fileIdent);
+            info.filename = (char *)fid->fileIdent;
         }
 
         dbg("FileVersionNum: %d\n", fid->fileVersionNum);
@@ -515,7 +591,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             stats->countNumOfFiles ++;
         }
 */
-
+        info.fileCharacteristics = fid->fileCharacteristics;
         if((fid->fileCharacteristics & FID_FILE_CHAR_DELETED) == 0) { //NOT deleted, continue
             dbg("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
             dbg("ROOT ICB: LSN: %d\n", disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase);
@@ -565,11 +641,12 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                     }
                 }
                 dbg("ICB to follow.\n");
-                get_file(dev, disc, lbnlsn, (fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth, uuid, seq);
+                get_file(dev, disc, lbnlsn, (fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth, uuid, info, seq);
                 dbg("Return from ICB\n"); 
             }
         } else {
             dbg("DELETED FID\n");
+            print_file_info(info, depth);
         }
         dbg("Len: %d, padding: %d\n", flen, padding);
         *pos = *pos + flen + padding;
@@ -626,7 +703,7 @@ void incrementUsedSize(struct filesystemStats *stats, uint32_t increment, uint32
         */
 }
 
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, vds_sequence_t *seq ) {
+uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq ) {
     tag descTag;
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
@@ -653,14 +730,14 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     dbg("usedSpace: %d\n", stats->usedSpace);
     switch(le16_to_cpu(descTag.tagIdent)) {
         case TAG_IDENT_SBD:
-            dbg("SBD found.\n");
+            dwarn("SBD found.\n");
             //FIXME Used for examination of used sectors
-            get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, seq); 
+            get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, info, seq); 
             break;
         case TAG_IDENT_EAHD:
-            dbg("EAHD found.\n");
+            dwarn("EAHD found.\n");
             //FIXME WTF is that?
-            get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, seq); 
+            get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, info, seq); 
         case TAG_IDENT_FID:
             fatal("Never should get there.\n");
             exit(-43);
@@ -696,63 +773,70 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             uint32_t lad =  ext ? efe->lengthAllocDescs : fe->lengthAllocDescs;
             dbg("LEA %d, LAD %d\n", lea, lad);
             
+            info.fileType = fe->icbTag.fileType;
+            info.permissions = fe->permissions;
+            
             switch(fe->icbTag.fileType) {
                 case ICBTAG_FILE_TYPE_UNDEF:
-                    imp("Filetype: undef\n");
+                    dbg("Filetype: undef\n");
                     break;  
                 case ICBTAG_FILE_TYPE_USE:
-                    imp("Filetype: USE\n");
+                    dbg("Filetype: USE\n");
                     break;  
                 case ICBTAG_FILE_TYPE_PIE:
-                    imp("Filetype: PIE\n");
+                    dbg("Filetype: PIE\n");
                     break;  
                 case ICBTAG_FILE_TYPE_IE:
-                    imp("Filetype: IE\n");
+                    dbg("Filetype: IE\n");
                     break;  
                 case ICBTAG_FILE_TYPE_DIRECTORY:
-                    imp("Filetype: DIR\n");
+                    dbg("Filetype: DIR\n");
                     stats->countNumOfDirs ++;
                    // stats->usedSpace += lbSize;
                     //incrementUsedSize(stats, lbSize);
                     dir = 1;
                     break;  
                 case ICBTAG_FILE_TYPE_REGULAR:
-                    imp("Filetype: REGULAR\n");
+                    dbg("Filetype: REGULAR\n");
                     stats->countNumOfFiles ++;
 //                    stats->usedSpace += lbSize;
                     break;  
                 case ICBTAG_FILE_TYPE_BLOCK:
-                    imp("Filetype: BLOCK\n");
+                    dbg("Filetype: BLOCK\n");
                     break;  
                 case ICBTAG_FILE_TYPE_CHAR:
-                    imp("Filetype: CHAR\n");
+                    dbg("Filetype: CHAR\n");
                     break;  
                 case ICBTAG_FILE_TYPE_EA:
-                    imp("Filetype: EA\n");
+                    dbg("Filetype: EA\n");
                     break;  
                 case ICBTAG_FILE_TYPE_FIFO:
-                    imp("Filetype: FIFO\n");
+                    dbg("Filetype: FIFO\n");
                     break;  
                 case ICBTAG_FILE_TYPE_SOCKET:
-                    imp("Filetype: SOCKET\n");
+                    dbg("Filetype: SOCKET\n");
                     break;  
                 case ICBTAG_FILE_TYPE_TE:
-                    imp("Filetype: TE\n");
+                    dbg("Filetype: TE\n");
                     break;  
                 case ICBTAG_FILE_TYPE_SYMLINK:
-                    imp("Filetype: SYMLINK\n");
+                    dbg("Filetype: SYMLINK\n");
                     break;  
                 case ICBTAG_FILE_TYPE_STREAMDIR:
-                    imp("Filetype: STRAMDIR\n");
+                    dbg("Filetype: STRAMDIR\n");
                     //stats->usedSpace += lbSize;
-                    break;  
+                    break; 
+                default:
+                    dbg("Unknown filetype\n");
+                    break; 
             }
 
             if(compare_timestamps(stats->LVIDtimestamp, ext ? efe->modificationTime : fe->modificationTime) < 0) {
                 err("File timestamp is later than LVID timestamp.\n");
                 seq->lvid.error |= E_TIMESTAMP; 
             }
-            
+            info.modTime = ext ? efe->modificationTime : fe->modificationTime;
+
 
             uint64_t feUUID = (ext ? efe->uniqueID : fe->uniqueID);
             dbg("Unique ID: %d\n", (feUUID));
@@ -783,6 +867,9 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
                 }
             }
+
+
+            print_file_info(info, depth);
 
             uint8_t *allocDescs = (ext ? efe->allocDescs : fe->allocDescs) + lea; 
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
@@ -1051,8 +1138,9 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     markUsedBlock(stats, 0, lsn-lsnBase);
     dbg("Used space offset: %d\n", stats->usedSpace);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
+    struct fileInfo info = {0};
 
-    return get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, seq);
+    return get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
 }
 
 int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error) {
