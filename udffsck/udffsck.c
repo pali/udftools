@@ -14,13 +14,18 @@ uint64_t uuid_decoder(uint64_t uuid);
 #define MAX_DEPTH 100
 char * depth2str(uint32_t depth) {
     static char prefix[MAX_DEPTH] = {0};
+
+    if(depth == 0) {
+        return prefix;
+    }
+
     if(depth < MAX_DEPTH) {
-        int i;
-        for(i=0; i<depth*2; i+=2) {
-            prefix[i] = ' ';
-            prefix[i+1] = ' ';
+        int i=0, c=0;
+        int width = 4;
+        for(i=0, c=0; c<depth-1; c++, i+=width) {
+            strcpy(prefix+i, "\u2502 ");
         }
-        prefix[i] = 0;
+        strcpy(prefix+i, "\u251C\u2500");
     }
     return prefix;
 }
@@ -151,7 +156,11 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
     }
 
     //Print filename
-    msg(" \" %s\"", info.filename);
+    if(info.filename == NULL) {
+        msg(" <ROOT> ");
+    } else {
+        msg(" \" %s\"", info.filename);
+    }
 
     msg("\n");
 }
