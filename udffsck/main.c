@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
     }
 
 
-    msg("File to analyze: %s\n", path);
+    msg("Medium to analyze: %s\n", path);
 
 
     int prot = PROT_READ;
@@ -340,7 +340,7 @@ int main(int argc, char *argv[]) {
     // FSD is not necessarily pressent, decide how to select
     // Seen at r1.5 implementations
     uint32_t lbnlsn = 0;
-    status = get_fsd(dev, &disc, blocksize, &lbnlsn);
+    status = get_fsd(dev, &disc, blocksize, &lbnlsn, &stats);
     //if(status) exit(status);
     note("LBNLSN: %d\n", lbnlsn);
     status = get_file_structure(dev, &disc, lbnlsn, &stats, seq);
@@ -376,8 +376,10 @@ int main(int argc, char *argv[]) {
     }
 */
     //---------- Corrections --------------
-    msg("LVID UniqueID: %d\n", stats.actUUID);
-    msg("Max UniqueID: %d\n", stats.maxUUID);
+    msg("\nFilesystem status\n-----------------\n");
+    msg("Volume identifier:  %s\n", stats.logicalVolIdent);
+    msg("Next UniqueID: %d\n", stats.actUUID);
+    msg("Max found UniqueID: %d\n", stats.maxUUID);
     msg("expected number of files: %d\n", stats.expNumOfFiles);
     msg("expected number of dirs:  %d\n", stats.expNumOfDirs);
     msg("counted number of files: %d\n", stats.countNumOfFiles);

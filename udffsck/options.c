@@ -142,10 +142,10 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
         while (optind < argc) { //TODO deal with other unrecognized params somehow...
             *path = (char*)malloc(strlen(argv[optind])+1);
             strcpy(*path, argv[optind]);
-            printf ("%s ", *path);
+            dbg("%s ", *path);
             optind++;
         }
-        putchar ('\n');
+        dbg("\n");
     }
     dbg("Param parse done.\n");
 }

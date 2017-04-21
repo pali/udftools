@@ -67,6 +67,7 @@ struct filesystemStats {
     uint8_t * expPartitionBitmap;
     list_t allocationTable;
     timestamp LVIDtimestamp;
+    dstring * logicalVolIdent;
 };
 
 struct fileInfo {
@@ -111,7 +112,7 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
 int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
 int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq);
 
-uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn);
+uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats);
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq );
 
 uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table);

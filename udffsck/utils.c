@@ -37,115 +37,110 @@ int64_t udf_lseek64(int fd, int64_t offset, int whence) {
 
 
 void read_tag(tag id) {
-    msg("\tIdentification Tag\n"
+    note("\tIdentification Tag\n"
            "\t==================\n");
-    msg("\tID: %d (", id.tagIdent);
+    note("\tID: %d (", id.tagIdent);
     switch(id.tagIdent) {
         case TAG_IDENT_PVD:
-            msg("PVD");
+            note("PVD");
             break;
         case TAG_IDENT_AVDP:
-            msg("AVDP");
+            note("AVDP");
             break;
         case TAG_IDENT_VDP:
-            msg("VDP");
+            note("VDP");
             break;
         case TAG_IDENT_IUVD:
-            msg("IUVD");
+            note("IUVD");
             break;
         case TAG_IDENT_PD:
-            msg("PD");
+            note("PD");
             break;
         case TAG_IDENT_LVD:
-            msg("LVD");
+            note("LVD");
             break;
         case TAG_IDENT_USD:
-            msg("USD");
+            note("USD");
             break;
         case TAG_IDENT_TD:
-            msg("TD");
+            note("TD");
             break;    
         case TAG_IDENT_LVID:
-            msg("LVID");
+            note("LVID");
             break;
     }
-    msg(")\n");
-    msg("\tVersion: %d\n", id.descVersion);
-    msg("\tChecksum: 0x%x\n", id.tagChecksum);
-    msg("\tSerial Number: 0x%x\n", id.tagSerialNum);
-    msg("\tDescriptor CRC: 0x%x, Length: %d\n", id.descCRC, id.descCRCLength);
-    msg("\tTag Location: 0x%x\n", id.tagLocation);
+    note(")\n");
+    note("\tVersion: %d\n", id.descVersion);
+    note("\tChecksum: 0x%x\n", id.tagChecksum);
+    note("\tSerial Number: 0x%x\n", id.tagSerialNum);
+    note("\tDescriptor CRC: 0x%x, Length: %d\n", id.descCRC, id.descCRCLength);
+    note("\tTag Location: 0x%x\n", id.tagLocation);
 }
 
 int print_disc(struct udf_disc *disc) {
-    msg("UDF Metadata Overview\n"
-           "=====================\n");
-    msg("UDF revision: %d\n", disc->udf_rev);
-    msg("Disc blocksize: %d\n", disc->blocksize);
-    msg("Disc blocksize bits: %d\n", disc->blocksize_bits);
-    msg("Flags: %X\n\n", disc->flags);
+    note("\nUDF Metadata Overview\n"
+          "---------------------\n");
 
-
-    msg("AVDP\n"
+    note("AVDP\n"
         "----\n");
     for(int i=0; i<3; i++) {
-        msg("[%d]\n", i);
+        note("[%d]\n", i);
         if(disc->udf_anchor[i] != 0) {
             read_tag(disc->udf_anchor[i]->descTag);
         }
     }
     
-    msg("PVD\n"
+    note("PVD\n"
         "---\n");
     for(int i=0; i<2; i++) {
-        msg("[%d]\n", i);
+        note("[%d]\n", i);
         if(disc->udf_pvd[i] != 0) {
             read_tag(disc->udf_pvd[i]->descTag);
         }
     }
 
-    msg("LVD\n"
+    note("LVD\n"
         "---\n");
     for(int i=0; i<2; i++) {
-        msg("[%d]\n", i);
+        note("[%d]\n", i);
         if(disc->udf_lvd[i] != 0) {
             read_tag(disc->udf_lvd[i]->descTag);
-            msg("\tPartition Maps: %d\n",disc->udf_lvd[i]->partitionMaps[0]);
+            note("\tPartition Maps: %d\n",disc->udf_lvd[i]->partitionMaps[0]);
         }
     }
 
-    msg("PD\n"
+    note("PD\n"
         "--\n");
     for(int i=0; i<2; i++) {
-        msg("[%d]\n", i);
+        note("[%d]\n", i);
         if(disc->udf_pd[i] != 0) {
             read_tag(disc->udf_pd[i]->descTag);
         }
     }
 
-    msg("USD\n"
+    note("USD\n"
         "---\n");
     for(int i=0; i<2; i++) {
-        msg("[%d]\n", i);
+        note("[%d]\n", i);
         if(disc->udf_usd[i] != 0) {
             read_tag(disc->udf_usd[i]->descTag);
-            msg("\tNumOfAllocDescs: %d\n", disc->udf_usd[i]->numAllocDescs);
+            note("\tNumOfAllocDescs: %d\n", disc->udf_usd[i]->numAllocDescs);
         }
     }
 
-    msg("IUVD\n"
+    note("IUVD\n"
         "----\n");
     for(int i=0; i<2; i++) {
-        msg("[%d]\n", i);
+        note("[%d]\n", i);
         if(disc->udf_iuvd[i] != 0) {
             read_tag(disc->udf_iuvd[i]->descTag);
         }
     }
 
-    msg("TD\n"
+    note("TD\n"
         "--\n");
     for(int i=0; i<2; i++) {
-        msg("[%d]\n", i);
+        note("[%d]\n", i);
         if(disc->udf_td[i] != 0) {
             read_tag(disc->udf_td[i]->descTag);
         }

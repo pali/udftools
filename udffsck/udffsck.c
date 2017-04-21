@@ -256,7 +256,7 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
         // Read tag
         memcpy(&descTag, position, sizeof(descTag));
 
-        msg("Tag ID: %d\n", descTag.tagIdent);
+        dbg("Tag ID: %d\n", descTag.tagIdent);
 
         if(vds == MAIN_VDS) {
             seq->main[counter].tagIdent = descTag.tagIdent;
@@ -277,10 +277,10 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
                 }
                 disc->udf_pvd[vds] = malloc(sizeof(struct primaryVolDesc)); // Prepare memory
                 memcpy(disc->udf_pvd[vds], position, sizeof(struct primaryVolDesc)); 
-                msg("VolNum: %d\n", disc->udf_pvd[vds]->volDescSeqNum);
-                msg("pVolNum: %d\n", disc->udf_pvd[vds]->primaryVolDescNum);
-                msg("seqNum: %d\n", disc->udf_pvd[vds]->volSeqNum);
-                msg("predLoc: %d\n", disc->udf_pvd[vds]->predecessorVolDescSeqLocation);
+                dbg("VolNum: %d\n", disc->udf_pvd[vds]->volDescSeqNum);
+                dbg("pVolNum: %d\n", disc->udf_pvd[vds]->primaryVolDescNum);
+                dbg("seqNum: %d\n", disc->udf_pvd[vds]->volSeqNum);
+                dbg("predLoc: %d\n", disc->udf_pvd[vds]->predecessorVolDescSeqLocation);
                 break;
             case TAG_IDENT_IUVD:
                 if(disc->udf_iuvd[vds] != 0) {
@@ -310,12 +310,12 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
 
                 disc->udf_lvd[vds] = malloc(sizeof(struct logicalVolDesc)+lvd->mapTableLength); // Prepare memory
                 memcpy(disc->udf_lvd[vds], position, sizeof(struct logicalVolDesc)+lvd->mapTableLength);
-                msg("NumOfPartitionMaps: %d\n", disc->udf_lvd[vds]->numPartitionMaps);
-                msg("MapTableLength: %d\n", disc->udf_lvd[vds]->mapTableLength);
+                dbg("NumOfPartitionMaps: %d\n", disc->udf_lvd[vds]->numPartitionMaps);
+                dbg("MapTableLength: %d\n", disc->udf_lvd[vds]->mapTableLength);
                 for(int i=0; i<le32_to_cpu(lvd->mapTableLength); i++) {
-                    msg("[0x%02x] ", disc->udf_lvd[vds]->partitionMaps[i]);
+                    note("[0x%02x] ", disc->udf_lvd[vds]->partitionMaps[i]);
                 }
-                msg("\n");
+                note("\n");
                 break;
             case TAG_IDENT_USD:
                 if(disc->udf_usd[vds] != 0) {
@@ -325,8 +325,8 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
 
                 struct unallocSpaceDesc *usd;
                 usd = (struct unallocSpaceDesc *)(position);
-                msg("VolDescNum: %d\n", usd->volDescSeqNum);
-                msg("NumAllocDesc: %d\n", usd->numAllocDescs);
+                dbg("VolDescNum: %d\n", usd->volDescSeqNum);
+                dbg("NumAllocDesc: %d\n", usd->numAllocDescs);
 
                 disc->udf_usd[vds] = malloc(sizeof(struct unallocSpaceDesc)+(usd->numAllocDescs)*sizeof(extent_ad)); // Prepare memory
                 memcpy(disc->udf_usd[vds], position, sizeof(struct unallocSpaceDesc)+(usd->numAllocDescs)*sizeof(extent_ad)); 
@@ -387,10 +387,10 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
 
     disc->udf_lvid = malloc(len);
     memcpy(disc->udf_lvid, dev+loc*sectorsize, len);
-    msg("LVID: lenOfImpUse: %d\n",disc->udf_lvid->lengthOfImpUse);
+    dbg("LVID: lenOfImpUse: %d\n",disc->udf_lvid->lengthOfImpUse);
     //printf("LVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
     //printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
-    msg("LVID: numOfPartitions: %d\n", disc->udf_lvid->numOfPartitions);
+    dbg("LVID: numOfPartitions: %d\n", disc->udf_lvid->numOfPartitions);
 
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
     uint8_t *impUseArr = (uint8_t *)impUse;
@@ -398,13 +398,13 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
 
     stats->LVIDtimestamp = lvid->recordingDateAndTime;
 
-    msg("LVID: number of files: %d\n", impUse->numOfFiles);
-    msg("LVID: number of dirs:  %d\n", impUse->numOfDirs);
-    msg("LVID: UDF rev: min read:  %04x\n", impUse->minUDFReadRev);
-    msg("               min write: %04x\n", impUse->minUDFWriteRev);
-    msg("               max write: %04x\n", impUse->maxUDFWriteRev);
-    msg("Next Unique ID: %d\n", stats->actUUID); 
-    msg("LVID recording timestamp: %s\n", print_timestamp(stats->LVIDtimestamp)); 
+    dbg("LVID: number of files: %d\n", impUse->numOfFiles);
+    dbg("LVID: number of dirs:  %d\n", impUse->numOfDirs);
+    dbg("LVID: UDF rev: min read:  %04x\n", impUse->minUDFReadRev);
+    dbg("               min write: %04x\n", impUse->minUDFWriteRev);
+    dbg("               max write: %04x\n", impUse->maxUDFWriteRev);
+    dbg("Next Unique ID: %d\n", stats->actUUID); 
+    dbg("LVID recording timestamp: %s\n", print_timestamp(stats->LVIDtimestamp)); 
 
     stats->expNumOfFiles = impUse->numOfFiles;
     stats->expNumOfDirs = impUse->numOfDirs;
@@ -433,9 +433,9 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     }
 
     if(disc->udf_lvid->nextIntegrityExt.extLength > 0) {
-        msg("Next integrity extent found.\n");
+        dbg("Next integrity extent found.\n");
     } else {
-        msg("No other integrity extents are here.\n");
+        dbg("No other integrity extents are here.\n");
     }
 
     return 0; 
@@ -500,14 +500,14 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
  * @return 0 everything ok
  *         -1 TD not found
  */
-uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn) {
+uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats) {
     long_ad *lap;
     tag descTag;
     lap = (long_ad *)disc->udf_lvd[0]->logicalVolContentsUse; //FIXME use lela_to_cpu, but not on ptr to disc. Must store it on different place.
     lb_addr filesetblock = lelb_to_cpu(lap->extLocation);
     uint32_t filesetlen = lap->extLength;
 
-    msg("FSD at (%d, p%d)\n", 
+    dbg("FSD at (%d, p%d)\n", 
             lap->extLocation.logicalBlockNum,
             lap->extLocation.partitionReferenceNum);
 
@@ -536,8 +536,8 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
         free(disc->udf_fsd);
         return -1;
     }
-    msg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
-
+    dbg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
+    stats->logicalVolIdent = disc->udf_fsd->logicalVolIdent;
 
     /*struct spaceBitmapDesc sbd;
       uint32_t counter = 1;
@@ -1148,7 +1148,8 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     dbg("Used space offset: %d\n", stats->usedSpace);
     //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
     struct fileInfo info = {0};
-
+    
+    msg("\nMedium file tree\n----------------\n");
     return get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
 }
 
@@ -1405,6 +1406,8 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
     position_reserve = (disc->udf_anchor[source]->reserveVolDescSeqExt.extLocation);
 
 
+    msg("\nVDS verification status\n-----------------------\n");
+
     for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
         if(seq->main[i].error != 0 && seq->reserve[i].error != 0) {
             //Both descriptors are broken
@@ -1449,6 +1452,8 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
         } else {
             msg("[%d] %s is fine. No fixing needed.\n", i, descriptor_name(seq->main[i].tagIdent));
         }
+        if(seq->main[i].tagIdent == TAG_IDENT_TD)
+            break;
     }
 
 
