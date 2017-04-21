@@ -159,7 +159,7 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
     if(info.filename == NULL) {
         msg(" <ROOT> ");
     } else {
-        msg(" \" %s\"", info.filename);
+        msg(" \"%s\"", info.filename);
     }
 
     msg("\n");
@@ -587,7 +587,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             dbg("ROOT directory\n");
         } else {
             dbg("%sFilename: %s\n", depth2str(depth), fid->fileIdent);
-            info.filename = (char *)fid->fileIdent;
+            info.filename = (char *)fid->fileIdent+1;
         }
 
         dbg("FileVersionNum: %d\n", fid->fileVersionNum);
@@ -620,7 +620,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                 }
                 int fixuuid = 0;
                 if(uuid == 0) {
-                    err("FID Unique ID is 0. There should be %d.\n", stats->actUUID);
+                    err("(%s) FID Unique ID is 0. There should be %d.\n", info.filename, stats->actUUID);
                     if(interactive) {
                         if(prompt("Fix it? [Y/n] ")) {
                             fixuuid = 1;
@@ -647,6 +647,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                             fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
                             fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
                         }
+                        msg("(%s) UUID was fixed.\n", info.filename);
                     }
                 }
                 dbg("ICB to follow.\n");
@@ -841,7 +842,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             }
 
             if(compare_timestamps(stats->LVIDtimestamp, ext ? efe->modificationTime : fe->modificationTime) < 0) {
-                err("File timestamp is later than LVID timestamp.\n");
+                err("(%s) File timestamp is later than LVID timestamp. LVID need to be fixed.\n", info.filename);
                 seq->lvid.error |= E_TIMESTAMP; 
             }
             info.modTime = ext ? efe->modificationTime : fe->modificationTime;
@@ -1495,8 +1496,10 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         //Recalculate CRC and checksum
         sbd->descTag.descCRC = calculate_crc(sbd, sizeof(struct spaceBitmapDesc));
         sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
+        msg("PD SBD recovery was successful.\n");
         return 0;
     }
+    msg("PD SBD recovery failed.\n");
     return 1; 
 }
 
@@ -1624,9 +1627,9 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     disc->udf_lvid->descTag.descCRC = calculate_crc(disc->udf_lvid, size);
     disc->udf_lvid->descTag.tagChecksum = calculate_checksum(disc->udf_lvid->descTag);
     //Write changes back to medium
-    //FIXME 
     memcpy(lvid, disc->udf_lvid, size);
 
+    msg("LVID recovery was successful.\n");
     return 0;
 }
 

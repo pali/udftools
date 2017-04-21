@@ -377,7 +377,7 @@ int main(int argc, char *argv[]) {
 */
     //---------- Corrections --------------
     msg("\nFilesystem status\n-----------------\n");
-    msg("Volume identifier:  %s\n", stats.logicalVolIdent);
+    msg("Volume identifier: %s\n", stats.logicalVolIdent);
     msg("Next UniqueID: %d\n", stats.actUUID);
     msg("Max found UniqueID: %d\n", stats.maxUUID);
     msg("expected number of files: %d\n", stats.expNumOfFiles);
@@ -441,11 +441,15 @@ int main(int argc, char *argv[]) {
             if(target1 >= 0) {
                 if(write_avdp(dev, &disc, blocksize, st_size, source, target1) != 0) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
+                } else {
+                    msg("AVDP recovery was successful.\n");
                 } 
             } 
             if(target2 >= 0) {
                 if(write_avdp(dev, &disc, blocksize, st_size, source, target2) != 0) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
+                } else {
+                    msg("AVDP recovery was successful.\n");
                 }
             }
         }
@@ -499,7 +503,6 @@ int main(int argc, char *argv[]) {
 
     if(fixlvid == 1) {
         fix_lvid(dev, &disc, blocksize, &stats); 
-        fix_pd(dev, &disc, blocksize, &stats);  
     } else if(fixlvid == 0 && fixpd == 1) {
         fix_pd(dev, &disc, blocksize, &stats);  
     }
