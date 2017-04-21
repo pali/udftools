@@ -11,6 +11,8 @@
 
 #include "list.h"
 
+#define UDFFSCK_VERSION "1.0"
+
 #define VDS_STRUCT_AMOUNT 8 //FIXME Move to somewhere else, not keep it here.
 
 typedef enum {

@@ -28,13 +28,6 @@
 #include "libudffs.h"
 #include "options.h"
 #include "utils.h"
-/*
-   struct option long_options[] = {
-   { "help", no_argument, NULL, OPT_HELP },
-   { "version", no_argument, NULL, OPT_HELP },
-   { 0, 0, NULL, 0 },
-   };
-   */
 
 verbosity_e verbose = NONE;
 int interactive = 0;
@@ -44,27 +37,50 @@ static struct option long_options[] =
 {
     /* These options set a flag. */
     {"verbose", no_argument,  0, 'v'},
-    {"blocksize",  required_argument, 0, 'b'},
+    {"blocksize",  required_argument, 0, 'B'},
     {"interactive",  no_argument, 0, 'i'},
-    {"fix",    no_argument, 0, 'f'},
+    {"autofix",    no_argument, 0, 'p'},
     {"check", no_argument, 0, 'c'},
     {"help",    no_argument,       0, 'h'},
     {0, 0, 0, 0}
 };
 
+static char * help[] = {
+    "Increase verbosity. Without it are printed only error messages, -v prints warnings, -vv is for humans, -vvv is for developers and curious people.",
+    "Medium block size. Mandatory parameter, can be 512, 1024, 2048 or 4096.",
+    "Medium is will be fixed interactivelly and all fixings must be authorized by user.",
+    "Medium is will be fixed automatically. All found errors will be fixed if possible.",
+    "Medium will be only checked. This is default behavior, but this flag override -p.",
+    "This help message.",
+    ""
+}; 
 
 
 void usage(void)
 {
     int i;
 
-    printf("udffsck from " PACKAGE_NAME " " PACKAGE_VERSION "\nUsage:\n\tudffsck [options] \nOptions:\n");
-    for (i = 0; long_options[i].name != NULL; i++)
+    printf("udffsck " UDFFSCK_VERSION  " from " PACKAGE_NAME " " PACKAGE_VERSION ".");
+    printf("\nUsage:\n\tudffsck [-vvvphci] [-B blocksize] medium\n");
+    printf("Options:\n");
+    for (i = 0; long_options[i].name != NULL; i++) {
         if (long_options[i].flag != 0)
-            printf("\t--%s\t\t%s\n", long_options[i].name, long_options[i].name);
+            printf("  --%s\t", long_options[i].name);
         else
-            printf("\t-%c\t\t%s\n", long_options[i].val, long_options[i].name);
-    exit(1);
+            printf("  -%c\t", long_options[i].val);
+        printf(" %s\n", help[i]);
+    }
+    printf("Return codes:\n");
+    printf("  0 - No error\n"
+           "  1 - Filesystem errors were fixed\n"
+          /* "  2 - Filesystem errors were fixed, reboot is recomended\n"*/
+           "  4 - Filesystem errors remained unfixed\n"
+           "  8 - Program error\n"
+           "  16 - Wrong input parameters\n"
+           "  32 - Check was interrupted by user request\n"
+          /* "  128 - Shared library error"*/
+           "\n");
+    exit(32);
 }
 
 void parse_args(int argc, char *argv[], char **path, int *blocksize) 
@@ -76,7 +92,7 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "vb:ifch", long_options, &option_index);
+        c = getopt_long (argc, argv, "vB:ipch", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -94,7 +110,7 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
                 printf ("\n");
                 break;
 
-            case 'b':
+            case 'B':
                 *blocksize = strtol(optarg, NULL, 10);
                 printf("Device block size: %d\n", *blocksize);
                 break;
@@ -125,12 +141,10 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
                 usage();
                 break;
 
-            case '?':
-                /* getopt_long already printed an error message. */
-                break;
-
             default:
-                abort ();
+                printf("Unrecognized option -%c.\n", c);
+                usage(); 
+                break;
         }
     }
 
