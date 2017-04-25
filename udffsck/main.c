@@ -309,13 +309,13 @@ int main(int argc, char *argv[]) {
 
 
     note("\nTrying to load VDS\n");
-    status = get_vds(dev, &disc, blocksize, source, MAIN_VDS, seq); //load main VDS
+    status |= get_vds(dev, &disc, blocksize, source, MAIN_VDS, seq); //load main VDS
     if(status) exit(status);
-    status = get_vds(dev, &disc, blocksize, source, RESERVE_VDS, seq); //load reserve VDS
+    status |= get_vds(dev, &disc, blocksize, source, RESERVE_VDS, seq); //load reserve VDS
     if(status) exit(status);
 
 
-    status = get_lvid(dev, &disc, blocksize, &stats); //load LVID
+    status |= get_lvid(dev, &disc, blocksize, &stats); //load LVID
     if(status) exit(status);
     if(stats.minUDFReadRev > MAX_VERSION){
         err("Medium UDF revision is %04x and we are able to check up to %04x\n", stats.minUDFReadRev, MAX_VERSION);
@@ -340,10 +340,10 @@ int main(int argc, char *argv[]) {
     // FSD is not necessarily pressent, decide how to select
     // Seen at r1.5 implementations
     uint32_t lbnlsn = 0;
-    status = get_fsd(dev, &disc, blocksize, &lbnlsn, &stats);
+    status |= get_fsd(dev, &disc, blocksize, &lbnlsn, &stats);
     //if(status) exit(status);
     note("LBNLSN: %d\n", lbnlsn);
-    status = get_file_structure(dev, &disc, lbnlsn, &stats, seq);
+    status |= get_file_structure(dev, &disc, lbnlsn, &stats, seq);
     if(status) exit(status);
 
     dbg("USD Alloc Descs\n");
@@ -442,14 +442,14 @@ int main(int argc, char *argv[]) {
                 if(write_avdp(dev, &disc, blocksize, st_size, source, target1) != 0) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
                 } else {
-                    msg("AVDP recovery was successful.\n");
+                    imp("AVDP recovery was successful.\n");
                 } 
             } 
             if(target2 >= 0) {
                 if(write_avdp(dev, &disc, blocksize, st_size, source, target2) != 0) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
                 } else {
-                    msg("AVDP recovery was successful.\n");
+                    imp("AVDP recovery was successful.\n");
                 }
             }
         }

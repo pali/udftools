@@ -219,7 +219,7 @@ void logger(message_type type, char *color, const char *format, va_list arg) {
 			prefix = 0;
 //			color = ANSI_COLOR_GREEN;
             stream = stdout;
-            verblvl = MSG;
+            verblvl = WARN;
 			break;
 		case warning:
 			prefix = "WARN";

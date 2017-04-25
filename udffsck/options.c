@@ -61,7 +61,7 @@ void usage(void)
     int i;
 
     printf("udffsck " UDFFSCK_VERSION  " from " PACKAGE_NAME " " PACKAGE_VERSION ".");
-    printf("\nUsage:\n\tudffsck [-vvvphci] [-B blocksize] medium\n");
+    printf("\nUsage:\n\tudffsck [-icpvvvh] [-B blocksize] medium\n");
     printf("Options:\n");
     for (i = 0; long_options[i].name != NULL; i++) {
         if (long_options[i].flag != 0)
@@ -120,7 +120,7 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
                 interactive = 1;
                 break;
 
-            case 'f':
+            case 'p':
                 printf ("We try to fix medium automaticaly.\n");
                 autofix = 1;
                 break;

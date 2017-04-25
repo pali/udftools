@@ -647,7 +647,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                             fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
                             fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
                         }
-                        msg("(%s) UUID was fixed.\n", info.filename);
+                        imp("(%s) UUID was fixed.\n", info.filename);
                     }
                 }
                 dbg("ICB to follow.\n");
@@ -856,7 +856,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             //
             int fixuuid = 0;
             if(uuid != feUUID) {
-                err("FE Unique ID differs from FID Unique ID.\n");
+                err("(%s) FE Unique ID differs from FID Unique ID.\n", info.filename);
                 if(interactive) {
                     if(prompt("Fix it (set Unique ID to %d, value according FID)? [Y/n] ", uuid) != 0) {
                         fixuuid = 1;
@@ -1369,7 +1369,7 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
         return -3;
     }
 
-    msg("AVDP[%d] successfully written.\n", type);
+    imp("AVDP[%d] successfully written.\n", type);
     return 0;
 }
 
@@ -1496,10 +1496,10 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         //Recalculate CRC and checksum
         sbd->descTag.descCRC = calculate_crc(sbd, sizeof(struct spaceBitmapDesc));
         sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
-        msg("PD SBD recovery was successful.\n");
+        imp("PD SBD recovery was successful.\n");
         return 0;
     }
-    msg("PD SBD recovery failed.\n");
+    err("PD SBD recovery failed.\n");
     return 1; 
 }
 
@@ -1629,7 +1629,7 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     //Write changes back to medium
     memcpy(lvid, disc->udf_lvid, size);
 
-    msg("LVID recovery was successful.\n");
+    imp("LVID recovery was successful.\n");
     return 0;
 }
 
