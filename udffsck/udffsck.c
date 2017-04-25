@@ -561,7 +561,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     return 0;
 }
 
-uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq ) {
+uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
     uint32_t flen, padding;
     uint32_t lsnBase = lbnlsn; 
     struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
@@ -624,10 +624,14 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                     if(interactive) {
                         if(prompt("Fix it? [Y/n] ")) {
                             fixuuid = 1;
+                        } else {
+                            *status |= 4;
                         }
                     }       
                     if(autofix) {
                         fixuuid = 1;
+                    } else {
+                        *status |= 4;
                     }
                     if(fixuuid) {
                         uuid = stats->actUUID;
@@ -648,10 +652,11 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                             fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
                         }
                         imp("(%s) UUID was fixed.\n", info.filename);
+                        *status |= 1;
                     }
                 }
                 dbg("ICB to follow.\n");
-                get_file(dev, disc, lbnlsn, (fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth, uuid, info, seq);
+                *status |= get_file(dev, disc, lbnlsn, (fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth, uuid, info, seq);
                 dbg("Return from ICB\n"); 
             }
         } else {
@@ -722,13 +727,14 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     uint32_t lsnBase = lbnlsn; 
     uint32_t flen, padding;
     uint8_t dir = 0;
+    uint8_t status = 0;
 
     dwarn("\n(%d) ---------------------------------------------------\n", lsn);
 
     descTag = *(tag *)(dev+lbSize*lsn);
     if(!checksum(descTag)) {
         err("Tag checksum failed. Unable to continue.\n");
-        return -2;
+        return 4;
     }
     //memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
     //do {    
@@ -742,15 +748,15 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
         case TAG_IDENT_SBD:
             dwarn("SBD found.\n");
             //FIXME Used for examination of used sectors
-            get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, info, seq); 
+            status |= get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, info, seq); 
             break;
         case TAG_IDENT_EAHD:
             dwarn("EAHD found.\n");
             //FIXME WTF is that?
-            get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, info, seq); 
+            status |= get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, info, seq); 
         case TAG_IDENT_FID:
             fatal("Never should get there.\n");
-            exit(-43);
+            exit(8);
         case TAG_IDENT_AED:
             dbg("\nAED, LSN: %d\n", lsn);
             break;
@@ -766,15 +772,14 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 if(crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs))) {
                     err("EFE CRC failed.\n");
                     //TODO add question about "Continue with caution. yes?"
-                    return -3;
+                    return 4;
                 }
                 ext = 1;
             } else {
                 if(crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs))) {
                     err("FE CRC failed.\n");
                     //TODO add question about "Continue with caution. yes?"
-                    return -3;
-                    return -3;
+                    return 4;
                 }
             }
             dbg("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
@@ -860,6 +865,8 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 if(interactive) {
                     if(prompt("Fix it (set Unique ID to %d, value according FID)? [Y/n] ", uuid) != 0) {
                         fixuuid = 1;
+                    } else {
+                        status |= 4;
                     }
                 }
                 if(autofix) {
@@ -876,6 +883,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
                     fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
                 }
+                status |= 1;
             }
 
 
@@ -971,7 +979,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         err("EAHD mismatch. Expected APP, found %d\n", gf->attrType);
 
                             for(uint32_t pos=0; ; ) {
-                                if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats, depth, seq) != 0) {
+                                if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats, depth, seq, &status) != 0) {
                                     imp("FID inspection over\n");
                                     break;
                                 }
@@ -979,20 +987,6 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     }
                 } else {
                     dwarn("ID: 0x%02x\n",descTag->tagIdent);
-/*
-                    for(int i=0; i<160; ) {
-                        for(int j=0; j<8; j++, i++) {
-                            note("%02x", array[i]); 
-                        }
-                        note("\n");
-                    }
-                    for(uint32_t pos=0; ; ) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats) != 0) {
-                            imp("FID inspection over\n");
-                                break;
-                        
-                        }
-                    }*/
                 }
 
             } else {
@@ -1014,113 +1008,24 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 if(ext) {
                     dbg("[EFE DIR] lengthExtendedAttr: %d\n", efe->lengthExtendedAttr);
                     for(uint32_t pos=0; pos < efe->lengthAllocDescs; ) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats, depth+1, seq) != 0) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats, depth+1, seq, &status) != 0) {
                             break;
                         }
                     }
                 } else {
                     dbg("[FE DIR] lengthExtendedAttr: %d\n", fe->lengthExtendedAttr);
                     for(uint32_t pos=0; pos < fe->lengthAllocDescs; ) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats, depth+1, seq) != 0) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats, depth+1, seq, &status) != 0) {
                             break;
                         }
                     }
                 }
             }
             break;  
-       /* case TAG_IDENT_EFE:
-            fe = 0;
-            printf("EFE, LSN: %d\n", lsn);
-            efe = (struct extendedFileEntry *)(dev+lbSize*lsn); 
-            if(crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs))) {
-                fprintf(stderr, "FE CRC failed.\n");
-                return -3;
-            }
-            printf("\nEFE, LSN: %d, EntityID: %s ", lsn, efe->impIdent.ident);
-            printf("fileLinkCount: %d, LB recorded: %lu\n", le16_to_cpu(efe->fileLinkCount), le64_to_cpu(efe->logicalBlocksRecorded));
-            printf("LEA %d, LAD %d\n", le32_to_cpu(efe->lengthExtendedAttr), le32_to_cpu(efe->lengthAllocDescs));
-            if((le16_to_cpu(efe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
-                printf("SHORT\n");
-                short_ad *sad = (short_ad *)(efe->allocDescs);
-                printf("ExtLen: %d, ExtLoc: %d\n", sad->extLength/lbSize, sad->extPosition+lsnBase);
-                lsn = lsn + sad->extLength/lbSize;
-            } else if((le16_to_cpu(efe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG) {
-                printf("LONG\n");
-                long_ad *lad = (long_ad *)(efe->allocDescs);
-                printf("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
-                lsn = lsn + lad->extLength/lbSize;
-                printf("LSN: %d\n", lsn);
-            }
-            for(int i=0; i<le32_to_cpu(efe->lengthAllocDescs); i+=8) {
-                for(int j=0; j<8; j++)
-                    printf("%02x ", efe->allocDescs[i+j]);
-
-                printf("\n");
-            }
-            printf("\n");
-
-            for(uint32_t pos=0; le32_to_cpu(pos<efe->lengthAllocDescs); ) {
-                fid = (struct fileIdentDesc *)(efe->allocDescs + pos);
-                if (!checksum(fid->descTag)) {
-                    fprintf(stderr, "FID checksum failed.\n");
-                    return -4;
-                }
-                if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
-                    printf("FID found.\n");
-                    flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
-                    padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
-
-                    if(crc(fid, flen + padding)) {
-                        fprintf(stderr, "FID CRC failed.\n");
-                        return -5;
-                    }
-                    printf("FID: ImpUseLen: %d\n", le16_to_cpu(fid->lengthOfImpUse));
-                    printf("FID: FilenameLen: %d\n", fid->lengthFileIdent);
-                    if(fid->lengthFileIdent == 0) {
-                        printf("ROOT directory\n");
-                    } else {
-                        printf("Filename: %s\n", fid->fileIdent+le16_to_cpu(fid->lengthOfImpUse));
-                    }
-
-                    printf("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
-                    if(lela_to_cpu(fid->icb).extLocation.logicalBlockNum + lsnBase == lsn) {
-                        printf("Self. Not following this one\n");
-                    } else if(fid->lengthFileIdent == 0) {
-                        printf("We are not going back to ROOT.\n");
-                    } else {
-                        printf("ICB to follow.\n");
-                        get_file(dev, disc, lbnlsn, fid->icb.extLocation.logicalBlockNum + lsnBase, stats);
-                        printf("Return from ICB\n"); 
-                    }
-                    uint32_t flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
-                    uint16_t padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
-                    printf("FLen: %d, padding: %d\n", flen, padding);
-                    pos = pos + flen + padding;
-                    printf("\n");
-                } else {
-                    printf("Ident: %x\n", fid->descTag.tagIdent);
-                    break;
-                }
-            }
-            break;
-*
-    *
-    */
         default:
             err("IDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
-            /*do{
-              ptLength = *(uint8_t *)(dev+lbn*blocksize+pos);
-              extLoc = *(uint32_t *)(dev+lbn*blocksize+2+pos);
-              filename = (char *)(dev+lbn*blocksize+8+pos);
-              printf("extLoc LBN: %d, filename: %s\n", extLoc, filename);
-              pos += ptLength + 8 + ptLength%2;
-              } while(ptLength > 0);*/
     }            
-    //     lsn = lsn + 1;
-    //     memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
-
-    // } while(descTag.tagIdent != 0 );
-    return 0;
+    return status;
 }
 
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq ) {

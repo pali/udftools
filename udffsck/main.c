@@ -171,6 +171,11 @@ int detect_blocksize(int fd, struct udf_disc *disc)
     return 2048;
 }
 
+#define ES_AVDP1 0x0001 
+#define ES_AVDP2 0x0002
+#define ES_PD    0x0004
+#define ES_LVID  0x0008
+
 /**
  * • 0 - No error
  * • 1 - Filesystem errors were fixed
@@ -194,6 +199,8 @@ int main(int argc, char *argv[]) {
     //metadata_err_map_t *seq;
     vds_sequence_t *seq; 
     struct filesystemStats stats =  {0};
+    uint16_t error_status = 0;
+    uint16_t fix_status = 0;
 
     int source = -1;
 
@@ -310,13 +317,10 @@ int main(int argc, char *argv[]) {
 
     note("\nTrying to load VDS\n");
     status |= get_vds(dev, &disc, blocksize, source, MAIN_VDS, seq); //load main VDS
-    if(status) exit(status);
     status |= get_vds(dev, &disc, blocksize, source, RESERVE_VDS, seq); //load reserve VDS
-    if(status) exit(status);
 
 
     status |= get_lvid(dev, &disc, blocksize, &stats); //load LVID
-    if(status) exit(status);
     if(stats.minUDFReadRev > MAX_VERSION){
         err("Medium UDF revision is %04x and we are able to check up to %04x\n", stats.minUDFReadRev, MAX_VERSION);
         exit(8);
@@ -337,14 +341,11 @@ int main(int argc, char *argv[]) {
         exit(8);
     }
     
-    // FSD is not necessarily pressent, decide how to select
-    // Seen at r1.5 implementations
     uint32_t lbnlsn = 0;
     status |= get_fsd(dev, &disc, blocksize, &lbnlsn, &stats);
-    //if(status) exit(status);
     note("LBNLSN: %d\n", lbnlsn);
     status |= get_file_structure(dev, &disc, lbnlsn, &stats, seq);
-    if(status) exit(status);
+   // if(status) exit(status);
 
     dbg("USD Alloc Descs\n");
     extent_ad *usdext;
@@ -424,8 +425,14 @@ int main(int argc, char *argv[]) {
             target2 = SECOND_AVDP;
         } else {
             err("Unrecoverable AVDP failure. Aborting.\n");
-            exit(0);
+            exit(4);
         }
+
+        if(target1 >= 0)
+            error_status |= ES_AVDP1;
+
+        if(target2 >= 0)
+            error_status |= ES_AVDP2;
 
         int fix_avdp = 0;
         if(interactive) {
@@ -443,6 +450,8 @@ int main(int argc, char *argv[]) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
                 } else {
                     imp("AVDP recovery was successful.\n");
+                    error_status &= ~ES_AVDP1;
+                    fix_status |= ES_AVDP1;
                 } 
             } 
             if(target2 >= 0) {
@@ -450,6 +459,8 @@ int main(int argc, char *argv[]) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
                 } else {
                     imp("AVDP recovery was successful.\n");
+                    error_status &= ~ES_AVDP2;
+                    fix_status |= ES_AVDP2;
                 }
             }
         }
@@ -466,6 +477,7 @@ int main(int argc, char *argv[]) {
     if(seq->lvid.error == (E_CRC | E_CHECKSUM)) {
         //LVID is doomed.
         err("LVID is broken. Recovery is not possible.\n");
+        error_status |= ES_LVID;
     } else {
         if(stats.maxUUID >= stats.actUUID || (seq->lvid.error & E_UUID)) {
             err("Max found Unique ID is same or bigger that Unique ID found at LVID.\n");
@@ -480,7 +492,9 @@ int main(int argc, char *argv[]) {
             err("LVID timestamp is older than timestamps of files.\n");
             lviderr=1;
         }
+
         if(lviderr) {
+            error_status |= ES_LVID;
             if(interactive) {
                 if(prompt("Fix it? [Y/n]") != 0) {
                     fixlvid = 1;
@@ -492,6 +506,7 @@ int main(int argc, char *argv[]) {
     }
 
     if(seq->pd.error != 0) {
+        error_status |= ES_PD;
         if(interactive) {
             if(prompt("Fix PD? [Y/n]") != 0)
                 fixpd = 1;
@@ -502,13 +517,16 @@ int main(int argc, char *argv[]) {
 
 
     if(fixlvid == 1) {
-        fix_lvid(dev, &disc, blocksize, &stats); 
+        if(fix_lvid(dev, &disc, blocksize, &stats) == 0) {
+            error_status &= ~(ES_LVID | ES_PD); 
+            fix_status |= (ES_LVID | ES_PD);
+        }
     } else if(fixlvid == 0 && fixpd == 1) {
-        fix_pd(dev, &disc, blocksize, &stats);  
+        if(fix_pd(dev, &disc, blocksize, &stats) == 0) {
+            error_status &= ~(ES_PD); 
+            fix_status |= ES_PD;
+        }
     }
-    
-
-
 
     note("\n ACT \t EXP\n");
     uint32_t shift = 0;
@@ -522,23 +540,15 @@ int main(int argc, char *argv[]) {
         }
         note("\n");
     }
-   /* note("\n");
-    shift = 4400;
-    for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < 100+shift; ) {
-        for(int j=0; j<16 && i<stats.partitionSizeBlocks/8; j++, i++) {
-            note("%02x ", stats.actPartitionBitmap[i]);
-        }
-        note("| "); 
-        for(int j=0; j<16 && k<stats.partitionSizeBlocks/8; j++, k++) {
-            note("%02x ", stats.expPartitionBitmap[k]);
-        }
-        note("\n");
-    }
-    note("\n");
-*/
-    //test_list();
 
-    //print_file_chunks(&stats);
+    //---------------- Error & Fix Status -------------
+    if(error_status != 0) {
+        status |= 4; //Errors remained unfixed
+    }
+
+    if(fix_status != 0) {
+        status |= 1; // Errors were fixed
+    }
 
     //---------------- Clean up -----------------
 
