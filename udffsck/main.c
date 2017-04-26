@@ -385,6 +385,9 @@ int main(int argc, char *argv[]) {
     msg("expected number of dirs:  %d\n", stats.expNumOfDirs);
     msg("counted number of files: %d\n", stats.countNumOfFiles);
     msg("counted number of dirs:  %d\n", stats.countNumOfDirs);
+    if(stats.expNumOfDirs != stats.countNumOfDirs || stats.expNumOfFiles != stats.countNumOfFiles) {
+        seq->lvid.error |= E_FILES;
+    }
     msg("UDF rev: min read:  %04x\n", stats.minUDFReadRev);
     msg("         min write: %04x\n", stats.minUDFWriteRev);
     msg("         max write: %04x\n", stats.maxUDFWriteRev);
@@ -402,6 +405,7 @@ int main(int argc, char *argv[]) {
     int32_t usedSpaceDiffBlocks = stats.expUsedBlocks - stats.usedSpace/blocksize;
     if(usedSpaceDiffBlocks != 0) {
         err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
+        seq->pd.error |= E_SBDSPACE; 
     }
 
     if(seq->anchor[0].error + seq->anchor[1].error + seq->anchor[2].error != 0) { //Something went wrong with AVDPs
@@ -492,6 +496,10 @@ int main(int argc, char *argv[]) {
             err("LVID timestamp is older than timestamps of files.\n");
             lviderr=1;
         }
+        if(seq->lvid.error & E_FILES) {
+            err("Number of files or directories is not corresponding to counted number\n");
+            lviderr=1;
+        }
 
         if(lviderr) {
             error_status |= ES_LVID;
@@ -508,7 +516,7 @@ int main(int argc, char *argv[]) {
     if(seq->pd.error != 0) {
         error_status |= ES_PD;
         if(interactive) {
-            if(prompt("Fix PD? [Y/n]") != 0)
+            if(prompt("Fix SBD? [Y/n]") != 0)
                 fixpd = 1;
         }
         if(autofix)

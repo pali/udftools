@@ -376,7 +376,7 @@ uint64_t uuid_decoder(uint64_t uuid) {
 int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats) {
     if(disc->udf_lvid != 0) {
         err("Structure LVID is already set. Probably error at tag or media\n");
-        return -4;
+        return 4;
     }
     uint32_t loc = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation; //FIXME MAIN_VDS should be verified first
     uint32_t len = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLength; //FIXME same as previous
@@ -388,8 +388,6 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     disc->udf_lvid = malloc(len);
     memcpy(disc->udf_lvid, dev+loc*sectorsize, len);
     dbg("LVID: lenOfImpUse: %d\n",disc->udf_lvid->lengthOfImpUse);
-    //printf("LVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
-    //printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
     dbg("LVID: numOfPartitions: %d\n", disc->udf_lvid->numOfPartitions);
 
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
@@ -1439,6 +1437,8 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
 
         //Create array for used/unused blocks counting
         stats->actPartitionBitmap = calloc(sbd->numOfBytes, 1);
+    //printf("LVVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
+    //printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
         memset(stats->actPartitionBitmap, 0xff, sbd->numOfBytes);
         stats->partitionNumOfBytes = sbd->numOfBytes;
         stats->partitionNumOfBits = sbd->numOfBits;
