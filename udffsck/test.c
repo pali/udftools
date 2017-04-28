@@ -4,179 +4,111 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "udffsck.h"
-#include <libudffs.h>
-#include <ecma_167.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <time.h>
+
+int fsck_wrapper(const char * medium, char *const args, char *const argB) {
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        strcpy(cwd + strlen(cwd), "/udffsck");
+    } else {
+        printf("getcwd error. Aborting.\n");
+        return -1;
+    }
 
 
+    char medpwd[1024];
+    sprintf(medpwd, "../../udf-samples/%s.img", medium);    
+    printf("Medium: %s\n", medpwd);
+    char * const pars[] = { 
+        cwd,
+        medpwd,
+        args,
+        argB,
+        NULL
+    };
 
-uint8_t avdp_mock[] = {
-0x02,0,0x02,0,0xCE,0,0,0,0x01,0xD7,0xF0,0x01,0,0x01,0,0,0,0x80,0,0,0x20,0,0,0,0,0x80,0,0,0x30
-};
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    char fout[1024];
+    char ferr[1024];
+    sprintf(fout, "../../udf-samples/%d-%02d-%02d-%02d-%02d-%02d_%s.img.out", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, medium);
+    sprintf(ferr, "../../udf-samples/%d-%02d-%02d-%02d-%02d-%02d_%s.img.err", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, medium);
 
+    int pipefd[3];
+    pipe(pipefd);
 
+    int statval, exitval;
+    if(fork() == 0) {
+        int fdout = open(fout, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        int fderr = open(ferr, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        dup2(fdout, 1);   // make stdout go to file
+        dup2(fderr, 2);   // make stderr go to file
+        close(fdout);     // fd no longer needed - the dup'ed handles are sufficient
+        close(fderr);     // fd no longer needed - the dup'ed handles are sufficient
 
-static void avdp_first_ok(void **state) {
-    (void) state;
-    uint8_t *dev;
-    uint32_t size = 500;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
-
-    dev = malloc(size*sectorsize);
-    memcpy(dev+256*sectorsize, avdp_mock, sizeof(avdp_mock));
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, FIRST_AVDP), 0);
-    free(dev);
+        execv(cwd, pars);
+    } else {
+        wait(&statval);
+        if(WIFEXITED(statval)) {
+            printf("Child's exit code %d\n", WEXITSTATUS(statval));
+            exitval = WEXITSTATUS(statval);
+        } else {
+            printf("Child did not terminate with exit\n");  
+            exitval = -1;
+        }
+        return exitval;
+    }
+    return 0;
 }
 
-static void avdp_first_checksum1(void **state) {
+static void blank_pass(void **state) {
     (void) state;
-    uint8_t *dev;
-    uint32_t size = 500;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
 
-    dev = malloc(size*sectorsize);
-    memcpy(dev+256*sectorsize, avdp_mock, sizeof(avdp_mock));
-    (*(uint8_t *)(dev+256*sectorsize+2))++;
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, FIRST_AVDP), -2);
-    free(dev);
+    assert_int_equal(2, 2);
 }
 
-static void avdp_first_checksum2(void **state) {
+static void blank_fail(void **state) {
     (void) state;
-    uint8_t *dev;
-    uint32_t size = 500;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
 
-    dev = malloc(size*sectorsize);
-    memcpy(dev+256*sectorsize, avdp_mock, sizeof(avdp_mock));
-    (*(uint8_t *)(dev+256*sectorsize+0))++;
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, FIRST_AVDP), -2);
-    free(dev);
+    assert_int_equal(2, -3);
 }
 
-static void avdp_first_checksum3(void **state) {
+static void bs2048_dirty_file_tree_2_CHECKONLY_FORCEBLOCKSIZE_ERR(void **state) {
     (void) state;
-    uint8_t *dev;
-    uint32_t size = 500;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
-
-    dev = malloc(size*sectorsize);
-    memcpy(dev+256*sectorsize, avdp_mock, sizeof(avdp_mock));
-    (*(uint8_t *)(dev+256*sectorsize+sizeof(tag)-1))++;
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, FIRST_AVDP), -2);
-    free(dev);
+    char *medium = "bs2048-r0201-dirty-file-tree-deleted-peregrine";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 4);
 }
 
-static void avdp_first_crc1(void **state) {
+static void bs2048_dirty_file_tree_2_FIX_FORCEBLOCKSIZE(void **state) {
     (void) state;
-    uint8_t *dev;
-    uint32_t size = 500;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
-
-    dev = malloc(size*sectorsize);
-    memcpy(dev+256*sectorsize, avdp_mock, sizeof(avdp_mock));
-    (*(uint8_t *)(dev+256*sectorsize+299))++;
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, FIRST_AVDP), -3);
-    free(dev);
+    char *medium = "bs2048-r0201-dirty-file-tree-deleted-peregrine";
+    assert_int_equal(fsck_wrapper(medium, "-vvp", "-B 2048"), 1);
 }
 
-static void avdp_second_ok(void **state) {
+static void bs2048_dirty_file_tree_2_CHECKONLY_FORCEBLOCKSIZE_NOERR(void **state) {
     (void) state;
-    uint8_t *dev;
-    uint32_t size = 5000;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
-
-    dev = malloc(size*sectorsize);
-    memcpy(dev+size*sectorsize-sectorsize, avdp_mock, sizeof(avdp_mock));
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, SECOND_AVDP), 0);
-    free(dev);
-}
-
-static void avdp_second_checksum1(void **state) {
-    (void) state;
-    uint8_t *dev;
-    uint32_t size = 5000;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
-
-    dev = malloc(size*sectorsize);
-    memcpy(dev+size*sectorsize-sectorsize, avdp_mock, sizeof(avdp_mock));
-    (*(uint8_t *)(dev+size*sectorsize-sectorsize+2))++;
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, SECOND_AVDP), -2);
-    free(dev);
-}
-
-static void avdp_second_checksum2(void **state) {
-    (void) state;
-    uint8_t *dev;
-    uint32_t size = 5000;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
-
-    dev = malloc(size*sectorsize);
-    memcpy(dev+size*sectorsize-sectorsize, avdp_mock, sizeof(avdp_mock));
-    (*(uint8_t *)(dev+size*sectorsize-sectorsize+0))++;
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, SECOND_AVDP), -2);
-    free(dev);
-}
-
-static void avdp_second_checksum3(void **state) {
-    (void) state;
-    uint8_t *dev;
-    uint32_t size = 5000;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
-
-    dev = malloc(size*sectorsize);
-    memcpy(dev+size*sectorsize-sectorsize, avdp_mock, sizeof(avdp_mock));
-    (*(uint8_t *)(dev+size*sectorsize-sectorsize+sizeof(tag)-1))++;
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, SECOND_AVDP), -2);
-    free(dev);
-}
-
-static void avdp_second_crc1(void **state) {
-    (void) state;
-    uint8_t *dev;
-    uint32_t size = 5000;
-    uint16_t sectorsize = 2048;
-    struct udf_disc disc = {0};
-
-    dev = malloc(size*sectorsize);
-    memcpy(dev+256*sectorsize, avdp_mock, sizeof(avdp_mock));
-    (*(uint8_t *)(dev+size*sectorsize-sectorsize+229))++;
-    
-    assert_int_equal(get_avdp(dev, &disc, sectorsize, size, SECOND_AVDP), -3);
-    free(dev);
+    char *medium = "bs2048-r0201-dirty-file-tree-deleted-peregrine";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(avdp_first_ok),
-        cmocka_unit_test(avdp_first_checksum1),
-        cmocka_unit_test(avdp_first_checksum2),
-        cmocka_unit_test(avdp_first_checksum3),
-        cmocka_unit_test(avdp_first_crc1),
-        cmocka_unit_test(avdp_second_ok),
-        cmocka_unit_test(avdp_second_checksum1),
-        cmocka_unit_test(avdp_second_checksum2),
-        cmocka_unit_test(avdp_second_checksum3),
-        cmocka_unit_test(avdp_second_crc1),
+#ifdef DEMO
+        cmocka_unit_test(blank_fail),
+        cmocka_unit_test(blank_pass),
+#endif
+        cmocka_unit_test(bs2048_dirty_file_tree_2_CHECKONLY_FORCEBLOCKSIZE_ERR),
+        cmocka_unit_test(bs2048_dirty_file_tree_2_FIX_FORCEBLOCKSIZE),
+        cmocka_unit_test(bs2048_dirty_file_tree_2_CHECKONLY_FORCEBLOCKSIZE_NOERR),
     };
-    
+
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
