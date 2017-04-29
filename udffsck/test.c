@@ -14,6 +14,24 @@
 #include <fcntl.h>
 #include <time.h>
 
+// UDF fsck error codes 
+#define NO_ERR          0
+#define ERR_FIXED       1
+#define ERR_UNFIXED     4
+#define PROG_ERR        8
+#define WRONG_PARS      16
+#define USER_INTERRUPT  32
+
+/**
+ * \brief UDF fsck exec wrapper for simplified test writing
+ *
+ * This function wraps fork/exec around udfffsck calling. 
+ *
+ * \return udffsck exit code
+ * \param[in] medium name of tested medium. All mediums need to be at ../../udf-samples/---MEDIUM NAME HERE---.img format
+ * \param[in] args non-parametric input arguments
+ * \param[in] argsB blocksize parameter. Should be "-B 2048" or something like that
+ */
 int fsck_wrapper(const char * medium, char *const args, char *const argB) {
     char cwd[1024];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
@@ -47,8 +65,8 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
 
     int statval, exitval;
     if(fork() == 0) {
-        int fdout = open(fout, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        int fderr = open(ferr, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        int fdout = open(fout, O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+        int fderr = open(ferr, O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
         dup2(fdout, 1);   // make stdout go to file
         dup2(fderr, 2);   // make stderr go to file
         close(fdout);     // fd no longer needed - the dup'ed handles are sufficient
@@ -81,22 +99,87 @@ static void blank_fail(void **state) {
     assert_int_equal(2, -3);
 }
 
-static void bs2048_dirty_file_tree_2_CHECKONLY_FORCEBLOCKSIZE_ERR(void **state) {
+/**
+ * \brief Test against unfinished write operation. Medium was not more used.
+ *
+ * Result of this is broken LVID's free space, UUID, timestamp and SBD.
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+static void bs2048_dirty_file_tree_1(void **state) {
     (void) state;
-    char *medium = "bs2048-r0201-dirty-file-tree-deleted-peregrine";
-    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 4);
+    char *medium = "bs2048-r0201-dirty-file-tree";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", "-B 2048"), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0); //Check it
 }
 
-static void bs2048_dirty_file_tree_2_FIX_FORCEBLOCKSIZE(void **state) {
+/**
+ * \brief Test against unfinished write operation. After that, another file was deleted.
+ *
+ * Result of this is broken LVID's free space, UUID, timestamp and SBD.
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+static void bs2048_dirty_file_tree_2(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-dirty-file-tree-deleted-peregrine";
-    assert_int_equal(fsck_wrapper(medium, "-vvp", "-B 2048"), 1);
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", "-B 2048"), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0); //Check it
 }
 
-static void bs2048_dirty_file_tree_2_CHECKONLY_FORCEBLOCKSIZE_NOERR(void **state) {
+/**
+ * \brief Test against unfinished write operation. After that, more files were written.
+ *  
+ * It resulted in broken UUIDs at them (all newer files were set UUID=0, also LVID
+ * timestamp was old. 
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+static void bs2048_dirty_file_tree_3(void **state) {
     (void) state;
-    char *medium = "bs2048-r0201-dirty-file-tree-deleted-peregrine";
-    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0);
+    char *medium = "bs2048-r0201-broken-UUIDs";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", "-B 2048"), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0); //Check it
+}
+
+/**
+ * \brief This medium should be clean, so this is test for positive result.
+ * \note Blocksize: 2048
+ * \note Revisiob: 2.01
+ */
+static void bs2048_clean(void **state) {
+    (void) state;
+    char *medium = "bs2048-r0201-clean";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0); //Check it
+}
+
+/**
+ * \brief This medium should be clean, but too new. Should fail.
+ * \note Blocksize: 2048
+ * \note Revision: 2.60
+ */
+static void bs2048_apple_r0260(void **state) {
+    (void) state;
+    char *medium = "bs2048-r0260-apple";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 8); //Check it
+}
+
+/**
+ * \brief This medium should be clean.
+ * \note Blocksize: 2048
+ * \note Revision: 1.50
+ * \note Apple UDF
+ */
+static void bs2048_apple_r0150(void **state) {
+    (void) state;
+    char *medium = "bs2048-r0150-apple";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0); //Check it
 }
 
 int main(void) {
@@ -105,9 +188,12 @@ int main(void) {
         cmocka_unit_test(blank_fail),
         cmocka_unit_test(blank_pass),
 #endif
-        cmocka_unit_test(bs2048_dirty_file_tree_2_CHECKONLY_FORCEBLOCKSIZE_ERR),
-        cmocka_unit_test(bs2048_dirty_file_tree_2_FIX_FORCEBLOCKSIZE),
-        cmocka_unit_test(bs2048_dirty_file_tree_2_CHECKONLY_FORCEBLOCKSIZE_NOERR),
+        cmocka_unit_test(bs2048_dirty_file_tree_1),
+        cmocka_unit_test(bs2048_dirty_file_tree_2),
+        cmocka_unit_test(bs2048_dirty_file_tree_3),
+        cmocka_unit_test(bs2048_clean),
+        cmocka_unit_test(bs2048_apple_r0150),
+        cmocka_unit_test(bs2048_apple_r0260),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
