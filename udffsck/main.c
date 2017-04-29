@@ -64,10 +64,11 @@ int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
     int foundBEA = 0;
 
 
-    for(int i=0; i<5 && *sectorsize < 512; i++, ssize *= 2) {
+    for(int it=0; it<5; it++, ssize *= 2) {
         if(force_sectorsize) {
             ssize = *sectorsize;
-            i = INT_MAX - 1; //End after this iteration
+            it = INT_MAX - 1; //End after this iteration
+            dbg("Forced sectorsize\n");
         }
         
         dbg("Try sectorsize %d\n", ssize);
