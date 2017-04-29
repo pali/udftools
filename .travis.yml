@@ -5,6 +5,9 @@ compiler:
 before_script:
     - pwd
     - cd ..
+    - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/udf-samples.tar.xz
+    - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples.sh
+    - bash decompress-samples.sh
     - wget --no-check-certificate https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
     - tar xf cmocka-1.1.0.tar.xz
     - cd cmocka-1.1.0
@@ -17,16 +20,8 @@ before_script:
     - cd ../../udftools
 
 script:
-    - ./autogen.sh
-    - ./configure
+    - ./autogen.sh --enable-debug 
+    - ./configure --enable-debug
     - make
-
-after_script:
-    - cd ..
-    - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/udf-samples.tar.xz
-    - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples.sh
-    - bash decompress-samples.sh
-    - ls
-    - cd udftools/udffsck
     - ./test
     
