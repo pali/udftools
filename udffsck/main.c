@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <limits.h>
 
 #include <ecma_167.h>
 #include <ecma_119.h>
@@ -53,122 +54,86 @@
 #define MAX_VERSION 0x0201
 
 
-int is_udf(uint8_t *dev, uint32_t sectorsize) {
+int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
     struct volStructDesc vsd;
     struct beginningExtendedAreaDesc bea;
     struct volStructDesc nsr;
     struct terminatingExtendedAreaDesc tea;
-    uint32_t bsize = sectorsize>BLOCK_SIZE ? sectorsize : BLOCK_SIZE; //It is possible to have free sectors between descriptors, but there can't be more than one descriptor in sector. Since there is requirement to comply with 2kB sectors, this is only way.   
-
-    for(int i = 0; i<6; i++) {
-        dbg("try #%d at address 0x%x\n", i, 16*BLOCK_SIZE+i*bsize);
-
-        //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
-        //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
-        memcpy(&vsd, dev+16*BLOCK_SIZE+i*bsize, sizeof(vsd));
-
-        dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
+    int ssize = 512;
+    int notFound = 0;
+    int foundBEA = 0;
 
 
-        if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BEA01, 5)) {
-            //It's Extended area descriptor, so it might be UDF, check next sector
-            memcpy(&bea, &vsd, sizeof(bea)); // store it for later 
-        } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BOOT2, 5)) {
-            err("BOOT2 found, unsuported for now.\n");
-            return(-1);
-        } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CD001, 5)) { 
-            //CD001 means there is ISO9660, we try search for UDF at sector 18
-            //TODO do check for other parameters here
-            //udf_lseek64(fp, BLOCK_SIZE, SEEK_CUR);
-        } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CDW02, 5)) {
-            err("CDW02 found, unsuported for now.\n");
-            return(-1);
-        } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR01, 5)) {
-            memcpy(&nsr, &vsd, sizeof(nsr));
-        } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR02, 5)) {
-            memcpy(&nsr, &vsd, sizeof(nsr));
-        } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR03, 5)) {
-            memcpy(&nsr, &vsd, sizeof(nsr));
-        } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_TEA01, 5)) {
-            //We found TEA01, so we can end recognition sequence
-            memcpy(&tea, &vsd, sizeof(tea));
-            break;
-        } else if(vsd.stdIdent[0] == '\0') {
-            err("Giving up VRS, maybe unclosed or bridged disc.\n");
-            return 1;
-        } else {
-            err("Unknown identifier: %s. Exiting\n", vsd.stdIdent);
-            return -1;
-        }  
+    for(int i=0; i<5 && *sectorsize < 512; i++, ssize *= 2) {
+        if(force_sectorsize) {
+            ssize = *sectorsize;
+            i = INT_MAX - 1; //End after this iteration
+        }
+        
+        dbg("Try sectorsize %d\n", ssize);
+
+        for(int i = 0; i<6; i++) {
+            dbg("try #%d at address 0x%x\n", i, 16*BLOCK_SIZE+i*ssize);
+
+            //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
+            //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
+            memcpy(&vsd, dev+16*BLOCK_SIZE+i*ssize, sizeof(vsd));
+
+            dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
+
+
+            if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BEA01, 5)) {
+                //It's Extended area descriptor, so it might be UDF, check next sector
+                memcpy(&bea, &vsd, sizeof(bea)); // store it for later
+                foundBEA = 1; 
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BOOT2, 5)) {
+                err("BOOT2 found, unsuported for now.\n");
+                return -1;
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CD001, 5)) { 
+                //CD001 means there is ISO9660, we try search for UDF at sector 18
+                //TODO do check for other parameters here
+                //udf_lseek64(fp, BLOCK_SIZE, SEEK_CUR);
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CDW02, 5)) {
+                err("CDW02 found, unsuported for now.\n");
+                return -1;
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR01, 5)) {
+                memcpy(&nsr, &vsd, sizeof(nsr));
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR02, 5)) {
+                memcpy(&nsr, &vsd, sizeof(nsr));
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR03, 5)) {
+                memcpy(&nsr, &vsd, sizeof(nsr));
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_TEA01, 5)) {
+                //We found TEA01, so we can end recognition sequence
+                memcpy(&tea, &vsd, sizeof(tea));
+                break;
+            } else if(vsd.stdIdent[0] == '\0') {
+                if(foundBEA) {
+                    continue;
+                }
+                notFound = 1;
+                break;
+            } else {
+                err("Unknown identifier: %s. Exiting\n", vsd.stdIdent);
+                notFound = 1;
+                break;
+            }  
+        }
+
+        if(notFound) {
+            notFound = 0;
+            continue;
+        }
+
+        dbg("bea: type:%d, id:%s, v:%d\n", bea.structType, bea.stdIdent, bea.structVersion);
+        dbg("nsr: type:%d, id:%s, v:%d\n", nsr.structType, nsr.stdIdent, nsr.structVersion);
+        dbg("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
+
+        *sectorsize = ssize;
+        return 0;
     }
-
-    dbg("bea: type:%d, id:%s, v:%d\n", bea.structType, bea.stdIdent, bea.structVersion);
-    dbg("nsr: type:%d, id:%s, v:%d\n", nsr.structType, nsr.stdIdent, nsr.structVersion);
-    dbg("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
-
-    return 0;
-}
-
-
-int detect_blocksize(int fd, struct udf_disc *disc)
-{
-    int size;
-    uint16_t bs;
-
-    int blocks;
-#ifdef BLKGETSIZE64
-    uint64_t size64;
-#endif
-#ifdef BLKGETSIZE
-    long size;
-#endif
-#ifdef FDGETPRM
-    struct floppy_struct this_floppy;
-#endif
-    struct stat buf;
-
-
-    dbg("detect_blocksize\n");
-
-#ifdef BLKGETSIZE64
-    if (ioctl(fd, BLKGETSIZE64, &size64) >= 0)
-        size = size64;
-    //else
-#endif
-#ifdef BLKGETSIZE
-    if (ioctl(fd, BLKGETSIZE, &size) >= 0)
-        size = size;
-    //else
-#endif
-#ifdef FDGETPRM
-    if (ioctl(fd, FDGETPRM, &this_floppy) >= 0)
-        size = this_floppy.size
-            //else
-#endif
-            //if (fstat(fd, &buf) == 0 && S_ISREG(buf.st_mode))
-            //    size = buf.st_size;
-            //else
-#ifdef BLKSSZGET
-            if (ioctl(fd, BLKSSZGET, &size) != 0)
-                size=size;
-    err("Error: %s\n", strerror(errno));
-    dbg("Block size: %d\n", size);
-    /*
-       disc->blocksize = size;
-       for (bs=512,disc->blocksize_bits=9; disc->blocksize_bits<13; disc->blocksize_bits++,bs<<=1)
-       {
-       if (disc->blocksize == bs)
-       break;
-       }
-       if (disc->blocksize_bits == 13)
-       {
-       disc->blocksize = 2048;
-       disc->blocksize_bits = 11;
-       }
-       disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);*/
-#endif
-
-    return 2048;
+    
+    err("Giving up VRS, maybe unclosed or bridged disc.\n");
+    return 1;
 }
 
 #define ES_AVDP1 0x0001 
@@ -201,6 +166,7 @@ int main(int argc, char *argv[]) {
     struct filesystemStats stats =  {0};
     uint16_t error_status = 0;
     uint16_t fix_status = 0;
+    int force_sectorsize = 0;
 
     int source = -1;
 
@@ -213,18 +179,12 @@ int main(int argc, char *argv[]) {
         exit(16);
     }
     
-    if(blocksize == -1) {
-        err("Device blocksize is not defined. Please define it with -b BLOCKSIZE parameter\n");
-        exit(16);
-    }
-    if(!(blocksize == 512 | blocksize == 1024 | blocksize == 2048 | blocksize == 4096)) {
-        err("Invalid blocksize. Posible blocksizes are 512, 1024, 2048 and 4096.\n");
-        exit(16);
+    if(blocksize > 0) {
+        force_sectorsize = 1;
     }
 
 
     msg("Medium to analyze: %s\n", path);
-
 
     int prot = PROT_READ;
     int flags = O_RDONLY;
@@ -250,11 +210,9 @@ int main(int argc, char *argv[]) {
     }
 
     note("FD: 0x%x\n", fd);
-    //blocksize = detect_blocksize(fd, NULL);
 
-    //stat(path, &sb);
     if(fseeko(fp, 0 , SEEK_END) != 0) {
-        /* Handle error */
+        /* FIXME Handle error */
     } 
     st_size = ftello(fp);
     dbg("Size: 0x%lx\n", (long)st_size);
@@ -287,20 +245,20 @@ int main(int argc, char *argv[]) {
     seq = calloc(1, sizeof(vds_sequence_t));
     //seq = calloc(1, sizeof(metadata_err_map_t));
 
-    status = is_udf(dev, blocksize); //this function is checking for UDF recognition sequence. This part uses 2048B sector size.
+    status = is_udf(dev, &blocksize, force_sectorsize); //this function is checking for UDF recognition sequence. It also tries to detect blocksize
     if(status < 0) {
         exit(status);
     } else if(status == 1) { //Unclosed or bridged medium 
-        status = get_avdp(dev, &disc, blocksize, st_size, -1); //load AVDP
+        status = get_avdp(dev, &disc, &blocksize, st_size, -1, force_sectorsize); //load AVDP and verify blocksize
         source = FIRST_AVDP; // Unclosed medium have only one AVDP and that is saved at first position.
         if(status) {
             err("AVDP is broken. Aborting.\n");
             exit(4);
         }
     } else { //Normal medium
-        seq->anchor[0].error = get_avdp(dev, &disc, blocksize, st_size, FIRST_AVDP); //try load FIRST AVDP
-        seq->anchor[1].error = get_avdp(dev, &disc, blocksize, st_size, SECOND_AVDP); //load AVDP
-        seq->anchor[2].error = get_avdp(dev, &disc, blocksize, st_size, THIRD_AVDP); //load AVDP
+        seq->anchor[0].error = get_avdp(dev, &disc, &blocksize, st_size, FIRST_AVDP, force_sectorsize); //try load FIRST AVDP
+        seq->anchor[1].error = get_avdp(dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize); //load AVDP
+        seq->anchor[2].error = get_avdp(dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize); //load AVDP
 
         if(seq->anchor[0].error == 0) {
             source = FIRST_AVDP;
@@ -314,6 +272,16 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if(blocksize == -1) {
+        err("Device blocksize is not defined. Please define it with -b BLOCKSIZE parameter\n");
+        exit(16);
+    }
+
+    // FIXME Correct blocksize MUST be blocksize%512 == 0
+    if(!(blocksize == 512 | blocksize == 1024 | blocksize == 2048 | blocksize == 4096)) {
+        err("Invalid blocksize. Posible blocksizes must be dividable by 512.\n");
+        exit(16);
+    }
 
     note("\nTrying to load VDS\n");
     status |= get_vds(dev, &disc, blocksize, source, MAIN_VDS, seq); //load main VDS
@@ -340,12 +308,12 @@ int main(int argc, char *argv[]) {
         err("PD error\n");
         exit(8);
     }
-    
+
     uint32_t lbnlsn = 0;
     status |= get_fsd(dev, &disc, blocksize, &lbnlsn, &stats);
     note("LBNLSN: %d\n", lbnlsn);
     status |= get_file_structure(dev, &disc, lbnlsn, &stats, seq);
-   // if(status) exit(status);
+    // if(status) exit(status);
 
     dbg("USD Alloc Descs\n");
     extent_ad *usdext;
@@ -371,11 +339,11 @@ int main(int argc, char *argv[]) {
         note("\n");
     }
 
-/*    if(get_pd(dev, &disc, blocksize, &stats)) {
-        err("PD error\n");
-        exit(8);
-    }
-*/
+    /*    if(get_pd(dev, &disc, blocksize, &stats)) {
+          err("PD error\n");
+          exit(8);
+          }
+          */
     //---------- Corrections --------------
     msg("\nFilesystem status\n-----------------\n");
     msg("Volume identifier: %s\n", stats.logicalVolIdent);
@@ -584,7 +552,7 @@ int main(int argc, char *argv[]) {
 
     free(seq);
     free(stats.actPartitionBitmap);
-    
+
     list_destoy(&stats.allocationTable);
 
     flock(fd, LOCK_UN);

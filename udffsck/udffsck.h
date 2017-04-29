@@ -102,7 +102,7 @@ struct impUseLVID {
 #define E_FILES         0b10000000
 
 // Anchor volume descriptor points to Mvds and Rvds
-int get_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize, avdp_type_e type);
+int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize);
 int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target);
 
 // Volume descriptor sequence
