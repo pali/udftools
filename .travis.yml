@@ -23,6 +23,7 @@ script:
     - ./autogen.sh --enable-debug 
     - ./configure --enable-debug
     - make
+    - cd udffsck
     - ls -l
     - ./test
     
