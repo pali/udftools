@@ -1,0 +1,45 @@
+.\" Copyright 2017 Vojtech Vladyka <vojtech.vladyka@gmail.com>
+.\"
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" The GNU General Public License's references to "object code"
+.\" and "executables" are to be interpreted as the output of any
+.\" document formatting or typesetting system, including
+.\" intermediate and printed output.
+.\"
+.\" This manual is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public
+.\" License along with this manual; if not, write to the Free
+.\" Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111,
+.\" USA.
+.\"
+.\" References consulted:
+.\"   
+.\"
+.\"
+.TH UDFFSCK 8
+.SH NAME
+udffsck \- fsck for UDF filesystem
+.SH SYNOPSIS
+.B udffsck
+[\fB\-vvvciph\fR]
+[\fB\-B\fR \fIBLOCKSIZE\fR]
+.IR medium
+.SH DESCRIPTION
+.B udffsck
+checks and fixes UDF.
+.PP 
+DRAFT ONLY.
+.PP
+.SH OPTIONS
+.TP
+.BR \-n ", " \-\-bits =\fIBITS\fR
+Set the number of bits to modify.
+Default is one bit.
