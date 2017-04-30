@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <limits.h>
+#include <signal.h>
 
 #include <ecma_167.h>
 #include <ecma_119.h>
@@ -53,6 +54,10 @@
 
 #define MAX_VERSION 0x0201
 
+void user_interrupt(int dummy) {
+    warn("\nUser interrupted operation. Exiting.\n");
+    exit(32);
+}
 
 int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
     struct volStructDesc vsd;
@@ -168,6 +173,8 @@ int main(int argc, char *argv[]) {
     int force_sectorsize = 0;
 
     int source = -1;
+
+    signal(SIGINT, user_interrupt);
 
     parse_args(argc, argv, &path, &blocksize);	
 
