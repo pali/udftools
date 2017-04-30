@@ -1,3 +1,24 @@
+/*
+ * udffsck.c
+ *
+ * Copyright (c) 2016    Vojtech Vladyka <vojtch.vladyka@gmail.com>
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ */
 
 #include <math.h>
 #include <time.h>
@@ -6,7 +27,6 @@
 #include "udffsck.h"
 #include "utils.h"
 #include "libudffs.h"
-#include "list.h"
 #include "options.h"
 
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq );
@@ -716,22 +736,6 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     }
 
     return 0;
-}
-
-void print_file_chunks(struct filesystemStats *stats) {
-    file_t *file;
-
-    list_first(&stats->allocationTable);
-
-    uint32_t last = 0, first = 0;
-    do {
-        file = list_get(&stats->allocationTable);
-        if(file == NULL)
-            break;
-        first = file->lsn;
-        last = file->lsn + file->blocks;
-        dbg("Used space from: %d to %d, blocks: %d\n", first, last, last-first);
-    } while(list_next(&stats->allocationTable) == 0);
 }
 
 void incrementUsedSize(struct filesystemStats *stats, uint32_t increment, uint32_t position) {
@@ -1629,37 +1633,3 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     return 0;
 }
 
-void test_list(void) {
-    list_t list;
-
-    uint8_t a = 5, b = 7, c = 10;
-    uint8_t * d;
-
-    list_init(&list);
-
-    dbg("a: %p\n", &a);
-    list_insert_first(&list, &a);
-    dbg("b: %p\n", &b);
-    list_insert_first(&list, &b);
-    dbg("c: %p\n", &c);
-    list_insert_first(&list, &c);
-
-    d = list_get(&list);
-    dbg("Actual: %p, %d\n", d, *d );
-    list_next(&list);
-    dbg("Go get\n");
-    d = list_get(&list);
-    dbg("Actual: %p, %d\n", d, *d );
-    list_next(&list);
-    dbg("Go get\n");
-    d = list_get(&list);
-    dbg("Actual: %p, %d\n", d, *d );
-    list_next(&list);
-    dbg("Go get\n");
-    d = list_get(&list);
-    dbg("Actual: %p\n", d);
-
-
-    list_destoy(&list);
-
-}

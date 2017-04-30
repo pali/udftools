@@ -1,7 +1,6 @@
 /*
  * options.h
  *
- * Copyright (c) 2002       Ben Fennema <bfennema@falcon.csc.calpoly.edu>
  * Copyright (c) 2016       Vojtech Vladyka <vojtech.vladyka@gmail.com>
  * All rights reserved.
  *

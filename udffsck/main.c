@@ -42,7 +42,6 @@
 #include "utils.h"
 #include "options.h"
 #include "udffsck.h"
-#include "list.h"
 
 //#define PVD 0x10
 
@@ -313,7 +312,7 @@ int main(int argc, char *argv[]) {
     print_disc(&disc);
 #endif
 
-    list_init(&stats.allocationTable);
+    //list_init(&stats.allocationTable);
     stats.blocksize = blocksize;
 
     if(get_pd(dev, &disc, blocksize, &stats, seq)) {
@@ -565,7 +564,7 @@ int main(int argc, char *argv[]) {
     free(seq);
     free(stats.actPartitionBitmap);
 
-    list_destoy(&stats.allocationTable);
+    //list_destoy(&stats.allocationTable);
 
     flock(fd, LOCK_UN);
     close(fd);
