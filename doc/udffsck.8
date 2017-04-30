@@ -36,10 +36,63 @@ udffsck \- fsck for UDF filesystem
 .B udffsck
 checks and fixes UDF.
 .PP 
-DRAFT ONLY.
+.B DRAFT ONLY.
 .PP
 .SH OPTIONS
 .TP
-.BR \-n ", " \-\-bits =\fIBITS\fR
-Set the number of bits to modify.
-Default is one bit.
+.BR \-B " " \fIBLOCKSIZE\fR
+Force udffsck to use this blocksize instead of autodetection
+Default is autodetected value by finding VRS and AVDP position.
+.TP
+.BR \-c
+Only check medium and print found errors.
+This is default behavior.
+.TP
+.BR \-i
+Interactively fix medium. 
+In this mode all corrections must be authorized by user.
+.TP
+.BR \-p
+Automatical corrections. This is like 
+.BR -i , 
+but all questions are answered yes.
+.TP
+.BR \-h 
+Short help message.
+.TP
+.BR \-v 
+Warning verbosity level. 
+Errors and warning will be printed.
+.TP
+.BR \-vv 
+Message verbosity level. 
+Errors, warnings and messages will be printed. 
+Recomended for manual usage.
+.TP
+.BR \-vvv
+Debug Verbosity level. 
+Only for development and debug purposes. 
+And for nosy users.
+.SH EXAMPLES
+Check medium and show it structure to user:
+.PP
+.nf
+.RS
+udffsck -vvc /dev/sda2 
+.RE
+.fi
+.PP
+Check and fix medium image automatically, show only errors:
+.PP
+.nf
+.RS
+udffsck -p udf_image_file.img 
+.RE
+.fi
+.PP
+.SH REPORTING BUGS
+bla bla bla
+.SH AUTHOR
+This version of 
+.B udffsck 
+was written by Vojtech Vladyka <vojtech.vladyka@gmail.com>
