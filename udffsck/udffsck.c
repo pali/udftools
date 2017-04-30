@@ -210,7 +210,7 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsiz
 
         dbg("DevSize: %zu\n", devsize);
         dbg("Current position: %lx\n", position);
-        
+
         if(disc->udf_anchor[type] == NULL) {
             disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
         }
@@ -802,15 +802,29 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 dwarn("[EFE]\n");
                 if(crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs))) {
                     err("EFE CRC failed.\n");
-                    //TODO add question about "Continue with caution. yes?"
-                    return 4;
+                    int cont = 0;
+                    if(interactive) {
+                        if(prompt("Continue with caution, yes? [Y/n] ")) {
+                            cont = 1;
+                        }
+                    }
+                    if(cont == 0) {
+                        return 4;
+                    }
                 }
                 ext = 1;
             } else {
                 if(crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs))) {
                     err("FE CRC failed.\n");
-                    //TODO add question about "Continue with caution. yes?"
-                    return 4;
+                    int cont = 0;
+                    if(interactive) {
+                        if(prompt("Continue with caution, yes? [Y/n] ")) {
+                            cont = 1;
+                        }
+                    }
+                    if(cont == 0) {
+                        return 4;
+                    }
                 }
             }
             dbg("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);
@@ -886,10 +900,6 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
             uint64_t feUUID = (ext ? efe->uniqueID : fe->uniqueID);
             dbg("Unique ID: %d\n", (feUUID));
-            //(stats->maxUUID < uuid) {
-            //  stats->maxUUID = uuid;
-            //  dwarn("New MAX UUID\n");
-            //
             int fixuuid = 0;
             if(uuid != feUUID) {
                 err("(%s) FE Unique ID differs from FID Unique ID.\n", info.filename);
@@ -1025,17 +1035,9 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             }
 
 
-            //TODO is it directory? If is, continue. Otherwise not.
             // We can assume that directory have one or more FID inside.
             // FE have inside long_ad/short_ad.
             if(dir) {
-                /*for(int i=0; i<le32_to_cpu(fe->lengthAllocDescs); i+=8) {
-                  for(int j=0; j<8; j++)
-                  printf("%02x ", fe->allocDescs[i+j]);
-
-                  printf("\n");
-                  }*/
-                //printf("\n");
                 if(ext) {
                     dbg("[EFE DIR] lengthExtendedAttr: %d\n", efe->lengthExtendedAttr);
                     for(uint32_t pos=0; pos < efe->lengthAllocDescs; ) {
@@ -1057,551 +1059,572 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             err("IDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
     }            
     return status;
-    }
+}
 
-    uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq ) {
-        struct fileEntry *file;
-        struct fileIdentDesc *fid;
-        tag descTag;
-        uint32_t lsn;
+uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq ) {
+    struct fileEntry *file;
+    struct fileIdentDesc *fid;
+    tag descTag;
+    uint32_t lsn;
 
-        uint8_t ptLength = 1;
-        uint32_t extLoc;
-        char *filename;
-        uint16_t pos = 0;
-        uint32_t lsnBase = lbnlsn; 
-        uint32_t lbSize = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first 
-        // Go to ROOT ICB 
-        lb_addr icbloc = lelb_to_cpu(disc->udf_fsd->rootDirectoryICB.extLocation); 
+    uint8_t ptLength = 1;
+    uint32_t extLoc;
+    char *filename;
+    uint16_t pos = 0;
+    uint32_t lsnBase = lbnlsn; 
+    uint32_t lbSize = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first 
+    // Go to ROOT ICB 
+    lb_addr icbloc = lelb_to_cpu(disc->udf_fsd->rootDirectoryICB.extLocation); 
 
-        //file = malloc(sizeof(struct fileEntry));
-        //lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
-        //read(fd, file, sizeof(struct fileEntry));
-        lsn = icbloc.logicalBlockNum+lsnBase;
-        dbg("ROOT LSN: %d\n", lsn);
-        stats->usedSpace = (lsn-lsnBase)*le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first
-        //uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size) {
-        markUsedBlock(stats, 0, lsn-lsnBase);
-        dbg("Used space offset: %d\n", stats->usedSpace);
-        //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
-        struct fileInfo info = {0};
+    //file = malloc(sizeof(struct fileEntry));
+    //lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
+    //read(fd, file, sizeof(struct fileEntry));
+    lsn = icbloc.logicalBlockNum+lsnBase;
+    dbg("ROOT LSN: %d\n", lsn);
+    stats->usedSpace = (lsn-lsnBase)*le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first
+    //uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size) {
+    markUsedBlock(stats, 0, lsn-lsnBase);
+    dbg("Used space offset: %d\n", stats->usedSpace);
+    //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
+    struct fileInfo info = {0};
 
-        msg("\nMedium file tree\n----------------\n");
-        return get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
-    }
+    msg("\nMedium file tree\n----------------\n");
+    return get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
+}
 
-    int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error) {
-        for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
-            if(vds == MAIN_VDS) {
-                if(seq->main[i].tagIdent == tagIdent) {
-                    seq->main[i].error |= error;
-                    return 0;
-                }
-            } else {
-                if(seq->reserve[i].tagIdent == tagIdent) {
-                    seq->reserve[i].error |= error;
-                    return 0;
-                }
+int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error) {
+    for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
+        if(vds == MAIN_VDS) {
+            if(seq->main[i].tagIdent == tagIdent) {
+                seq->main[i].error |= error;
+                return 0;
             }
-        }
-        return -1;
-    }
-
-    uint32_t get_tag_location(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds) {
-        for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
-            if(vds == MAIN_VDS) {
-                if(seq->main[i].tagIdent == tagIdent) {
-                    return seq->main[i].tagLocation;
-                }
-            } else {
-                if(seq->reserve[i].tagIdent == tagIdent) {
-                    return seq->reserve[i].tagLocation;
-                }
-            }
-        }
-        return -1;
-    }
-
-    int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq) {
-        //metadata_err_map_t map;    
-        uint8_t *data;
-        //uint16_t crc = 0;
-        uint16_t offset = sizeof(tag);
-
-        if(!checksum(disc->udf_pvd[vds]->descTag)) {
-            err("Checksum failure at PVD[%d]\n", vds);
-            //map->pvd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_PVD, vds, E_CHECKSUM);
-        }   
-        if(!checksum(disc->udf_lvd[vds]->descTag)) {
-            err("Checksum failure at LVD[%d]\n", vds);
-            //map->lvd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_LVD, vds, E_CHECKSUM);
-        }   
-        if(!checksum(disc->udf_pd[vds]->descTag)) {
-            err("Checksum failure at PD[%d]\n", vds);
-            //map->pd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_PD, vds, E_CHECKSUM);
-        }   
-        if(!checksum(disc->udf_usd[vds]->descTag)) {
-            err("Checksum failure at USD[%d]\n", vds);
-            //map->usd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_USD, vds, E_CHECKSUM);
-        }   
-        if(!checksum(disc->udf_iuvd[vds]->descTag)) {
-            err("Checksum failure at IUVD[%d]\n", vds);
-            //map->iuvd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_IUVD, vds, E_CHECKSUM);
-        }   
-        if(!checksum(disc->udf_td[vds]->descTag)) {
-            err("Checksum failure at TD[%d]\n", vds);
-            //map->td[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_TD, vds, E_CHECKSUM);
-        }
-
-        if(check_position(disc->udf_pvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_PVD, vds))) {
-            err("Position failure at PVD[%d]\n", vds);
-            //map->pvd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_PVD, vds, E_POSITION);
-        }   
-        if(check_position(disc->udf_lvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_LVD, vds))) {
-            err("Position failure at LVD[%d]\n", vds);
-            //map->lvd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_LVD, vds, E_POSITION);
-        }   
-        if(check_position(disc->udf_pd[vds]->descTag, get_tag_location(seq, TAG_IDENT_PD, vds))) {
-            err("Position failure at PD[%d]\n", vds);
-            //map->pd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_PD, vds, E_POSITION);
-        }   
-        if(check_position(disc->udf_usd[vds]->descTag, get_tag_location(seq, TAG_IDENT_USD, vds))) {
-            err("Position failure at USD[%d]\n", vds);
-            //map->usd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_USD, vds, E_POSITION);
-        }   
-        if(check_position(disc->udf_iuvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_IUVD, vds))) {
-            err("Position failure at IUVD[%d]\n", vds);
-            //map->iuvd[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_IUVD, vds, E_POSITION);
-        }   
-        if(check_position(disc->udf_td[vds]->descTag, get_tag_location(seq, TAG_IDENT_TD, vds))) {
-            err("Position failure at TD[%d]\n", vds);
-            //map->td[vds] |= E_CHECKSUM;
-            append_error(seq, TAG_IDENT_TD, vds, E_POSITION);
-        }
-
-        if(crc(disc->udf_pvd[vds], sizeof(struct primaryVolDesc))) {
-            err("CRC error at PVD[%d]\n", vds);
-            //map->pvd[vds] |= E_CRC;
-            append_error(seq, TAG_IDENT_PVD, vds, E_CRC);
-        }
-        if(crc(disc->udf_lvd[vds], sizeof(struct logicalVolDesc)+disc->udf_lvd[vds]->mapTableLength)) {
-            err("CRC error at LVD[%d]\n", vds);
-            //map->lvd[vds] |= E_CRC;
-            append_error(seq, TAG_IDENT_LVD, vds, E_CRC);
-        }
-        if(crc(disc->udf_pd[vds], sizeof(struct partitionDesc))) {
-            err("CRC error at PD[%d]\n", vds);
-            //map->pd[vds] |= E_CRC;
-            append_error(seq, TAG_IDENT_PD, vds, E_CRC);
-        }
-        if(crc(disc->udf_usd[vds], sizeof(struct unallocSpaceDesc)+(disc->udf_usd[vds]->numAllocDescs)*sizeof(extent_ad))) {
-            err("CRC error at USD[%d]\n", vds);
-            //map->usd[vds] |= E_CRC;
-            append_error(seq, TAG_IDENT_USD, vds, E_CRC);
-        }
-        if(crc(disc->udf_iuvd[vds], sizeof(struct impUseVolDesc))) {
-            err("CRC error at IUVD[%d]\n", vds);
-            //map->iuvd[vds] |= E_CRC;
-            append_error(seq, TAG_IDENT_IUVD, vds, E_CRC);
-        }
-        if(crc(disc->udf_td[vds], sizeof(struct terminatingDesc))) {
-            err("CRC error at TD[%d]\n", vds);
-            //map->td[vds] |= E_CRC;
-            append_error(seq, TAG_IDENT_TD, vds, E_CRC);
-        }
-
-        return 0;
-    }
-
-    int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount) {
-        tag sourceDescTag, destinationDescTag;
-        uint8_t *destArray;
-
-        dbg("source: 0x%x, destination: 0x%x\n", sourcePosition, destinationPosition);
-
-        sourceDescTag = *(tag *)(dev+sourcePosition*sectorsize);
-        memcpy(&destinationDescTag, &sourceDescTag, sizeof(tag));
-        destinationDescTag.tagLocation = destinationPosition;
-        destinationDescTag.tagChecksum = calculate_checksum(destinationDescTag);
-
-        dbg("srcChecksum: 0x%x, destChecksum: 0x%x\n", sourceDescTag.tagChecksum, destinationDescTag.tagChecksum);
-
-        destArray = calloc(1, amount);
-        memcpy(destArray, &destinationDescTag, sizeof(tag));
-        memcpy(destArray+sizeof(tag), dev+sourcePosition*sectorsize+sizeof(tag), amount-sizeof(tag));
-
-        memcpy(dev+destinationPosition*sectorsize, destArray, amount);
-
-        free(destArray);
-
-        return 0;
-    }
-
-    int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target) {
-        uint64_t sourcePosition = 0;
-        uint64_t targetPosition = 0;
-        tag desc_tag;
-        avdp_type_e type = target;
-
-        // Taget type to determine position on media
-        if(source == 0) {
-            sourcePosition = sectorsize*256; //First AVDP is on LSN=256
-        } else if(source == 1) {
-            sourcePosition = devsize-sectorsize; //Second AVDP is on last LSN
-        } else if(source == 2) {
-            sourcePosition = devsize-sectorsize-256*sectorsize; //Third AVDP can be at last LSN-256
         } else {
-            sourcePosition = sectorsize*512; //Unclosed disc have AVDP at sector 512
-        }
-
-        // Taget type to determine position on media
-        if(target == 0) {
-            targetPosition = sectorsize*256; //First AVDP is on LSN=256
-        } else if(target == 1) {
-            targetPosition = devsize-sectorsize; //Second AVDP is on last LSN
-        } else if(target == 2) {
-            targetPosition = devsize-sectorsize-256*sectorsize; //Third AVDP can be at last LSN-256
-        } else {
-            targetPosition = sectorsize*512; //Unclosed disc have AVDP at sector 512
-            type = FIRST_AVDP; //Save it to FIRST_AVDP positon
-        }
-
-        dbg("DevSize: %zu\n", devsize);
-        dbg("Current position: %lx\n", targetPosition);
-
-        //uint8_t * ptr = memcpy(dev+position, disc->udf_anchor[source], sizeof(struct anchorVolDescPtr)); 
-        //printf("ptr: %p\n", ptr);
-
-        copy_descriptor(dev, disc, sectorsize, sourcePosition/sectorsize, targetPosition/sectorsize, sizeof(struct anchorVolDescPtr));
-
-        free(disc->udf_anchor[type]);
-        disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
-
-        desc_tag = *(tag *)(dev+targetPosition);
-
-        if(!checksum(desc_tag)) {
-            err("Checksum failure at AVDP[%d]\n", type);
-            return -2;
-        } else if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
-            err("AVDP not found at 0x%lx\n", targetPosition);
-            return -4;
-        }
-
-        memcpy(disc->udf_anchor[type], dev+targetPosition, sizeof(struct anchorVolDescPtr));
-
-        if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
-            err("CRC error at AVDP[%d]\n", type);
-            return -3;
-        }
-
-        imp("AVDP[%d] successfully written.\n", type);
-        return 0;
-    }
-
-    char * descriptor_name(uint16_t descIdent) {
-        switch(descIdent) {
-            case TAG_IDENT_PVD:
-                return "PVD";
-            case TAG_IDENT_LVD:
-                return "LVD";
-            case TAG_IDENT_PD:
-                return "PD";
-            case TAG_IDENT_USD:
-                return "USD";
-            case TAG_IDENT_IUVD:
-                return "IUVD";
-            case TAG_IDENT_TD:
-                return "TD";
-            case TAG_IDENT_AVDP:
-                return "AVDP";
-            case TAG_IDENT_LVID:
-                return "LVID";
-            default:
-                return "Unknown";
-        }
-    }
-
-    int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq, uint8_t interactive, uint8_t autofix) { 
-        uint32_t position_main, position_reserve;
-        int8_t counter = 0;
-        tag descTag;
-        uint8_t fix=0;
-
-        // Go to first address of VDS
-        position_main = (disc->udf_anchor[source]->mainVolDescSeqExt.extLocation);
-        position_reserve = (disc->udf_anchor[source]->reserveVolDescSeqExt.extLocation);
-
-
-        msg("\nVDS verification status\n-----------------------\n");
-
-        for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
-            if(seq->main[i].error != 0 && seq->reserve[i].error != 0) {
-                //Both descriptors are broken
-                //FIXME Deal with it somehow   
-                err("[%d] Both descriptors are broken.\n",i);     
-            } else if(seq->main[i].error != 0) {
-                //Copy Reserve -> Main
-                if(interactive) {
-                    fix = prompt("%s is broken. Fix it? [Y/n]", descriptor_name(seq->reserve[i].tagIdent)); 
-                } else if (autofix) {
-                    fix = 1;
-                }
-
-                //int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount);
-                if(fix) {
-                    warn("[%d] Fixing Main %s\n",i,descriptor_name(seq->reserve[i].tagIdent));
-                    warn("sectorsize: %d\n", sectorsize);
-                    warn("src pos: 0x%x\n", position_reserve + i);
-                    warn("dest pos: 0x%x\n", position_main + i);
-                    //                memcpy(position_main + i*sectorsize, position_reserve + i*sectorsize, sectorsize);
-                    copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
-                } else {
-                    warn("[%i] %s is broken.\n", i,descriptor_name(seq->reserve[i].tagIdent));
-                }
-                fix = 0;
-            } else if(seq->reserve[i].error != 0) {
-                //Copy Main -> Reserve
-                if(interactive) {
-                    fix = prompt("%s is broken. Fix it? [Y/n]", descriptor_name(seq->main[i].tagIdent)); 
-                } else if (autofix) {
-                    fix = 1;
-                }
-
-                if(fix) {
-                    warn("[%i] Fixing Reserve %s\n", i,descriptor_name(seq->main[i].tagIdent));
-                    //memcpy(position_reserve + i*sectorsize, position_main + i*sectorsize, sectorsize);
-                    copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
-                } else {
-                    warn("[%i] %s is broken.\n", i,descriptor_name(seq->main[i].tagIdent));
-                }
-                fix = 0;
-            } else {
-                msg("[%d] %s is fine. No fixing needed.\n", i, descriptor_name(seq->main[i].tagIdent));
+            if(seq->reserve[i].tagIdent == tagIdent) {
+                seq->reserve[i].error |= error;
+                return 0;
             }
-            if(seq->main[i].tagIdent == TAG_IDENT_TD)
-                break;
         }
+    }
+    return -1;
+}
 
+uint32_t get_tag_location(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds) {
+    for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
+        if(vds == MAIN_VDS) {
+            if(seq->main[i].tagIdent == tagIdent) {
+                return seq->main[i].tagLocation;
+            }
+        } else {
+            if(seq->reserve[i].tagIdent == tagIdent) {
+                return seq->reserve[i].tagLocation;
+            }
+        }
+    }
+    return -1;
+}
 
-        return 0;
+int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq) {
+    //metadata_err_map_t map;    
+    uint8_t *data;
+    //uint16_t crc = 0;
+    uint16_t offset = sizeof(tag);
+
+    if(!checksum(disc->udf_pvd[vds]->descTag)) {
+        err("Checksum failure at PVD[%d]\n", vds);
+        //map->pvd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_PVD, vds, E_CHECKSUM);
+    }   
+    if(!checksum(disc->udf_lvd[vds]->descTag)) {
+        err("Checksum failure at LVD[%d]\n", vds);
+        //map->lvd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_LVD, vds, E_CHECKSUM);
+    }   
+    if(!checksum(disc->udf_pd[vds]->descTag)) {
+        err("Checksum failure at PD[%d]\n", vds);
+        //map->pd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_PD, vds, E_CHECKSUM);
+    }   
+    if(!checksum(disc->udf_usd[vds]->descTag)) {
+        err("Checksum failure at USD[%d]\n", vds);
+        //map->usd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_USD, vds, E_CHECKSUM);
+    }   
+    if(!checksum(disc->udf_iuvd[vds]->descTag)) {
+        err("Checksum failure at IUVD[%d]\n", vds);
+        //map->iuvd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_IUVD, vds, E_CHECKSUM);
+    }   
+    if(!checksum(disc->udf_td[vds]->descTag)) {
+        err("Checksum failure at TD[%d]\n", vds);
+        //map->td[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_TD, vds, E_CHECKSUM);
     }
 
-    static const unsigned char BitsSetTable256[256] = 
-    {
+    if(check_position(disc->udf_pvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_PVD, vds))) {
+        err("Position failure at PVD[%d]\n", vds);
+        //map->pvd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_PVD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_lvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_LVD, vds))) {
+        err("Position failure at LVD[%d]\n", vds);
+        //map->lvd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_LVD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_pd[vds]->descTag, get_tag_location(seq, TAG_IDENT_PD, vds))) {
+        err("Position failure at PD[%d]\n", vds);
+        //map->pd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_PD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_usd[vds]->descTag, get_tag_location(seq, TAG_IDENT_USD, vds))) {
+        err("Position failure at USD[%d]\n", vds);
+        //map->usd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_USD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_iuvd[vds]->descTag, get_tag_location(seq, TAG_IDENT_IUVD, vds))) {
+        err("Position failure at IUVD[%d]\n", vds);
+        //map->iuvd[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_IUVD, vds, E_POSITION);
+    }   
+    if(check_position(disc->udf_td[vds]->descTag, get_tag_location(seq, TAG_IDENT_TD, vds))) {
+        err("Position failure at TD[%d]\n", vds);
+        //map->td[vds] |= E_CHECKSUM;
+        append_error(seq, TAG_IDENT_TD, vds, E_POSITION);
+    }
+
+    if(crc(disc->udf_pvd[vds], sizeof(struct primaryVolDesc))) {
+        err("CRC error at PVD[%d]\n", vds);
+        //map->pvd[vds] |= E_CRC;
+        append_error(seq, TAG_IDENT_PVD, vds, E_CRC);
+    }
+    if(crc(disc->udf_lvd[vds], sizeof(struct logicalVolDesc)+disc->udf_lvd[vds]->mapTableLength)) {
+        err("CRC error at LVD[%d]\n", vds);
+        //map->lvd[vds] |= E_CRC;
+        append_error(seq, TAG_IDENT_LVD, vds, E_CRC);
+    }
+    if(crc(disc->udf_pd[vds], sizeof(struct partitionDesc))) {
+        err("CRC error at PD[%d]\n", vds);
+        //map->pd[vds] |= E_CRC;
+        append_error(seq, TAG_IDENT_PD, vds, E_CRC);
+    }
+    if(crc(disc->udf_usd[vds], sizeof(struct unallocSpaceDesc)+(disc->udf_usd[vds]->numAllocDescs)*sizeof(extent_ad))) {
+        err("CRC error at USD[%d]\n", vds);
+        //map->usd[vds] |= E_CRC;
+        append_error(seq, TAG_IDENT_USD, vds, E_CRC);
+    }
+    if(crc(disc->udf_iuvd[vds], sizeof(struct impUseVolDesc))) {
+        err("CRC error at IUVD[%d]\n", vds);
+        //map->iuvd[vds] |= E_CRC;
+        append_error(seq, TAG_IDENT_IUVD, vds, E_CRC);
+    }
+    if(crc(disc->udf_td[vds], sizeof(struct terminatingDesc))) {
+        err("CRC error at TD[%d]\n", vds);
+        //map->td[vds] |= E_CRC;
+        append_error(seq, TAG_IDENT_TD, vds, E_CRC);
+    }
+
+    return 0;
+}
+
+int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount) {
+    tag sourceDescTag, destinationDescTag;
+    uint8_t *destArray;
+
+    dbg("source: 0x%x, destination: 0x%x\n", sourcePosition, destinationPosition);
+
+    sourceDescTag = *(tag *)(dev+sourcePosition*sectorsize);
+    memcpy(&destinationDescTag, &sourceDescTag, sizeof(tag));
+    destinationDescTag.tagLocation = destinationPosition;
+    destinationDescTag.tagChecksum = calculate_checksum(destinationDescTag);
+
+    dbg("srcChecksum: 0x%x, destChecksum: 0x%x\n", sourceDescTag.tagChecksum, destinationDescTag.tagChecksum);
+
+    destArray = calloc(1, amount);
+    memcpy(destArray, &destinationDescTag, sizeof(tag));
+    memcpy(destArray+sizeof(tag), dev+sourcePosition*sectorsize+sizeof(tag), amount-sizeof(tag));
+
+    memcpy(dev+destinationPosition*sectorsize, destArray, amount);
+
+    free(destArray);
+
+    return 0;
+}
+
+int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target) {
+    uint64_t sourcePosition = 0;
+    uint64_t targetPosition = 0;
+    tag desc_tag;
+    avdp_type_e type = target;
+
+    // Taget type to determine position on media
+    if(source == 0) {
+        sourcePosition = sectorsize*256; //First AVDP is on LSN=256
+    } else if(source == 1) {
+        sourcePosition = devsize-sectorsize; //Second AVDP is on last LSN
+    } else if(source == 2) {
+        sourcePosition = devsize-sectorsize-256*sectorsize; //Third AVDP can be at last LSN-256
+    } else {
+        sourcePosition = sectorsize*512; //Unclosed disc have AVDP at sector 512
+    }
+
+    // Taget type to determine position on media
+    if(target == 0) {
+        targetPosition = sectorsize*256; //First AVDP is on LSN=256
+    } else if(target == 1) {
+        targetPosition = devsize-sectorsize; //Second AVDP is on last LSN
+    } else if(target == 2) {
+        targetPosition = devsize-sectorsize-256*sectorsize; //Third AVDP can be at last LSN-256
+    } else {
+        targetPosition = sectorsize*512; //Unclosed disc have AVDP at sector 512
+        type = FIRST_AVDP; //Save it to FIRST_AVDP positon
+    }
+
+    dbg("DevSize: %zu\n", devsize);
+    dbg("Current position: %lx\n", targetPosition);
+
+    //uint8_t * ptr = memcpy(dev+position, disc->udf_anchor[source], sizeof(struct anchorVolDescPtr)); 
+    //printf("ptr: %p\n", ptr);
+
+    copy_descriptor(dev, disc, sectorsize, sourcePosition/sectorsize, targetPosition/sectorsize, sizeof(struct anchorVolDescPtr));
+
+    free(disc->udf_anchor[type]);
+    disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
+
+    desc_tag = *(tag *)(dev+targetPosition);
+
+    if(!checksum(desc_tag)) {
+        err("Checksum failure at AVDP[%d]\n", type);
+        return -2;
+    } else if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
+        err("AVDP not found at 0x%lx\n", targetPosition);
+        return -4;
+    }
+
+    memcpy(disc->udf_anchor[type], dev+targetPosition, sizeof(struct anchorVolDescPtr));
+
+    if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
+        err("CRC error at AVDP[%d]\n", type);
+        return -3;
+    }
+
+    imp("AVDP[%d] successfully written.\n", type);
+    return 0;
+}
+
+char * descriptor_name(uint16_t descIdent) {
+    switch(descIdent) {
+        case TAG_IDENT_PVD:
+            return "PVD";
+        case TAG_IDENT_LVD:
+            return "LVD";
+        case TAG_IDENT_PD:
+            return "PD";
+        case TAG_IDENT_USD:
+            return "USD";
+        case TAG_IDENT_IUVD:
+            return "IUVD";
+        case TAG_IDENT_TD:
+            return "TD";
+        case TAG_IDENT_AVDP:
+            return "AVDP";
+        case TAG_IDENT_LVID:
+            return "LVID";
+        default:
+            return "Unknown";
+    }
+}
+
+int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq, uint8_t interactive, uint8_t autofix) { 
+    uint32_t position_main, position_reserve;
+    int8_t counter = 0;
+    tag descTag;
+    uint8_t fix=0;
+
+    // Go to first address of VDS
+    position_main = (disc->udf_anchor[source]->mainVolDescSeqExt.extLocation);
+    position_reserve = (disc->udf_anchor[source]->reserveVolDescSeqExt.extLocation);
+
+
+    msg("\nVDS verification status\n-----------------------\n");
+
+    for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
+        if(seq->main[i].error != 0 && seq->reserve[i].error != 0) {
+            //Both descriptors are broken
+            //FIXME Deal with it somehow   
+            err("[%d] Both descriptors are broken.\n",i);     
+        } else if(seq->main[i].error != 0) {
+            //Copy Reserve -> Main
+            if(interactive) {
+                fix = prompt("%s is broken. Fix it? [Y/n]", descriptor_name(seq->reserve[i].tagIdent)); 
+            } else if (autofix) {
+                fix = 1;
+            }
+
+            //int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount);
+            if(fix) {
+                warn("[%d] Fixing Main %s\n",i,descriptor_name(seq->reserve[i].tagIdent));
+                warn("sectorsize: %d\n", sectorsize);
+                warn("src pos: 0x%x\n", position_reserve + i);
+                warn("dest pos: 0x%x\n", position_main + i);
+                //                memcpy(position_main + i*sectorsize, position_reserve + i*sectorsize, sectorsize);
+                copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
+            } else {
+                warn("[%i] %s is broken.\n", i,descriptor_name(seq->reserve[i].tagIdent));
+            }
+            fix = 0;
+        } else if(seq->reserve[i].error != 0) {
+            //Copy Main -> Reserve
+            if(interactive) {
+                fix = prompt("%s is broken. Fix it? [Y/n]", descriptor_name(seq->main[i].tagIdent)); 
+            } else if (autofix) {
+                fix = 1;
+            }
+
+            if(fix) {
+                warn("[%i] Fixing Reserve %s\n", i,descriptor_name(seq->main[i].tagIdent));
+                //memcpy(position_reserve + i*sectorsize, position_main + i*sectorsize, sectorsize);
+                copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
+            } else {
+                warn("[%i] %s is broken.\n", i,descriptor_name(seq->main[i].tagIdent));
+            }
+            fix = 0;
+        } else {
+            msg("[%d] %s is fine. No fixing needed.\n", i, descriptor_name(seq->main[i].tagIdent));
+        }
+        if(seq->main[i].tagIdent == TAG_IDENT_TD)
+            break;
+    }
+
+
+    return 0;
+}
+
+static const unsigned char BitsSetTable256[256] = 
+{
 #define B2(n) n,     n+1,     n+1,     n+2
 #define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2)
 #define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2)
-        B6(0), B6(1), B6(1), B6(2)
-    };
+    B6(0), B6(1), B6(1), B6(2)
+};
 
-    int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
-        //TODO complete bitmap correction
+int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
+    struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[MAIN_VDS]->partitionContentsUse);
+    dbg("[USD] UST pos: %d, len: %d\n", phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength);
+    dbg("[USD] USB pos: %d, len: %d\n", phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength);
+    dbg("[USD] FST pos: %d, len: %d\n", phd->freedSpaceTable.extPosition, phd->freedSpaceTable.extLength);
+    dbg("[USD] FSB pos: %d, len: %d\n", phd->freedSpaceBitmap.extPosition, phd->freedSpaceBitmap.extLength);
 
-        struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[MAIN_VDS]->partitionContentsUse);
-        dbg("[USD] UST pos: %d, len: %d\n", phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength);
-        dbg("[USD] USB pos: %d, len: %d\n", phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength);
-        dbg("[USD] FST pos: %d, len: %d\n", phd->freedSpaceTable.extPosition, phd->freedSpaceTable.extLength);
-        dbg("[USD] FSB pos: %d, len: %d\n", phd->freedSpaceBitmap.extPosition, phd->freedSpaceBitmap.extLength);
-
-        //TODO Only USB is handled now. 
-        if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
-            uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;       
-            struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
-            if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
-                err("SBD not found\n");
-                return -1;
-            }
-            dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
-            dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
-
-            dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
-            memcpy(sbd->bitmap, stats->actPartitionBitmap, sbd->numOfBytes);
-            dbg("MEMCPY DONE\n");
-
-            //Recalculate CRC and checksum
-            sbd->descTag.descCRC = calculate_crc(sbd, sizeof(struct spaceBitmapDesc));
-            sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
-            imp("PD SBD recovery was successful.\n");
-            return 0;
-        }
-        err("PD SBD recovery failed.\n");
-        return 1; 
+    if(phd->unallocSpaceTable.extLength > 0) {
+        //Unhandled. Not found on any medium.
+        err("[USD] Unallocated Space Table is unhandled. Skipping.\n");
     }
-
-    int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
-        struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[MAIN_VDS]->partitionContentsUse);
-        dbg("[USD] UST pos: %d, len: %d\n", phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength);
-        dbg("[USD] USB pos: %d, len: %d\n", phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength);
-        dbg("[USD] FST pos: %d, len: %d\n", phd->freedSpaceTable.extPosition, phd->freedSpaceTable.extLength);
-        dbg("[USD] FSB pos: %d, len: %d\n", phd->freedSpaceBitmap.extPosition, phd->freedSpaceBitmap.extLength);
-
-        //TODO Only USB is handled now. 
-        if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
-            uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;      
-            dbg("LSNBase: %d\n", lsnBase); 
-            struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
-            if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
-                err("SBD not found\n");
-                return -1;
-            }
-            if(!checksum(sbd->descTag)) {
-                err("SBD checksum error. Continue with caution.\n");
-                seq->pd.error |= E_CHECKSUM;
-            }
-            if(crc(sbd, sizeof(struct spaceBitmapDesc))) {
-                err("SBD CRC error. Continue with caution.\n");
-                seq->pd.error |= E_CRC; 
-            }
-            dbg("SBD is ok\n");
-            dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
-            dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
-            dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
-
-            //Create array for used/unused blocks counting
-            stats->actPartitionBitmap = calloc(sbd->numOfBytes, 1);
-            //printf("LVVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
-            //printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
-            memset(stats->actPartitionBitmap, 0xff, sbd->numOfBytes);
-            stats->partitionNumOfBytes = sbd->numOfBytes;
-            stats->partitionNumOfBits = sbd->numOfBits;
-
-            //Get actual bitmap statistics
-            uint32_t usedBlocks = 0;
-            uint32_t unusedBlocks = 0;
-            uint8_t count = 0;
-            uint8_t v = 0;
-            for(int i=0; i<sbd->numOfBytes-1; i++) {
-                v = sbd->bitmap[i];
-                count = BitsSetTable256[v & 0xff] + BitsSetTable256[(v >> 8) & 0xff] + BitsSetTable256[(v >> 16) & 0xff] + BitsSetTable256[v >> 24];     
-                usedBlocks += 8-count;
-                unusedBlocks += count;
-            }
-            dbg("Unused blocks: %d\n", unusedBlocks);
-            dbg("Used Blocks: %d\n", usedBlocks);
-
-            uint8_t bitCorrection = sbd->numOfBytes*8-sbd->numOfBits;
-            dbg("BitCorrection: %d\n", bitCorrection);
-            v = sbd->bitmap[sbd->numOfBytes-1];
-            dbg("Bitmap last: 0x%02x\n", v);
-            for(int i=0; i<8 - bitCorrection; i++) {
-                dbg("Mask: 0x%02x, Result: 0x%02x\n", (1 << i), v & (1 << i));
-                if(v & (1 << i))
-                    unusedBlocks++;
-                else
-                    usedBlocks++;
-            }
-
-
-            //dbg("Total Count: %d\n", totalcount);
-            //usedBlocks -= ((usedBlocks + unusedBlocks)/8 - sbd->numOfBytes)*8;
-            //unusedBlocks -= bitCorrection;
-            stats->expUsedBlocks = usedBlocks;
-            stats->expUnusedBlocks = unusedBlocks;
-            stats->expPartitionBitmap = sbd->bitmap;
-            //dbg("Total Count: %d\n", totalcount);
-            dbg("Unused blocks: %d\n", unusedBlocks);
-            dbg("Used Blocks: %d\n", usedBlocks);
-            return 0;
-        }
-        return 1; 
+    if(phd->freedSpaceTable.extLength > 0) {
+        //Unhandled. Not found on any medium.
+        err("[USD] Free Space Table is unhandled. Skipping.\n");
     }
+    if(phd->freedSpaceBitmap.extLength > 0) {
+        //Unhandled. Not found on any medium.
+        err("[USD] Unallocated Space Table is unhandled. Skipping.\n");
+    }
+    
+    if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
+        uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;       
+        struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
+        if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
+            err("SBD not found\n");
+            return -1;
+        }
+        dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
+        dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
 
-    int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
-        uint32_t loc = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation; //FIXME MAIN_VDS should be verified first
-        uint32_t len = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLength; //FIXME same as previous
-        uint16_t size = sizeof(struct logicalVolIntegrityDesc) + disc->udf_lvid->numOfPartitions*4*2 + disc->udf_lvid->lengthOfImpUse;
-        dbg("LVID: loc: %d, len: %d, size: %d\n", loc, len, size);
-
-        struct logicalVolIntegrityDesc *lvid = (struct logicalVolIntegrityDesc *)(dev+loc*sectorsize);
-        struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
-
-        // Fix PD too
-        fix_pd(dev, disc, sectorsize, stats);
-
-        // Fix files/dir amounts
-        impUse->numOfFiles = stats->countNumOfFiles;
-        impUse->numOfDirs = stats->countNumOfDirs;
-
-        // Fix Next Unique ID by maximal found +1
-        ((struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse))->uniqueID = stats->maxUUID+1;
-
-        // Set recording date and time to now. 
-        time_t t = time(NULL);
-        struct tm tm = *gmtime(&t);
-        timestamp *ts = &(disc->udf_lvid->recordingDateAndTime);
-        ts->year = tm.tm_year + 1900;
-        ts->month = tm.tm_mon + 1;
-        ts->day = tm.tm_mday;
-        ts->hour = tm.tm_hour;
-        ts->minute = tm.tm_min;
-        ts->second = tm.tm_sec;
-        ts->centiseconds = 0;
-        ts->hundredsOfMicroseconds = 0;
-        ts->microseconds = 0;
-
-        //int32_t usedSpaceDiff = stats->expUsedBlocks - stats->usedSpace/sectorsize;
-        //dbg("Diff: %d\n", usedSpaceDiff);
-        //dbg("Old Free Space: %d\n", disc->udf_lvid->freeSpaceTable[0]);
-        //uint32_t newFreeSpace = disc->udf_lvid->freeSpaceTable[0] + usedSpaceDiff;
-        uint32_t newFreeSpace = disc->udf_lvid->freeSpaceTable[1] - stats->usedSpace/sectorsize;
-        disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(newFreeSpace);
-        dbg("New Free Space: %d\n", disc->udf_lvid->freeSpaceTable[0]);
-
-        // Close integrity (last thing before write)
-        disc->udf_lvid->integrityType = LVID_INTEGRITY_TYPE_CLOSE;
+        dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
+        memcpy(sbd->bitmap, stats->actPartitionBitmap, sbd->numOfBytes);
+        dbg("MEMCPY DONE\n");
 
         //Recalculate CRC and checksum
-        disc->udf_lvid->descTag.descCRC = calculate_crc(disc->udf_lvid, size);
-        disc->udf_lvid->descTag.tagChecksum = calculate_checksum(disc->udf_lvid->descTag);
-        //Write changes back to medium
-        memcpy(lvid, disc->udf_lvid, size);
-
-        imp("LVID recovery was successful.\n");
+        sbd->descTag.descCRC = calculate_crc(sbd, sizeof(struct spaceBitmapDesc));
+        sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
+        imp("PD SBD recovery was successful.\n");
         return 0;
     }
+    err("PD SBD recovery failed.\n");
+    return 1; 
+}
 
-    void test_list(void) {
-        list_t list;
+int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
+    struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[MAIN_VDS]->partitionContentsUse);
+    dbg("[USD] UST pos: %d, len: %d\n", phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength);
+    dbg("[USD] USB pos: %d, len: %d\n", phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength);
+    dbg("[USD] FST pos: %d, len: %d\n", phd->freedSpaceTable.extPosition, phd->freedSpaceTable.extLength);
+    dbg("[USD] FSB pos: %d, len: %d\n", phd->freedSpaceBitmap.extPosition, phd->freedSpaceBitmap.extLength);
 
-        uint8_t a = 5, b = 7, c = 10;
-        uint8_t * d;
-
-        list_init(&list);
-
-        dbg("a: %p\n", &a);
-        list_insert_first(&list, &a);
-        dbg("b: %p\n", &b);
-        list_insert_first(&list, &b);
-        dbg("c: %p\n", &c);
-        list_insert_first(&list, &c);
-
-        d = list_get(&list);
-        dbg("Actual: %p, %d\n", d, *d );
-        list_next(&list);
-        dbg("Go get\n");
-        d = list_get(&list);
-        dbg("Actual: %p, %d\n", d, *d );
-        list_next(&list);
-        dbg("Go get\n");
-        d = list_get(&list);
-        dbg("Actual: %p, %d\n", d, *d );
-        list_next(&list);
-        dbg("Go get\n");
-        d = list_get(&list);
-        dbg("Actual: %p\n", d);
-
-
-        list_destoy(&list);
-
+    if(phd->unallocSpaceTable.extLength > 0) {
+        //Unhandled. Not found on any medium.
+        err("[USD] Unallocated Space Table is unhandled. Skipping.\n");
     }
+    if(phd->freedSpaceTable.extLength > 0) {
+        //Unhandled. Not found on any medium.
+        err("[USD] Free Space Table is unhandled. Skipping.\n");
+    }
+    if(phd->freedSpaceBitmap.extLength > 0) {
+        //Unhandled. Not found on any medium.
+        err("[USD] Unallocated Space Table is unhandled. Skipping.\n");
+    }
+    if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
+        uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;      
+        dbg("LSNBase: %d\n", lsnBase); 
+        struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
+        if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
+            err("SBD not found\n");
+            return -1;
+        }
+        if(!checksum(sbd->descTag)) {
+            err("SBD checksum error. Continue with caution.\n");
+            seq->pd.error |= E_CHECKSUM;
+        }
+        if(crc(sbd, sizeof(struct spaceBitmapDesc))) {
+            err("SBD CRC error. Continue with caution.\n");
+            seq->pd.error |= E_CRC; 
+        }
+        dbg("SBD is ok\n");
+        dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
+        dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
+        dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
+
+        //Create array for used/unused blocks counting
+        stats->actPartitionBitmap = calloc(sbd->numOfBytes, 1);
+        //printf("LVVID: freeSpaceTable: %d\n", disc->udf_lvid->freeSpaceTable[0]);
+        //printf("LVID: sizeTable: %d\n", disc->udf_lvid->sizeTable[0]);
+        memset(stats->actPartitionBitmap, 0xff, sbd->numOfBytes);
+        stats->partitionNumOfBytes = sbd->numOfBytes;
+        stats->partitionNumOfBits = sbd->numOfBits;
+
+        //Get actual bitmap statistics
+        uint32_t usedBlocks = 0;
+        uint32_t unusedBlocks = 0;
+        uint8_t count = 0;
+        uint8_t v = 0;
+        for(int i=0; i<sbd->numOfBytes-1; i++) {
+            v = sbd->bitmap[i];
+            count = BitsSetTable256[v & 0xff] + BitsSetTable256[(v >> 8) & 0xff] + BitsSetTable256[(v >> 16) & 0xff] + BitsSetTable256[v >> 24];     
+            usedBlocks += 8-count;
+            unusedBlocks += count;
+        }
+        dbg("Unused blocks: %d\n", unusedBlocks);
+        dbg("Used Blocks: %d\n", usedBlocks);
+
+        uint8_t bitCorrection = sbd->numOfBytes*8-sbd->numOfBits;
+        dbg("BitCorrection: %d\n", bitCorrection);
+        v = sbd->bitmap[sbd->numOfBytes-1];
+        dbg("Bitmap last: 0x%02x\n", v);
+        for(int i=0; i<8 - bitCorrection; i++) {
+            dbg("Mask: 0x%02x, Result: 0x%02x\n", (1 << i), v & (1 << i));
+            if(v & (1 << i))
+                unusedBlocks++;
+            else
+                usedBlocks++;
+        }
+
+
+        //dbg("Total Count: %d\n", totalcount);
+        //usedBlocks -= ((usedBlocks + unusedBlocks)/8 - sbd->numOfBytes)*8;
+        //unusedBlocks -= bitCorrection;
+        stats->expUsedBlocks = usedBlocks;
+        stats->expUnusedBlocks = unusedBlocks;
+        stats->expPartitionBitmap = sbd->bitmap;
+        //dbg("Total Count: %d\n", totalcount);
+        dbg("Unused blocks: %d\n", unusedBlocks);
+        dbg("Used Blocks: %d\n", usedBlocks);
+        return 0;
+    }
+    return 1; 
+}
+
+int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
+    uint32_t loc = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation; //FIXME MAIN_VDS should be verified first
+    uint32_t len = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLength; //FIXME same as previous
+    uint16_t size = sizeof(struct logicalVolIntegrityDesc) + disc->udf_lvid->numOfPartitions*4*2 + disc->udf_lvid->lengthOfImpUse;
+    dbg("LVID: loc: %d, len: %d, size: %d\n", loc, len, size);
+
+    struct logicalVolIntegrityDesc *lvid = (struct logicalVolIntegrityDesc *)(dev+loc*sectorsize);
+    struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
+
+    // Fix PD too
+    fix_pd(dev, disc, sectorsize, stats);
+
+    // Fix files/dir amounts
+    impUse->numOfFiles = stats->countNumOfFiles;
+    impUse->numOfDirs = stats->countNumOfDirs;
+
+    // Fix Next Unique ID by maximal found +1
+    ((struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse))->uniqueID = stats->maxUUID+1;
+
+    // Set recording date and time to now. 
+    time_t t = time(NULL);
+    struct tm tm = *gmtime(&t);
+    timestamp *ts = &(disc->udf_lvid->recordingDateAndTime);
+    ts->year = tm.tm_year + 1900;
+    ts->month = tm.tm_mon + 1;
+    ts->day = tm.tm_mday;
+    ts->hour = tm.tm_hour;
+    ts->minute = tm.tm_min;
+    ts->second = tm.tm_sec;
+    ts->centiseconds = 0;
+    ts->hundredsOfMicroseconds = 0;
+    ts->microseconds = 0;
+
+    //int32_t usedSpaceDiff = stats->expUsedBlocks - stats->usedSpace/sectorsize;
+    //dbg("Diff: %d\n", usedSpaceDiff);
+    //dbg("Old Free Space: %d\n", disc->udf_lvid->freeSpaceTable[0]);
+    //uint32_t newFreeSpace = disc->udf_lvid->freeSpaceTable[0] + usedSpaceDiff;
+    uint32_t newFreeSpace = disc->udf_lvid->freeSpaceTable[1] - stats->usedSpace/sectorsize;
+    disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(newFreeSpace);
+    dbg("New Free Space: %d\n", disc->udf_lvid->freeSpaceTable[0]);
+
+    // Close integrity (last thing before write)
+    disc->udf_lvid->integrityType = LVID_INTEGRITY_TYPE_CLOSE;
+
+    //Recalculate CRC and checksum
+    disc->udf_lvid->descTag.descCRC = calculate_crc(disc->udf_lvid, size);
+    disc->udf_lvid->descTag.tagChecksum = calculate_checksum(disc->udf_lvid->descTag);
+    //Write changes back to medium
+    memcpy(lvid, disc->udf_lvid, size);
+
+    imp("LVID recovery was successful.\n");
+    return 0;
+}
+
+void test_list(void) {
+    list_t list;
+
+    uint8_t a = 5, b = 7, c = 10;
+    uint8_t * d;
+
+    list_init(&list);
+
+    dbg("a: %p\n", &a);
+    list_insert_first(&list, &a);
+    dbg("b: %p\n", &b);
+    list_insert_first(&list, &b);
+    dbg("c: %p\n", &c);
+    list_insert_first(&list, &c);
+
+    d = list_get(&list);
+    dbg("Actual: %p, %d\n", d, *d );
+    list_next(&list);
+    dbg("Go get\n");
+    d = list_get(&list);
+    dbg("Actual: %p, %d\n", d, *d );
+    list_next(&list);
+    dbg("Go get\n");
+    d = list_get(&list);
+    dbg("Actual: %p, %d\n", d, *d );
+    list_next(&list);
+    dbg("Go get\n");
+    d = list_get(&list);
+    dbg("Actual: %p\n", d);
+
+
+    list_destoy(&list);
+
+}

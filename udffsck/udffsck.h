@@ -81,7 +81,7 @@ struct fileInfo {
     timestamp modTime;
 };
 
-// Implementation Use for Logical Volume Integrity Descriptor (ECMA 167r3 TODO, UDF 2.2.6.4)
+// Implementation Use for Logical Volume Integrity Descriptor (ECMA 167r3 3/10.10, UDF 2.2.6.4)
 struct impUseLVID {
     regid impID;
     uint32_t numOfFiles;

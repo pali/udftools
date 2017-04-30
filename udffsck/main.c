@@ -92,8 +92,6 @@ int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
                 return -1;
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CD001, 5)) { 
                 //CD001 means there is ISO9660, we try search for UDF at sector 18
-                //TODO do check for other parameters here
-                //udf_lseek64(fp, BLOCK_SIZE, SEEK_CUR);
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CDW02, 5)) {
                 err("CDW02 found, unsuported for now.\n");
                 return -1;

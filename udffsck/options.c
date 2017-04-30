@@ -151,13 +151,15 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
     /* Print any remaining command line arguments (not options). */
     if (optind < argc)
     {
-        dbg("non-option ARGV-elements: ");
         dbg("Optind: %d\n", optind);
-        while (optind < argc) { //TODO deal with other unrecognized params somehow...
+        dbg("non-option ARGV-elements: ");
+        while (optind < argc) { 
             *path = (char*)malloc(strlen(argv[optind])+1);
             strcpy(*path, argv[optind]);
             dbg("%s ", *path);
             optind++;
+            if(optind > 2) //We accept one medium at a time. 
+                break;
         }
         dbg("\n");
     }
