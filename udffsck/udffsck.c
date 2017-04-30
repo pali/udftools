@@ -594,24 +594,6 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     dbg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
     stats->logicalVolIdent = disc->udf_fsd->logicalVolIdent;
 
-    /*struct spaceBitmapDesc sbd;
-      uint32_t counter = 1;
-      memcpy(&descTag, dev+(lsnBase+filesetblock.logicalBlockNum+counter)*lbSize, sizeof(tag));
-      if(descTag.tagIdent == TAG_IDENT_SBD) {
-      sbd = *(struct spaceBitmapDesc *)((lsnBase+filesetblock.logicalBlockNum+counter)*lbSize);
-      counter++;
-      }
-
-    //FIXME Maybe not needed. Investigate. 
-    memcpy(&descTag, dev+(lsnBase+filesetblock.logicalBlockNum+counter)*lbSize, sizeof(tag));
-    if(le16_to_cpu(descTag.tagIdent) != TAG_IDENT_TD) {
-    fprintf(stderr, "Error loading FSD sequence. TE descriptor not found. LSN: %d, Desc ID: %x\n", lsnBase+filesetblock.logicalBlockNum+1, le16_to_cpu(descTag.tagIdent));
-    //        free(disc->udf_fsd);
-    //   return -1;
-    } else {
-    counter++;
-    }*/
-
     *lbnlsn = lsnBase;
     return 0;
 }
