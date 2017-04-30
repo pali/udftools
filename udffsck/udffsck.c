@@ -1470,7 +1470,7 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
     }
     
     if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
-        uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;       
+        uint32_t lsnBase = disc->udf_pd[vds]->partitionStartingLocation;       
         struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
         if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
             err("SBD not found\n");
@@ -1518,7 +1518,7 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         err("[USD] Unallocated Space Table is unhandled. Skipping.\n");
     }
     if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
-        uint32_t lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;      
+        uint32_t lsnBase = disc->udf_pd[vds]->partitionStartingLocation;      
         dbg("LSNBase: %d\n", lsnBase); 
         struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
         if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
