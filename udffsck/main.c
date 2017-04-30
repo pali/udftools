@@ -211,7 +211,13 @@ int main(int argc, char *argv[]) {
     note("FD: 0x%x\n", fd);
 
     if(fseeko(fp, 0 , SEEK_END) != 0) {
-        /* FIXME Handle error */
+        if(errno == EBADF) {
+            err("Medium is not seekable. Aborting.\n");
+            exit(16);
+        } else {
+            err("Unknown seek error (errno: %d). Aborting.\n", errno);
+            exit(16);
+        }
     } 
     st_size = ftello(fp);
     dbg("Size: 0x%lx\n", (long)st_size);
@@ -276,7 +282,7 @@ int main(int argc, char *argv[]) {
         exit(16);
     }
 
-    // FIXME Correct blocksize MUST be blocksize%512 == 0
+    // Correct blocksize MUST be blocksize%512 == 0. We keep definitive list for now.
     if(!(blocksize == 512 | blocksize == 1024 | blocksize == 2048 | blocksize == 4096)) {
         err("Invalid blocksize. Posible blocksizes must be dividable by 512.\n");
         exit(16);
@@ -286,15 +292,15 @@ int main(int argc, char *argv[]) {
     status |= get_vds(dev, &disc, blocksize, source, MAIN_VDS, seq); //load main VDS
     status |= get_vds(dev, &disc, blocksize, source, RESERVE_VDS, seq); //load reserve VDS
 
+    verify_vds(&disc, seq, MAIN_VDS, seq);
+    verify_vds(&disc, seq, RESERVE_VDS, seq);
 
-    status |= get_lvid(dev, &disc, blocksize, &stats); //load LVID
+    status |= get_lvid(dev, &disc, blocksize, &stats, seq); //load LVID
     if(stats.minUDFReadRev > MAX_VERSION){
         err("Medium UDF revision is %04x and we are able to check up to %04x\n", stats.minUDFReadRev, MAX_VERSION);
         exit(8);
     }
 
-    verify_vds(&disc, seq, MAIN_VDS, seq);
-    verify_vds(&disc, seq, RESERVE_VDS, seq);
 
 #ifdef PRINT_DISC
     print_disc(&disc);
@@ -309,7 +315,7 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t lbnlsn = 0;
-    status |= get_fsd(dev, &disc, blocksize, &lbnlsn, &stats);
+    status |= get_fsd(dev, &disc, blocksize, &lbnlsn, &stats, seq);
     note("LBNLSN: %d\n", lbnlsn);
     status |= get_file_structure(dev, &disc, lbnlsn, &stats, seq);
     // if(status) exit(status);
@@ -492,12 +498,12 @@ int main(int argc, char *argv[]) {
 
 
     if(fixlvid == 1) {
-        if(fix_lvid(dev, &disc, blocksize, &stats) == 0) {
+        if(fix_lvid(dev, &disc, blocksize, &stats, seq) == 0) {
             error_status &= ~(ES_LVID | ES_PD); 
             fix_status |= (ES_LVID | ES_PD);
         }
     } else if(fixlvid == 0 && fixpd == 1) {
-        if(fix_pd(dev, &disc, blocksize, &stats) == 0) {
+        if(fix_pd(dev, &disc, blocksize, &stats, seq) == 0) {
             error_status &= ~(ES_PD); 
             fix_status |= ES_PD;
         }

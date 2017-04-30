@@ -13,7 +13,7 @@
 
 #define UDFFSCK_VERSION "1.0"
 
-#define VDS_STRUCT_AMOUNT 8 //FIXME Move to somewhere else, not keep it here.
+#define VDS_STRUCT_AMOUNT 8 //Maximum amount of VDS descriptors 
 
 typedef enum {
     FIRST_AVDP = 0,
@@ -107,23 +107,23 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
 
 // Volume descriptor sequence
 int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq);
-int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats);
+int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
 // Load all PVD descriptors into disc structure
 //int get_pvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
 
 int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq); 
 
-int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
+int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
 int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq);
 
-uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats);
+uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq);
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq );
 
 uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table);
 int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq, uint8_t interactive, uint8_t autofix); 
 
 int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount);
-int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
+int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
 int fix_usd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
 
 

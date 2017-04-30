@@ -398,21 +398,38 @@ uint64_t uuid_decoder(uint64_t uuid) {
     return result;
 }
 
+int get_correct(vds_sequence_t *seq, uint16_t tagIdent) {
+    for(int i=0; i<VDS_STRUCT_AMOUNT; i++) {
+        if(seq->main[i].tagIdent == tagIdent && (seq->main[i].error & (E_CRC | E_CHECKSUM | E_WRONGDESC)) == 0) {
+            return MAIN_VDS; 
+        } else if(seq->reserve[i].tagIdent == tagIdent && (seq->reserve[i].error & (E_CRC | E_CHECKSUM | E_WRONGDESC)) == 0) {
+            return RESERVE_VDS;
+        }
+    }
+    return -1; 
+}
+
 /**
- * @brief Loads Logical Volume Integrity Descriptor (LVID) and stores it at struct udf_disc
- * @param[in] dev pointer to device array
- * @param[out] disc LVID is stored in udf_disc structure
- * @param[in] sectorsize device logical sector size
- * @return 0 everything ok
+ * \brief Loads Logical Volume Integrity Descriptor (LVID) and stores it at struct udf_disc
+ * \param[in] dev pointer to device array
+ * \param[out] disc LVID is stored in udf_disc structure
+ * \param[in] sectorsize device logical sector size
+ * \return 0 everything ok
  *         -4 structure is already set
  */
-int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats) {
+int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq ) {
     if(disc->udf_lvid != 0) {
         err("Structure LVID is already set. Probably error at tag or media\n");
         return 4;
     }
-    uint32_t loc = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation; //FIXME MAIN_VDS should be verified first
-    uint32_t len = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLength; //FIXME same as previous
+    int vds = -1;
+    if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
+        err("No correct LVD found. Aborting.\n");
+        return 4;
+    }
+
+    uint32_t loc = disc->udf_lvd[vds]->integritySeqExt.extLocation;
+    uint32_t len = disc->udf_lvd[vds]->integritySeqExt.extLength;
     dbg("LVID: loc: %d, len: %d\n", loc, len);
 
     struct logicalVolIntegrityDesc *lvid;
@@ -531,30 +548,37 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
  * @return 0 everything ok
  *         -1 TD not found
  */
-uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats) {
+uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq) {
     long_ad *lap;
     tag descTag;
-    lap = (long_ad *)disc->udf_lvd[0]->logicalVolContentsUse; //FIXME use lela_to_cpu, but not on ptr to disc. Must store it on different place.
+    lap = (long_ad *)disc->udf_lvd[0]->logicalVolContentsUse; //FIXME BIG_ENDIAN use lela_to_cpu, but not on ptr to disc. Must store it on different place.
     lb_addr filesetblock = lelb_to_cpu(lap->extLocation);
     uint32_t filesetlen = lap->extLength;
+    int vds = -1;
 
     dbg("FSD at (%d, p%d)\n", 
             lap->extLocation.logicalBlockNum,
             lap->extLocation.partitionReferenceNum);
 
-    //FIXME some images doesn't work (Apple for example) but works when I put there 257 as lsnBase...
-    //uint32_t lsnBase = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation)+1; //FIXME MAIN_VDS should be verified first
+    if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
+        err("No correct PD found. Aborting.\n");
+        return 4;
+    }
     uint32_t lsnBase = 0;
-    if(lap->extLocation.partitionReferenceNum == disc->udf_pd[MAIN_VDS]->partitionNumber)
-        lsnBase = disc->udf_pd[MAIN_VDS]->partitionStartingLocation;
+    if(lap->extLocation.partitionReferenceNum == disc->udf_pd[vds]->partitionNumber)
+        lsnBase = disc->udf_pd[vds]->partitionStartingLocation;
     else {
         return -1;
     }
 
     dbg("LSN base: %d\n", lsnBase);
 
-
-    uint32_t lbSize = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME same as above
+    vds = -1;
+    if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
+        err("No correct LVD found. Aborting.\n");
+        return 4;
+    }
+    uint32_t lbSize = le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize); 
 
     dbg("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
     dbg("LAP: LSN: %d\n", lsnBase/*+filesetblock.logicalBlockNum*/);
@@ -754,7 +778,14 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
     struct extendedFileEntry *efe;
-    uint32_t lbSize = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first 
+    int vds = -1;
+    
+    if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
+        err("No correct LVD found. Aborting.\n");
+        return 4;
+    }
+
+    uint32_t lbSize = le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize);  
     uint32_t lsnBase = lbnlsn; 
     uint32_t flen, padding;
     uint8_t dir = 0;
@@ -776,21 +807,20 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     incrementUsedSize(stats, lbSize, lsn-lbnlsn);
     dbg("usedSpace: %d\n", stats->usedSpace);
     switch(le16_to_cpu(descTag.tagIdent)) {
-        case TAG_IDENT_SBD:
+        /*case TAG_IDENT_SBD:
             dwarn("SBD found.\n");
-            //FIXME Used for examination of used sectors
+            //Used for examination of used sectors
             status |= get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, info, seq); 
             break;
         case TAG_IDENT_EAHD:
             dwarn("EAHD found.\n");
-            //FIXME WTF is that?
-            status |= get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, info, seq); 
+            status |= get_file(dev, disc, lbnlsn, lsn+1, stats, depth, uuid, info, seq); */
         case TAG_IDENT_FID:
             fatal("Never should get there.\n");
             exit(8);
-        case TAG_IDENT_AED:
+        /*case TAG_IDENT_AED:
             dbg("\nAED, LSN: %d\n", lsn);
-            break;
+            break;*/
         case TAG_IDENT_FE:
         case TAG_IDENT_EFE:
             dir = 0;
@@ -1072,7 +1102,14 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     char *filename;
     uint16_t pos = 0;
     uint32_t lsnBase = lbnlsn; 
-    uint32_t lbSize = le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first 
+    
+    int vds = -1;
+    if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
+        err("No correct LVD found. Aborting.\n");
+        return 4;
+    }
+    
+    uint32_t lbSize = le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize); 
     // Go to ROOT ICB 
     lb_addr icbloc = lelb_to_cpu(disc->udf_fsd->rootDirectoryICB.extLocation); 
 
@@ -1081,7 +1118,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     //read(fd, file, sizeof(struct fileEntry));
     lsn = icbloc.logicalBlockNum+lsnBase;
     dbg("ROOT LSN: %d\n", lsn);
-    stats->usedSpace = (lsn-lsnBase)*le32_to_cpu(disc->udf_lvd[MAIN_VDS]->logicalBlockSize); //FIXME MAIN_VDS should be verified first
+    stats->usedSpace = (lsn-lsnBase)*le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize);
     //uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size) {
     markUsedBlock(stats, 0, lsn-lsnBase);
     dbg("Used space offset: %d\n", stats->usedSpace);
@@ -1350,8 +1387,8 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
     for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
         if(seq->main[i].error != 0 && seq->reserve[i].error != 0) {
             //Both descriptors are broken
-            //FIXME Deal with it somehow   
-            err("[%d] Both descriptors are broken.\n",i);     
+            //TODO It can be possible to reconstruct some descriptors, but not all. 
+            err("[%d] Both descriptors are broken. Maybe not able to continue later.\n",i);     
         } else if(seq->main[i].error != 0) {
             //Copy Reserve -> Main
             if(interactive) {
@@ -1407,8 +1444,13 @@ static const unsigned char BitsSetTable256[256] =
     B6(0), B6(1), B6(1), B6(2)
 };
 
-int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
-    struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[MAIN_VDS]->partitionContentsUse);
+int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
+    int vds = -1;
+    if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
+        err("No correct PD found. Aborting.\n");
+        return 4;
+    }
+    struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[vds]->partitionContentsUse);
     dbg("[USD] UST pos: %d, len: %d\n", phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength);
     dbg("[USD] USB pos: %d, len: %d\n", phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength);
     dbg("[USD] FST pos: %d, len: %d\n", phd->freedSpaceTable.extPosition, phd->freedSpaceTable.extLength);
@@ -1452,7 +1494,12 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
 }
 
 int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
-    struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[MAIN_VDS]->partitionContentsUse);
+    int vds = -1;
+    if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
+        err("No correct PD found. Aborting.\n");
+        return 4;
+    }
+    struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)(disc->udf_pd[vds]->partitionContentsUse);
     dbg("[USD] UST pos: %d, len: %d\n", phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength);
     dbg("[USD] USB pos: %d, len: %d\n", phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength);
     dbg("[USD] FST pos: %d, len: %d\n", phd->freedSpaceTable.extPosition, phd->freedSpaceTable.extLength);
@@ -1540,9 +1587,15 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
     return 1; 
 }
 
-int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats) {
-    uint32_t loc = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLocation; //FIXME MAIN_VDS should be verified first
-    uint32_t len = disc->udf_lvd[MAIN_VDS]->integritySeqExt.extLength; //FIXME same as previous
+int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
+    int vds = -1;
+    if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
+        err("No correct LVD found. Aborting.\n");
+        return 4;
+    }
+    
+    uint32_t loc = disc->udf_lvd[vds]->integritySeqExt.extLocation;
+    uint32_t len = disc->udf_lvd[vds]->integritySeqExt.extLength;
     uint16_t size = sizeof(struct logicalVolIntegrityDesc) + disc->udf_lvid->numOfPartitions*4*2 + disc->udf_lvid->lengthOfImpUse;
     dbg("LVID: loc: %d, len: %d, size: %d\n", loc, len, size);
 
@@ -1550,7 +1603,7 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
 
     // Fix PD too
-    fix_pd(dev, disc, sectorsize, stats);
+    fix_pd(dev, disc, sectorsize, stats, seq);
 
     // Fix files/dir amounts
     impUse->numOfFiles = stats->countNumOfFiles;
