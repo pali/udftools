@@ -19,6 +19,7 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
+#include "config.h"
 
 #include "utils.h"
 
@@ -46,17 +47,6 @@ typedef enum {
 } message_type;
 
 verbosity_e verbosity;
-
-int64_t udf_lseek64(int fd, int64_t offset, int whence) {
-#if defined(HAVE_LSEEK64)
-	return lseek64(fd, offset, whence);
-#elif defined(HAVE_LLSEEK)
-	return llseek(fd, offset, whence);
-#else
-	return lseek(fd, offset, whence);
-#endif
-}
-
 
 void read_tag(tag id) {
     note("\tIdentification Tag\n"

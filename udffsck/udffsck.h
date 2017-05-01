@@ -22,6 +22,8 @@
 #ifndef __UDFFSCK_H__
 #define __UDFFSCK_H__
 
+#include "config.h"
+
 #include <ecma_167.h>
 #include <ecma_119.h>
 #include <libudffs.h>

@@ -20,6 +20,8 @@
  *
  */
 
+#include "config.h"
+
 #include <math.h>
 #include <time.h>
 #include <limits.h>
@@ -1099,16 +1101,11 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     // Go to ROOT ICB 
     lb_addr icbloc = lelb_to_cpu(disc->udf_fsd->rootDirectoryICB.extLocation); 
 
-    //file = malloc(sizeof(struct fileEntry));
-    //lseek64(fd, blocksize*(257+icbloc.logicalBlockNum), SEEK_SET);
-    //read(fd, file, sizeof(struct fileEntry));
     lsn = icbloc.logicalBlockNum+lsnBase;
     dbg("ROOT LSN: %d\n", lsn);
     stats->usedSpace = (lsn-lsnBase)*le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize);
-    //uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size) {
     markUsedBlock(stats, 0, lsn-lsnBase);
     dbg("Used space offset: %d\n", stats->usedSpace);
-    //memcpy(file, dev+lbSize*lsn, sizeof(struct fileEntry));
     struct fileInfo info = {0};
 
     msg("\nMedium file tree\n----------------\n");
