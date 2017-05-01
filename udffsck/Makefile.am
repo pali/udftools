@@ -5,7 +5,7 @@ udffsck_SOURCES = main.c utils.c utils.h udffsck.c udffsck.h options.c options.h
 
 test_SOURCES = test.c
 
-AM_CFLAGS = -I$(top_srcdir)/include -D_LARGEFILE64_SOURCE -DBLKSSZGET -DBLKGETSIZE64 -std=c99 
+AM_CFLAGS = -I$(top_srcdir)/include -std=c99 
 AM_LDFLAGS = -lm
 
 if DEBUG
