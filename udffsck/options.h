@@ -23,6 +23,8 @@
 #ifndef _OPTIONS_H
 #define _OPTIONS_H
 
+#include "config.h"
+
 #include <getopt.h>
 #include "utils.h"
 

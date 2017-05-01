@@ -1,4 +1,6 @@
 
+#include "config.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>

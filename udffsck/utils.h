@@ -22,6 +22,8 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
+#include "config.h"
+
 #include <ecma_167.h>
 #include <libudffs.h>
 
@@ -42,7 +44,6 @@ typedef enum {
 
 extern verbosity_e verbosity;
 
-int64_t udf_lseek64(int fd, int64_t offset, int whence);
 int print_disc(struct udf_disc *disc);
 int prompt(const char *format, ...);
 
