@@ -74,8 +74,13 @@ uint16_t calculate_crc(void * restrict desc, uint16_t size) {
     uint8_t offset = sizeof(tag);
     tag *descTag = desc;
     uint16_t crc = 0;
-    uint16_t calcCrc = udf_crc((uint8_t *)(desc) + offset, size - offset, crc);
-    return calcCrc;
+    
+    if(size > 0) {
+        uint16_t calcCrc = udf_crc((uint8_t *)(desc) + offset, size - offset, crc);
+        return calcCrc;
+    } else {
+        return 0;
+    }
 }
 
 int crc(void * restrict desc, uint16_t size) {
@@ -1526,7 +1531,7 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
             err("SBD checksum error. Continue with caution.\n");
             seq->pd.error |= E_CHECKSUM;
         }
-        if(crc(sbd, sizeof(struct spaceBitmapDesc))) {
+        if(crc(sbd, /*sizeof(struct spaceBitmapDesc)*/sbd->descTag.descCRCLength)) {
             err("SBD CRC error. Continue with caution.\n");
             seq->pd.error |= E_CRC; 
         }
