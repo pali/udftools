@@ -118,7 +118,7 @@ struct impUseLVID {
 #define E_WRONGDESC     0b00001000
 #define E_UUID          0b00010000
 #define E_TIMESTAMP     0b00100000
-#define E_SBDSPACE      0b01000000
+#define E_FREESPACE     0b01000000
 #define E_FILES         0b10000000
 
 // Anchor volume descriptor points to Mvds and Rvds

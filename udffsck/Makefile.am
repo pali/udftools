@@ -9,7 +9,7 @@ AM_CFLAGS = -I$(top_srcdir)/include -std=c99
 AM_LDFLAGS = -lm
 
 if DEBUG
-AM_CFLAGS += -fsanitize=address
+AM_CFLAGS += -fsanitize=address -DDEBUG
 noinst_PROGRAMS += test
 AM_LDFLAGS += -lcmocka
 endif

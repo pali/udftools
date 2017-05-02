@@ -108,7 +108,9 @@ time_t timestamp2epoch(timestamp t) {
 }
 
 double compare_timestamps(timestamp a, timestamp b) {
-    return difftime(timestamp2epoch(a), timestamp2epoch(b));
+    double dt = difftime(timestamp2epoch(a), timestamp2epoch(b));
+    dbg("Difftime: %f\n", dt);
+    return dt;
 }
 
 void print_file_info(struct fileInfo info, uint32_t depth) {
@@ -586,12 +588,15 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
         err("No correct PD found. Aborting.\n");
         return 4;
     }
+    dbg("PD partNum: %d\n", disc->udf_pd[vds]->partitionNumber);
     uint32_t lsnBase = 0;
-    if(lap->extLocation.partitionReferenceNum == disc->udf_pd[vds]->partitionNumber)
-        lsnBase = disc->udf_pd[vds]->partitionStartingLocation;
-    else {
-        return -1;
-    }
+    //Probably not needed. Remove.
+    //if(lap->extLocation.partitionReferenceNum == disc->udf_pd[vds]->partitionNumber)
+    lsnBase = disc->udf_pd[vds]->partitionStartingLocation;
+    //else {
+    //    err("Partiton starting point not found.\n");
+    //    return 4;
+    //}
 
     dbg("LSN base: %d\n", lsnBase);
 
@@ -1096,7 +1101,10 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
         err("No correct LVD found. Aborting.\n");
         return 4;
     }
-    
+    dbg("VDS used: %d\n", vds);
+    dbg("Disc ptr: %p, LVD ptr: %p\n", disc, disc->udf_lvd[vds]);
+    dbg("Disc ptr: %p, FSD ptr: %p\n", disc, disc->udf_fsd);
+
     uint32_t lbSize = le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize); 
     // Go to ROOT ICB 
     lb_addr icbloc = lelb_to_cpu(disc->udf_fsd->rootDirectoryICB.extLocation); 

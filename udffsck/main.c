@@ -60,6 +60,11 @@ void user_interrupt(int dummy) {
     exit(32);
 }
 
+void segv_interrupt(int dummy) {
+    fatal("Unexpected error. Exiting.\n");
+    exit(8);
+}
+
 int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
     struct volStructDesc vsd;
     struct beginningExtendedAreaDesc bea;
@@ -176,6 +181,9 @@ int main(int argc, char *argv[]) {
     int source = -1;
 
     signal(SIGINT, user_interrupt);
+#ifndef DEBUG //if debugging, we want Address Sanitizer to catch those
+    signal(SIGSEGV, segv_interrupt);
+#endif
 
     parse_args(argc, argv, &path, &blocksize);	
 
@@ -323,7 +331,9 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t lbnlsn = 0;
+    dbg("STATUS: 0x%02x\n", status);
     status |= get_fsd(dev, &disc, blocksize, &lbnlsn, &stats, seq);
+    dbg("STATUS: 0x%02x\n", status);
     note("LBNLSN: %d\n", lbnlsn);
     status |= get_file_structure(dev, &disc, lbnlsn, &stats, seq);
     // if(status) exit(status);
@@ -382,11 +392,12 @@ int main(int argc, char *argv[]) {
     if(usedSpaceDiff != 0) {
         err("%d blocks is unused but not marked as unallocated in Free Space Table.\n", usedSpaceDiff/blocksize);
         err("Correct free space: %lu\n", stats.freeSpaceBlocks + usedSpaceDiff/blocksize);
+        seq->lvid.error |= E_FREESPACE;
     }
     int32_t usedSpaceDiffBlocks = stats.expUsedBlocks - stats.usedSpace/blocksize;
     if(usedSpaceDiffBlocks != 0) {
         err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
-        seq->pd.error |= E_SBDSPACE; 
+        seq->pd.error |= E_FREESPACE; 
     }
 
     if(seq->anchor[0].error + seq->anchor[1].error + seq->anchor[2].error != 0) { //Something went wrong with AVDPs
