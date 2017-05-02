@@ -41,8 +41,9 @@ checks and fixes UDF.
 .SH OPTIONS
 .TP
 .BR \-B " " \fIBLOCKSIZE\fR
-Force udffsck to use this blocksize instead of autodetection
-Default is autodetected value by finding VRS and AVDP position.
+Force udffsck to use this blocksize instead of autodetection.
+This value is in bytes.
+Default is autodetected value by finding VRS and AVDP positions.
 .TP
 .BR \-c
 Only check medium and print found errors.
@@ -73,6 +74,29 @@ Recomended for manual usage.
 Debug Verbosity level. 
 Only for development and debug purposes. 
 And for nosy users.
+.SH EXIT CODE
+The exit code returned by
+.B udffsck
+is the sum of the following conditions:
+.br
+\       0\      \-\ No errors
+.br
+\       1\      \-\ File system errors corrected
+.br
+\       2\      \-\ File system errors corrected, system should
+.br
+\       \       \ \ be rebooted
+.br
+\       4\      \-\ File system errors left uncorrected
+.br
+\       8\      \-\ Operational error
+.br
+\       16\     \-\ Usage or syntax error
+.br
+\       32\     \-\ udffsck canceled by user request
+.br
+\       128\    \-\ Shared library error
+.br
 .SH EXAMPLES
 Check medium and show it structure to user:
 .PP
@@ -90,8 +114,19 @@ udffsck -p udf_image_file.img
 .RE
 .fi
 .PP
+.SH BUGS
+Reading and correcting is supported on UDF filesystems up to version 2.01.
+More recent filesystems are not currently covered and
+.B udffsck
+will end with exit code 8. 
 .SH REPORTING BUGS
-bla bla bla
+Almost any piece of software will have bugs.
+If you manage to find a filesystem which causes
+.B udffsck
+to crash, or which 
+.B udffsck
+is unable to  repair,  please report it to the author.
+
 .SH AUTHOR
 This version of 
 .B udffsck 
