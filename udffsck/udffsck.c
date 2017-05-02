@@ -104,6 +104,9 @@ time_t timestamp2epoch(timestamp t) {
     tm.tm_hour = t.hour;
     tm.tm_min = t.minute;
     tm.tm_sec = t.second;
+    float rest = (t.centiseconds * 10000 + t.hundredsOfMicroseconds * 100 + t.microseconds)/1000000.0;
+    if(rest > 0.5)
+        tm.tm_sec++;
     return mktime(&tm);
 }
 
