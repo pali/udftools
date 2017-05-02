@@ -139,6 +139,8 @@ static void bs2048_dirty_file_tree_2(void **state) {
  * It resulted in broken UUIDs at them (all newer files were set UUID=0, also LVID
  * timestamp was old. 
  *
+ * \warning Unrecoverable! At least for now.
+ *
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
@@ -147,7 +149,7 @@ static void bs2048_dirty_file_tree_3(void **state) {
     char *medium = "bs2048-r0201-broken-UUIDs";
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 4); //Check it
     assert_int_equal(fsck_wrapper(medium, "-vvp", "-B 2048"), 1); //Fix it
-    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 4); //Check it
 }
 
 /**
@@ -184,6 +186,135 @@ static void bs2048_apple_r0150(void **state) {
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0); //Check it
 }
 
+/**
+ * \brief Test against UDF from Windows.
+ *
+ * \warning Unrecoverable! At least for now.
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_windows7(void **state) {
+    (void) state;
+    char *medium = "udf-hdd-win7";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 512"), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", "-B 512"), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 512"), 0); //Check it
+}
+
+/**
+ * \brief Test against udfclient 0.7.5
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+static void bs2048_udfclient_075(void **state) {
+    (void) state;
+    char *medium = "udf-hdd-udfclient-0.7.5";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Test against udfclient 0.7.7
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+static void bs2048_udfclient_077(void **state) {
+    (void) state;
+    char *medium = "udf-hdd-udfclient-0.7.7";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Blocksize detection test
+ *
+ * \note Blocksize: 512
+ * \note Revision: 1.50
+ */
+static void bs512_blocksize_detection_test(void **state) {
+    (void) state;
+    char *medium = "bs512-r0150";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Blocksize detection test
+ *
+ * \note Blocksize: 1024
+ * \note Revision: 1.50
+ */
+static void bs1024_blocksize_detection_test(void **state) {
+    (void) state;
+    char *medium = "bs1024-r0150";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Blocksize detection test
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+static void bs2048_blocksize_detection_test(void **state) {
+    (void) state;
+    char *medium = "bs2048-r0201";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Blocksize detection test
+ *
+ * \note Blocksize: 4096
+ * \note Revision: 2.01
+ */
+static void bs4096_blocksize_detection_test(void **state) {
+    (void) state;
+    char *medium = "bs4096";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Unclosed medium check
+ *
+ * \note Blocksize: 1024
+ * \note Revision: 1.50
+ */
+static void bs1024_unclosed_medium(void **state) {
+    (void) state;
+    char *medium = "bs1024-r0150-unclosed";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 1024"), 0); //Check it
+}
+
+/**
+ * \brief Defective primary VDS
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_defect_primary_vds(void **state) {
+    (void) state;
+    char *medium = "bs512-defect-primary-vds";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", ""), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Defective AVDP1
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+static void bs2048_defect_avdp1(void **state) {
+    (void) state;
+    char *medium = "bs2048-r0201-brokenAVDP1";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", ""), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef DEMO
@@ -192,10 +323,20 @@ int main(void) {
 #endif
         cmocka_unit_test(bs2048_dirty_file_tree_1),
         cmocka_unit_test(bs2048_dirty_file_tree_2),
-    //    cmocka_unit_test(bs2048_dirty_file_tree_3), //FIXME failing. Need some investigation
+        cmocka_unit_test(bs2048_dirty_file_tree_3),
         cmocka_unit_test(bs2048_clean),
         cmocka_unit_test(bs2048_apple_r0150),
         cmocka_unit_test(bs2048_apple_r0260),
+        cmocka_unit_test(bs512_windows7),
+        cmocka_unit_test(bs2048_udfclient_075),
+        cmocka_unit_test(bs2048_udfclient_077),
+        cmocka_unit_test(bs512_blocksize_detection_test),
+        cmocka_unit_test(bs1024_blocksize_detection_test),
+        cmocka_unit_test(bs2048_blocksize_detection_test),
+        cmocka_unit_test(bs4096_blocksize_detection_test),
+        cmocka_unit_test(bs1024_unclosed_medium),
+        cmocka_unit_test(bs512_defect_primary_vds),
+        cmocka_unit_test(bs2048_defect_avdp1),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
