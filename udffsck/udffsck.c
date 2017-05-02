@@ -74,8 +74,8 @@ uint16_t calculate_crc(void * restrict desc, uint16_t size) {
     uint8_t offset = sizeof(tag);
     tag *descTag = desc;
     uint16_t crc = 0;
-    
-    if(size > 0) {
+   
+    if(size >= 16) {
         uint16_t calcCrc = udf_crc((uint8_t *)(desc) + offset, size - offset, crc);
         return calcCrc;
     } else {
@@ -1378,6 +1378,7 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
     int8_t counter = 0;
     tag descTag;
     uint8_t fix=0;
+    uint8_t status = 0;
 
     // Go to first address of VDS
     position_main = (disc->udf_anchor[source]->mainVolDescSeqExt.extLocation);
@@ -1407,8 +1408,10 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
                 warn("dest pos: 0x%x\n", position_main + i);
                 //                memcpy(position_main + i*sectorsize, position_reserve + i*sectorsize, sectorsize);
                 copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
+                status |= 1;
             } else {
-                warn("[%i] %s is broken.\n", i,descriptor_name(seq->reserve[i].tagIdent));
+                err("[%i] %s is broken.\n", i,descriptor_name(seq->reserve[i].tagIdent));
+                status |= 4;
             }
             fix = 0;
         } else if(seq->reserve[i].error != 0) {
@@ -1423,8 +1426,10 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
                 warn("[%i] Fixing Reserve %s\n", i,descriptor_name(seq->main[i].tagIdent));
                 //memcpy(position_reserve + i*sectorsize, position_main + i*sectorsize, sectorsize);
                 copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
+                status |= 1;
             } else {
-                warn("[%i] %s is broken.\n", i,descriptor_name(seq->main[i].tagIdent));
+                err("[%i] %s is broken.\n", i,descriptor_name(seq->main[i].tagIdent));
+                status |= 4;
             }
             fix = 0;
         } else {
@@ -1435,7 +1440,7 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
     }
 
 
-    return 0;
+    return status;
 }
 
 static const unsigned char BitsSetTable256[256] = 
@@ -1486,7 +1491,7 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         dbg("MEMCPY DONE\n");
 
         //Recalculate CRC and checksum
-        sbd->descTag.descCRC = calculate_crc(sbd, sizeof(struct spaceBitmapDesc));
+        sbd->descTag.descCRC = calculate_crc(sbd, /*sizeof(struct spaceBitmapDesc)*/sbd->descTag.descCRCLength + sizeof(tag));
         sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
         imp("PD SBD recovery was successful.\n");
         return 0;
@@ -1531,7 +1536,7 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
             err("SBD checksum error. Continue with caution.\n");
             seq->pd.error |= E_CHECKSUM;
         }
-        if(crc(sbd, /*sizeof(struct spaceBitmapDesc)*/sbd->descTag.descCRCLength)) {
+        if(crc(sbd, /*sizeof(struct spaceBitmapDesc)*/sbd->descTag.descCRCLength + sizeof(tag))) {
             err("SBD CRC error. Continue with caution.\n");
             seq->pd.error |= E_CRC; 
         }
