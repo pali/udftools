@@ -97,7 +97,7 @@ char * print_timestamp(timestamp ts) {
 }
 
 time_t timestamp2epoch(timestamp t) {
-    struct tm tm;
+    struct tm tm = {0};
     tm.tm_year = t.year - 1900;
     tm.tm_mon = t.month - 1; 
     tm.tm_mday = t.day;
@@ -109,7 +109,6 @@ time_t timestamp2epoch(timestamp t) {
 
 double compare_timestamps(timestamp a, timestamp b) {
     double dt = difftime(timestamp2epoch(a), timestamp2epoch(b));
-    dbg("Difftime: %f\n", dt);
     return dt;
 }
 
@@ -914,8 +913,12 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     break; 
             }
 
-            if(compare_timestamps(stats->LVIDtimestamp, ext ? efe->modificationTime : fe->modificationTime) < 0) {
+            double cts = 0;
+            if((cts = compare_timestamps(stats->LVIDtimestamp, ext ? efe->modificationTime : fe->modificationTime)) < 0) {
                 err("(%s) File timestamp is later than LVID timestamp. LVID need to be fixed.\n", info.filename);
+#ifdef DEBUG
+                err("CTS: %f\n", cts);
+#endif
                 seq->lvid.error |= E_TIMESTAMP; 
             }
             info.modTime = ext ? efe->modificationTime : fe->modificationTime;

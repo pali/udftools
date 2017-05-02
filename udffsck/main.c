@@ -293,6 +293,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    msg("Sectorsize: %d\n", blocksize);
+
     if(blocksize == -1) {
         err("Device blocksize is not defined. Please define it with -b BLOCKSIZE parameter\n");
         exit(16);
@@ -532,6 +534,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
+#ifdef DEBUG
     note("\n ACT \t EXP\n");
     uint32_t shift = 0;
     for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < 100+shift; ) {
@@ -544,6 +547,7 @@ int main(int argc, char *argv[]) {
         }
         note("\n");
     }
+#endif
 
     //---------------- Error & Fix Status -------------
     if(error_status != 0) {
