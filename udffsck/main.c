@@ -492,6 +492,10 @@ int main(int argc, char *argv[]) {
             err("Number of files or directories is not corresponding to counted number\n");
             lviderr=1;
         }
+        if(seq->lvid.error & E_FREESPACE) {
+            err("Free Space table is not corresponding to reality.\n");
+            lviderr=1;
+        }
 
         if(lviderr) {
             error_status |= ES_LVID;
