@@ -589,6 +589,7 @@ int main(int argc, char *argv[]) {
 
     flock(fd, LOCK_UN);
     close(fd);
+    fclose(fp);
 
     msg("All done\n");
     return status;
