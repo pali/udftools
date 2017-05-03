@@ -24,9 +24,9 @@
 .\"   
 .\"
 .\"
-.TH UDFFSCK 8
+.TH UDFFSCK 8 "May 2017" "UDFTOOLS 1.3"
 .SH NAME
-udffsck \- fsck for UDF filesystem
+udffsck \- check and correction for UDF filesystem
 .SH SYNOPSIS
 .B udffsck
 [\fB\-vvvciph\fR]
@@ -34,9 +34,20 @@ udffsck \- fsck for UDF filesystem
 .IR medium
 .SH DESCRIPTION
 .B udffsck
-checks and fixes UDF.
-.PP 
-.B DRAFT ONLY.
+is used to check and correct UDF file systems.
+There are known limitations regarding UDF version, which is now limited to 2.01 or older.
+.PP
+.I medium 
+is the device file where file system is stored (e.g. 
+.IR /dev/sda1 ).
+.PP
+Please note it is not safe run
+.B udffsck 
+on mounted file system.
+Even if you think it is safe to run it on mounted file system, whole report is invalid.
+You should never never make any changes on mounted file system, so if
+.B udffsck 
+asks to do so, only valid answer is ,,no'', otherwise you can break your filesystem instead.
 .PP
 .SH OPTIONS
 .TP
@@ -85,7 +96,7 @@ is the sum of the following conditions:
 .br
 \       2\      \-\ File system errors corrected, system should
 .br
-\       \       \ \ be rebooted
+\       \       \ \ be rebooted (not used at this moment)
 .br
 \       4\      \-\ File system errors left uncorrected
 .br
@@ -95,7 +106,7 @@ is the sum of the following conditions:
 .br
 \       32\     \-\ udffsck canceled by user request
 .br
-\       128\    \-\ Shared library error
+\       128\    \-\ Shared library error (not used at this moment)
 .br
 .SH EXAMPLES
 Check medium and show it structure to user:
@@ -126,8 +137,23 @@ If you manage to find a filesystem which causes
 to crash, or which 
 .B udffsck
 is unable to  repair,  please report it to the author.
-
+.PP
+Please include as much information as possible in bug report.
+It helps to analyze bug and hopefuly fix it.
+.PP
+Necessary information in bug report are 
+.B udffsck
+version (obtainable by -h option) and OS information (uname -a).
+Also if possible attach compressed medium image which made 
+.B udffsck
+fail and complete log from stdout and stderr at debug verbosity (obtainable by -vvv option).
 .SH AUTHOR
 This version of 
 .B udffsck 
 was written by Vojtech Vladyka <vojtech.vladyka@gmail.com>
+.SH "SEE ALSO"
+.BR cdrwtool (1),
+.BR fsck (8),
+.BR mkudfs (8),
+.BR pktsetup (8),
+.BR wrudf (8)
