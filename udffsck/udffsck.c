@@ -582,14 +582,7 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq) {
     long_ad *lap;
     tag descTag;
-    lap = (long_ad *)disc->udf_lvd[0]->logicalVolContentsUse; //FIXME BIG_ENDIAN use lela_to_cpu, but not on ptr to disc. Must store it on different place.
-    lb_addr filesetblock = lelb_to_cpu(lap->extLocation);
-    uint32_t filesetlen = lap->extLength;
     int vds = -1;
-
-    dbg("FSD at (%d, p%d)\n", 
-            lap->extLocation.logicalBlockNum,
-            lap->extLocation.partitionReferenceNum);
 
     if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
         err("No correct PD found. Aborting.\n");
@@ -613,6 +606,14 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
         return 4;
     }
     uint32_t lbSize = le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize); 
+    
+    lap = (long_ad *)disc->udf_lvd[vds]->logicalVolContentsUse; //FIXME BIG_ENDIAN use lela_to_cpu, but not on ptr to disc. Must store it on different place.
+    lb_addr filesetblock = lelb_to_cpu(lap->extLocation);
+    uint32_t filesetlen = lap->extLength;
+    
+    dbg("FSD at (%d, p%d)\n", 
+            lap->extLocation.logicalBlockNum,
+            lap->extLocation.partitionReferenceNum);
 
     dbg("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
     dbg("LAP: LSN: %d\n", lsnBase/*+filesetblock.logicalBlockNum*/);
