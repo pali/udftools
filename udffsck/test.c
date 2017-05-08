@@ -197,8 +197,6 @@ static void bs2048_apple_r0150(void **state) {
 static void bs512_windows7(void **state) {
     (void) state;
     char *medium = "udf-hdd-win7";
-    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 512"), 4); //Check it
-    assert_int_equal(fsck_wrapper(medium, "-vvp", "-B 512"), 1); //Fix it
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 512"), 0); //Check it
 }
 
