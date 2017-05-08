@@ -545,6 +545,10 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
         uint8_t bit = 0;
 
         dbg("Marked LBN %d with size %d\n", lbn, size);
+        if(size == 0) {
+            dbg("Size is 0, return.\n");
+            return 0;
+        }
         int i = 0;
         do {
             byte = lbn/8;
@@ -1122,13 +1126,14 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     struct fileEntry *file;
     struct fileIdentDesc *fid;
     tag descTag;
-    uint32_t lsn;
+    uint32_t lsn, slsn;
 
     uint8_t ptLength = 1;
     uint32_t extLoc;
     char *filename;
     uint16_t pos = 0;
     uint32_t lsnBase = lbnlsn; 
+    int status = 0;
     
     int vds = -1;
     if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
@@ -1142,15 +1147,21 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     uint32_t lbSize = le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize); 
     // Go to ROOT ICB 
     lb_addr icbloc = lelb_to_cpu(disc->udf_fsd->rootDirectoryICB.extLocation); 
+    // Get Stream Dir ICB
+    lb_addr sicbloc = lelb_to_cpu(disc->udf_fsd->streamDirectoryICB.extLocation); 
 
     lsn = icbloc.logicalBlockNum+lsnBase;
+    slsn = sicbloc.logicalBlockNum+lsnBase;
     dbg("ROOT LSN: %d\n", lsn);
+    dbg("STREAM LSN: %d\n", slsn);
     
     dbg("Used space offset: %d\n", stats->usedSpace);
     struct fileInfo info = {0};
 
     msg("\nMedium file tree\n----------------\n");
-    return get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
+    status |= get_file(dev, disc, lbnlsn, slsn, stats, 0, 0, info, seq);
+    status |= get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
+    return status;
 }
 
 int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error) {
