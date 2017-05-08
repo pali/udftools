@@ -336,6 +336,11 @@ int main(int argc, char *argv[]) {
     dbg("STATUS: 0x%02x\n", status);
     status |= get_fsd(dev, &disc, blocksize, &lbnlsn, &stats, seq);
     dbg("STATUS: 0x%02x\n", status);
+    if(status >= 8) {
+        err("Unable to continue without FSD. Consider submitting bug report. Exiting.\n");
+        exit(status);
+    }
+    
     note("LBNLSN: %d\n", lbnlsn);
     status |= get_file_structure(dev, &disc, lbnlsn, &stats, seq);
     // if(status) exit(status);

@@ -622,6 +622,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     //Probably not needed. Remove.
     //if(lap->extLocation.partitionReferenceNum == disc->udf_pd[vds]->partitionNumber)
     lsnBase = disc->udf_pd[vds]->partitionStartingLocation;
+    dbg("Partition Length: %d\n", disc->udf_pd[vds]->partitionLength);
     //else {
     //    err("Partiton starting point not found.\n");
     //    return 4;
@@ -653,7 +654,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     if(le16_to_cpu(disc->udf_fsd->descTag.tagIdent) != TAG_IDENT_FSD) {
         err("Error identifiing FSD. Tag ID: 0x%x\n", disc->udf_fsd->descTag.tagIdent);
         free(disc->udf_fsd);
-        return -1;
+        return 8;
     }
     dbg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
     stats->logicalVolIdent = disc->udf_fsd->logicalVolIdent;
