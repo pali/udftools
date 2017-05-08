@@ -538,7 +538,7 @@ int main(int argc, char *argv[]) {
 #ifdef DEBUG
     note("\n ACT \t EXP\n");
     uint32_t shift = 0;
-    for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < 100+shift; ) {
+    for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < 200+shift; ) {
         for(int j=0; j<16; j++, i++) {
             note("%02x ", stats.actPartitionBitmap[i]);
         }

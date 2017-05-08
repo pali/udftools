@@ -97,7 +97,7 @@ struct fileInfo {
     uint8_t fileCharacteristics;
     uint8_t fileType;
     uint32_t permissions;
-    uint32_t size;
+    uint64_t size;
     timestamp modTime;
 };
 

@@ -33,6 +33,7 @@
 
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq );
 uint64_t uuid_decoder(uint64_t uuid);
+void incrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position);
 
 #define MAX_DEPTH 100
 char * depth2str(uint32_t depth) {
@@ -647,6 +648,8 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     dbg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
     stats->logicalVolIdent = disc->udf_fsd->logicalVolIdent;
 
+    incrementUsedSize(stats, filesetlen, lap->extLocation.logicalBlockNum);
+
     *lbnlsn = lsnBase;
     return 0;
 }
@@ -771,10 +774,10 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     return 0;
 }
 
-void incrementUsedSize(struct filesystemStats *stats, uint32_t increment, uint32_t position) {
+void incrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position) {
     stats->usedSpace += increment;
     dwarn("INCREMENT to %d (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize);
-    markUsedBlock(stats, position, increment/stats->blocksize);
+    markUsedBlock(stats, position, increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1);
     /*file_t *previous, *file = malloc(sizeof(file_t));
 
       previous = list_get(&stats->allocationTable);
@@ -881,7 +884,8 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             uint32_t lea = ext ? efe->lengthExtendedAttr : fe->lengthExtendedAttr;
             uint32_t lad =  ext ? efe->lengthAllocDescs : fe->lengthAllocDescs;
             dbg("LEA %d, LAD %d\n", lea, lad);
-
+            dbg("Information Length: %d\n", fe->informationLength);
+            info.size = fe->informationLength;
             info.fileType = fe->icbTag.fileType;
             info.permissions = fe->permissions;
 
@@ -1141,8 +1145,13 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
 
     lsn = icbloc.logicalBlockNum+lsnBase;
     dbg("ROOT LSN: %d\n", lsn);
-    stats->usedSpace = (lsn-lsnBase)*le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize);
-    markUsedBlock(stats, 0, lsn-lsnBase);
+   // stats->usedSpace = 0;//(lsn-lsnBase)*le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize);
+   //FIXME! 
+    
+    //markUsedBlock(stats, 0, lsn-lsnBase);
+
+    dbg("LSN-BASE: %d\n", lsn-lsnBase); 
+    
     dbg("Used space offset: %d\n", stats->usedSpace);
     struct fileInfo info = {0};
 
@@ -1534,14 +1543,17 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
     if(phd->unallocSpaceTable.extLength > 0) {
         //Unhandled. Not found on any medium.
         err("[USD] Unallocated Space Table is unhandled. Skipping.\n");
+        return -128;
     }
     if(phd->freedSpaceTable.extLength > 0) {
         //Unhandled. Not found on any medium.
         err("[USD] Free Space Table is unhandled. Skipping.\n");
+        return -128;
     }
     if(phd->freedSpaceBitmap.extLength > 0) {
         //Unhandled. Not found on any medium.
         err("[USD] Unallocated Space Table is unhandled. Skipping.\n");
+        return -128;
     }
     if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
         uint32_t lsnBase = disc->udf_pd[vds]->partitionStartingLocation;      
@@ -1608,9 +1620,21 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         //dbg("Total Count: %d\n", totalcount);
         dbg("Unused blocks: %d\n", unusedBlocks);
         dbg("Used Blocks: %d\n", usedBlocks);
-        return 0;
     }
-    return 1; 
+    
+    //Mark used space
+   /*
+    markUsedBlock(stats, phd->unallocSpaceTable.extPosition, phd->unallocSpaceTable.extLength % sectorsize == 0 ? phd->unallocSpaceTable.extLength / sectorsize : phd->unallocSpaceTable.extLength / sectorsize + 1);
+    markUsedBlock(stats, phd->unallocSpaceBitmap.extPosition, phd->unallocSpaceBitmap.extLength % sectorsize == 0 ? phd->unallocSpaceBitmap.extLength / sectorsize : phd->unallocSpaceBitmap.extLength / sectorsize + 1);
+    markUsedBlock(stats, phd->freedSpaceTable.extPosition, phd->freedSpaceTable.extLength % sectorsize == 0 ? phd->freedSpaceTable.extLength / sectorsize : phd->freedSpaceTable.extLength / sectorsize + 1);
+    markUsedBlock(stats, phd->freedSpaceBitmap.extPosition, phd->freedSpaceBitmap.extLength % sectorsize == 0 ? phd->freedSpaceBitmap.extLength / sectorsize : phd->freedSpaceBitmap.extLength / sectorsize + 1);
+*/
+    incrementUsedSize(stats, phd->unallocSpaceTable.extLength, phd->unallocSpaceTable.extPosition);
+    incrementUsedSize(stats, phd->unallocSpaceBitmap.extLength, phd->unallocSpaceBitmap.extPosition);
+    incrementUsedSize(stats, phd->freedSpaceTable.extLength, phd->freedSpaceTable.extPosition);
+    incrementUsedSize(stats, phd->freedSpaceBitmap.extLength, phd->freedSpaceBitmap.extPosition);
+
+    return 0; 
 }
 
 int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
