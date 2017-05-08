@@ -96,8 +96,16 @@ int check_position(tag descTag, uint32_t position) {
 }
 
 char * print_timestamp(timestamp ts) {
-    static char str[30] = {0};
-    sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds);
+    static char str[34] = {0};
+    uint8_t type = ts.typeAndTimezone >> 12;
+    int16_t offset = ts.typeAndTimezone & 0x0fff;
+    int8_t hrso = 0;
+    int8_t mino = 0;
+    if(type == 1 && offset > -2047) { // timestamp is in local time. Convert to UCT.
+        hrso = offset/60; // offset in hours
+        mino = offset%60; // offset in minutes
+    }
+    sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d+%02d:%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds, hrso, mino);
     return str; 
 }
 
@@ -112,6 +120,16 @@ time_t timestamp2epoch(timestamp t) {
     float rest = (t.centiseconds * 10000 + t.hundredsOfMicroseconds * 100 + t.microseconds)/1000000.0;
     if(rest > 0.5)
         tm.tm_sec++;
+    uint8_t type = t.typeAndTimezone >> 12;
+    int16_t offset = t.typeAndTimezone & 0x0fff;
+    if(type == 1 && offset > -2047) { // timestamp is in local time. Convert to UCT.
+        int8_t hrso = offset/60; // offset in hours
+        int8_t mino = offset%60; // offset in minutes
+        tm.tm_hour += hrso;
+        tm.tm_min += mino;
+    } else if(type == 2) {
+        warn("Time interpretation is not specified.\n");
+    }
     return mktime(&tm);
 }
 
@@ -642,7 +660,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     if (!checksum(fid->descTag)) {
         err("[inspect fid] FID checksum failed.\n");
         // return -4;
-        warn("DISABLED ERROR RETURN\n");
+        warn("DISABLED ERROR RETURN\n"); //FIXME
     }
     if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
         dwarn("FID found (%d)\n",*pos);

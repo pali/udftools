@@ -374,6 +374,7 @@ int main(int argc, char *argv[]) {
     msg("Volume identifier: %s\n", stats.logicalVolIdent);
     msg("Next UniqueID: %d\n", stats.actUUID);
     msg("Max found UniqueID: %d\n", stats.maxUUID);
+    msg("Last LVID recoreded change: %s\n", print_timestamp(stats.LVIDtimestamp));
     msg("expected number of files: %d\n", stats.expNumOfFiles);
     msg("expected number of dirs:  %d\n", stats.expNumOfDirs);
     msg("counted number of files: %d\n", stats.countNumOfFiles);

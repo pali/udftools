@@ -150,6 +150,7 @@ int fix_usd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct files
 void print_file_chunks(struct filesystemStats *stats);
 
 
+char * print_timestamp(timestamp ts);
 void test_list(void);
 
 #endif //__UDFFSCK_H__
