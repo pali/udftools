@@ -273,7 +273,8 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsiz
         if(!checksum(desc_tag)) {
             status |= E_CHECKSUM;
             continue;
-        } else if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
+        }
+        if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
             status |= E_WRONGDESC;
             continue;
         }
@@ -842,6 +843,8 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
         err("Tag checksum failed. Unable to continue.\n");
         return 4;
     }
+
+    dbg("Tag serial num: %d\n", descTag.tagSerialNum);
     //memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
     //do {    
     //read(fd, file, sizeof(struct fileEntry));
