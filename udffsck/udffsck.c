@@ -1134,6 +1134,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     uint16_t pos = 0;
     uint32_t lsnBase = lbnlsn; 
     int status = 0;
+    uint32_t elen = 0, selen = 0;
     
     int vds = -1;
     if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
@@ -1152,6 +1153,8 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
 
     lsn = icbloc.logicalBlockNum+lsnBase;
     slsn = sicbloc.logicalBlockNum+lsnBase;
+    elen = disc->udf_fsd->rootDirectoryICB.extLength;
+    selen = disc->udf_fsd->streamDirectoryICB.extLength;
     dbg("ROOT LSN: %d\n", lsn);
     dbg("STREAM LSN: %d\n", slsn);
     
@@ -1159,8 +1162,10 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     struct fileInfo info = {0};
 
     msg("\nMedium file tree\n----------------\n");
-    status |= get_file(dev, disc, lbnlsn, slsn, stats, 0, 0, info, seq);
-    status |= get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
+    if(selen > 0) 
+        status |= get_file(dev, disc, lbnlsn, slsn, stats, 0, 0, info, seq);
+    if(elen > 0)
+        status |= get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
     return status;
 }
 
