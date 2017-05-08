@@ -979,6 +979,8 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 if(interactive) {
                     if(prompt("Fix it? [Y/n] ")) {
                         fixit = 1;
+                    } else {
+                        status |= 4;
                     }
                 } else if(autofix) {
                     fixit = 1;
