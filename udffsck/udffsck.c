@@ -296,22 +296,31 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsiz
             status |= E_POSITION;
             continue;
         }
+            
+        dbg("AVDP[%d]: Main Ext Len: %d, Reserve Ext Len: %d\n", type, disc->udf_anchor[type]->mainVolDescSeqExt.extLength, disc->udf_anchor[type]->reserveVolDescSeqExt.extLength);    
+        if(disc->udf_anchor[type]->mainVolDescSeqExt.extLength < 16*ssize ||  disc->udf_anchor[type]->reserveVolDescSeqExt.extLength < 16*ssize) {
+            status |= E_EXTLEN;
+        }
 
         msg("AVDP[%d] successfully loaded.\n", type);
         *sectorsize = ssize;
-        return 0;
-    }
-    if(status & E_CHECKSUM) {
-        err("Checksum failure at AVDP[%d]\n", type);
-    }
-    if(status & E_WRONGDESC) {
-        err("AVDP not found at 0x%lx\n", position);
-    }
-    if(status & E_CRC) {
-        err("CRC error at AVDP[%d]\n", type);
-    }
-    if(status & E_POSITION) {
-        err("Position mismatch at AVDP[%d]\n", type);
+        
+        if(status & E_CHECKSUM) {
+            err("Checksum failure at AVDP[%d]\n", type);
+        }
+        if(status & E_WRONGDESC) {
+            err("AVDP not found at 0x%lx\n", position);
+        }
+        if(status & E_CRC) {
+            err("CRC error at AVDP[%d]\n", type);
+        }
+        if(status & E_POSITION) {
+            err("Position mismatch at AVDP[%d]\n", type);
+        }
+        if(status & E_EXTLEN) {
+            err("Main or Reserve Extent Length at AVDP[%d] is less than 16 sectors\n", type);
+        }   
+        return status;
     }
     return status;
 }
@@ -1499,6 +1508,54 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
     }
 
     imp("AVDP[%d] successfully written.\n", type);
+    return 0;
+}
+
+int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e target) {
+    uint64_t targetPosition = 0;
+    tag desc_tag;
+    avdp_type_e type = target;
+
+    // Taget type to determine position on media
+    if(target == 0) {
+        targetPosition = sectorsize*256; //First AVDP is on LSN=256
+    } else if(target == 1) {
+        targetPosition = devsize-sectorsize; //Second AVDP is on last LSN
+    } else if(target == 2) {
+        targetPosition = devsize-sectorsize-256*sectorsize; //Third AVDP can be at last LSN-256
+    } else {
+        targetPosition = sectorsize*512; //Unclosed disc have AVDP at sector 512
+        type = FIRST_AVDP; //Save it to FIRST_AVDP positon
+    }
+
+    dbg("DevSize: %zu\n", devsize);
+    dbg("Current position: %lx\n", targetPosition);
+
+    desc_tag = *(tag *)(dev+targetPosition);
+
+    if(!checksum(desc_tag)) {
+        err("Checksum failure at AVDP[%d]\n", type);
+        return -2;
+    } else if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
+        err("AVDP not found at 0x%lx\n", targetPosition);
+        return -4;
+    }
+
+    if(disc->udf_anchor[type]->mainVolDescSeqExt.extLength > disc->udf_anchor[type]->reserveVolDescSeqExt.extLength) { //main is bigger
+        if(disc->udf_anchor[type]->mainVolDescSeqExt.extLength >= 16*sectorsize) { //and is big enough
+            disc->udf_anchor[type]->reserveVolDescSeqExt.extLength = disc->udf_anchor[type]->mainVolDescSeqExt.extLength;
+        } 
+    } else { //reserve is bigger
+        if(disc->udf_anchor[type]->reserveVolDescSeqExt.extLength >= 16*sectorsize) { //and is big enough
+            disc->udf_anchor[type]->mainVolDescSeqExt.extLength = disc->udf_anchor[type]->reserveVolDescSeqExt.extLength;
+        } 
+    }
+    disc->udf_anchor[type]->descTag.descCRC = calculate_crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr));
+    disc->udf_anchor[type]->descTag.tagChecksum = calculate_checksum(disc->udf_anchor[type]->descTag);
+    
+    memcpy(dev+targetPosition, disc->udf_anchor[type], sizeof(struct anchorVolDescPtr));
+
+    imp("AVDP[%d] Extent Length successfully fixed.\n", type);
     return 0;
 }
 

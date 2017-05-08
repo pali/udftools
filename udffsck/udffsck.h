@@ -122,6 +122,7 @@ struct impUseLVID {
 #define E_TIMESTAMP     0b00100000
 #define E_FREESPACE     0b01000000
 #define E_FILES         0b10000000
+#define E_EXTLEN        0b10000000 //AVDP specific
 
 // Anchor volume descriptor points to Mvds and Rvds
 int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats);
@@ -151,6 +152,7 @@ int fix_usd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct files
 
 void print_file_chunks(struct filesystemStats *stats);
 
+int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e target);
 
 char * print_timestamp(timestamp ts);
 void test_list(void);

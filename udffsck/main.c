@@ -282,11 +282,11 @@ int main(int argc, char *argv[]) {
         seq->anchor[1].error = get_avdp(dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize, &stats); //load AVDP
         seq->anchor[2].error = get_avdp(dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
 
-        if(seq->anchor[0].error == 0) {
+        if((seq->anchor[0].error & ~E_EXTLEN) == 0) {
             source = FIRST_AVDP;
-        } else if(seq->anchor[1].error == 0) {
+        } else if((seq->anchor[1].error & ~E_EXTLEN) == 0) {
             source = SECOND_AVDP;
-        } else if(seq->anchor[2].error == 0) {
+        } else if((seq->anchor[2].error & ~E_EXTLEN) == 0) {
             source = THIRD_AVDP;
         } else {
             err("All AVDP are broken. Aborting.\n");
@@ -413,18 +413,18 @@ int main(int argc, char *argv[]) {
         int target1 = -1;
         int target2 = -1;
 
-        if(seq->anchor[0].error == 0) {
+        if((seq->anchor[0].error & ~E_EXTLEN) == 0) {
             source = FIRST_AVDP;
-            if(seq->anchor[1].error != 0)
+            if((seq->anchor[1].error & ~E_EXTLEN) != 0)
                 target1 = SECOND_AVDP;
-            if(seq->anchor[2].error != 0)
+            if((seq->anchor[2].error & ~E_EXTLEN) != 0)
                 target2 = THIRD_AVDP;
-        } else if(seq->anchor[1].error == 0) {
+        } else if((seq->anchor[1].error & ~E_EXTLEN) == 0) {
             source = SECOND_AVDP;
             target1 = FIRST_AVDP;
-            if(seq->anchor[2].error != 0)
+            if((seq->anchor[2].error & ~E_EXTLEN) != 0)
                 target2 = THIRD_AVDP;
-        } else if(seq->anchor[2].error == 0) {
+        } else if((seq->anchor[2].error & ~E_EXTLEN) == 0) {
             source = THIRD_AVDP;
             target1 = FIRST_AVDP;
             target2 = SECOND_AVDP;
@@ -439,16 +439,17 @@ int main(int argc, char *argv[]) {
         if(target2 >= 0)
             error_status |= ES_AVDP2;
 
-        int fix_avdp = 0;
+        int fixavdp = 0;
         if(interactive) {
             if(prompt("Found error at AVDP. Do you want to fix them? [Y/n]") != 0) {
-                fix_avdp = 1;
+                fixavdp = 1;
             }
         }
         if(autofix)
-            fix_avdp = 1;
+            fixavdp = 1;
 
-        if(fix_avdp) {
+
+        if(fixavdp) {
             msg("Source: %d, Target1: %d, Target2: %d\n", source, target1, target2);
             if(target1 >= 0) {
                 if(write_avdp(dev, &disc, blocksize, st_size, source, target1) != 0) {
@@ -469,6 +470,19 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
+        
+        if(fixavdp) {
+            if(seq->anchor[0].error & E_EXTLEN) {
+                status |= fix_avdp(dev, &disc, blocksize, st_size, FIRST_AVDP);                 
+            }
+            if(seq->anchor[1].error & E_EXTLEN) {
+                status |= fix_avdp(dev, &disc, blocksize, st_size, SECOND_AVDP);                 
+            }
+            if(seq->anchor[2].error & E_EXTLEN) {
+                status |= fix_avdp(dev, &disc, blocksize, st_size, THIRD_AVDP);                 
+            }
+        }
+
     }
 
 
