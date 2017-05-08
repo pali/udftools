@@ -31,6 +31,9 @@
 #include "libudffs.h"
 #include "options.h"
 
+#define MARK_BLOCK 1
+#define UNMARK_BLOCK 0
+
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq );
 uint64_t uuid_decoder(uint64_t uuid);
 void incrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position);
@@ -539,7 +542,7 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     return 0; 
 }
 
-uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size) {
+uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size, uint8_t mark) {
     if(lbn+size < stats->partitionNumOfBits) {
         uint32_t byte = 0;
         uint8_t bit = 0;
@@ -553,7 +556,10 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
         do {
             byte = lbn/8;
             bit = lbn%8;
-            stats->actPartitionBitmap[byte] &= ~(1<<bit);
+            if(mark)
+                stats->actPartitionBitmap[byte] &= ~(1<<bit);
+            else
+                stats->actPartitionBitmap[byte] |= 1<<bit;
             lbn++;
             i++;
         } while(i < size);
@@ -753,7 +759,27 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                     }
                 }
                 dbg("ICB to follow.\n");
-                *status |= get_file(dev, disc, lbnlsn, (fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth, uuid, info, seq);
+                int tmp_status = get_file(dev, disc, lbnlsn, (fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth, uuid, info, seq);
+                if(tmp_status == 32) { //32 means delete this FID
+                    fid->fileCharacteristics |= FID_FILE_CHAR_DELETED; //Set deleted flag
+                    memset(&(fid->icb), 0, sizeof(long_ad)); //clear ICB according ECMA-167r3, 4/14.4.5
+                    fid->descTag.descCRC = calculate_crc(fid, flen+padding);             
+                    fid->descTag.tagChecksum = calculate_checksum(fid->descTag);
+                    dbg("Location: %d\n", fid->descTag.tagLocation);
+                    struct fileEntry *fe = (struct fileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
+                    struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
+                    if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
+                        efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
+                        efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
+                    } else {
+                        fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
+                        fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
+                    }
+                    imp("(%s) Unifinished file was removed.\n", info.filename);
+                  
+                    tmp_status = 1;    
+                }
+                *status |= tmp_status;
                 dbg("Return from ICB\n"); 
             }
         } else {
@@ -781,22 +807,13 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
 void incrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position) {
     stats->usedSpace += increment;
     dwarn("INCREMENT to %d (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize);
-    markUsedBlock(stats, position, increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1);
-    /*file_t *previous, *file = malloc(sizeof(file_t));
+    markUsedBlock(stats, position, increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1, MARK_BLOCK);
+}
 
-      previous = list_get(&stats->allocationTable);
-      uint32_t prevBlocks = 0, prevLsn = 0;
-      if(previous != NULL) {
-      prevBlocks = previous->blocks;
-      prevLsn = previous->lsn;
-      }
-
-      file->lsn = position;
-      file->blocks = increment/stats->blocksize;
-
-      if(file->blocks != prevBlocks) 
-      list_insert_first(&stats->allocationTable, file);
-      */
+void decrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position) {
+    stats->usedSpace -= increment;
+    dwarn("DECREMENT to %d (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize);
+    markUsedBlock(stats, position, increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1, UNMARK_BLOCK);
 }
 
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq ) {
@@ -889,6 +906,32 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             uint32_t lad =  ext ? efe->lengthAllocDescs : fe->lengthAllocDescs;
             dbg("LEA %d, LAD %d\n", lea, lad);
             dbg("Information Length: %d\n", fe->informationLength);
+
+
+            if(info.filename != 0 && (fe->informationLength % stats->blocksize == 0? fe->informationLength/stats->blocksize : fe->informationLength/stats->blocksize + 1) != (ext ? efe->logicalBlocksRecorded : fe->logicalBlocksRecorded)) {
+                dbg("InfLenBlocks: %d\n", fe->informationLength % stats->blocksize == 0? fe->informationLength/stats->blocksize : fe->informationLength/stats->blocksize + 1);
+                dbg("BlocksRecord: %d\n", ext ? efe->logicalBlocksRecorded : fe->logicalBlocksRecorded);
+                err("(%s) File size mismatch. Probably unfinished file write.\n", info.filename);
+                int fixit = 0;
+
+                if(autofix) {
+                    fixit = 1;
+                }
+
+                if(fixit) {
+                    imp("Removing unfinished file...\n");
+                    dbg("global FE decrement.\n");
+                    dbg("usedSpace: %d\n", stats->usedSpace);
+                    decrementUsedSize(stats, lbSize, lsn-lbnlsn);
+                    dbg("usedSpace: %d\n", stats->usedSpace);
+                    uint8_t *blank;
+                    blank = malloc(stats->blocksize);
+                    memcpy(fe, blank, stats->blocksize);
+                    free(blank);
+                    return 32; 
+                }
+            }
+
             info.size = fe->informationLength;
             info.fileType = fe->icbTag.fileType;
             info.permissions = fe->permissions;
@@ -947,6 +990,9 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     dbg("Unknown filetype\n");
                     break; 
             }
+
+            dbg("numEntries: %d\n", fe->icbTag.numEntries);
+            dbg("Parent ICB loc: %d\n", fe->icbTag.parentICBLocation.logicalBlockNum);
 
             double cts = 0;
             if((cts = compare_timestamps(stats->LVIDtimestamp, ext ? efe->modificationTime : fe->modificationTime)) < 0) {
