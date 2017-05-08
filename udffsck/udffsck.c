@@ -231,7 +231,7 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
  *         -3 AVDP CRC failed
  *         -4 AVDP not found 
  */
-int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize) {
+int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats) {
     int64_t position = 0;
     tag desc_tag;
     int ssize = 512;
@@ -277,6 +277,12 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsiz
         if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
             status |= E_WRONGDESC;
             continue;
+        }
+        dbg("Tag Serial Num: %d\n", desc_tag.tagSerialNum);
+        if(stats->AVDPSerialNum == 0xFFFF) { // Default state -> save first found 
+            stats->AVDPSerialNum = desc_tag.tagSerialNum;
+        } else if(stats->AVDPSerialNum != desc_tag.tagSerialNum) { //AVDP serial numbers differs, no recovery support. UDF 2.1.6
+            stats->AVDPSerialNum = 0; //No recovery support
         }
 
         memcpy(disc->udf_anchor[type], dev+position, sizeof(struct anchorVolDescPtr));
@@ -682,6 +688,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
         padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
 
+
         if(crc(fid, flen + padding)) {
             err("FID CRC failed.\n");
             return -5;
@@ -693,6 +700,35 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         } else {
             dbg("%sFilename: %s\n", depth2str(depth), fid->fileIdent);
             info.filename = (char *)fid->fileIdent+1;
+        }
+        
+        dbg("Tag Serial Num: %d\n", fid->descTag.tagSerialNum);
+        if(stats->AVDPSerialNum != fid->descTag.tagSerialNum) {
+            err("(%s) Tag Serial Number differs.\n", info.filename);
+            uint8_t fixsernum = autofix;
+            if(interactive) {
+                if(prompt("Fix it? [Y/n] ")) {
+                    fixsernum = 1;
+                } else {
+                    *status |= 4;
+                }
+            }
+            if(fixsernum) {
+                fid->descTag.tagSerialNum = stats->AVDPSerialNum;
+                fid->descTag.descCRC = calculate_crc(fid, flen+padding);             
+                fid->descTag.tagChecksum = calculate_checksum(fid->descTag);
+                struct fileEntry *fe = (struct fileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
+                struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
+                if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
+                    efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
+                    efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
+                } else {
+                    fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
+                    fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
+                }
+                imp("(%s) Tag Serial Number was fixed.\n", info.filename);
+                *status |= 1;
+            }
         }
 
         dbg("FileVersionNum: %d\n", fid->fileVersionNum);
@@ -844,7 +880,6 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
         return 4;
     }
 
-    dbg("Tag serial num: %d\n", descTag.tagSerialNum);
     //memcpy(&descTag, dev+lbSize*lsn, sizeof(tag));
     //do {    
     //read(fd, file, sizeof(struct fileEntry));
@@ -902,6 +937,29 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     if(cont == 0) {
                         return 4;
                     }
+                }
+            }
+            dbg("Tag Serial Num: %d\n", descTag.tagSerialNum);
+            if(stats->AVDPSerialNum != descTag.tagSerialNum) {
+                err("(%s) Tag Serial Number differs.\n", info.filename);
+                uint8_t fixsernum = autofix;
+                if(interactive) {
+                    if(prompt("Fix it? [Y/n] ")) {
+                        fixsernum = 1;
+                    } else {
+                        status |= 4;
+                    }
+                }
+                if(fixsernum) {
+                    descTag.tagSerialNum = stats->AVDPSerialNum;
+                    if(ext) {
+                        efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
+                        efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
+                    } else {
+                        fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
+                        fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
+                    }
+                    status |= 1;
                 }
             }
             dbg("\nFE, LSN: %d, EntityID: %s ", lsn, fe->impIdent.ident);

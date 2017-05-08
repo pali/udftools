@@ -266,20 +266,21 @@ int main(int argc, char *argv[]) {
     seq = calloc(1, sizeof(vds_sequence_t));
     //seq = calloc(1, sizeof(metadata_err_map_t));
 
+    stats.AVDPSerialNum = 0xFFFF;
     status = is_udf(dev, &blocksize, force_sectorsize); //this function is checking for UDF recognition sequence. It also tries to detect blocksize
     if(status < 0) {
         exit(status);
     } else if(status == 1) { //Unclosed or bridged medium 
-        status = get_avdp(dev, &disc, &blocksize, st_size, -1, force_sectorsize); //load AVDP and verify blocksize
+        status = get_avdp(dev, &disc, &blocksize, st_size, -1, force_sectorsize, &stats); //load AVDP and verify blocksize
         source = FIRST_AVDP; // Unclosed medium have only one AVDP and that is saved at first position.
         if(status) {
             err("AVDP is broken. Aborting.\n");
             exit(4);
         }
     } else { //Normal medium
-        seq->anchor[0].error = get_avdp(dev, &disc, &blocksize, st_size, FIRST_AVDP, force_sectorsize); //try load FIRST AVDP
-        seq->anchor[1].error = get_avdp(dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize); //load AVDP
-        seq->anchor[2].error = get_avdp(dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize); //load AVDP
+        seq->anchor[0].error = get_avdp(dev, &disc, &blocksize, st_size, FIRST_AVDP, force_sectorsize, &stats); //try load FIRST AVDP
+        seq->anchor[1].error = get_avdp(dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize, &stats); //load AVDP
+        seq->anchor[2].error = get_avdp(dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
 
         if(seq->anchor[0].error == 0) {
             source = FIRST_AVDP;
