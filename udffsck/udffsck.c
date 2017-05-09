@@ -698,6 +698,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
     struct fileInfo info = {0};
 
+    dbg("FID pos: 0x%x\n", base + *pos - dev);
     if (!checksum(fid->descTag)) {
         err("[inspect fid] FID checksum failed.\n");
         // return -4;
@@ -1125,18 +1126,31 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
             print_file_info(info, depth);
 
+            uint8_t fid_inspected = 0;
             uint8_t *allocDescs = (ext ? efe->allocDescs : fe->allocDescs) + lea; 
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
                 dbg("SHORT\n");
                 short_ad *sad = (short_ad *)(allocDescs);
-                dbg("ExtLen: %d, ExtLoc: %d\n", sad->extLength/lbSize, sad->extPosition+lsnBase);
-                lsn = lsn + sad->extLength/lbSize;
-                dbg("LSN: %d, ExtLocOrig: %d\n", lsn, sad->extPosition);
+                dbg("ExtLen: %d, ExtLoc: %d\n", sad->extLength, sad->extPosition);
 
                 dbg("usedSpace: %d\n", stats->usedSpace);
                 uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
-                if(dir == 0)
-                    incrementUsedSize(stats, usedsize, sad->extPosition);
+                dbg("Used size: %d\n", usedsize);
+                incrementUsedSize(stats, usedsize, sad->extPosition);
+                if(dir == 0) {
+                    lsn = lsn + sad->extLength/lbSize;
+                    dbg("LSN: %d, ExtLocOrig: %d\n", lsn, sad->extPosition);
+                } else {
+                    fid_inspected = 1;
+                    for(uint32_t pos=0; pos < sad->extLength; ) {
+//uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
+                        if(inspect_fid(dev, disc, lbnlsn, lsn, (uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), &pos, stats, depth+1, seq, &status) != 0) {
+                            dbg("FID inspection over.\n");
+                            break;
+                        }
+                    } 
+                    dbg("FID inspection over.\n");
+                }
                 dbg("usedSpace: %d\n", stats->usedSpace);
                 dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG) {
@@ -1214,9 +1228,10 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     } else {
                         err("EAHD mismatch. Expected APP, found %d\n", gf->attrType);
 
+                        fid_inspected = 1;
                         for(uint32_t pos=0; ; ) {
                             if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats, depth, seq, &status) != 0) {
-                                imp("FID inspection over\n");
+                                dbg("FID inspection over\n");
                                 break;
                             }
                         }
@@ -1232,9 +1247,10 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
             // We can assume that directory have one or more FID inside.
             // FE have inside long_ad/short_ad.
-            if(dir) {
+            if(dir && fid_inspected == 0) {
                 if(ext) {
                     dbg("[EFE DIR] lengthExtendedAttr: %d\n", efe->lengthExtendedAttr);
+                    dbg("[EFE DIR] lengthAllocDescs: %d\n", efe->lengthAllocDescs);
                     for(uint32_t pos=0; pos < efe->lengthAllocDescs; ) {
                         if(inspect_fid(dev, disc, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats, depth+1, seq, &status) != 0) {
                             break;
@@ -1242,6 +1258,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     }
                 } else {
                     dbg("[FE DIR] lengthExtendedAttr: %d\n", fe->lengthExtendedAttr);
+                    dbg("[FE DIR] lengthAllocDescs: %d\n", fe->lengthAllocDescs);
                     for(uint32_t pos=0; pos < fe->lengthAllocDescs; ) {
                         if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats, depth+1, seq, &status) != 0) {
                             break;
@@ -1289,17 +1306,20 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     slsn = sicbloc.logicalBlockNum+lsnBase;
     elen = disc->udf_fsd->rootDirectoryICB.extLength;
     selen = disc->udf_fsd->streamDirectoryICB.extLength;
-    dbg("ROOT LSN: %d\n", lsn);
-    dbg("STREAM LSN: %d\n", slsn);
-    
+    dbg("ROOT LSN: %d, len: %d, partition: %d\n", lsn, elen, icbloc.partitionReferenceNum);
+    dbg("STREAM LSN: %d len: %d, partition: %d\n", slsn, selen, sicbloc.partitionReferenceNum);
+
     dbg("Used space offset: %d\n", stats->usedSpace);
     struct fileInfo info = {0};
 
-    msg("\nMedium file tree\n----------------\n");
-    if(selen > 0) 
+    if(selen > 0) {
+        msg("\nStream file tree\n----------------\n");
         status |= get_file(dev, disc, lbnlsn, slsn, stats, 0, 0, info, seq);
-    if(elen > 0)
+    }
+    if(elen > 0) {
+        msg("\nMedium file tree\n----------------\n");
         status |= get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
+    }
     return status;
 }
 
