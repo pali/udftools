@@ -712,15 +712,20 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
 
         if(crc(fid, flen + padding)) {
             err("FID CRC failed.\n");
-            return -5;
+        //    return -5;
+            warn("DISABLED ERROR RETURN\n"); //FIXME
         }
         dbg("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
         dbg("FID: FilenameLen: %d\n", fid->lengthFileIdent);
         if(fid->lengthFileIdent == 0) {
             dbg("ROOT directory\n");
         } else {
-            dbg("%sFilename: %s\n", depth2str(depth), fid->fileIdent);
-            info.filename = (char *)fid->fileIdent+1;
+            char *namebuf = calloc(1,256*2);
+            memset(namebuf, 0, 256*2);
+            int size = decode_utf8(fid->fileIdent, namebuf, fid->lengthFileIdent);
+            dbg("Size: %d\n", size);
+            dbg("%sFilename: %s\n", depth2str(depth), namebuf/*fid->fileIdent*/);
+            info.filename = namebuf/*(char *)fid->fileIdent+1*/;
         }
         
         dbg("Tag Serial Num: %d\n", fid->descTag.tagSerialNum);
@@ -738,14 +743,16 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                 fid->descTag.tagSerialNum = stats->AVDPSerialNum;
                 fid->descTag.descCRC = calculate_crc(fid, flen+padding);             
                 fid->descTag.tagChecksum = calculate_checksum(fid->descTag);
-                struct fileEntry *fe = (struct fileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
-                struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
+                struct fileEntry *fe = (struct fileEntry *)(dev + (lsn) * stats->blocksize);
+                struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (lsn) * stats->blocksize);
                 if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
                     efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
                     efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
-                } else {
+                } else if(efe->descTag.tagIdent == TAG_IDENT_FE) {
                     fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
                     fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
+                } else {
+                    err("(%s) FID parent FE not found.\n", info.filename);
                 }
                 imp("(%s) Tag Serial Number was fixed.\n", info.filename);
                 *status |= 1;
@@ -804,14 +811,16 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                         fid->descTag.descCRC = calculate_crc(fid, flen+padding);             
                         fid->descTag.tagChecksum = calculate_checksum(fid->descTag);
                         dbg("Location: %d\n", fid->descTag.tagLocation);
-                        struct fileEntry *fe = (struct fileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
-                        struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
+                        struct fileEntry *fe = (struct fileEntry *)(dev + (lsn) * stats->blocksize);
+                        struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (lsn) * stats->blocksize);
                         if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
                             efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
                             efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
-                        } else {
+                        } else if(efe->descTag.tagIdent == TAG_IDENT_FE) {
                             fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
                             fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
+                        } else {
+
                         }
                         imp("(%s) UUID was fixed.\n", info.filename);
                         *status |= 1;
@@ -830,9 +839,11 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                     if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
                         efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
                         efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
-                    } else {
+                    } else if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
                         fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
                         fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
+                    } else {
+                        err("(%s) FID parent FE not found.\n", info.filename);
                     }
                     imp("(%s) Unifinished file was removed.\n", info.filename);
                   
@@ -860,6 +871,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         return 1;
     }
 
+    free(info.filename);
     return 0;
 }
 
