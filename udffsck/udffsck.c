@@ -735,8 +735,6 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             if(interactive) {
                 if(prompt("Fix it? [Y/n] ")) {
                     fixsernum = 1;
-                } else {
-                    *status |= 4;
                 }
             }
             if(fixsernum) {
@@ -756,6 +754,8 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                 }
                 imp("(%s) Tag Serial Number was fixed.\n", info.filename);
                 *status |= 1;
+            } else {
+                *status |= 4;
             }
         }
 
