@@ -5,7 +5,7 @@ compiler:
 before_script:
     - pwd
     - cd ..
-    - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/udf-samples.tar.xz
+    - wget --no-check-certificate https://pac.chapadla.cz/~rain/udffsck-test-samples/udf-samples.tar.xz 
     - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples.sh
     - bash decompress-samples.sh
     - wget --no-check-certificate https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
