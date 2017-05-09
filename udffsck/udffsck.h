@@ -90,7 +90,8 @@ struct filesystemStats {
     uint8_t * actPartitionBitmap;
     uint8_t * expPartitionBitmap;
     timestamp LVIDtimestamp;
-    dstring * logicalVolIdent;
+    dstring * partitionIdent;
+    dstring * volumeSetIdent;
 };
 
 struct fileInfo {
@@ -149,6 +150,7 @@ int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint
 int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
 int fix_usd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
 
+int get_volume_identifier(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq );
 
 void print_file_chunks(struct filesystemStats *stats);
 

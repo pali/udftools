@@ -558,6 +558,17 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     return 0; 
 }
 
+int get_volume_identifier(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq ) {
+    int vds = -1;
+    if((vds=get_correct(seq, TAG_IDENT_PVD)) < 0) {
+        err("No correct PVD found. Aborting.\n");
+        return 4;
+    }
+    stats->volumeSetIdent = disc->udf_pvd[vds]->volSetIdent;
+    stats->partitionIdent = disc->udf_fsd->logicalVolIdent;
+    return 0;
+}
+
 uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size, uint8_t mark) {
     if(lbn+size < stats->partitionNumOfBits) {
         uint32_t byte = 0;
@@ -673,7 +684,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
         return 8;
     }
     dbg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
-    stats->logicalVolIdent = disc->udf_fsd->logicalVolIdent;
+    //stats->logicalVolIdent = disc->udf_fsd->logicalVolIdent;
 
     incrementUsedSize(stats, filesetlen, lap->extLocation.logicalBlockNum);
 

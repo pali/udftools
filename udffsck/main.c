@@ -374,10 +374,14 @@ int main(int argc, char *argv[]) {
           err("PD error\n");
           exit(8);
           }
+          *
           */
+    get_volume_identifier(dev, &disc, blocksize, &stats, seq);   
+
     //---------- Corrections --------------
     msg("\nFilesystem status\n-----------------\n");
-    msg("Volume identifier: %s\n", stats.logicalVolIdent);
+    msg("Volume set identifier: %s\n", stats.volumeSetIdent);
+    msg("Partition identifier: %s\n", stats.partitionIdent);
     msg("Next UniqueID: %d\n", stats.actUUID);
     msg("Max found UniqueID: %d\n", stats.maxUUID);
     msg("Last LVID recoreded change: %s\n", print_timestamp(stats.LVIDtimestamp));
