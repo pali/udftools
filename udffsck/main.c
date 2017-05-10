@@ -281,6 +281,13 @@ int main(int argc, char *argv[]) {
         seq->anchor[0].error = get_avdp(dev, &disc, &blocksize, st_size, FIRST_AVDP, force_sectorsize, &stats); //try load FIRST AVDP
         seq->anchor[1].error = get_avdp(dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize, &stats); //load AVDP
         seq->anchor[2].error = get_avdp(dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
+        
+        if(seq->anchor[0].error)
+            err("AVDP[0] is broken.\n");
+        if(seq->anchor[1].error)
+            err("AVDP[1] is broken.\n");
+        if(seq->anchor[2].error)
+            err("AVDP[2] is broken.\n");
 
         if((seq->anchor[0].error & ~E_EXTLEN) == 0) {
             source = FIRST_AVDP;
