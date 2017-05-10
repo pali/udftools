@@ -585,7 +585,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-#ifdef DEBUG
+#if DEBUG && 0
     note("\n ACT \t EXP\n");
     uint32_t shift = 0;
     uint32_t line = 0;
