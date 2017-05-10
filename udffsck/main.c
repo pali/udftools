@@ -582,7 +582,8 @@ int main(int argc, char *argv[]) {
     note("\n ACT \t EXP\n");
     uint32_t shift = 0;
     uint32_t line = 0;
-    for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < 200+shift; ) {
+    uint32_t amount = 50000;
+    for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < amount+shift; ) {
         note("[%04d] ",line++);
         for(int j=0; j<16; j++, i++) {
             note("%02x ", stats.actPartitionBitmap[i]);

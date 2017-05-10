@@ -222,8 +222,11 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
 }
 
 uint64_t countUsedBits(struct filesystemStats *stats) {
+    if(stats->actPartitionBitmap == NULL)
+        return -1;
+    
     uint64_t countedBits = 0;
-    uint8_t rest = stats->partitionNumOfBytes - stats->partitionNumOfBits/8;
+    uint8_t rest = stats->partitionNumOfBits % 8;
     for(int i = 0; i<stats->partitionNumOfBytes; i++) {
         uint8_t piece = ~stats->actPartitionBitmap[i];
         if(i<stats->partitionNumOfBytes-1) {

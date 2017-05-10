@@ -139,8 +139,6 @@ static void bs2048_dirty_file_tree_2(void **state) {
  * It resulted in broken UUIDs at them (all newer files were set UUID=0, also LVID
  * timestamp was old. 
  *
- * \warning Unrecoverable! At least for now.
- *
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
@@ -149,7 +147,7 @@ static void bs2048_dirty_file_tree_3(void **state) {
     char *medium = "bs2048-r0201-broken-UUIDs";
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 4); //Check it
     assert_int_equal(fsck_wrapper(medium, "-vvp", "-B 2048"), 1); //Fix it
-    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 0); //Check it
 }
 
 /**
