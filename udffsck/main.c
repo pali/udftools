@@ -376,7 +376,25 @@ int main(int argc, char *argv[]) {
           }
           *
           */
-    get_volume_identifier(dev, &disc, blocksize, &stats, seq);   
+    get_volume_identifier(dev, &disc, blocksize, &stats, seq);  
+    
+    uint64_t countedBits = 0;
+    uint8_t rest = stats.partitionNumOfBytes - stats.partitionNumOfBits/8;
+    for(int i = 0; i<stats.partitionNumOfBytes; i++) {
+        uint8_t piece = ~stats.actPartitionBitmap[i];
+        if(i<stats.partitionNumOfBytes-1) {
+            for(int j = 0; j<8; j++) {
+                countedBits += (piece>>j)&1;
+            }
+        } else {
+            for(int j = 0; j<rest; j++) {
+                countedBits += (piece>>j)&1;
+            }
+        }
+    }
+    dbg("**** BITMAP USED SPACE: %d ****\n", countedBits);
+
+
 
     //---------- Corrections --------------
     msg("\nFilesystem status\n-----------------\n");
@@ -562,7 +580,9 @@ int main(int argc, char *argv[]) {
 #ifdef DEBUG
     note("\n ACT \t EXP\n");
     uint32_t shift = 0;
+    uint32_t line = 0;
     for(int i=0+shift, k=0+shift; i<stats.partitionSizeBlocks/8 && i < 200+shift; ) {
+        note("[%04d] ",line++);
         for(int j=0; j<16; j++, i++) {
             note("%02x ", stats.actPartitionBitmap[i]);
         }

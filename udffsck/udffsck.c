@@ -594,6 +594,7 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
         dbg("Last LBN: %d, Byte: %d, Bit: %d\n", lbn, byte, bit);
         dbg("Real size: %d\n", i);
 
+#if 0
         note("\n ACT \t EXP\n");
         uint32_t shift = 0;
         for(int i=0+shift, k=0+shift; i<stats->partitionSizeBlocks/8 && i < 100+shift; ) {
@@ -619,7 +620,7 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
             note("\n");
         }
         note("\n");
-
+#endif
     } else {
         err("MARKING USED BLOCK TO BITMAP FAILED\n");
         return -1;
@@ -745,16 +746,19 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
             case ICBTAG_FLAG_AD_SHORT:
                 sad = (short_ad *)(allocDescs + i*descSize);
                 memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), sad->extLength);
+                incrementUsedSize(stats, 1, sad->extPosition);
                 prevExtLength = sad->extLength;
                 break;
             case ICBTAG_FLAG_AD_LONG:
                 lad = (long_ad *)(allocDescs + i*descSize);
                 memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + lad->extLocation.logicalBlockNum)*lbSize), lad->extLength);
+                incrementUsedSize(stats, 1, lad->extLocation.logicalBlockNum);
                 prevExtLength = lad->extLength;
                 break;
             case ICBTAG_FLAG_AD_EXTENDED:
                 ead = (ext_ad *)(allocDescs + i*descSize);
                 memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + ead->extLocation.logicalBlockNum)*lbSize), ead->extLength);
+                incrementUsedSize(stats, 1, ead->extLocation.logicalBlockNum);
                 prevExtLength = ead->extLength;
                 break;
         }
@@ -798,36 +802,6 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
     free(fidArray);
     (*status) |= tempStatus;
     return 0;
-/*
-
-                dbg("SHORT\n");
-                dbg("LAD: %d, N: %d, rest: %d\n", lad, lad/sizeof(short_ad), lad%sizeof(short_ad));
-                for(int si = 0; si < lad/sizeof(short_ad); si++) {
-                    dwarn("SHORT #%d\n", si);
-                    short_ad *sad = (short_ad *)(allocDescs + si*sizeof(short_ad));
-                    dbg("ExtLen: %d, ExtLoc: %d\n", sad->extLength, sad->extPosition);
-
-                    dbg("usedSpace: %d\n", stats->usedSpace);
-                    uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
-                    dbg("Used size: %d\n", usedsize);
-                    incrementUsedSize(stats, usedsize, sad->extPosition);
-                    if(dir == 0) {
-                        lsn = lsn + sad->extLength/lbSize;
-                        dbg("LSN: %d, ExtLocOrig: %d\n", lsn, sad->extPosition);
-                    } else {
-                        fid_inspected = 1;
-                        for(uint32_t pos=0; pos < sad->extLength; ) {
-    //uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
-                            if(inspect_fid(dev, disc, lbnlsn, lsn, (uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), &pos, stats, depth+1, seq, &status) != 0) {
-                                dbg("FID inspection over.\n");
-                                break;
-                            }
-                        } 
-                        dbg("FID inspection over.\n");
-                    }
-                    dbg("usedSpace: %d\n", stats->usedSpace);
-                    dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
-                }*/
 }
 
 uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
@@ -1279,69 +1253,75 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             uint8_t fid_inspected = 0;
             uint8_t *allocDescs = (ext ? efe->allocDescs : fe->allocDescs) + lea; 
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
-/*                dbg("SHORT\n");
-                dbg("LAD: %d, N: %d, rest: %d\n", lad, lad/sizeof(short_ad), lad%sizeof(short_ad));
-                for(int si = 0; si < lad/sizeof(short_ad); si++) {
-                    dwarn("SHORT #%d\n", si);
-                    short_ad *sad = (short_ad *)(allocDescs + si*sizeof(short_ad));
-                    dbg("ExtLen: %d, ExtLoc: %d\n", sad->extLength, sad->extPosition);
-
-                    dbg("usedSpace: %d\n", stats->usedSpace);
-                    uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
-                    dbg("Used size: %d\n", usedsize);
-                    incrementUsedSize(stats, usedsize, sad->extPosition);
-                    if(dir == 0) {
-                        lsn = lsn + sad->extLength/lbSize;
-                        dbg("LSN: %d, ExtLocOrig: %d\n", lsn, sad->extPosition);
-                    } else {
-                        fid_inspected = 1;
-                        for(uint32_t pos=0; pos < sad->extLength; ) {
-    //uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
-                            if(inspect_fid(dev, disc, lbnlsn, lsn, (uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), &pos, stats, depth+1, seq, &status) != 0) {
-                                dbg("FID inspection over.\n");
-                                break;
-                            }
-                        } 
-                        dbg("FID inspection over.\n");
-                    }
-                    dbg("usedSpace: %d\n", stats->usedSpace);
-                    dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
-                }*/
-//uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *allocDescs, uint32_t lengthAllocDescs, uint16_t icb_ad, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
                 if(dir) {
                     translate_fid(dev, disc, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_SHORT, stats, depth, seq, &status);
+                } else {
+                    dbg("SHORT\n");
+                    dbg("LAD: %d, N: %d, rest: %d\n", lad, lad/sizeof(short_ad), lad%sizeof(short_ad));
+                    for(int si = 0; si < lad/sizeof(short_ad); si++) {
+                        dwarn("SHORT #%d\n", si);
+                        short_ad *sad = (short_ad *)(allocDescs + si*sizeof(short_ad));
+                        dbg("ExtLen: %d, ExtLoc: %d\n", sad->extLength, sad->extPosition);
+
+                        dbg("usedSpace: %d\n", stats->usedSpace);
+                        uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
+                        dbg("Used size: %d\n", usedsize);
+                        incrementUsedSize(stats, usedsize, sad->extPosition);
+                       // if(dir == 0) {
+                            lsn = lsn + sad->extLength/lbSize;
+                            dbg("LSN: %d, ExtLocOrig: %d\n", lsn, sad->extPosition);
+                     /*   } else {
+                            fid_inspected = 1;
+                            for(uint32_t pos=0; pos < sad->extLength; ) {
+        //uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
+                                if(inspect_fid(dev, disc, lbnlsn, lsn, (uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), &pos, stats, depth+1, seq, &status) != 0) {
+                                    dbg("FID inspection over.\n");
+                                    break;
+                                }
+                            } 
+                            dbg("FID inspection over.\n");
+                        }*/
+                        dbg("usedSpace: %d\n", stats->usedSpace);
+                        dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
+                    }
                 }
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG) {
                 if(dir) {
                     translate_fid(dev, disc, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_LONG, stats, depth, seq, &status);
-                }
-                /*dbg("LONG\n");
-                long_ad *lad = (long_ad *)(allocDescs);
-                dbg("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
-
-                dbg("usedSpace: %d\n", stats->usedSpace);
-                uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
-                incrementUsedSize(stats, usedsize, lad->extLocation.logicalBlockNum);
-                if(dir == 0) {
-                    lsn = lsn + lad->extLength/lbSize;
-                    dbg("LSN: %d\n", lsn);
                 } else {
-                    fid_inspected = 1;
-                    for(uint32_t pos=0; pos < lad->extLength; ) {
-//uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, (uint8_t *)(dev + (lsnBase + lad->extLocation.logicalBlockNum)*lbSize), &pos, stats, depth+1, seq, &status) != 0) {
-                            dbg("FID inspection over.\n");
-                            break;
-                        }
-                    } 
-                    dbg("FID inspection over.\n");
+                    for(int si = 0; si < lad/sizeof(long_ad); si++) {
+                        dbg("LONG\n");
+                        long_ad *lad = (long_ad *)(allocDescs + si*sizeof(long_ad));
+                        dbg("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
 
+                        dbg("usedSpace: %d\n", stats->usedSpace);
+                        uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
+                        incrementUsedSize(stats, usedsize, lad->extLocation.logicalBlockNum);
+                       // if(dir == 0) {
+                            lsn = lsn + lad->extLength/lbSize;
+                            dbg("LSN: %d\n", lsn);
+                       /* } else {
+                            fid_inspected = 1;
+                            for(uint32_t pos=0; pos < lad->extLength; ) {
+        //uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
+                                if(inspect_fid(dev, disc, lbnlsn, lsn, (uint8_t *)(dev + (lsnBase + lad->extLocation.logicalBlockNum)*lbSize), &pos, stats, depth+1, seq, &status) != 0) {
+                                    dbg("FID inspection over.\n");
+                                    break;
+                                }
+                            } 
+                            dbg("FID inspection over.\n");
+
+                        }*/
+                    
+                        dbg("usedSpace: %d\n", stats->usedSpace);
+                        dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
+                    }
                 }
-                dbg("usedSpace: %d\n", stats->usedSpace);
-                dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);*/
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_EXTENDED) {
                 if(dir) {
                     translate_fid(dev, disc, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_EXTENDED, stats, depth, seq, &status);
+                } else {
+                    err("EAD found. Please report.\n");
                 }
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB) {
 
