@@ -157,6 +157,7 @@ void print_file_chunks(struct filesystemStats *stats);
 int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e target);
 
 char * print_timestamp(timestamp ts);
-void test_list(void);
+uint64_t countUsedBits(struct filesystemStats *stats);
+//void test_list(void);
 
 #endif //__UDFFSCK_H__

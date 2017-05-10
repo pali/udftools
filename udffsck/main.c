@@ -378,8 +378,8 @@ int main(int argc, char *argv[]) {
           */
     get_volume_identifier(dev, &disc, blocksize, &stats, seq);  
     
-    uint64_t countedBits = 0;
-    uint8_t rest = stats.partitionNumOfBytes - stats.partitionNumOfBits/8;
+    uint64_t countedBits = countUsedBits(&stats);
+/*    uint8_t rest = stats.partitionNumOfBytes - stats.partitionNumOfBits/8;
     for(int i = 0; i<stats.partitionNumOfBytes; i++) {
         uint8_t piece = ~stats.actPartitionBitmap[i];
         if(i<stats.partitionNumOfBytes-1) {
@@ -391,7 +391,8 @@ int main(int argc, char *argv[]) {
                 countedBits += (piece>>j)&1;
             }
         }
-    }
+    }*/
+
     dbg("**** BITMAP USED SPACE: %d ****\n", countedBits);
 
 
@@ -425,7 +426,7 @@ int main(int argc, char *argv[]) {
         err("Correct free space: %lu\n", stats.freeSpaceBlocks + usedSpaceDiff/blocksize);
         seq->lvid.error |= E_FREESPACE;
     }
-    int32_t usedSpaceDiffBlocks = stats.expUsedBlocks - stats.usedSpace/blocksize;
+    int32_t usedSpaceDiffBlocks = stats.expUsedBlocks - countedBits;//stats.usedSpace/blocksize;
     if(usedSpaceDiffBlocks != 0) {
         err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
         seq->pd.error |= E_FREESPACE; 

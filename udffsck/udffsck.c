@@ -220,6 +220,24 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
     msg("\n");
 }
 
+uint64_t countUsedBits(struct filesystemStats *stats) {
+    uint64_t countedBits = 0;
+    uint8_t rest = stats->partitionNumOfBytes - stats->partitionNumOfBits/8;
+    for(int i = 0; i<stats->partitionNumOfBytes; i++) {
+        uint8_t piece = ~stats->actPartitionBitmap[i];
+        if(i<stats->partitionNumOfBytes-1) {
+            for(int j = 0; j<8; j++) {
+                countedBits += (piece>>j)&1;
+            }
+        } else {
+            for(int j = 0; j<rest; j++) {
+                countedBits += (piece>>j)&1;
+            }
+        }
+    }
+    return countedBits;
+}
+
 /**
  * @brief Locate AVDP on device and store it
  * @param[in] dev pointer to device array
@@ -584,10 +602,19 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
         do {
             byte = lbn/8;
             bit = lbn%8;
-            if(mark)
-                stats->actPartitionBitmap[byte] &= ~(1<<bit);
-            else
-                stats->actPartitionBitmap[byte] |= 1<<bit;
+            if(mark) { // write 0
+                if(stats->actPartitionBitmap[byte] & (1<<bit)) {
+                    stats->actPartitionBitmap[byte] &= ~(1<<bit);
+                } else {
+                    err("[%d:%d]Error marking block as used. It is already marked.\n", byte, bit);
+                }
+            } else { // write 1
+                if(stats->actPartitionBitmap[byte] & (1<<bit)) {
+                    err("[%d:%d]Error marking block as unused. It is already unmarked.\n", byte, bit);
+                } else {
+                    stats->actPartitionBitmap[byte] |= 1<<bit;
+                }
+            }
             lbn++;
             i++;
         } while(i < size);
@@ -988,15 +1015,21 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
 }
 
 void incrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position) {
-    stats->usedSpace += increment;
-    dwarn("INCREMENT to %d (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize);
+    stats->usedSpace += (increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1)*stats->blocksize;
     markUsedBlock(stats, position, increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1, MARK_BLOCK);
+#if DEBUG
+    uint64_t bits = countUsedBits(stats);
+    dwarn("INCREMENT to %d (%d) / (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize, bits);
+#endif
 }
 
 void decrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position) {
-    stats->usedSpace -= increment;
-    dwarn("DECREMENT to %d (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize);
+    stats->usedSpace -= (increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1)*stats->blocksize;
     markUsedBlock(stats, position, increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1, UNMARK_BLOCK);
+#if DEBUG
+    uint64_t bits = countUsedBits(stats);
+    dwarn("DECREMENT to %d (%d) / (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize, bits);
+#endif
 }
 
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq ) {
@@ -1264,7 +1297,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         dbg("ExtLen: %d, ExtLoc: %d\n", sad->extLength, sad->extPosition);
 
                         dbg("usedSpace: %d\n", stats->usedSpace);
-                        uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
+                        uint32_t usedsize = sad->extLength;//(fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
                         dbg("Used size: %d\n", usedsize);
                         incrementUsedSize(stats, usedsize, sad->extPosition);
                        // if(dir == 0) {
@@ -1295,7 +1328,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         dbg("ExtLen: %d, ExtLoc: %d\n", lad->extLength/lbSize, lad->extLocation.logicalBlockNum+lsnBase);
 
                         dbg("usedSpace: %d\n", stats->usedSpace);
-                        uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
+                        uint32_t usedsize = lad->extLength;//(fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
                         incrementUsedSize(stats, usedsize, lad->extLocation.logicalBlockNum);
                        // if(dir == 0) {
                             lsn = lsn + lad->extLength/lbSize;
