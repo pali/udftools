@@ -103,13 +103,14 @@ int check_position(tag descTag, uint32_t position) {
 char * print_timestamp(timestamp ts) {
     static char str[34] = {0};
     uint8_t type = ts.typeAndTimezone >> 12;
-    int16_t offset = ts.typeAndTimezone & 0x0fff;
+    int16_t offset = (ts.typeAndTimezone & 0x0fff) - (0x1000);
     int8_t hrso = 0;
     int8_t mino = 0;
     if(type == 1 && offset > -2047) { // timestamp is in local time. Convert to UCT.
         hrso = offset/60; // offset in hours
         mino = offset%60; // offset in minutes
     }
+    dbg("TypeAndTimezone: 0x%04x\n", ts.typeAndTimezone);
     sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d+%02d:%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds, hrso, mino);
     return str; 
 }
@@ -126,7 +127,7 @@ time_t timestamp2epoch(timestamp t) {
     if(rest > 0.5)
         tm.tm_sec++;
     uint8_t type = t.typeAndTimezone >> 12;
-    int16_t offset = t.typeAndTimezone & 0x0fff;
+    int16_t offset = (t.typeAndTimezone & 0x0fff) - (0x1000);
     if(type == 1 && offset > -2047) { // timestamp is in local time. Convert to UCT.
         int8_t hrso = offset/60; // offset in hours
         int8_t mino = offset%60; // offset in minutes
@@ -796,11 +797,11 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
     for(uint32_t pos=0; pos < overallLength; ) {
         dbg("FID #%d\n", counter++);
         if(inspect_fid(dev, disc, lbnlsn, lsn, fidArray, &pos, stats, depth+1, seq, &tempStatus) != 0) {
-            dbg("FID inspection over.\n");
+            dbg("1 FID inspection over.\n");
             break;
         }
     } 
-    dbg("FID inspection over.\n");
+    dbg("2 FID inspection over.\n");
 
     if(tempStatus & 0x01) { //Something was fixed - we need to copy back array
         prevExtLength = 0;
@@ -1287,6 +1288,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             uint8_t *allocDescs = (ext ? efe->allocDescs : fe->allocDescs) + lea; 
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
                 if(dir) {
+                    fid_inspected = 1;
                     translate_fid(dev, disc, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_SHORT, stats, depth, seq, &status);
                 } else {
                     dbg("SHORT\n");
@@ -1320,6 +1322,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 }
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG) {
                 if(dir) {
+                    fid_inspected = 1;
                     translate_fid(dev, disc, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_LONG, stats, depth, seq, &status);
                 } else {
                     for(int si = 0; si < lad/sizeof(long_ad); si++) {
@@ -1352,6 +1355,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 }
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_EXTENDED) {
                 if(dir) {
+                    fid_inspected = 1;
                     translate_fid(dev, disc, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_EXTENDED, stats, depth, seq, &status);
                 } else {
                     err("EAD found. Please report.\n");
