@@ -733,6 +733,7 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
     uint8_t *fidArray = NULL;
     uint32_t nAD = 0;
     uint32_t overallLength = 0;
+    uint32_t overallBodyLength = 0;
     short_ad *sad = NULL;
     long_ad *lad = NULL;
     ext_ad *ead = NULL;
@@ -762,10 +763,12 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
     for(int i = 0; i < nAD; i++) {
         sad = (short_ad *)(allocDescs + i*descSize); //we can do that, beause all ADs have size as first.
         overallLength += sad->extLength;
+        overallBodyLength += lbSize;
         dbg("ExtLength: %d\n", sad->extLength);
     }
 
-    fidArray = calloc(1, overallLength);
+    dbg("Overall length: %d\n", overallLength);
+    fidArray = calloc(1, overallBodyLength);
     if(fidArray == NULL) {
         err("FID array allocatiob failed.\n");
         return 2;
@@ -778,22 +781,44 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
                 sad = (short_ad *)(allocDescs + i*descSize);
                 memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), sad->extLength);
                 incrementUsedSize(stats, 1, sad->extPosition);
-                prevExtLength = sad->extLength;
+                prevExtLength += sad->extLength;
+#if 0
+                uint32_t line = 0;
+                for(int i=0; i<overallBodyLength; ) {
+                    note("[%04d] ",line++);
+                    for(int j=0; j<32; j++, i++) {
+                        note("%02x ", fidArray[i]);
+                    }
+                    note("\n");
+                }
+#endif
                 break;
             case ICBTAG_FLAG_AD_LONG:
                 lad = (long_ad *)(allocDescs + i*descSize);
                 memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + lad->extLocation.logicalBlockNum)*lbSize), lad->extLength);
                 incrementUsedSize(stats, 1, lad->extLocation.logicalBlockNum);
-                prevExtLength = lad->extLength;
+                prevExtLength += lad->extLength;
                 break;
             case ICBTAG_FLAG_AD_EXTENDED:
                 ead = (ext_ad *)(allocDescs + i*descSize);
                 memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + ead->extLocation.logicalBlockNum)*lbSize), ead->extLength);
                 incrementUsedSize(stats, 1, ead->extLocation.logicalBlockNum);
-                prevExtLength = ead->extLength;
+                prevExtLength += ead->extLength;
                 break;
         }
     }
+
+#if 0
+    uint32_t line = 0;
+    uint32_t amount = 50000;
+    for(int i=0; i<overallBodyLength; ) {
+        note("[%04d] ",line++);
+        for(int j=0; j<32; j++, i++) {
+            note("%02x ", fidArray[i]);
+        }
+        note("\n");
+    }
+#endif
 
     uint8_t tempStatus = 0;
     int counter = 0;
@@ -813,22 +838,23 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
                 case ICBTAG_FLAG_AD_SHORT:
                     sad = (short_ad *)(allocDescs + i*descSize);
                     memcpy((uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), fidArray+prevExtLength, sad->extLength);
-                    prevExtLength = sad->extLength;
+                    prevExtLength += sad->extLength;
                     break;
                 case ICBTAG_FLAG_AD_LONG:
                     lad = (long_ad *)(allocDescs + i*descSize);
                     memcpy((uint8_t *)(dev + (lsnBase + lad->extLocation.logicalBlockNum)*lbSize), fidArray+prevExtLength, lad->extLength);
-                    prevExtLength = lad->extLength;
+                    prevExtLength += lad->extLength;
                     break;
                 case ICBTAG_FLAG_AD_EXTENDED:
                     ead = (ext_ad *)(allocDescs + i*descSize);
                     memcpy((uint8_t *)(dev + (lsnBase + ead->extLocation.logicalBlockNum)*lbSize), fidArray+prevExtLength, ead->extLength);
-                    prevExtLength = ead->extLength;
+                    prevExtLength += ead->extLength;
                     break;
             }
         }     
     }
-   
+
+
     //free array
     free(fidArray);
     (*status) |= tempStatus;
@@ -837,11 +863,12 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
 
 uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
     uint32_t flen, padding;
+    //uint32_t flen = 0;
     uint32_t lsnBase = lbnlsn; 
     struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
     struct fileInfo info = {0};
 
-    dbg("FID pos: 0x%x\n", base + *pos - dev);
+    dbg("FID pos: 0x%x\n", *pos);
     if (!checksum(fid->descTag)) {
         err("[inspect fid] FID checksum failed.\n");
         return -4;
@@ -851,8 +878,10 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         dwarn("FID found (%d)\n",*pos);
         flen = 38 + le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent;
         padding = 4 * ((le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38 + 3)/4) - (le16_to_cpu(fid->lengthOfImpUse) + fid->lengthFileIdent + 38);
+        //flen = fid->descTag.descriptorCRCLength;
 
-
+        dbg("lengthOfImpUse: %d\n", fid->lengthOfImpUse);
+        dbg("flen+padding: %d\n", flen+padding);
         if(crc(fid, flen + padding)) {
             err("FID CRC failed.\n");
             return -5;
