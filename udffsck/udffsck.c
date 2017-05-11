@@ -1215,6 +1215,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             info.size = fe->informationLength;
             info.fileType = fe->icbTag.fileType;
             info.permissions = fe->permissions;
+            dbg("Permissions: 0x%04x : 0x%04x\n", info.permissions, fe->permissions);
 
             switch(fe->icbTag.fileType) {
                 case ICBTAG_FILE_TYPE_UNDEF:
