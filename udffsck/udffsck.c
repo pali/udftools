@@ -953,7 +953,8 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             } else if(fid->icb.extLocation.logicalBlockNum + lsnBase == disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum + lsnBase) {
                 dbg("ROOT. Not following this one.\n");
             } else {
-                uint32_t uuid = (fid->icb).impUse[2];
+                uint32_t uuid = 0;
+                memcpy(&uuid, (fid->icb).impUse+2, sizeof(uint32_t));
                 dbg("UUID: %d\n", uuid);
                 if(stats->maxUUID < uuid) {
                     stats->maxUUID = uuid;
@@ -1285,7 +1286,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
 
             uint64_t feUUID = (ext ? efe->uniqueID : fe->uniqueID);
-            dbg("Unique ID: %d\n", (feUUID));
+            dbg("Unique ID: FE: %d FID: %d\n", (feUUID), uuid);
             int fixuuid = 0;
             if(uuid != feUUID) {
                 err("(%s) FE Unique ID differs from FID Unique ID.\n", info.filename);
