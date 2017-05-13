@@ -1359,15 +1359,18 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     break;  
                 case ICBTAG_FILE_TYPE_BLOCK:
                     dbg("Filetype: BLOCK\n");
+                    stats->countNumOfFiles ++;
                     break;  
                 case ICBTAG_FILE_TYPE_CHAR:
                     dbg("Filetype: CHAR\n");
+                    stats->countNumOfFiles ++;
                     break;  
                 case ICBTAG_FILE_TYPE_EA:
                     dbg("Filetype: EA\n");
                     break;  
                 case ICBTAG_FILE_TYPE_FIFO:
                     dbg("Filetype: FIFO\n");
+                    stats->countNumOfFiles ++;
                     break;  
                 case ICBTAG_FILE_TYPE_SOCKET:
                     dbg("Filetype: SOCKET\n");
@@ -1377,6 +1380,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     break;  
                 case ICBTAG_FILE_TYPE_SYMLINK:
                     dbg("Filetype: SYMLINK\n");
+                    stats->countNumOfFiles ++;
                     break;  
                 case ICBTAG_FILE_TYPE_STREAMDIR:
                     dbg("Filetype: STRAMDIR\n");
@@ -1430,7 +1434,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 status |= 1;
             }
 
-
+            msg("FC: %04d DC: %04d ", stats->countNumOfFiles, stats->countNumOfDirs);
             print_file_info(info, depth);
 
             uint8_t fid_inspected = 0;
