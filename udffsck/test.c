@@ -311,12 +311,105 @@ static void bs2048_defect_avdp1(void **state) {
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
 }
 
+/**
+ * \brief Crosplatform medium test no. 1
+ *
+ * Clean medium right from MS Windows 7
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_crossplatform_1(void **state) {
+    (void) state;
+    char *medium = "bs512_windows7_udf0201";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Crosplatform medium test no. 2
+ *
+ * Broken file tree
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_crossplatform_2(void **state) {
+    (void) state;
+    char *medium = "bs512_windows7_udf0201_broken_file_tree";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", ""), 1); //fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Crosplatform medium test no. 3
+ *
+ * CHKDSK broken medium
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_crossplatform_3(void **state) {
+    (void) state;
+    char *medium = "bs512_windows7_udf0201_chkdsk";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", ""), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Crosplatform medium test no. 4
+ *
+ * Serial numbers broken (Linux / Win noncompatibility)
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_crossplatform_4(void **state) {
+    (void) state;
+    char *medium = "bs512_windows7_udf0201-serial-broken-linux-written";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", ""), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Crosplatform medium test no. 5
+ *
+ * Serial numbers broken afterfix write
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_crossplatform_5(void **state) {
+    (void) state;
+    char *medium = "bs512_windows7_udf0201-serial-broken-linux-written-afterfix-win-write";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
+/**
+ * \brief Crosplatform medium test no. 6
+ *
+ * AED test case at directory .git/objects
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_crossplatform_6(void **state) {
+    (void) state;
+    char *medium = "bs512_windows7_udf0201-aed-test-lot-of-files-open-integrity";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", ""), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef DEMO
         cmocka_unit_test(blank_fail),
         cmocka_unit_test(blank_pass),
 #endif
+#if 1
         cmocka_unit_test(bs2048_dirty_file_tree_1),
         cmocka_unit_test(bs2048_dirty_file_tree_2),
         cmocka_unit_test(bs2048_dirty_file_tree_3),
@@ -333,6 +426,13 @@ int main(void) {
         cmocka_unit_test(bs1024_unclosed_medium),
         cmocka_unit_test(bs512_defect_primary_vds),
         cmocka_unit_test(bs2048_defect_avdp1),
+        cmocka_unit_test(bs512_crossplatform_1),
+        cmocka_unit_test(bs512_crossplatform_2),
+        cmocka_unit_test(bs512_crossplatform_3),
+        cmocka_unit_test(bs512_crossplatform_4),
+        cmocka_unit_test(bs512_crossplatform_5),
+        cmocka_unit_test(bs512_crossplatform_6),
+#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
