@@ -187,8 +187,6 @@ static void bs2048_apple_r0150(void **state) {
 /**
  * \brief Test against UDF from Windows.
  *
- * \warning Unrecoverable! At least for now.
- *
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
@@ -403,6 +401,22 @@ static void bs512_crossplatform_6(void **state) {
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
 }
 
+/**
+ * \brief Crosplatform medium test no. 7
+ *
+ * Another medium from Win7
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_crossplatform_7(void **state) {
+    (void) state;
+    char *medium = "bs512_windows7_udf0201-linux-before-fix";
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-vvp", ""), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef DEMO
@@ -432,6 +446,7 @@ int main(void) {
         cmocka_unit_test(bs512_crossplatform_4),
         cmocka_unit_test(bs512_crossplatform_5),
         cmocka_unit_test(bs512_crossplatform_6),
+        cmocka_unit_test(bs512_crossplatform_7),
 #endif
     };
 

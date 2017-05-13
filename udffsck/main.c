@@ -55,16 +55,41 @@
 
 #define MAX_VERSION 0x0201
 
+/**
+ * \brief User interrupt hander (Ctrl + C or SIGINT)
+ *
+ * After calling this, program exits with code 32 (User interrupt).
+ */
 void user_interrupt(int dummy) {
     warn("\nUser interrupted operation. Exiting.\n");
     exit(32);
 }
 
+/**
+ * \brief Segmentation fault handler
+ *
+ * If program dies because of SEGV, this handler catches it and die properly.
+ * It instructs user to report it, because this behavior is bug.
+ */
 void segv_interrupt(int dummy) {
-    fatal("Unexpected error. Exiting.\n");
+    fatal("Unexpected error, please report it. More info at man page. Exiting.\n");
     exit(8);
 }
 
+/**
+ * \brief UDF VRS detection function
+ *
+ * This function is trying to find VRS at sector 16.
+ * It also do first attempt to guess sectorsize.
+ *
+ * \param[in] *dev memory mapped device array
+ * \param[in,out] *sectorsize found sectorsize candidate
+ * \param[in] force_sectorsize if -B param is used, this flag should be set
+ *                                and sectorsize should be used automatically.
+ * \return 0 -- UDF succesfully detected, sectorsize candidate found
+ * \return -1 -- found BOOT2 or CDW02. Unsupported for now
+ * \return 1 -- UDF not detected 
+ */
 int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
     struct volStructDesc vsd;
     struct beginningExtendedAreaDesc bea;
@@ -152,14 +177,21 @@ int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
 #define ES_LVID  0x0008
 
 /**
- * • 0 - No error
- * • 1 - Filesystem errors were fixed
- * • 2 - Filesystem errors were fixed, reboot is recomended
- * • 4 - Filesystem errors remained unfixed
- * • 8 - Program error
- * • 16 - Wrong input parameters
- * • 32 - Check was interrupted by user request
- * • 128 - Shared library error
+ * \brief **udffsck** entry point
+ *
+ * This is entry point for **udffsck**. It contains structure of whole tool and calls 
+ * function from udffsck.c
+ *
+ * It accepts inputs via argv.
+ *
+ * \return 0 -- No error
+ * \return 1 -- Filesystem errors were fixed
+ * \return 2 -- Filesystem errors were fixed, reboot is recomended (Unsupported)
+ * \return 4 -- Filesystem errors remained unfixed
+ * \return 8 -- Program error
+ * \return 16 -- Wrong input parameters
+ * \return 32 -- Check was interrupted by user request
+ * \return 128 -- Shared library error (Unsupported)
  */
 int main(int argc, char *argv[]) {
     char *path = NULL;
