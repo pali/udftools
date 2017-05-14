@@ -45,13 +45,9 @@
 #include "options.h"
 #include "udffsck.h"
 
-//#define PVD 0x10
-
-#define BLOCK_SIZE 2048
 
 #define FSD_PRESENT 
 #define PRINT_DISC 
-//#define PATH_TABLE
 
 #define MAX_VERSION 0x0201
 
@@ -76,100 +72,6 @@ void segv_interrupt(int dummy) {
     exit(8);
 }
 
-/**
- * \brief UDF VRS detection function
- *
- * This function is trying to find VRS at sector 16.
- * It also do first attempt to guess sectorsize.
- *
- * \param[in] *dev memory mapped device array
- * \param[in,out] *sectorsize found sectorsize candidate
- * \param[in] force_sectorsize if -B param is used, this flag should be set
- *                                and sectorsize should be used automatically.
- * \return 0 -- UDF succesfully detected, sectorsize candidate found
- * \return -1 -- found BOOT2 or CDW02. Unsupported for now
- * \return 1 -- UDF not detected 
- */
-int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
-    struct volStructDesc vsd;
-    struct beginningExtendedAreaDesc bea;
-    struct volStructDesc nsr;
-    struct terminatingExtendedAreaDesc tea;
-    int ssize = 512;
-    int notFound = 0;
-    int foundBEA = 0;
-
-
-    for(int it=0; it<5; it++, ssize *= 2) {
-        if(force_sectorsize) {
-            ssize = *sectorsize;
-            it = INT_MAX - 1; //End after this iteration
-            dbg("Forced sectorsize\n");
-        }
-        
-        dbg("Try sectorsize %d\n", ssize);
-
-        for(int i = 0; i<6; i++) {
-            dbg("try #%d at address 0x%x\n", i, 16*BLOCK_SIZE+i*ssize);
-
-            //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
-            //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
-            memcpy(&vsd, dev+16*BLOCK_SIZE+i*ssize, sizeof(vsd));
-
-            dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
-
-
-            if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BEA01, 5)) {
-                //It's Extended area descriptor, so it might be UDF, check next sector
-                memcpy(&bea, &vsd, sizeof(bea)); // store it for later
-                foundBEA = 1; 
-            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BOOT2, 5)) {
-                err("BOOT2 found, unsuported for now.\n");
-                return -1;
-            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CD001, 5)) { 
-                //CD001 means there is ISO9660, we try search for UDF at sector 18
-            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CDW02, 5)) {
-                err("CDW02 found, unsuported for now.\n");
-                return -1;
-            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR01, 5)) {
-                memcpy(&nsr, &vsd, sizeof(nsr));
-            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR02, 5)) {
-                memcpy(&nsr, &vsd, sizeof(nsr));
-            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR03, 5)) {
-                memcpy(&nsr, &vsd, sizeof(nsr));
-            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_TEA01, 5)) {
-                //We found TEA01, so we can end recognition sequence
-                memcpy(&tea, &vsd, sizeof(tea));
-                break;
-            } else if(vsd.stdIdent[0] == '\0') {
-                if(foundBEA) {
-                    continue;
-                }
-                notFound = 1;
-                break;
-            } else {
-                err("Unknown identifier: %s. Exiting\n", vsd.stdIdent);
-                notFound = 1;
-                break;
-            }  
-        }
-
-        if(notFound) {
-            notFound = 0;
-            continue;
-        }
-
-        dbg("bea: type:%d, id:%s, v:%d\n", bea.structType, bea.stdIdent, bea.structVersion);
-        dbg("nsr: type:%d, id:%s, v:%d\n", nsr.structType, nsr.stdIdent, nsr.structVersion);
-        dbg("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
-
-        *sectorsize = ssize;
-        return 0;
-    }
-    
-    err("Giving up VRS, maybe unclosed or bridged disc.\n");
-    return 1;
-}
 
 #define ES_AVDP1 0x0001 
 #define ES_AVDP2 0x0002

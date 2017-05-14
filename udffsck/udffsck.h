@@ -34,7 +34,8 @@
 
 #define UDFFSCK_VERSION "1.0"
 
-#define VDS_STRUCT_AMOUNT 8 //Maximum amount of VDS descriptors 
+#define VDS_STRUCT_AMOUNT 8 ///< Maximum amount of VDS descriptors 
+#define BLOCK_SIZE 2048 ///< Minimal VRS search block size
 
 typedef enum {
     FIRST_AVDP = 0,
@@ -125,6 +126,7 @@ struct impUseLVID {
 #define E_FILES         0b10000000
 #define E_EXTLEN        0b10000000 //AVDP specific
 
+int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize);
 // Anchor volume descriptor points to Mvds and Rvds
 int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats);
 int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target);

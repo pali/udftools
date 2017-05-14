@@ -31,15 +31,23 @@
 #include "libudffs.h"
 #include "options.h"
 
-#define MARK_BLOCK 1
-#define UNMARK_BLOCK 0
+#define MARK_BLOCK 1    ///< Mark switch for markUsedBlock() function
+#define UNMARK_BLOCK 0  ///< Unmark switch for markUsedBlock() function
 
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq );
-uint64_t uuid_decoder(uint64_t uuid);
 void incrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position);
 uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status);
 
-#define MAX_DEPTH 100
+#define MAX_DEPTH 100 ///< Maximal printed filetree depth is MAX_DEPTH/4. Required by function depth2str().
+
+/**
+ * \brief File tree prefix creator
+ *
+ * This fuction takes depth and based on that prints lines and splits
+ *
+ * \param[in] depth required depth to print
+ * \return NULL terminated static char array with printed depth
+ */
 char * depth2str(uint32_t depth) {
     static char prefix[MAX_DEPTH] = {0};
 
@@ -58,6 +66,15 @@ char * depth2str(uint32_t depth) {
     return prefix;
 }
 
+/**
+ * \brief Checksum calculation function for tags
+ *
+ * This function is tailored for checksum calculation for UDF tags.
+ * It skips 5th byte, because there is result stored. 
+ *
+ * \param[in] descTag target for checksum calculation
+ * \return checksum result
+ */
 uint8_t calculate_checksum(tag descTag) {
     uint8_t i;
     uint8_t tagChecksum = 0;
@@ -69,12 +86,27 @@ uint8_t calculate_checksum(tag descTag) {
     return tagChecksum;
 }
 
+/**
+ * \brief Wrapper function for checksum
+ *
+ * \param[in] descTag target for checksum calculation
+ * \return result of checksum comparison, 1 if match, 0 if differs
+ *
+ * \warning This function have oposite results than crc() and check_position()
+ */
 int checksum(tag descTag) {
     uint8_t checksum =  calculate_checksum(descTag);
     dbg("Calc checksum: 0x%02x Tag checksum: 0x%02x\n", checksum, descTag.tagChecksum);
     return checksum == descTag.tagChecksum;
 }
 
+/**
+ * \brief CRC calcultaion wrapper for udf_crc() function from libudffs
+ *
+ * \param[in] desc descriptor for calculation
+ * \param[in] size size for calculation
+ * \return CRC result
+ */
 uint16_t calculate_crc(void * restrict desc, uint16_t size) {
     uint8_t offset = sizeof(tag);
     tag *descTag = desc;
@@ -88,6 +120,13 @@ uint16_t calculate_crc(void * restrict desc, uint16_t size) {
     }
 }
 
+/**
+ * \brief Wrapper function for CRC calculation
+ *
+ * \param[in] desc descriptor for calculation
+ * \param[in] size size for calculation
+ * \return result of checksum comparsion, 0 if match, 1 if differs
+ */
 int crc(void * restrict desc, uint16_t size) {
     uint16_t calcCrc = calculate_crc(desc, size);
     tag *descTag = desc;
@@ -95,11 +134,35 @@ int crc(void * restrict desc, uint16_t size) {
     return le16_to_cpu(descTag->descCRC) != calcCrc;
 }
 
+/**
+ * \brief Position check function
+ *
+ * Checks declared position from tag against inserted position
+ *
+ * \param[in] descTag tag with declared position
+ * \param[in] position actual position to compare
+ * \return result of position comparsion, 0 if match, 1 if differs
+ */
 int check_position(tag descTag, uint32_t position) {
     dbg("tag pos: 0x%x, pos: 0x%x\n", descTag.tagLocation, position);
     return (descTag.tagLocation != position);
 }
 
+/**
+ * \brief Timestamp printing function
+ *
+ * This function prints timestamp to static char array in human readable form
+ * 
+ * Used format is YYYY-MM-DD hh:mm:ss.cshmms+hh:mm\n
+ * cs -- centiseconds\n
+ * hm -- hundreds of microseconds\n
+ * ms -- microseconds\n
+ *
+ * \param[in] ts UDF timestamp
+ * \return pointer to char static char array
+ *
+ * \warning char array is NOT NULL terminated
+ */
 char * print_timestamp(timestamp ts) {
     static char str[34] = {0};
     uint8_t type = ts.typeAndTimezone >> 12;
@@ -115,6 +178,16 @@ char * print_timestamp(timestamp ts) {
     return str; 
 }
 
+/**
+ * \brief UDF timestamp to Unix timestamp conversion function
+ *
+ * This function fills Unix timestamp structure with its values, add time offset from UDF timestamp to it and create timestamp.
+ *
+ * \warning Because Unix timestamp have second as minimal unit of time, there is precission loss since UDF operates up to microseconds
+ *
+ * \param[in] t UDF timestamp
+ * \return time_t Unix timestamp structure
+ */
 time_t timestamp2epoch(timestamp t) {
     struct tm tm = {0};
     tm.tm_year = t.year - 1900;
@@ -139,11 +212,42 @@ time_t timestamp2epoch(timestamp t) {
     return mktime(&tm);
 }
 
+/**
+ * \brief UDF Timestamp comparison wrapper
+ *
+ * Timestamps are converted to Unix timestamps and compared with difftime()
+ *
+ * \param[in] a first timestamp
+ * \param[in] b second timestamp
+ * \return result of difftime(). Basically result a-b.
+ */
 double compare_timestamps(timestamp a, timestamp b) {
     double dt = difftime(timestamp2epoch(a), timestamp2epoch(b));
     return dt;
 }
 
+/**
+ * \brief File information printing function
+ *
+ * This function wraps file charactersitics, file type, permissions, modification time, size and record name
+ * and prints it in human readable form.
+ *
+ * Format is this: HdDPM:darwxd:arwxd:arwx <FILETYPE> <TIMESTAMP> <SIZE> "<NAME>"\n
+ * - H -- Hidden
+ * - d -- Directory
+ * - D -- Deleted
+ * - P -- Parent
+ * - M -- Metadata
+ * - d -- right to delete
+ * - r -- right to read
+ * - w -- right to write
+ * - x -- right to execute
+ * - a -- right to change attributes
+ * - . -- bit not set
+ *
+ * \param[in] info file information to print
+ * \param[in] depth parameter for prefix, required by depth2str().
+ */
 void print_file_info(struct fileInfo info, uint32_t depth) {
     msg("%s", depth2str(depth));
 
@@ -221,6 +325,109 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
     msg("\n");
 }
 
+/**
+ * \brief UDF VRS detection function
+ *
+ * This function is trying to find VRS at sector 16.
+ * It also do first attempt to guess sectorsize.
+ *
+ * \param[in] *dev memory mapped device array
+ * \param[in,out] *sectorsize found sectorsize candidate
+ * \param[in] force_sectorsize if -B param is used, this flag should be set
+ *                                and sectorsize should be used automatically.
+ * \return 0 -- UDF succesfully detected, sectorsize candidate found
+ * \return -1 -- found BOOT2 or CDW02. Unsupported for now
+ * \return 1 -- UDF not detected 
+ */
+int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
+    struct volStructDesc vsd;
+    struct beginningExtendedAreaDesc bea;
+    struct volStructDesc nsr;
+    struct terminatingExtendedAreaDesc tea;
+    int ssize = 512;
+    int notFound = 0;
+    int foundBEA = 0;
+
+
+    for(int it=0; it<5; it++, ssize *= 2) {
+        if(force_sectorsize) {
+            ssize = *sectorsize;
+            it = INT_MAX - 1; //End after this iteration
+            dbg("Forced sectorsize\n");
+        }
+        
+        dbg("Try sectorsize %d\n", ssize);
+
+        for(int i = 0; i<6; i++) {
+            dbg("try #%d at address 0x%x\n", i, 16*BLOCK_SIZE+i*ssize);
+
+            //printf("[DBG] address: 0x%x\n", (unsigned int)ftell(fp));
+            //read(fp, &vsd, sizeof(vsd)); // read its contents to vsd structure
+            memcpy(&vsd, dev+16*BLOCK_SIZE+i*ssize, sizeof(vsd));
+
+            dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
+
+
+            if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BEA01, 5)) {
+                //It's Extended area descriptor, so it might be UDF, check next sector
+                memcpy(&bea, &vsd, sizeof(bea)); // store it for later
+                foundBEA = 1; 
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BOOT2, 5)) {
+                err("BOOT2 found, unsuported for now.\n");
+                return -1;
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CD001, 5)) { 
+                //CD001 means there is ISO9660, we try search for UDF at sector 18
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CDW02, 5)) {
+                err("CDW02 found, unsuported for now.\n");
+                return -1;
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR01, 5)) {
+                memcpy(&nsr, &vsd, sizeof(nsr));
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR02, 5)) {
+                memcpy(&nsr, &vsd, sizeof(nsr));
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR03, 5)) {
+                memcpy(&nsr, &vsd, sizeof(nsr));
+            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_TEA01, 5)) {
+                //We found TEA01, so we can end recognition sequence
+                memcpy(&tea, &vsd, sizeof(tea));
+                break;
+            } else if(vsd.stdIdent[0] == '\0') {
+                if(foundBEA) {
+                    continue;
+                }
+                notFound = 1;
+                break;
+            } else {
+                err("Unknown identifier: %s. Exiting\n", vsd.stdIdent);
+                notFound = 1;
+                break;
+            }  
+        }
+
+        if(notFound) {
+            notFound = 0;
+            continue;
+        }
+
+        dbg("bea: type:%d, id:%s, v:%d\n", bea.structType, bea.stdIdent, bea.structVersion);
+        dbg("nsr: type:%d, id:%s, v:%d\n", nsr.structType, nsr.stdIdent, nsr.structVersion);
+        dbg("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
+
+        *sectorsize = ssize;
+        return 0;
+    }
+    
+    err("Giving up VRS, maybe unclosed or bridged disc.\n");
+    return 1;
+}
+
+/**
+ * \brief Counts used bits (blocks) at stats->actParitionBitmap.
+ *
+ * Support function for getting free space from actual bitmap.
+ *
+ * \param[in] *stats file system stats structure with filled bitmap
+ * \return used blocks amount
+ */
 uint64_t countUsedBits(struct filesystemStats *stats) {
     if(stats->actPartitionBitmap == NULL)
         return -1;
@@ -243,16 +450,21 @@ uint64_t countUsedBits(struct filesystemStats *stats) {
 }
 
 /**
- * @brief Locate AVDP on device and store it
- * @param[in] dev pointer to device array
- * @param[out] disc AVDP is stored in udf_disc structure
- * @param[in] sectorsize device logical sector size
- * @param[in] devsize size of whole device in LSN
- * @param[in] type selector of AVDP - first or second
- * @return  0 everything is ok
- *         -2 AVDP tag checksum failed
- *         -3 AVDP CRC failed
- *         -4 AVDP not found 
+ * \brief Locate AVDP on device and store it
+ *
+ * This function searches AVDP at its positions. If it finds it, store it to udf_disc structure to required position by type parameter.
+ *
+ * It also determine sector size, since AVDP have fixed position. 
+ *
+ * \param[in] *dev pointer to device array
+ * \param[out] *disc AVDP is stored in udf_disc structure
+ * \param[in,out] *sectorsize device logical sector size
+ * \param[in] devsize size of whole device in LSN
+ * \param[in] type selector of AVDP - first or second
+ * \param[in] *stats statistics of file system
+ *
+ * \return  0 everything is ok
+ * \return sum of E_CRC, E_CHECKSUM, E_WRONGDESC, E_POSITION, E_EXTLEN  
  */
 int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats) {
     int64_t position = 0;
@@ -350,14 +562,16 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsiz
 
 
 /**
- * @brief Loads Volume Descriptor Sequence (VDS) and stores it at struct udf_disc
- * @param[in] dev pointer to device array
- * @param[out] disc VDS is stored in udf_disc structure
- * @param[in] sectorsize device logical sector size
- * @param[in] vds MAIN_VDS or RESERVE_VDS selector
- * @return 0 everything ok
+ * \brief Loads Volume Descriptor Sequence (VDS) and stores it at struct udf_disc
+ *
+ * \param[in] *dev pointer to device array
+ * \param[out] *disc VDS is stored in udf_disc structure
+ * \param[in] sectorsize device logical sector size
+ * \param[in] vds MAIN_VDS or RESERVE_VDS selector
+ * \param[out] *seq structure capturing actual order of descriptors in VDS for recovery
+ * \return 0 everything ok
  *         -3 found unknown tag
- *         -4 structure is already set
+ *         -4 descriptor is already set
  */
 int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq) {
     uint8_t *position;
@@ -478,16 +692,6 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
         dbg("New positon is 0x%lx\n", position-dev);
     }
     return 0;
-}
-
-uint64_t uuid_decoder(uint64_t uuid) {
-    uint64_t result = 0;
-    dbg("UUID: 0x%x\n", uuid);
-    for(int i=0; i<sizeof(uint64_t); i++) {
-        result += ((uuid >> i*4) & 0xF) * pow(10,i);
-        dbg("r: %d, mask: 0x%08x, power: %f\n", result, ((uuid >> i*4) & 0xF), pow(10,i));
-    }
-    return result;
 }
 
 int get_correct(vds_sequence_t *seq, uint16_t tagIdent) {
