@@ -28,9 +28,10 @@
  * \brief UDF fsck exec wrapper for simplified test writing
  *
  * This function wraps fork/exec around udfffsck calling. 
+ * Expected path differs based on define BASIC_TESTS (udf-samples) or EXTRA_TESTS (udf-samples-extra)
  *
  * \return udffsck exit code
- * \param[in] medium name of tested medium. All mediums need to be at ../../udf-samples/---MEDIUM NAME HERE---.img format
+ * \param[in] medium name of tested medium. All mediums need to be at ../../udf-samples(-extra)/---MEDIUM NAME HERE---.img format
  * \param[in] args non-parametric input arguments
  * \param[in] argsB blocksize parameter. Should be "-B 2048" or something like that
  */
@@ -44,8 +45,14 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
     }
 
 
-    char medpwd[1024];
+    char medpwd[10240];
+#if BASIC_TESTS
     sprintf(medpwd, "../../udf-samples/%s.img", medium);    
+#elif EXTRA_TESTS
+    sprintf(medpwd, "../../udf-samples-extra/%s.img", medium);    
+#else
+    #error NO TEST DEFINED
+#endif
     printf("Medium: %s\n", medpwd);
     char * const pars[] = { 
         cwd,
@@ -423,7 +430,7 @@ int main(void) {
         cmocka_unit_test(blank_fail),
         cmocka_unit_test(blank_pass),
 #endif
-#if 1
+#if BASIC_TESTS
         cmocka_unit_test(bs2048_dirty_file_tree_1),
         cmocka_unit_test(bs2048_dirty_file_tree_2),
         cmocka_unit_test(bs2048_dirty_file_tree_3),
@@ -440,12 +447,14 @@ int main(void) {
         cmocka_unit_test(bs1024_unclosed_medium),
         cmocka_unit_test(bs512_defect_primary_vds),
         cmocka_unit_test(bs2048_defect_avdp1),
+        cmocka_unit_test(bs512_crossplatform_6),
+#endif
+#if EXTRA_TESTS
         cmocka_unit_test(bs512_crossplatform_1),
         cmocka_unit_test(bs512_crossplatform_2),
         cmocka_unit_test(bs512_crossplatform_3),
         cmocka_unit_test(bs512_crossplatform_4),
         cmocka_unit_test(bs512_crossplatform_5),
-        cmocka_unit_test(bs512_crossplatform_6),
         cmocka_unit_test(bs512_crossplatform_7),
 #endif
     };
