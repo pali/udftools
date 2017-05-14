@@ -31,12 +31,16 @@
 #include "libudffs.h"
 #include "options.h"
 
-#define MARK_BLOCK 1    ///< Mark switch for markUsedBlock() function
-#define UNMARK_BLOCK 0  ///< Unmark switch for markUsedBlock() function
-
+// Local function protypes
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq );
 void increment_used_space(struct filesystemStats *stats, uint64_t increment, uint32_t position);
 uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status);
+void print_file_chunks(struct filesystemStats *stats);
+int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size);
+
+// Local defines
+#define MARK_BLOCK 1    ///< Mark switch for markUsedBlock() function
+#define UNMARK_BLOCK 0  ///< Unmark switch for markUsedBlock() function
 
 #define MAX_DEPTH 100 ///< Maximal printed filetree depth is MAX_DEPTH/4. Required by function depth2str().
 

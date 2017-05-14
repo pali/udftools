@@ -25,21 +25,20 @@
 #include "config.h"
 
 #include <ecma_167.h>
-#include <ecma_119.h>
 #include <libudffs.h>
 
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
 
-#define UDFFSCK_VERSION "1.0"
+#define UDFFSCK_VERSION "1.0-beta" ///< **udffsck** version number
 
 #define VDS_STRUCT_AMOUNT 8 ///< Maximum amount of VDS descriptors 
 #define BLOCK_SIZE 2048 ///< Minimal VRS search block size
 
 typedef enum {
-    FIRST_AVDP = 0,
-    SECOND_AVDP,
+    FIRST_AVDP = 0, 
+    SECOND_AVDP,    
     THIRD_AVDP,
 } avdp_type_e;
 
@@ -49,9 +48,9 @@ typedef enum {
 } vds_type_e;
 
 typedef struct {
-    uint16_t tagIdent;
-    uint32_t tagLocation;
-    uint8_t error;
+    uint16_t tagIdent;      ///< descriptor identifier
+    uint32_t tagLocation;   ///< descriptor declared position
+    uint8_t error;          ///< errors found on descriptor
 } metadata_t;
 
 typedef struct {
@@ -126,40 +125,32 @@ struct impUseLVID {
 #define E_FILES         0b10000000
 #define E_EXTLEN        0b10000000 //AVDP specific
 
-int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize);
-// Anchor volume descriptor points to Mvds and Rvds
-int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats);
-int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target);
-
-// Volume descriptor sequence
-int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq);
-int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
-// Load all PVD descriptors into disc structure
-//int get_pvd(int fd, struct udf_disc *disc, int sectorsize, vds_type_e vds);
-
-int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq); 
-
-int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
-int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq);
-
-uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq);
-uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq );
-
-uint8_t get_path_table(uint8_t *dev, uint16_t sectorsize, pathTableRec *table);
-int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq/*, uint8_t interactive, uint8_t autofix*/); 
-
-int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size);
-int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
-int fix_usd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats);
-
-int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, vds_sequence_t *seq );
-
-void print_file_chunks(struct filesystemStats *stats);
-
-int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e target);
-
+// Support functions
 char * print_timestamp(timestamp ts);
 uint64_t count_used_bits(struct filesystemStats *stats);
-//void test_list(void);
+int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, vds_sequence_t *seq );
+
+// UDF detection
+int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize);
+int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats);
+int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target);
+int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e target);
+
+// VDS functions
+int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq);
+int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq);
+int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq/*, uint8_t interactive, uint8_t autofix*/); 
+
+// LVID functions
+int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
+int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
+
+// PD (SBD) functions
+int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq); 
+int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
+
+// Filetree functions
+uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq);
+uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq );
 
 #endif //__UDFFSCK_H__
