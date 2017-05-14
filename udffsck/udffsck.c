@@ -2658,8 +2658,8 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     time_t t = time(NULL);
     struct tm tmlocal = *localtime(&t);
     struct tm tm = *gmtime(&t);
-    int8_t hrso = tmlocal.tm_hour - tm.tm_hour;
-    int8_t mino = tmlocal.tm_min - tm.tm_min;
+    int8_t hrso = tm.tm_hour - tmlocal.tm_hour;
+    int8_t mino = tm.tm_min - tmlocal.tm_min;
     int16_t offset = hrso*60+mino;
     timestamp *ts = &(disc->udf_lvid->recordingDateAndTime);
     ts->typeAndTimezone = (1 << 12) | (0x1000-offset);
