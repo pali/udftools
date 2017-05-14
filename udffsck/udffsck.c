@@ -35,7 +35,7 @@
 #define UNMARK_BLOCK 0  ///< Unmark switch for markUsedBlock() function
 
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq );
-void incrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position);
+void increment_used_space(struct filesystemStats *stats, uint64_t increment, uint32_t position);
 uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status);
 
 #define MAX_DEPTH 100 ///< Maximal printed filetree depth is MAX_DEPTH/4. Required by function depth2str().
@@ -428,7 +428,7 @@ int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
  * \param[in] *stats file system stats structure with filled bitmap
  * \return used blocks amount
  */
-uint64_t countUsedBits(struct filesystemStats *stats) {
+uint64_t count_used_bits(struct filesystemStats *stats) {
     if(stats->actPartitionBitmap == NULL)
         return -1;
     
@@ -964,7 +964,7 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     }
     dbg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
 
-    incrementUsedSize(stats, filesetlen, lap->extLocation.logicalBlockNum);
+    increment_used_space(stats, filesetlen, lap->extLocation.logicalBlockNum);
 
     *lbnlsn = lsnBase;
     return 0;
@@ -1014,7 +1014,7 @@ uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint3
 #endif
         dbg("ADArray ptr: %p\n", *ADArray);
         dbg("lengthADArray: %d\n", *lengthADArray);
-        incrementUsedSize(stats, lad%lbSize == 0 ? lad/lbSize : lad/lbSize + 1, aedlbn);
+        increment_used_space(stats, lad%lbSize == 0 ? lad/lbSize : lad/lbSize + 1, aedlbn);
         return 0;
     } else {
         err("There should be AED, but is not\n");
@@ -1022,6 +1022,32 @@ uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint3
     return 4;
 }
 
+/**
+ * \brief FID allocation descriptor position translation function
+ *
+ * FID's allocation descriptors are stored at Allocation Descriptors area of FE. Problem is, this area is not
+ * necessarily in one piece and can be splitted, even in middle of descriptor. This function creates virtual
+ * linear area for futher processing.
+ *
+ * This function internally calls inspect_fid().
+ *
+ * \param[in] *dev memory mapped device
+ * \param[in] *disc udf_disc structure
+ * \param[in] lbnlsn LBN offset against LSN
+ * \param[in] lsn actual LSN
+ * \param[in] *allocDescs pointer to allocation descriptors area
+ * \param[in] lengthAllocDescs length of allocation descriptors area
+ * \param[in] icb_ad type od AD
+ * \param[in] *stats file system status
+ * \param[in] depth depth of FE for printing
+ * \param[in] *seq VDS sequence
+ * \param[out] *status run status
+ *
+ * \return 0 -- everything OK
+ * \return 1 -- Unsupported AD
+ * \return 2 -- FID array allocation failed
+ * \return 255 -- inspect_aed() failed
+ */
 uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *allocDescs, uint32_t lengthAllocDescs, uint16_t icb_ad, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
     
     uint32_t descSize = 0;
@@ -1056,7 +1082,7 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
     
     nAD = lengthAllocDescs/descSize;
 
-#if 1
+#if 0
     uint32_t line = 0;
     dbg("FID Alloc Array\n");
     for(int i=0; i<lengthAllocDescs; ) {
@@ -1139,7 +1165,7 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
                     continue;     
                 }
                 memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), sad->extLength);
-                incrementUsedSize(stats, 1, sad->extPosition);
+                increment_used_space(stats, 1, sad->extPosition);
                 prevExtLength += sad->extLength;
                 break;
             case ICBTAG_FLAG_AD_LONG:
@@ -1153,7 +1179,7 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
                     continue;     
                 }
                 memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + lad->extLocation.logicalBlockNum)*lbSize), lad->extLength);
-                incrementUsedSize(stats, 1, lad->extLocation.logicalBlockNum);
+                increment_used_space(stats, 1, lad->extLocation.logicalBlockNum);
                 prevExtLength += lad->extLength;
                 break;
             case ICBTAG_FLAG_AD_EXTENDED:
@@ -1167,7 +1193,7 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
                     continue;     
                 }
                 memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + ead->extLocation.logicalBlockNum)*lbSize), ead->extLength);
-                incrementUsedSize(stats, 1, ead->extLocation.logicalBlockNum);
+                increment_used_space(stats, 1, ead->extLocation.logicalBlockNum);
                 prevExtLength += ead->extLength;
                 break;
         }
@@ -1239,6 +1265,30 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
     return 0;
 }
 
+/**
+ * \brief FID parsing function
+ *
+ * This function pareses via FIDs. It continues to its FE using get_file() function. 
+ * Checks and fixes *Unique ID*, *Serial Numbers* or unfinished writings.
+ *
+ * This fucntion is complement to get_file() and translate_fid().
+ *
+ * \param[in,out] *dev memory mapped device
+ * \param[in] *disc udf_disc structure
+ * \param[in] lbnlsn LBN offset against LSN
+ * \param[in] lsn actual LSN
+ * \param[in] *base base pointer for for FID area
+ * \param[in,out] *pos actial position in FID area
+ * \param[in] *stats file system status
+ * \param[in] depth depth of FE for printing
+ * \param[in] *seq VDS sequence
+ * \param[out] *status run status
+ *
+ * \return 0 -- everything OK
+ * \return 1 -- Unknown descriptor found
+ * \return 252 -- FID checksum failed
+ * \return 251 -- FID CRC failed
+ */
 uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
     uint32_t flen, padding;
     //uint32_t flen = 0;
@@ -1250,7 +1300,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     if (!checksum(fid->descTag)) {
         err("[inspect fid] FID checksum failed.\n");
         return -4;
-        warn("DISABLED ERROR RETURN\n"); //FIXME
+        //warn("DISABLED ERROR RETURN\n");
     }
     if (le16_to_cpu(fid->descTag.tagIdent) == TAG_IDENT_FID) {
         dwarn("FID found (%d)\n",*pos);
@@ -1263,7 +1313,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         if(crc(fid, flen + padding)) {
             err("FID CRC failed.\n");
             return -5;
-            warn("DISABLED ERROR RETURN\n"); //FIXME
+            //warn("DISABLED ERROR RETURN\n");
         }
         dbg("FID: ImpUseLen: %d\n", fid->lengthOfImpUse);
         dbg("FID: FilenameLen: %d\n", fid->lengthFileIdent);
@@ -1426,24 +1476,71 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
     return 0;
 }
 
-void incrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position) {
+/**
+ * \brief Pair function capturing used space and its position
+ *
+ * This function is pair with decrement_used_space()
+ * 
+ * It only stores information about used:free space ration and positions
+ *
+ * \param[in,out] *stats file system status contatins fields used for free space counting and bitmaps for position marking
+ * \param[in] increment size of space to mark
+ * \param[in] its position
+ */
+void increment_used_space(struct filesystemStats *stats, uint64_t increment, uint32_t position) {
     stats->usedSpace += (increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1)*stats->blocksize;
     markUsedBlock(stats, position, increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1, MARK_BLOCK);
 #if DEBUG
-    uint64_t bits = countUsedBits(stats);
+    uint64_t bits = count_used_bits(stats);
     dwarn("INCREMENT to %d (%d) / (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize, bits);
 #endif
 }
 
-void decrementUsedSize(struct filesystemStats *stats, uint64_t increment, uint32_t position) {
+/**
+ * \brief Pair function capturing used space and its position
+ *
+ * This function is pair with increment_used_space()
+ * 
+ * It only stores information about used:free space ration and positions
+ *
+ * \param[in,out] *stats file system status contatins fields used for free space counting and bitmaps for position marking
+ * \param[in] increment size of space to mark
+ * \param[in] its position
+ */
+void decrement_used_space(struct filesystemStats *stats, uint64_t increment, uint32_t position) {
     stats->usedSpace -= (increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1)*stats->blocksize;
     markUsedBlock(stats, position, increment % stats->blocksize == 0 ? increment/stats->blocksize : increment/stats->blocksize+1, UNMARK_BLOCK);
 #if DEBUG
-    uint64_t bits = countUsedBits(stats);
+    uint64_t bits = count_used_bits(stats);
     dwarn("DECREMENT to %d (%d) / (%d)\n", stats->usedSpace, stats->usedSpace/stats->blocksize, bits);
 #endif
 }
 
+/**
+ * \brief (E)FE parsing function
+ *
+ * This function parses thru file tree, made of FE. It is complement to inspect_fid() function, which parses FIDs.
+ * 
+ * It fixes *Unifinished writes*, *File modifiacation timestamps* (or records them for LVID fix, depending on error) and *Unique ID*.
+ *
+ * When it finds directory, it calls inspect_fid() to process its contents.
+ *
+ * \param[in,out] *dev memory mapped device
+ * \param[in] *disc udf_disc structure
+ * \param[in] lbnlsn LBN offset against LSN
+ * \param[in] lsn actual LSN
+ * \param[in,out] *stats file system status
+ * \param[in] depth depth of FE for printing
+ * \param[in] uuid Unique ID from parent FID
+ * \param[in] info file information structure for easier handling for print
+ * \param[in] *seq VDS sequence
+ *
+ * \return 4 -- No correct LVD found
+ * \return 4 -- Checksum failed
+ * \return 4 -- CRC failed 
+ * \return 32 -- removed unfinished file
+ * \return sum of status returned from inspect_fid(), translate_fid() or own actions (4 for unfixed error, 1 for fixed error, 0 for no error)
+ */
 uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq ) {
     tag descTag;
     struct fileIdentDesc *fid;
@@ -1476,7 +1573,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
     dbg("global FE increment.\n");
     dbg("usedSpace: %d\n", stats->usedSpace);
-    incrementUsedSize(stats, lbSize, lsn-lbnlsn);
+    increment_used_space(stats, lbSize, lsn-lbnlsn);
     dbg("usedSpace: %d\n", stats->usedSpace);
     switch(le16_to_cpu(descTag.tagIdent)) {
         /*case TAG_IDENT_SBD:
@@ -1580,7 +1677,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     imp("Removing unfinished file...\n");
                     dbg("global FE decrement.\n");
                     dbg("usedSpace: %d\n", stats->usedSpace);
-                    decrementUsedSize(stats, lbSize, lsn-lbnlsn);
+                    decrement_used_space(stats, lbSize, lsn-lbnlsn);
                     dbg("usedSpace: %d\n", stats->usedSpace);
                     uint8_t *blank;
                     blank = malloc(stats->blocksize);
@@ -1612,7 +1709,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     dbg("Filetype: DIR\n");
                     stats->countNumOfDirs ++;
                     // stats->usedSpace += lbSize;
-                    //incrementUsedSize(stats, lbSize);
+                    //increment_used_space(stats, lbSize);
                     dir = 1;
                     break;  
                 case ICBTAG_FILE_TYPE_REGULAR:
@@ -1717,7 +1814,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         dbg("usedSpace: %d\n", stats->usedSpace);
                         uint32_t usedsize = sad->extLength;//(fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
                         dbg("Used size: %d\n", usedsize);
-                        incrementUsedSize(stats, usedsize, sad->extPosition);
+                        increment_used_space(stats, usedsize, sad->extPosition);
                        // if(dir == 0) {
                             lsn = lsn + sad->extLength/lbSize;
                             dbg("LSN: %d, ExtLocOrig: %d\n", lsn, sad->extPosition);
@@ -1748,7 +1845,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
                         dbg("usedSpace: %d\n", stats->usedSpace);
                         uint32_t usedsize = lad->extLength;//(fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
-                        incrementUsedSize(stats, usedsize, lad->extLocation.logicalBlockNum);
+                        increment_used_space(stats, usedsize, lad->extLocation.logicalBlockNum);
                        // if(dir == 0) {
                             lsn = lsn + lad->extLength/lbSize;
                             dbg("LSN: %d\n", lsn);
@@ -1781,7 +1878,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 /* dbg("usedSpace: %d\n", stats->usedSpace);
                    uint32_t usedsize = (fe->informationLength%lbSize == 0 ? fe->informationLength : (fe->informationLength + lbSize - fe->informationLength%lbSize));
                    if(dir == 0)
-                   incrementUsedSize(stats, usedsize, lsn-lbnlsn+1);
+                   increment_used_space(stats, usedsize, lsn-lbnlsn+1);
                    dbg("usedSpace: %d\n", stats->usedSpace);
                    dwarn("Size: %d, Blocks: %d\n", usedsize, usedsize/lbSize);
                    */
@@ -1881,6 +1978,19 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     return status;
 }
 
+/**
+ * \brief File tree entry point
+ *
+ * This function is entry for file tree parsing. It actually parses two trees, Stream file tree based on Stream Directory ICB and normal File tree based on Root Directory ICB.
+ *
+ * \param[in,out] *dev memory mapped device
+ * \param[in] *disc udf disc structure
+ * \param[in] lbnlsn LBN offset from LSN
+ * \pararm[in,out] *stats file system status
+ * \param[in] *seq VDS sequence
+ *
+ * \return sum of returns from stream and normal get_file()
+ */
 uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq ) {
     struct fileEntry *file;
     struct fileIdentDesc *fid;
@@ -1931,6 +2041,17 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     return status;
 }
 
+/**
+ * \brief Support function for appending error to seq structure
+ *
+ * \param[in,out] seq VDS sequence
+ * \param[in] tagIdent identifer of descriptor to append
+ * \param[in] vds VDS to search
+ * \param[in] error to append
+ *
+ * \return 0 everything OK
+ * \return -1 required descriptor not found
+ */
 int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error) {
     for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
         if(vds == MAIN_VDS) {
@@ -1948,6 +2069,15 @@ int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t
     return -1;
 }
 
+/**
+ * \brief Support function for getting tag location from seq structure
+ *
+ * \param[in,out] *seq VDS sequence
+ * \param[in] tagIdent identifier of descriptor to find
+ * \param[in] vds VDS to search
+ *
+ * \return requested location if found or UINT32_MAX if not 
+ */
 uint32_t get_tag_location(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds) {
     for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
         if(vds == MAIN_VDS) {
@@ -1963,7 +2093,16 @@ uint32_t get_tag_location(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds
     return -1;
 }
 
-int verify_vds(struct udf_disc *disc, vds_sequence_t *map, vds_type_e vds, vds_sequence_t *seq) {
+/**
+ * \brief VDS verification structure
+ *
+ * This function go thru all VDS descriptors and checks them for checksum, CRC and position. Result are stored using append_error() function.
+ *
+ * \param[in] *disc UDF disc structure
+ * \param[in] vds VDS to search
+ * \param[in,out] *seq VDS sequence for error storing
+ */
+int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq) {
     //metadata_err_map_t map;    
     uint8_t *data;
     //uint16_t crc = 0;
@@ -2443,10 +2582,10 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
     }
     
     //Mark used space
-    incrementUsedSize(stats, phd->unallocSpaceTable.extLength, phd->unallocSpaceTable.extPosition);
-    incrementUsedSize(stats, phd->unallocSpaceBitmap.extLength, phd->unallocSpaceBitmap.extPosition);
-    incrementUsedSize(stats, phd->freedSpaceTable.extLength, phd->freedSpaceTable.extPosition);
-    incrementUsedSize(stats, phd->freedSpaceBitmap.extLength, phd->freedSpaceBitmap.extPosition);
+    increment_used_space(stats, phd->unallocSpaceTable.extLength, phd->unallocSpaceTable.extPosition);
+    increment_used_space(stats, phd->unallocSpaceBitmap.extLength, phd->unallocSpaceBitmap.extPosition);
+    increment_used_space(stats, phd->freedSpaceTable.extLength, phd->freedSpaceTable.extPosition);
+    increment_used_space(stats, phd->freedSpaceBitmap.extLength, phd->freedSpaceBitmap.extPosition);
 
     return 0; 
 }

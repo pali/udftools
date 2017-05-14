@@ -252,8 +252,8 @@ int main(int argc, char *argv[]) {
     status |= get_vds(dev, &disc, blocksize, source, MAIN_VDS, seq); //load main VDS
     status |= get_vds(dev, &disc, blocksize, source, RESERVE_VDS, seq); //load reserve VDS
 
-    verify_vds(&disc, seq, MAIN_VDS, seq);
-    verify_vds(&disc, seq, RESERVE_VDS, seq);
+    verify_vds(&disc, MAIN_VDS, seq);
+    verify_vds(&disc, RESERVE_VDS, seq);
 
     status |= get_lvid(dev, &disc, blocksize, &stats, seq); //load LVID
     if(stats.minUDFReadRev > MAX_VERSION){
@@ -319,7 +319,7 @@ int main(int argc, char *argv[]) {
           */
     get_volume_identifier(&disc, &stats, seq);  
     
-    uint64_t countedBits = countUsedBits(&stats);
+    uint64_t countedBits = count_used_bits(&stats);
 /*    uint8_t rest = stats.partitionNumOfBytes - stats.partitionNumOfBits/8;
     for(int i = 0; i<stats.partitionNumOfBytes; i++) {
         uint8_t piece = ~stats.actPartitionBitmap[i];
