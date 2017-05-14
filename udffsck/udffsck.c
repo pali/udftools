@@ -170,15 +170,16 @@ int check_position(tag descTag, uint32_t position) {
 char * print_timestamp(timestamp ts) {
     static char str[34] = {0};
     uint8_t type = ts.typeAndTimezone >> 12;
-    int16_t offset = (ts.typeAndTimezone & 0x0fff) - (0x1000);
+    int16_t offset = (ts.typeAndTimezone & 0x0800) > 0 ? (ts.typeAndTimezone & 0x0FFF) - (0x1000) : (ts.typeAndTimezone & 0x0FFF);
     int8_t hrso = 0;
     int8_t mino = 0;
+    dbg("offset: %d\n", offset);
     if(type == 1 && offset > -2047) { // timestamp is in local time. Convert to UCT.
         hrso = offset/60; // offset in hours
         mino = offset%60; // offset in minutes
     }
     dbg("TypeAndTimezone: 0x%04x\n", ts.typeAndTimezone);
-    sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d%s%02d:%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds, offset > 0 ? "+" : "", hrso, mino);
+    sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d+%02d:%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds, hrso, mino);
     return str; 
 }
 
@@ -204,12 +205,12 @@ time_t timestamp2epoch(timestamp t) {
     if(rest > 0.5)
         tm.tm_sec++;
     uint8_t type = t.typeAndTimezone >> 12;
-    int16_t offset = (t.typeAndTimezone & 0x0fff) - (0x1000);
+    int16_t offset = (t.typeAndTimezone & 0x0800) > 0 ? (t.typeAndTimezone & 0x0FFF) - (0x1000) : (t.typeAndTimezone & 0x0FFF);
     if(type == 1 && offset > -2047) { // timestamp is in local time. Convert to UCT.
         int8_t hrso = offset/60; // offset in hours
         int8_t mino = offset%60; // offset in minutes
-        tm.tm_hour += hrso;
-        tm.tm_min += mino;
+        tm.tm_hour -= hrso;
+        tm.tm_min -= mino;
     } else if(type == 2) {
         warn("Time interpretation is not specified.\n");
     }
@@ -1788,7 +1789,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                 status |= 1;
             }
 
-            msg("FC: %04d DC: %04d ", stats->countNumOfFiles, stats->countNumOfDirs);
+            dbg("FC: %04d DC: %04d ", stats->countNumOfFiles, stats->countNumOfDirs);
             print_file_info(info, depth);
 
             uint8_t fid_inspected = 0;
@@ -2658,17 +2659,23 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     time_t t = time(NULL);
     struct tm tmlocal = *localtime(&t);
     struct tm tm = *gmtime(&t);
-    int8_t hrso = tm.tm_hour - tmlocal.tm_hour;
-    int8_t mino = tm.tm_min - tmlocal.tm_min;
+    int8_t hrso = tmlocal.tm_hour - tm.tm_hour;
+    if(hrso > 12 || hrso < -12) {
+        hrso += 24;
+    }
+
+    int8_t mino = tmlocal.tm_min - tm.tm_min;
     int16_t offset = hrso*60+mino;
+    dbg("Offset: %d, hrs: %d, min: %d\n", offset, hrso, mino);
+    dbg("lhr: %d, hr: %d\n", tmlocal.tm_hour, tm.tm_hour);
     timestamp *ts = &(disc->udf_lvid->recordingDateAndTime);
-    ts->typeAndTimezone = (1 << 12) | (0x1000-offset);
-    ts->year = tm.tm_year + 1900;
-    ts->month = tm.tm_mon + 1;
-    ts->day = tm.tm_mday;
-    ts->hour = tm.tm_hour;
-    ts->minute = tm.tm_min;
-    ts->second = tm.tm_sec;
+    ts->typeAndTimezone = (1 << 12) | (offset >= 0 ? offset : (0x1000-offset));
+    ts->year = tmlocal.tm_year + 1900;
+    ts->month = tmlocal.tm_mon + 1;
+    ts->day = tmlocal.tm_mday;
+    ts->hour = tmlocal.tm_hour;
+    ts->minute = tmlocal.tm_min;
+    ts->second = tmlocal.tm_sec;
     ts->centiseconds = 0;
     ts->hundredsOfMicroseconds = 0;
     ts->microseconds = 0;
