@@ -452,7 +452,7 @@ int main(int argc, char *argv[]) {
 
     print_metadata_sequence(seq);
 
-    status |= fix_vds(dev, &disc, blocksize, source, seq, interactive, autofix); 
+    status |= fix_vds(dev, &disc, blocksize, source, seq); 
 
     int fixlvid = 0;
     int fixpd = 0;

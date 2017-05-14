@@ -2101,6 +2101,8 @@ uint32_t get_tag_location(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds
  * \param[in] *disc UDF disc structure
  * \param[in] vds VDS to search
  * \param[in,out] *seq VDS sequence for error storing
+ *
+ * \return 0
  */
 int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq) {
     //metadata_err_map_t map;    
@@ -2204,7 +2206,21 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq) {
     return 0;
 }
 
-int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t amount) {
+/**
+ * \brief Copy descriptor from one position to another on medium
+ *
+ * Beside actual copy it also fixes declared position, CRC and checksum.
+ *
+ * \param[in,out] *dev memory mapped device
+ * \param[in,out] *disc UDF disc structure
+ * \param[in] sectorsize 
+ * \param[in] sourcePosition in blocks
+ * \param[in] destinationPosition in blocks
+ * \param[in] size size of descriptor to copy
+ *
+ * return 0
+ */
+int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size) {
     tag sourceDescTag, destinationDescTag;
     uint8_t *destArray;
 
@@ -2217,17 +2233,31 @@ int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint
 
     dbg("srcChecksum: 0x%x, destChecksum: 0x%x\n", sourceDescTag.tagChecksum, destinationDescTag.tagChecksum);
 
-    destArray = calloc(1, amount);
+    destArray = calloc(1, size);
     memcpy(destArray, &destinationDescTag, sizeof(tag));
-    memcpy(destArray+sizeof(tag), dev+sourcePosition*sectorsize+sizeof(tag), amount-sizeof(tag));
+    memcpy(destArray+sizeof(tag), dev+sourcePosition*sectorsize+sizeof(tag), size-sizeof(tag));
 
-    memcpy(dev+destinationPosition*sectorsize, destArray, amount);
+    memcpy(dev+destinationPosition*sectorsize, destArray, size);
 
     free(destArray);
 
     return 0;
 }
 
+/**
+ * \brief Writes back specified AVDP from udf_disc structure to device
+ *
+ * \param[in,out] *dev memory mapped device
+ * \param[in,out] *disc UDF disc structure
+ * \param[in] sectorsize
+ * \param[in] devsize size of device in bytes
+ * \param[in] source source AVDP
+ * \param[in] target target AVDP
+ *
+ * \return 0 everything OK
+ * \return -2 after write checksum failed 
+ * \return -4 after write CRC failed
+ */
 int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target) {
     uint64_t sourcePosition = 0;
     uint64_t targetPosition = 0;
@@ -2289,6 +2319,19 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
     return 0;
 }
 
+/**
+ * \brief Fix target AVDP's extent length
+ *
+ * \param[in,out] *dev memory mapped device
+ * \param[in,out] *disc UDF disc structure
+ * \param[in] sectorsize
+ * \param[in] devsize size of device in bytes
+ * \param[in] target target AVDP
+ *
+ * \return 0 everything OK
+ * \return -2 checksum failed 
+ * \return -4 CRC failed
+ */
 int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e target) {
     uint64_t targetPosition = 0;
     tag desc_tag;
@@ -2337,6 +2380,13 @@ int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devs
     return 0;
 }
 
+/**
+ * \brief Get descriptor name string
+ *
+ * \param[in] descIdent descriptor identifier
+ * 
+ * \return constant char array
+ */
 char * descriptor_name(uint16_t descIdent) {
     switch(descIdent) {
         case TAG_IDENT_PVD:
@@ -2360,7 +2410,20 @@ char * descriptor_name(uint16_t descIdent) {
     }
 }
 
-int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq, uint8_t interactive, uint8_t autofix) { 
+/**
+ * \brief Fix VDS sequence 
+ *
+ * This function go thru VDS and if find error, check second VDS. If secondary is ok, copy it, if not, report unrecoverable error.
+ *
+ * \param[in,out] *dev memory mapped medium
+ * \param[in,out] *disc UDF disc structure
+ * \param[in] sectorsize 
+ * \param[in] source AVDP pointing to VDS
+ * \param[in,out] *seq VDS sequence
+ *
+ * \return sum of 0, 1 and 4 according fixing and found errors
+ */
+int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq) { 
     uint32_t position_main, position_reserve;
     int8_t counter = 0;
     tag descTag;
@@ -2436,8 +2499,24 @@ static const unsigned char BitsSetTable256[256] =
 #define B4(n) B2(n), B2(n+1), B2(n+1), B2(n+2)
 #define B6(n) B4(n), B4(n+1), B4(n+1), B4(n+2)
     B6(0), B6(1), B6(1), B6(2)
-};
+}; ///< Support array for bit counting
 
+/**
+ * \brief Fix PD Partition Header contents
+ *
+ * At this moment it fixes only SBD, because no other descriptors were found.
+ *
+ * \param[in,out] *dev memory mapped medium
+ * \param[in] *disc UDF disc
+ * \param[in] sectorsize
+ * \param[in,out] *stats file system status
+ * \param[in] *seq VDS sequence
+ *
+ * \return 0 -- All OK
+ * \return 1 -- PD SBD recovery failed
+ * \return 4 -- No correct PD found
+ * \return -1 -- no SBD found even if declared
+ */
 int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
     int vds = -1;
     if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
@@ -2487,6 +2566,22 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
     return 1; 
 }
 
+/**
+ * \brief Get PD Partition Header contents
+ *
+ * At this moment handles only SBD, because none other was found.
+ *
+ * \param[in] *dev memory mapped device
+ * \param[in] *disc UDF disc
+ * \param[in] sectorsize 
+ * \param[out] *stats filesystem status
+ * \param[in] *seq VDS sequence
+ *
+ * \return 0 -- All OK
+ * \return 4 --No correct PD found
+ * \return -1 -- SBD not found even if declared
+ * \return -128 -- UST, FST or FSB found
+ */
 int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
     int vds = -1;
     if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
@@ -2511,7 +2606,7 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
     }
     if(phd->freedSpaceBitmap.extLength > 0) {
         //Unhandled. Not found on any medium.
-        err("[USD] Unallocated Space Table is unhandled. Skipping.\n");
+        err("[USD] Freed Space Bitmap is unhandled. Skipping.\n");
         return -128;
     }
     if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
@@ -2590,6 +2685,22 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
     return 0; 
 }
 
+/**
+ * \brief Fix LVID values
+ *
+ * This function fixes only values of LVID. It is not able to fix structurally broken LVID (wrong CRC/checksum).
+ *
+ * Fixes opened intergrity type, timestamps, amounts of files/directories, free space tables.
+ *
+ * \param[in,out] *dev memory mapped device
+ * \param[in,out] *disc UDF disc
+ * \param[in] sectorsize
+ * \param[in] *stats filesystem status
+ * \param[in] *seq VDS sequence
+ *
+ * \return 0 -- All Ok
+ * \return 4 -- No correct LVD found
+ */
 int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
     int vds = -1;
     if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {

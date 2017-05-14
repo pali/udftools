@@ -48,6 +48,11 @@ typedef enum {
 
 verbosity_e verbosity;
 
+/**
+ * \brief Support function for printing basic tag information
+ *
+ * \param[in] id tag identifier
+ */
 void read_tag(tag id) {
     note("\tIdentification Tag\n"
            "\t==================\n");
@@ -89,6 +94,11 @@ void read_tag(tag id) {
     note("\tTag Location: 0x%x\n", id.tagLocation);
 }
 
+/**
+ * \brief Support function printing VDS, AVDP and LVID
+ *
+ * \param[in] *disc UDF disc
+ */
 int print_disc(struct udf_disc *disc) {
     note("\nUDF Metadata Overview\n"
           "---------------------\n");
@@ -161,6 +171,16 @@ int print_disc(struct udf_disc *disc) {
     return 0;
 }
 
+/**
+ * \brief Simple prompt printing out message and accepting y/Y/n/N. Anything else restarts prompt.
+ *
+ * \param[in] *format formatting string with params for vprintf()
+ *
+ * \return 0 if n/N
+ * \return 1 if y/Y
+ * \return -1 if CRLF
+ * \return -128 prompt failed
+ */
 int prompt(const char *format, ...) {
     va_list args;
     char b = 0,c = 0;
@@ -191,18 +211,14 @@ int prompt(const char *format, ...) {
     return -128;
 }
 
-
-
-
-
 /* Private function prototypes -----------------------------------------------*/
-#ifdef __GNUC__
-  /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
-     set to 'Yes') calls __io_putchar() */
-  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-#else
-  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
-#endif /* __GNUC__ */
+//#ifdef __GNUC__
+//  /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
+//     set to 'Yes') calls __io_putchar() */
+//  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+//#else
+//  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+//#endif /* __GNUC__ */
 
 /* USER CODE END PFP */
 
