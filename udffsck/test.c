@@ -66,8 +66,14 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
     struct tm tm = *localtime(&t);
     char fout[1024];
     char ferr[1024];
+#if BASIC_TESTS
     sprintf(fout, "../../udf-samples/%d-%02d-%02d-%02d-%02d-%02d_%s.img.out", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, medium);
     sprintf(ferr, "../../udf-samples/%d-%02d-%02d-%02d-%02d-%02d_%s.img.err", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, medium);
+#endif
+#if EXTRA_TESTS
+    sprintf(fout, "../../udf-samples-extra/%d-%02d-%02d-%02d-%02d-%02d_%s.img.out", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, medium);
+    sprintf(ferr, "../../udf-samples-extra/%d-%02d-%02d-%02d-%02d-%02d_%s.img.err", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, medium);
+#endif
 
     int pipefd[3];
     pipe(pipefd);
