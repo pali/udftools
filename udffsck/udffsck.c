@@ -178,7 +178,7 @@ char * print_timestamp(timestamp ts) {
         mino = offset%60; // offset in minutes
     }
     dbg("TypeAndTimezone: 0x%04x\n", ts.typeAndTimezone);
-    sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d+%02d:%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds, hrso, mino);
+    sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d%s%02d:%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds, offset > 0 ? "+" : "", hrso, mino);
     return str; 
 }
 
@@ -2656,8 +2656,13 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
 
     // Set recording date and time to now. 
     time_t t = time(NULL);
+    struct tm tmlocal = *localtime(&t);
     struct tm tm = *gmtime(&t);
+    int8_t hrso = tmlocal.tm_hour - tm.tm_hour;
+    int8_t mino = tmlocal.tm_min - tm.tm_min;
+    int16_t offset = hrso*60+mino;
     timestamp *ts = &(disc->udf_lvid->recordingDateAndTime);
+    ts->typeAndTimezone = (1 << 12) | (0x1000-offset);
     ts->year = tm.tm_year + 1900;
     ts->month = tm.tm_mon + 1;
     ts->day = tm.tm_mday;
@@ -2667,6 +2672,7 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     ts->centiseconds = 0;
     ts->hundredsOfMicroseconds = 0;
     ts->microseconds = 0;
+    dbg("Type and Timezone: 0x%04x\n", ts->typeAndTimezone);
 
     uint32_t newFreeSpace = disc->udf_lvid->freeSpaceTable[1] - stats->usedSpace/sectorsize;
     disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(newFreeSpace);
