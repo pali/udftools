@@ -33,6 +33,9 @@ verbosity_e verbose = NONE;
 int interactive = 0;
 int autofix = 0;
 
+/**
+ * Options for getopt_long() parser function.
+ */
 static struct option long_options[] =
 {
     /* These options set a flag. */
@@ -45,6 +48,9 @@ static struct option long_options[] =
     {0, 0, 0, 0}
 };
 
+/**
+ * Help string for options
+ */
 static char * help[] = {
     "Increase verbosity. Without it are printed only error messages, -v prints warnings, -vv is for humans, -vvv is for developers and curious people.",
     "Medium block size. Mandatory parameter, can be 512, 1024, 2048 or 4096.",
@@ -55,7 +61,9 @@ static char * help[] = {
     ""
 }; 
 
-
+/**
+ * \brief Prints out usage
+ */
 void usage(void)
 {
     int i;
@@ -83,6 +91,11 @@ void usage(void)
     exit(32);
 }
 
+/**
+ * \brief Input argument parsing function
+ *
+ * This function parse thru inputs. It recognizes following: -vvvipch -B <BLOCKSIZE>. Without any argument is only path to medium.
+ */
 void parse_args(int argc, char *argv[], char **path, int *blocksize) 
 {
     int c;
