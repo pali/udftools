@@ -45,7 +45,6 @@
 #include "udffsck.h"
 
 
-#define FSD_PRESENT 
 #define PRINT_DISC 
 
 #define MAX_VERSION 0x0201
@@ -102,9 +101,7 @@ int main(int argc, char *argv[]) {
     int blocksize = -1;
     struct udf_disc disc = {0};
     uint8_t *dev;
-    //struct stat sb;
     off_t st_size;
-    //metadata_err_map_t *seq;
     vds_sequence_t *seq; 
     struct filesystemStats stats =  {0};
     uint16_t error_status = 0;
@@ -130,7 +127,6 @@ int main(int argc, char *argv[]) {
     if(blocksize > 0) {
         force_sectorsize = 1;
     }
-
 
     msg("Medium to analyze: %s\n", path);
 
@@ -197,7 +193,6 @@ int main(int argc, char *argv[]) {
     //------------- Detections -----------------------
 
     seq = calloc(1, sizeof(vds_sequence_t));
-    //seq = calloc(1, sizeof(metadata_err_map_t));
 
     stats.AVDPSerialNum = 0xFFFF;
     status = is_udf(dev, &blocksize, force_sectorsize); //this function is checking for UDF recognition sequence. It also tries to detect blocksize
@@ -260,12 +255,10 @@ int main(int argc, char *argv[]) {
         exit(8);
     }
 
-
 #ifdef PRINT_DISC
     print_disc(&disc);
 #endif
 
-    //list_init(&stats.allocationTable);
     stats.blocksize = blocksize;
 
     if(get_pd(dev, &disc, blocksize, &stats, seq)) {
@@ -284,7 +277,6 @@ int main(int argc, char *argv[]) {
     
     note("LBNLSN: %d\n", lbnlsn);
     status |= get_file_structure(dev, &disc, lbnlsn, &stats, seq);
-    // if(status) exit(status);
 
     dbg("USD Alloc Descs\n");
     extent_ad *usdext;
@@ -294,12 +286,6 @@ int main(int argc, char *argv[]) {
         dbg("Len: %d, Loc: 0x%x\n",usdext->extLength, usdext->extLocation);
         dbg("LSN loc: 0x%x\n", lbnlsn+usdext->extLocation);
         usdarr = (dev+(lbnlsn + usdext->extLocation)*blocksize);
-        /*for(int j=0; j<usdext->extLength; ) {
-          for(int k=0; k<2*8; k++,j++) {
-          printf("%02x ", usdarr[j]);
-          }
-          printf("\n");
-          }*/
     }
 
     dbg("PD PartitionsContentsUse\n");
@@ -309,33 +295,10 @@ int main(int argc, char *argv[]) {
         }
         note("\n");
     }
-
-    /*    if(get_pd(dev, &disc, blocksize, &stats)) {
-          err("PD error\n");
-          exit(8);
-          }
-          *
-          */
     get_volume_identifier(&disc, &stats, seq);  
     
     uint64_t countedBits = count_used_bits(&stats);
-/*    uint8_t rest = stats.partitionNumOfBytes - stats.partitionNumOfBits/8;
-    for(int i = 0; i<stats.partitionNumOfBytes; i++) {
-        uint8_t piece = ~stats.actPartitionBitmap[i];
-        if(i<stats.partitionNumOfBytes-1) {
-            for(int j = 0; j<8; j++) {
-                countedBits += (piece>>j)&1;
-            }
-        } else {
-            for(int j = 0; j<rest; j++) {
-                countedBits += (piece>>j)&1;
-            }
-        }
-    }*/
-
     dbg("**** BITMAP USED SPACE: %d ****\n", countedBits);
-
-
 
     //---------- Corrections --------------
     msg("\nFilesystem status\n-----------------\n");
@@ -571,8 +534,6 @@ int main(int argc, char *argv[]) {
 
     free(seq);
     free(stats.actPartitionBitmap);
-
-    //list_destoy(&stats.allocationTable);
 
     flock(fd, LOCK_UN);
     close(fd);
