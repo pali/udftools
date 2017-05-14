@@ -211,17 +211,14 @@ int prompt(const char *format, ...) {
     return -128;
 }
 
-/* Private function prototypes -----------------------------------------------*/
-//#ifdef __GNUC__
-//  /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
-//     set to 'Yes') calls __io_putchar() */
-//  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-//#else
-//  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
-//#endif /* __GNUC__ */
-
-/* USER CODE END PFP */
-
+/**
+ * \brief Internall logger function producing printing to stdout
+ *
+ * \param[in] type mesage types are debug, message, important, warning, error, faterr
+ * \param[in] *color color ASCII formating string
+ * \param[in] *format message to print
+ * \param[in] arg aguments to message
+ */
 void logger(message_type type, char *color, const char *format, va_list arg) {
 	//va_list arg;
 	//char *msg;
@@ -287,6 +284,15 @@ void logger(message_type type, char *color, const char *format, va_list arg) {
     }
 }
 
+/**
+ * \brief Debug output
+ *
+ * Prefix: **[DBG]**\n
+ * Color: **default**\n
+ * Output: **stdout**\n
+ *
+ * \param[in] *format string to print
+ */
 void dbg(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
@@ -294,6 +300,15 @@ void dbg(const char *format, ...) {
 	va_end (arg);
 }
 
+/**
+ * \brief Debug warning output
+ *
+ * Prefix: **[DBG]**\n
+ * Color: **yellow**\n
+ * Output: **stdout**\n
+ *
+ * \param[in] *format string to print
+ */
 void dwarn(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
@@ -301,6 +316,15 @@ void dwarn(const char *format, ...) {
 	va_end (arg);
 }
 
+/**
+ * \brief Note output
+ *
+ * Prefix: ---\n
+ * Color: **default**\n
+ * Output: **stdout**\n
+ *
+ * \param[in] *format string to print
+ */
 void note(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
@@ -308,6 +332,15 @@ void note(const char *format, ...) {
 	va_end (arg);
 }
 
+/**
+ * \brief Message output
+ *
+ * Prefix: ---\n
+ * Color: **default**\n
+ * Output: **stdout**\n
+ *
+ * \param[in] *format string to print
+ */
 void msg(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
@@ -315,6 +348,15 @@ void msg(const char *format, ...) {
 	va_end (arg);
 }
 
+/**
+ * \brief Important message output
+ *
+ * Prefix: ---\n
+ * Color: **Green**\n
+ * Output: **stdout**\n
+ *
+ * \param[in] *format string to print
+ */
 void imp(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
@@ -322,6 +364,15 @@ void imp(const char *format, ...) {
 	va_end (arg);
 }
 
+/**
+ * \brief Warning output
+ *
+ * Prefix: **[WARN]**\n
+ * Color: **Yellow**\n
+ * Output: **stdout**\n
+ *
+ * \param[in] *format string to print
+ */
 void warn(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
@@ -329,6 +380,15 @@ void warn(const char *format, ...) {
 	va_end (arg);
 }
 
+/**
+ * \brief Error output
+ *
+ * Prefix: **[ERR]**\n
+ * Color: **Red**\n
+ * Output: **stderr**\n
+ *
+ * \param[in] *format string to print
+ */
 void err(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
@@ -336,6 +396,15 @@ void err(const char *format, ...) {
 	va_end (arg);
 }
 
+/**
+ * \brief Fatal Error output
+ *
+ * Prefix: **[FATAL]**\n
+ * Color: **Red**
+ * Output: **stderr**
+ *
+ * \param[in] *format string to print
+ */
 void fatal(const char *format, ...) {
 	va_list arg;
 	va_start (arg, format);
@@ -343,14 +412,12 @@ void fatal(const char *format, ...) {
 	va_end (arg);
 }
 
+/**
+ * \brief Verbosity level to string
+ *
+ * \return constant char array
+ */
 char * verbosity_level_str(verbosity_e lvl) {
-    
-/*typedef enum {
-    NONE=0,
-    WARN,
-    MSG,
-    DBG
-} verbosity_e;*/
     switch(lvl) {
         case NONE:
             return "NONE";
@@ -365,6 +432,11 @@ char * verbosity_level_str(verbosity_e lvl) {
     }
 }
 
+/**
+ * \brief Prints metadata error sequence
+ *
+ * \param[in] *seq VDS sequence 
+ */
 void print_metadata_sequence(vds_sequence_t *seq) {
     note("Main             Reserve\n");
     note("ident | Errors | ident | Errors \n");     
