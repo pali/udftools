@@ -25,6 +25,8 @@ config.status
 wrudf/wrudf
 libtool
 udffsck/udffsck
+udffsck/test
+udffsck/testextra
 mkudffs/mkudffs
 pktsetup/pktsetup
 cdrwtool/cdrwtool
