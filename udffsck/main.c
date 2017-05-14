@@ -317,7 +317,7 @@ int main(int argc, char *argv[]) {
           }
           *
           */
-    get_volume_identifier(dev, &disc, blocksize, &stats, seq);  
+    get_volume_identifier(&disc, &stats, seq);  
     
     uint64_t countedBits = countUsedBits(&stats);
 /*    uint8_t rest = stats.partitionNumOfBytes - stats.partitionNumOfBits/8;

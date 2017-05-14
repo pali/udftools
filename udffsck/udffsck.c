@@ -694,6 +694,18 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
     return 0;
 }
 
+/**
+ * \brief Selects **MAIN_VDS** or **RESERVE_VDS** for required descriptor based on errors
+ *
+ * If some function needs some descriptor from VDS, it requires check if descriptor is structurally correct.
+ * This is already checked and stored in seq->main[vds].error and seq->reserve[vds].error.
+ * This function search thru this sequence based on tagIdent and looks at errors when found.
+ *
+ * \param[in] *seq descriptor sequence
+ * \param[in] tagIdent identifier to find
+ * \return MAIN_VDS or RESERVE_VDS if correct descriptor found
+ * \return -1 if no correct descriptor found or both are broken.
+ */
 int get_correct(vds_sequence_t *seq, uint16_t tagIdent) {
     for(int i=0; i<VDS_STRUCT_AMOUNT; i++) {
         if(seq->main[i].tagIdent == tagIdent && (seq->main[i].error & (E_CRC | E_CHECKSUM | E_WRONGDESC)) == 0) {
@@ -707,11 +719,17 @@ int get_correct(vds_sequence_t *seq, uint16_t tagIdent) {
 
 /**
  * \brief Loads Logical Volume Integrity Descriptor (LVID) and stores it at struct udf_disc
- * \param[in] dev pointer to device array
- * \param[out] disc LVID is stored in udf_disc structure
+ *
+ * Loads LVID descriptor to disc stucture. Beside that, it stores selected params in stats structure for 
+ * easier access.
+ *
+ * \param[in] *dev pointer to device array
+ * \param[out] *disc LVID is stored in udf_disc structure
  * \param[in] sectorsize device logical sector size
+ * \param[out] *stats file system status
+ * \param[in] *seq descriptor sequence
  * \return 0 everything ok
- *         -4 structure is already set
+ * \return 4 structure is already set or no correct LVID found
  */
 int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq ) {
     if(disc->udf_lvid != 0) {
@@ -785,7 +803,19 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     return 0; 
 }
 
-int get_volume_identifier(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq ) {
+/**
+ * \brief Select various volume identifiers and store them at stats structure
+ * 
+ * At this moment it selects PVD->volSetIdent and FSD->logicalVolIdent
+ *
+ * \param[in] *disc disc structure
+ * \param[out] *stats file system status structure
+ * \param[in] *seq VDS sequence
+ *
+ * \return 0 -- everything OK
+ * \return 4 -- no correct PVD found.
+ */
+int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, vds_sequence_t *seq ) {
     int vds = -1;
     if((vds=get_correct(seq, TAG_IDENT_PVD)) < 0) {
         err("No correct PVD found. Aborting.\n");
@@ -796,6 +826,20 @@ int get_volume_identifier(uint8_t *dev, struct udf_disc *disc, int sectorsize, s
     return 0;
 }
 
+/**
+ * \brief Marks used blocks in actual bitmap
+ *
+ * This function mark or unmark specified areas of block bitmap at stats->actPartitionBitmap
+ * If medium is consistent, this bitmap should be same as declared (stats->expPartitionBitmap)
+ *
+ * \param[in,out] *stats file system status structure
+ * \param[in] lbn starting logical block of area
+ * \param[in] size length of marked area
+ * \param[in] MARK_BLOCK or UNMARK_BLOCK switch
+ *
+ * \return 0 everything is OK or size is 0 (nothing to mark)
+ * \return -1 marking failed (actParititonBitmap is uninitialized)
+ */ 
 uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size, uint8_t mark) {
     if(lbn+size < stats->partitionNumOfBits) {
         uint32_t byte = 0;
@@ -864,13 +908,17 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
 }
 
 /**
- * @brief Loads File Set Descriptor and stores it at struct udf_disc
- * @param[in] dev pointer to device array
- * @param[out] disc FSD is stored in udf_disc structure
- * @param[in] sectorsize device logical sector size
- * @param[out] lbnlsn LBN starting offset
- * @return 0 everything ok
- *         -1 TD not found
+ * \brief Loads File Set Descriptor and stores it at struct udf_disc
+ *
+ * \param[in] *dev pointer to device array
+ * \param[out] *disc FSD is stored in udf_disc structure
+ * \param[in] sectorsize device logical sector size
+ * \param[out] lbnlsn LBN starting offset
+ * \param[in] *stats file system status
+ * \param[in] *seq VDS sequence
+ *
+ * \return 0 everything ok
+ * \return 4 no correct PD or LVD found
  */
 uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq) {
     long_ad *lap;
@@ -883,14 +931,8 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     }
     dbg("PD partNum: %d\n", disc->udf_pd[vds]->partitionNumber);
     uint32_t lsnBase = 0;
-    //Probably not needed. Remove.
-    //if(lap->extLocation.partitionReferenceNum == disc->udf_pd[vds]->partitionNumber)
     lsnBase = disc->udf_pd[vds]->partitionStartingLocation;
     dbg("Partition Length: %d\n", disc->udf_pd[vds]->partitionLength);
-    //else {
-    //    err("Partiton starting point not found.\n");
-    //    return 4;
-    //}
 
     dbg("LSN base: %d\n", lsnBase);
 
@@ -921,7 +963,6 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
         return 8;
     }
     dbg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
-    //stats->logicalVolIdent = disc->udf_fsd->logicalVolIdent;
 
     incrementUsedSize(stats, filesetlen, lap->extLocation.logicalBlockNum);
 
@@ -929,6 +970,24 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     return 0;
 }
 
+/**
+ * \brief Inspect AED and return array of its allocation descriptors
+ *
+ * This function returns pointer to array of allocation descriptors. This pointer points to memory mapped device!
+ *
+ * \todo Checksum, CRC and position checks
+ *
+ * \param[in] *dev memory mapped device
+ * \param[in] lsnBase LBN offset to LSN
+ * \param[in] aedlbn LBN of AED
+ * \param[out] *lengthADArray size of allocation descriptor array ADArray
+ * \param[out] **ADAarray allocation descriptors array itself
+ * \param[in] *stats file system status
+ * \param[out] status error status
+ *
+ * \return 0 AED found and ADArray is set
+ * \return 4 AED not found
+ */
 uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint32_t *lengthADArray, uint8_t **ADArray, struct filesystemStats *stats, uint8_t *status) {
     uint16_t lbSize = stats->blocksize; 
     uint32_t lad = 0;
@@ -942,7 +1001,7 @@ uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint3
         lad = aed->lengthAllocDescs;
         *ADArray = (uint8_t *)(aed)+sizeof(struct allocExtDesc);
         *lengthADArray = lad;
-#if 1
+#if 0
         uint32_t line = 0;
         dbg("AED Array\n");
         for(int i=0; i<*lengthADArray; ) {
