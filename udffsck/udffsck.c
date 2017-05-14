@@ -974,8 +974,6 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
  *
  * This function returns pointer to array of allocation descriptors. This pointer points to memory mapped device!
  *
- * \todo Checksum, CRC and position checks
- *
  * \param[in] *dev memory mapped device
  * \param[in] lsnBase LBN offset to LSN
  * \param[in] aedlbn LBN of AED
@@ -984,8 +982,10 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
  * \param[in] *stats file system status
  * \param[out] status error status
  *
- * \return 0 AED found and ADArray is set
- * \return 4 AED not found
+ * \return 0 -- AED found and ADArray is set
+ * \return 4 -- AED not found
+ * \return 4 -- checksum failed
+ * \return 4 -- CRC failed
  */
 uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint32_t *lengthADArray, uint8_t **ADArray, struct filesystemStats *stats, uint8_t *status) {
     uint16_t lbSize = stats->blocksize; 
@@ -995,8 +995,31 @@ uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint3
 
     struct allocExtDesc *aed = (struct allocExtDesc *)(dev + (lsnBase + aedlbn)*lbSize);
     if(aed->descTag.tagIdent == TAG_IDENT_AED) {
-        //TODO checksum
-        //TODO CRC
+        //checksum
+        if(!checksum(aed->descTag)) {
+            err("AED checksum failed\n");
+            *status |= 4; 
+            return 4;
+        }
+        //CRC
+#if 0
+        dbg("AED: descCRCLength: %d, LAD: %d\n", aed->descTag.descCRCLength, aed->lengthAllocDescs);
+        dbg("AED: CRC: 0x%04x\n", aed->descTag.descCRC);
+        for(int i=16; i<aed->descTag.descCRCLength+16; i++) {
+            dbg("[%d]: CRC: 0x%04x\n", i, udf_crc((uint8_t *)(aed) + sizeof(tag), i - sizeof(tag), 0));
+        }
+        if(crc(aed, aed->descTag.descCRCLength-8)) {
+            err("AED CRC failed\n");
+            *status |= 4;
+            return 4;
+        }
+#endif
+        // position
+        if(check_position(aed->descTag, aedlbn)) {
+            err("AED position differs\n");
+            *status |= 4;
+        }
+        
         lad = aed->lengthAllocDescs;
         *ADArray = (uint8_t *)(aed)+sizeof(struct allocExtDesc);
         *lengthADArray = lad;
