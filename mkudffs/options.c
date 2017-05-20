@@ -253,9 +253,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 				}
 				for (i = 0; i < 16; ++i)
 				{
-					if (!isalnum(optarg[i]))
+					if (!isxdigit(optarg[i]) || (!isdigit(optarg[i]) && !islower(optarg[i])))
 					{
-						fprintf(stderr, "mkudffs: Error: uuid is not alphanumeric\n");
+						fprintf(stderr, "mkudffs: Error: uuid is not in lowercase hexadecimal digit format\n");
 						exit(1);
 					}
 				}
