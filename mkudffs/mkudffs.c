@@ -340,7 +340,11 @@ void dump_space(struct udf_disc *disc)
 		printf("start=%lu, blocks=%lu, type=", (unsigned long int)start_ext->start, (unsigned long int)start_ext->blocks);
 		for (i=0; i<UDF_SPACE_TYPE_SIZE; i++)
 		{
-			if (start_ext->space_type & (1<<i))
+			if (!(start_ext->space_type & (1<<i)))
+				continue;
+			if ((start_ext->space_type & (USPACE|RESERVED)) && !(disc->flags & FLAG_BOOTAREA_PRESERVE))
+				printf("ERASE ");
+			else
 				printf("%s ", udf_space_type_str[i]);
 		}
 		printf("\n");

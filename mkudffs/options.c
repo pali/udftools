@@ -52,6 +52,7 @@ struct option long_options[] = {
 	{ "fullvsid", required_argument, NULL, OPT_FULLVSID },
 	{ "uid", required_argument, NULL, OPT_UID },
 	{ "gid", required_argument, NULL, OPT_GID },
+	{ "bootarea", required_argument, NULL, OPT_BOOTAREA },
 	{ "strategy", required_argument, NULL, OPT_STRATEGY },
 	{ "spartable", required_argument, NULL, OPT_SPARTABLE },
 	{ "packetlen", required_argument, NULL, OPT_PACKETLEN },
@@ -85,6 +86,7 @@ void usage(void)
 		"\t--fullvsid=\n"
 		"\t--uid=\n"
 		"\t--gid=\n"
+		"\t--bootarea=\n"
 		"\t--strategy=\n"
 		"\t--spartable=\n"
 		"\t--packetlen=\n"
@@ -299,6 +301,20 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 				disc->gid = strtol(optarg, NULL, 0);
 				break;
 			}
+			case OPT_BOOTAREA:
+			{
+				disc->flags &= ~FLAG_BOOTAREA_MASK;
+				if (!strcmp(optarg, "preserve"))
+					disc->flags |= FLAG_BOOTAREA_PRESERVE;
+				else if (!strcmp(optarg, "erase"))
+					disc->flags |= FLAG_BOOTAREA_ERASE;
+				else
+				{
+					fprintf(stderr, "mkudffs: invalid bootarea option\n");
+					exit(1);
+				}
+				break;
+			}
 			case OPT_STRATEGY:
 			{
 				uint16_t strategy;
@@ -469,6 +485,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 
 	if (media == DEFAULT_CDR)
 		disc->flags &= ~FLAG_SPACE;
+
+	if (!(disc->flags & FLAG_BOOTAREA_MASK))
+	{
+		if (media == DEFAULT_HD)
+			disc->flags |= FLAG_BOOTAREA_ERASE;
+		else
+			disc->flags |= FLAG_BOOTAREA_PRESERVE;
+	}
 
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{

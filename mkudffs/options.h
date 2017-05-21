@@ -58,5 +58,6 @@ void parse_args(int, char *[], struct udf_disc *, char *, int *);
 #define OPT_FULLVSID	0x200E
 #define OPT_UID		0x200F
 #define OPT_GID		0x2010
+#define OPT_BOOTAREA	0x2011
 
 #endif /* _OPTIONS_H */

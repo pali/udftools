@@ -122,6 +122,20 @@ Specify the gid of the root (/) directory. If omitted,
 gid is 0.
 
 .TP
+.BI \-\-bootarea= " fill "
+Specify how to fill UDF boot area which is first 32kB of disk and is not
+used by UDF itself. Valid options are:
+.RS 1.2i
+.TP 1.6i
+preserve
+preserve existing UDF boot area, do not touch it (default for media type
+different from hd)
+.TP
+erase
+erase existing UDF boot area, fill it by zeros (default for hd media type)
+.RE
+
+.TP
 .BI \-\-strategy= " strategy "
 Specify the allocation strategy to use. Valid strategies are 4 and 4096.
 If omitted,

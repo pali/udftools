@@ -151,6 +151,7 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 	static size_t bufferlen = 0;
 	int fd = *(int *)disc->write_data;
 	ssize_t length, offset;
+	uint32_t blocks;
 	struct udf_desc *desc;
 	struct udf_data *data;
 
@@ -186,6 +187,19 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 			if (write(fd, buffer, length) != length)
 				return -1;
 			desc = desc->next;
+		}
+	}
+	else if (!(disc->flags & FLAG_BOOTAREA_PRESERVE))
+	{
+		length = disc->blocksize;
+		blocks = ext->blocks;
+		memset(buffer, 0, length);
+		if (lseek(fd, (off_t)(ext->start) << disc->blocksize_bits, SEEK_SET) < 0)
+			return -1;
+		while (blocks-- > 0)
+		{
+			if (write(fd, buffer, length) != length)
+				return -1;
 		}
 	}
 	return 0;

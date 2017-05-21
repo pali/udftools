@@ -54,6 +54,10 @@
 #define FLAG_CLOSED			0x00000800
 #define FLAG_VAT			0x00001000
 
+#define FLAG_BOOTAREA_PRESERVE		0x00010000
+#define FLAG_BOOTAREA_ERASE		0x00020000
+#define FLAG_BOOTAREA_MASK		(FLAG_BOOTAREA_PRESERVE|FLAG_BOOTAREA_ERASE)
+
 struct udf_extent;
 struct udf_desc;
 struct udf_data;
