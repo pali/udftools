@@ -48,9 +48,11 @@ extern char *udf_space_type_str[UDF_SPACE_TYPE_SIZE];
 
 void udf_init_disc(struct udf_disc *);
 int udf_set_version(struct udf_disc *, int);
+void get_random_bytes(void *, size_t);
 void split_space(struct udf_disc *);
 void dump_space(struct udf_disc *);
 int write_disc(struct udf_disc *);
+void setup_mbr(struct udf_disc *);
 void setup_vrs(struct udf_disc *);
 void setup_anchor(struct udf_disc *);
 void setup_partition(struct udf_disc *);

@@ -492,3 +492,22 @@ struct extendedFileEntry default_efe =
 		},
 	},
 };
+
+struct mbr default_mbr =
+{
+	.boot_code = "",
+	.disk_signature = constant_cpu_to_le32(0x0),
+	.unknown = 0x0,
+	.partitions =
+	{
+		{
+			.boot_indicator = MBR_PARTITION_NOT_BOOTABLE,
+			.starting_chs = { 0, 0, 0 },
+			.partition_type = MBR_PARTITION_TYPE_IFS,
+			.ending_chs = { 0, 0, 0 },
+			.starting_lba = constant_cpu_to_le32(0),
+			.size_in_lba = constant_cpu_to_le32(0),
+		},
+	},
+	.boot_signature = constant_cpu_to_le16(MBR_BOOT_SIGNATURE),
+};

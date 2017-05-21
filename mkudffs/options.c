@@ -308,6 +308,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 					disc->flags |= FLAG_BOOTAREA_PRESERVE;
 				else if (!strcmp(optarg, "erase"))
 					disc->flags |= FLAG_BOOTAREA_ERASE;
+				else if (!strcmp(optarg, "mbr"))
+					disc->flags |= FLAG_BOOTAREA_MBR;
 				else
 				{
 					fprintf(stderr, "mkudffs: invalid bootarea option\n");
@@ -462,7 +464,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			fprintf(stderr, "mkudffs: invalid block-count\n");
 			exit(1);
 		}
-		disc->head->blocks = blocks;
+		disc->blocks = blocks;
 	}
 	if (optind < argc)
 		usage();

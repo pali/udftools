@@ -44,4 +44,6 @@ extern struct fileSetDesc default_fsd;
 extern struct fileEntry default_fe;
 extern struct extendedFileEntry default_efe;
 
+extern struct mbr default_mbr;
+
 #endif /* _DEFAULTS_H */

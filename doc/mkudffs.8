@@ -124,7 +124,8 @@ gid is 0.
 .TP
 .BI \-\-bootarea= " fill "
 Specify how to fill UDF boot area which is first 32kB of disk and is not
-used by UDF itself. Valid options are:
+used by UDF itself. Option \fImbr\fP make sense only when running mkudffs
+on whole disk, not on just one partition. Valid options are:
 .RS 1.2i
 .TP 1.6i
 preserve
@@ -133,6 +134,11 @@ different from hd)
 .TP
 erase
 erase existing UDF boot area, fill it by zeros (default for hd media type)
+.TP
+mbr
+put MBR with one partition which starts at sector 0 (includes MBR itself)
+and spans whole disk device (needed for non-removable hard disks used on
+Microsoft Windows systems)
 .RE
 
 .TP

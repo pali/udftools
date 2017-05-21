@@ -56,7 +56,8 @@
 
 #define FLAG_BOOTAREA_PRESERVE		0x00010000
 #define FLAG_BOOTAREA_ERASE		0x00020000
-#define FLAG_BOOTAREA_MASK		(FLAG_BOOTAREA_PRESERVE|FLAG_BOOTAREA_ERASE)
+#define FLAG_BOOTAREA_MBR		0x00040000
+#define FLAG_BOOTAREA_MASK		(FLAG_BOOTAREA_PRESERVE|FLAG_BOOTAREA_ERASE|FLAG_BOOTAREA_MBR)
 
 struct udf_extent;
 struct udf_desc;
@@ -75,7 +76,8 @@ enum udf_space_type
 	PSPACE		= 0x0100,	/* Partition Space */
 	USPACE		= 0x0200,	/* Unallocated Space */
 	BAD		= 0x0400,	/* Bad Blocks */
-	UDF_SPACE_TYPE_SIZE = 11,
+	MBR		= 0x0800,	/* MBR Boot Area */
+	UDF_SPACE_TYPE_SIZE = 12,
 };
 
 struct udf_sizing
@@ -101,7 +103,9 @@ struct udf_disc
 	uint16_t			udf_rev;
 	uint16_t			blocksize;
 	uint8_t				blocksize_bits;
+	uint32_t			blocks;
 	uint32_t			flags;
+	int				blkssz;
 
 	uint32_t			uid;
 	uint32_t			gid;
@@ -163,6 +167,30 @@ struct udf_data
 	struct udf_data			*next;
 	struct udf_data			*prev;
 };
+
+#define MBR_PARTITION_NOT_BOOTABLE	0x00
+#define MBR_PARTITION_TYPE_IFS		0x07 /* Installable File System (IFS), see: https://serverfault.com/a/829172 */
+
+struct mbr_partition
+{
+	uint8_t				boot_indicator;
+	uint8_t				starting_chs[3];
+	uint8_t				partition_type;
+	uint8_t				ending_chs[3];
+	uint32_t			starting_lba;
+	uint32_t			size_in_lba;
+} __attribute__ ((packed));
+
+#define MBR_BOOT_SIGNATURE		0xAA55
+
+struct mbr
+{
+	unsigned char			boot_code[440];
+	uint32_t			disk_signature;
+	uint16_t			unknown;
+	struct mbr_partition		partitions[4];
+	uint16_t			boot_signature;
+} __attribute__ ((packed));
 
 /* crc.c */
 extern uint16_t udf_crc(uint8_t *, uint32_t, uint16_t);

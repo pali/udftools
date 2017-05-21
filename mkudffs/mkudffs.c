@@ -49,8 +49,9 @@ void udf_init_disc(struct udf_disc *disc)
 	struct timeval	tv;
 	struct tm 	*tm;
 	int		altzone;
-	int		fd;
 	unsigned long int rnd;
+
+	srand(time(NULL));
 
 	memset(disc, 0x00, sizeof(*disc));
 
@@ -58,6 +59,7 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->blocksize_bits = 11;
 	disc->udf_rev = le16_to_cpu(default_lvidiu.minUDFReadRev);
 	disc->flags = FLAG_UTF8 | FLAG_CLOSED;
+	disc->blkssz = 512;
 
 	gettimeofday(&tv, NULL);
 	tm = localtime(&tv.tv_sec);
@@ -76,17 +78,7 @@ void udf_init_disc(struct udf_disc *disc)
 	ts.hundredsOfMicroseconds = (tv.tv_usec - ts.centiseconds * 10000) / 100;
 	ts.microseconds = tv.tv_usec - ts.centiseconds * 10000 - ts.hundredsOfMicroseconds * 100;
 
-	fd = open("/dev/urandom", O_RDONLY);
-	if (fd >= 0) {
-		if (read(fd, &rnd, sizeof(rnd)) != sizeof(rnd)) {
-			srand(time(NULL));
-			rnd = rand();
-		}
-		close(fd);
-	} else {
-		srand(time(NULL));
-		rnd = rand();
-	}
+	get_random_bytes(&rnd, sizeof(rnd));
 
 	/* Allocate/Initialize Descriptors */
 	disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc));
@@ -195,11 +187,31 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 	return 0;
 }
 
+void get_random_bytes(void *buffer, size_t count)
+{
+	int fd;
+	size_t i;
+
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd >= 0)
+	{
+		if (read(fd, buffer, count) == (ssize_t)count)
+		{
+			close(fd);
+			return;
+		}
+		close(fd);
+	}
+
+	for (i = 0; i < count; ++i)
+		((uint8_t *)buffer)[i] = rand() % 0xFF;
+}
+
 void split_space(struct udf_disc *disc)
 {
 	uint32_t sizes[UDF_ALLOC_TYPE_SIZE];
 	uint32_t offsets[UDF_ALLOC_TYPE_SIZE];
-	uint32_t blocks = disc->head->blocks;
+	uint32_t blocks = disc->blocks;
 	uint32_t start, size;
 	struct sparablePartitionMap *spm;
 	struct udf_extent *ext;
@@ -212,7 +224,11 @@ void split_space(struct udf_disc *disc)
 	}
 	else
 	{
-		set_extent(disc, RESERVED, 0, 32768 / disc->blocksize); // OS boot area
+		// OS boot area
+		if (disc->flags & FLAG_BOOTAREA_MBR)
+			set_extent(disc, MBR, 0, 1);
+		else
+			set_extent(disc, RESERVED, 0, 32768 / disc->blocksize);
 		if (disc->blocksize >= 2048) // Volume Recognition Sequence
 			set_extent(disc, VRS, (2048 * 16) / disc->blocksize, 3);
 		else
@@ -366,6 +382,60 @@ int write_disc(struct udf_disc *disc)
 		start_ext = start_ext->next;
 	}
 	return ret;
+}
+
+static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
+{
+	struct mbr old_mbr;
+	uint64_t lba_blocks;
+	struct mbr_partition *mbr_partition;
+	int fd = *(int *)disc->write_data;
+
+	memcpy(mbr, &default_mbr, sizeof(struct mbr));
+	mbr_partition = &mbr->partitions[0];
+
+	if (lseek(fd, ((off_t)start) << disc->blocksize_bits, SEEK_SET) >= 0)
+	{
+		if (read(fd, &old_mbr, sizeof(struct mbr)) == sizeof(struct mbr))
+		{
+			if (old_mbr.boot_signature == constant_cpu_to_le16(MBR_BOOT_SIGNATURE))
+				mbr->disk_signature = le32_to_cpu(old_mbr.disk_signature);
+		}
+	}
+
+	if (!mbr->disk_signature)
+		get_random_bytes(&mbr->disk_signature, sizeof(mbr->disk_signature));
+
+	lba_blocks = ((((uint64_t)disc->blocks) << disc->blocksize_bits) + disc->blkssz - 1) / disc->blkssz;
+
+	if (lba_blocks >= 255*63*1024)
+	{
+		/* If CHS address is too large use tuple (1023, 254, 63) */
+		mbr_partition->ending_chs[0] = 254;
+		mbr_partition->ending_chs[1] = 255;
+		mbr_partition->ending_chs[2] = 255;
+	}
+	else
+	{
+		mbr_partition->ending_chs[0] = (lba_blocks / 63) % 255, 255, 244;
+		mbr_partition->ending_chs[1] = ((1 + lba_blocks % 63) & 63) | (((lba_blocks / (255*63)) >> 8) * 64);
+		mbr_partition->ending_chs[2] = (lba_blocks / (255*63)) & 255;
+	}
+
+	mbr_partition->size_in_lba = cpu_to_le32(lba_blocks);
+}
+
+void setup_mbr(struct udf_disc *disc)
+{
+	struct udf_extent *ext;
+	struct udf_desc *desc;
+	struct mbr *mbr;
+
+	if (!(ext = next_extent(disc->head, MBR)))
+		return;
+	desc = set_desc(disc, ext, 0x00, 0, ext->blocks << disc->blocksize_bits, NULL);
+	mbr = (struct mbr *)desc->data->buffer;
+	fill_mbr(disc, mbr, ext->start);
 }
 
 void setup_vrs(struct udf_disc *disc)
@@ -1149,4 +1219,4 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 }
 
 
-char *udf_space_type_str[UDF_SPACE_TYPE_SIZE] = { "RESERVED", "VRS", "ANCHOR", "PVDS", "RVDS", "LVID", "STABLE", "SSPACE", "PSPACE", "USPACE", "BAD" };
+char *udf_space_type_str[UDF_SPACE_TYPE_SIZE] = { "RESERVED", "VRS", "ANCHOR", "PVDS", "RVDS", "LVID", "STABLE", "SSPACE", "PSPACE", "USPACE", "BAD", "MBR" };

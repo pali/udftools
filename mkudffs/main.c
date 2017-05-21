@@ -121,13 +121,18 @@ uint32_t get_blocks(int fd, int blocksize, uint32_t opt_blocks)
 	return blocks;
 }
 
-void detect_blocksize(int fd, struct udf_disc *disc)
+static void detect_blocksize(int fd, struct udf_disc *disc, int *blocksize)
 {
 	int size;
 	uint16_t bs;
 
 #ifdef BLKSSZGET
 	if (ioctl(fd, BLKSSZGET, &size) != 0)
+		return;
+
+	disc->blkssz = size;
+
+	if (*blocksize != -1)
 		return;
 
 	disc->blocksize = size;
@@ -142,6 +147,7 @@ void detect_blocksize(int fd, struct udf_disc *disc)
 		disc->blocksize_bits = 11;
 	}
 	disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);
+	*blocksize = disc->blocksize;
 #endif
 }
 
@@ -222,10 +228,10 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (blocksize == -1)
-		detect_blocksize(fd, &disc);
+	detect_blocksize(fd, &disc, &blocksize);
 
-	disc.head->blocks = get_blocks(fd, disc.blocksize, disc.head->blocks);
+	disc.blocks = get_blocks(fd, disc.blocksize, disc.blocks);
+	disc.head->blocks = disc.blocks;
 	disc.write = write_func;
 	disc.write_data = &fd;
 
@@ -242,17 +248,24 @@ int main(int argc, char *argv[])
 	printf("uuid=%.16s\n", buf);
 
 	printf("blocksize=%u\n", (unsigned int)disc.blocksize);
-	printf("blocks=%lu\n", (unsigned long int)disc.head->blocks);
+	printf("blocks=%lu\n", (unsigned long int)disc.blocks);
 	printf("udfrev=%x\n", (unsigned int)disc.udf_rev);
 
-	if (((disc.flags & FLAG_BRIDGE) && disc.head->blocks < 513) || disc.head->blocks < 281)
+	if (((disc.flags & FLAG_BRIDGE) && disc.blocks < 513) || disc.blocks < 281)
 	{
 		fprintf(stderr, "mkudffs: Error: Not enough blocks on device '%s', try decreasing blocksize\n", filename);
 		exit(1);
 	}
 
+	if ((disc.flags & FLAG_BOOTAREA_MBR) && (((uint64_t)disc.blocks) << disc.blocksize_bits)/disc.blkssz >= UINT32_MAX)
+	{
+		fprintf(stderr, "mkudffs: Error: Cannot create MBR on disc larger then 2^32 logical sectors\n");
+		exit(1);
+	}
+
 	split_space(&disc);
 
+	setup_mbr(&disc);
 	setup_vrs(&disc);
 	setup_anchor(&disc);
 	setup_partition(&disc);
