@@ -11,6 +11,12 @@ Purpose of this tool is check and correction of UDF filesystem metadata. UDF sta
 
 In case of found errors on filesystem, this tool can try to fix them. Fixing process is irreversible and writes changes back to checked medium. You should always back up your data before.
 
+\section limitations Limitations
+There are several limits for this tool. 
+ - it can work with UDF up to version 2.01
+ - it can't fix WORM devices (obviously)
+ - it ignores errors against specification errata if those are just recomendations (for example LVID size)
+
 \section usage Usage
 
 \subsection SYNOPSIS Synopsis
