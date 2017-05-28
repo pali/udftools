@@ -242,11 +242,14 @@ int main(int argc, char *argv[]) {
         exit(16);
     }
 
-    note("\nTrying to load VDS\n");
+    note("\nTrying to load first VDS\n");
     status |= get_vds(dev, &disc, blocksize, source, MAIN_VDS, seq); //load main VDS
+    note("\nTrying to load second VDS\n");
     status |= get_vds(dev, &disc, blocksize, source, RESERVE_VDS, seq); //load reserve VDS
 
+    dbg("First VDS verification\n");
     verify_vds(&disc, MAIN_VDS, seq);
+    dbg("Second VDS verification\n");
     verify_vds(&disc, RESERVE_VDS, seq);
 
     status |= get_lvid(dev, &disc, blocksize, &stats, seq); //load LVID

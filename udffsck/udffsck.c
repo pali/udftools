@@ -533,6 +533,7 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsiz
         }
             
         dbg("AVDP[%d]: Main Ext Len: %d, Reserve Ext Len: %d\n", type, disc->udf_anchor[type]->mainVolDescSeqExt.extLength, disc->udf_anchor[type]->reserveVolDescSeqExt.extLength);    
+        dbg("AVDP[%d]: Main Ext Pos: 0x%08x, Reserve Ext Pos: 0x%08x\n", type, disc->udf_anchor[type]->mainVolDescSeqExt.extLocation, disc->udf_anchor[type]->reserveVolDescSeqExt.extLocation);    
         if(disc->udf_anchor[type]->mainVolDescSeqExt.extLength < 16*ssize ||  disc->udf_anchor[type]->reserveVolDescSeqExt.extLength < 16*ssize) {
             status |= E_EXTLEN;
         }
@@ -577,14 +578,19 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
     uint8_t *position;
     int8_t counter = 0;
     tag descTag;
+    uint64_t location = 0;
 
     // Go to first address of VDS
     switch(vds) {
         case MAIN_VDS:
-            position = dev+sectorsize*(disc->udf_anchor[avdp]->mainVolDescSeqExt.extLocation);
+            location = sectorsize*((uint64_t)(disc->udf_anchor[avdp]->mainVolDescSeqExt.extLocation));
+            position = dev + location;
+            dbg("VDS location: 0x%x\n", disc->udf_anchor[avdp]->mainVolDescSeqExt.extLocation);
             break;
         case RESERVE_VDS:
-            position = dev+sectorsize*(disc->udf_anchor[avdp]->reserveVolDescSeqExt.extLocation);
+            location = sectorsize*((uint64_t)(disc->udf_anchor[avdp]->reserveVolDescSeqExt.extLocation));
+            position = dev + location;
+            dbg("VDS location: 0x%x\n", disc->udf_anchor[avdp]->reserveVolDescSeqExt.extLocation);
             break;
     }
     dbg("Current position: %lx\n", position-dev);
@@ -2142,6 +2148,7 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq) {
         append_error(seq, TAG_IDENT_TD, vds, E_CRC);
     }
 
+    dbg("Verify VDS done\n");
     return 0;
 }
 
