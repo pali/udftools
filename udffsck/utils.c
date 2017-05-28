@@ -20,8 +20,8 @@
  *
  */
 #include "config.h"
-
 #include "utils.h"
+#include "options.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -220,67 +220,58 @@ int prompt(const char *format, ...) {
  * \param[in] arg aguments to message
  */
 void logger(message_type type, char *color, const char *format, va_list arg) {
-	//va_list arg;
-	//char *msg;
 	char *prefix;
-	//char *color;
     FILE *stream;
     verbosity_e verblvl;  
 
 	switch(type) {
 		case debug:
 			prefix = "DBG";
-//			color = "";
             stream = stdout;
             verblvl = DBG;
 			break;
 		case message:
 			prefix = 0;
-//			color = "";
             stream = stdout;
             verblvl = MSG;
 			break;
 		case important:
 			prefix = 0;
-//			color = ANSI_COLOR_GREEN;
             stream = stdout;
             verblvl = WARN;
 			break;
 		case warning:
 			prefix = "WARN";
-//			color = ANSI_COLOR_YELLOW;
             stream = stdout;
             verblvl = WARN;
 			break;
 		case error:
 			prefix = "ERROR";
-//			color = ANSI_COLOR_RED;
             stream = stderr;
             verblvl = NONE;
 			break;
 		case faterr:
 			prefix = "FATAL";
-//			color = ANSI_COLOR_RED;
             stream = stderr;
             verblvl = NONE;
 			break;
 		default:
 			prefix = 0;
-//			color = "";
             stream = stdout;
             verblvl = DBG;
 			break;
 	}
 
     if(verbosity >= verblvl) {
-        if(color == NULL)
+        if(color == NULL || colored == 0)
             color = "";
         if(prefix > 0)
             fprintf(stream, "%s[%s] ", color, prefix);
         else
             fprintf(stream, "%s", color);
         vfprintf (stream, format, arg);
-        fprintf(stream, ANSI_COLOR_RESET EOL);
+        if(colored == 1)
+            fprintf(stream, ANSI_COLOR_RESET EOL);
     }
 }
 

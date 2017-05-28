@@ -29,7 +29,7 @@
 udffsck \- check and correction for UDF filesystem
 .SH SYNOPSIS
 .B udffsck
-[\fB\-vvvciph\fR]
+[\fB\-vvvcipCh\fR]
 [\fB\-B\fR \fIBLOCKSIZE\fR]
 .IR medium
 .SH DESCRIPTION
@@ -59,6 +59,9 @@ Default is autodetected value by finding VRS and AVDP positions.
 .BR \-c
 Only check medium and print found errors.
 This is default behavior.
+.TP
+.BR \-C
+Coloring output with ASCII color code.
 .TP
 .BR \-i
 Interactively fix medium. 

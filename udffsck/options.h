@@ -34,6 +34,7 @@ void parse_args(int, char *[], char **path, int *blocksize/*, struct cdrw_disc *
 extern int interactive;
 extern int autofix;
 extern verbosity_e verbosity;
+extern int colored;
 
 /*
  * Command line option token values.

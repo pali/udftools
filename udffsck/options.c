@@ -32,6 +32,7 @@
 verbosity_e verbose = NONE;
 int interactive = 0;
 int autofix = 0;
+int colored = 0;
 
 /**
  * Options for getopt_long() parser function.
@@ -44,6 +45,7 @@ static struct option long_options[] =
     {"interactive",  no_argument, 0, 'i'},
     {"autofix",    no_argument, 0, 'p'},
     {"check", no_argument, 0, 'c'},
+    {"colors",    no_argument,       0, 'C'},
     {"help",    no_argument,       0, 'h'},
     {0, 0, 0, 0}
 };
@@ -57,6 +59,7 @@ static char * help[] = {
     "Medium is will be fixed interactivelly and all fixings must be authorized by user.",
     "Medium is will be fixed automatically. All found errors will be fixed if possible.",
     "Medium will be only checked. This is default behavior, but this flag override -p.",
+    "Tool output will be colored with ASCII color codes.",
     "This help message.",
     ""
 }; 
@@ -69,7 +72,7 @@ void usage(void)
     int i;
 
     printf("udffsck " UDFFSCK_VERSION  " from " PACKAGE_NAME " " PACKAGE_VERSION ".");
-    printf("\nUsage:\n\tudffsck [-icpvvvh] [-B blocksize] medium\n");
+    printf("\nUsage:\n\tudffsck [-icpvvvCh] [-B blocksize] medium\n");
     printf("Options:\n");
     for (i = 0; long_options[i].name != NULL; i++) {
         if (long_options[i].flag != 0)
@@ -105,7 +108,7 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "vB:ipch", long_options, &option_index);
+        c = getopt_long (argc, argv, "vB:ipcCh", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -148,6 +151,10 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
                 if(verbosity > DBG)
                     verbosity = DBG;
                 printf("Verbosity increased to %s.\n", verbosity_level_str(verbosity));
+                break;
+
+            case 'C':
+                colored = 1;
                 break;
 
             case 'h':
