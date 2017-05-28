@@ -318,13 +318,13 @@ int main(int argc, char *argv[]) {
         }
         note("\n");
     }
-    get_volume_identifier(&disc, &stats, seq);  
 
     uint64_t countedBits = count_used_bits(&stats);
     dbg("**** BITMAP USED SPACE: %d ****\n", countedBits);
 
     //---------- Corrections --------------
     msg("\nFilesystem status\n-----------------\n");
+    get_volume_identifier(&disc, &stats, seq);  
     msg("Volume set identifier: %s\n", stats.volumeSetIdent);
     msg("Partition identifier: %s\n", stats.partitionIdent);
     msg("Next UniqueID: %d\n", stats.actUUID);

@@ -832,13 +832,13 @@ int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, 
     memset(namebuf, 0, 128*2);
     int size = decode_utf8(disc->udf_pvd[vds]->volSetIdent, namebuf, 128);
     
-    for(int i=0; i<8; i++) {
-        if((namebuf[i] >= '0' && namebuf[i]<='9') || (namebuf[i] >='A' && namebuf[i] <= 'Z') || (namebuf[i] >= 'a' && namebuf[i] <= 'z')) {
+    for(int i=0; i<16; i++) {
+        if((namebuf[i] >= '0' && namebuf[i]<='9') || (namebuf[i] >= 'a' && namebuf[i] <= 'z')) {
            continue; 
         } else {
-            err("Volume Set Identifier Unique Identifier is broken.\n");
-            append_error(seq, TAG_IDENT_PVD, MAIN_VDS, E_UUID);
-            append_error(seq, TAG_IDENT_PVD, RESERVE_VDS, E_UUID);
+            warn("Volume Set Identifier Unique Identifier is not compliant.\n");
+            //append_error(seq, TAG_IDENT_PVD, MAIN_VDS, E_UUID);
+            //append_error(seq, TAG_IDENT_PVD, RESERVE_VDS, E_UUID);
             //TODO create fix somewhere
             break;
         }
