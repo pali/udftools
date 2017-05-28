@@ -43,4 +43,6 @@ AC_C_BIGENDIAN
 AM_CONDITIONAL(WORDS_LITTLEENDIAN, test "x$ac_cv_c_bigendian" = "xno")
 AM_CONDITIONAL(WORDS_BIGENDIAN, test "x$ac_cv_c_bigendian" = "xyes")
 
+AC_PROG_CC_C99
+
 AC_OUTPUT
