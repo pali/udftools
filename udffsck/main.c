@@ -20,6 +20,7 @@
  *
  */
 #define _POSIX_C_SOURCE 200808L
+#define _DEFAULT_SOURCE
 
 #include "config.h"
 
@@ -36,6 +37,10 @@
 #include <sys/mman.h>
 #include <limits.h>
 #include <signal.h>
+#include <mntent.h>
+#include <sys/vfs.h>
+#include <sys/stat.h>
+#include <sys/vfs.h>
 
 #include <ecma_167.h>
 #include <libudffs.h>
@@ -123,12 +128,27 @@ int main(int argc, char *argv[]) {
         err("No medium given. Use -h for help.\n");
         exit(16);
     }
-    
+
     if(blocksize > 0) {
         force_sectorsize = 1;
     }
 
     msg("Medium to analyze: %s\n", path);
+    
+    //Check if medium is mounted or not
+    FILE* mtab = setmntent("/etc/mtab", "r");
+    struct mntent* m;
+    struct mntent mnt;
+    char strings[4096];
+    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
+        dbg("%s\n", mnt.mnt_fsname);
+        if(strcmp(mnt.mnt_fsname, path) == 0) { //Match
+            err("Medium is mounted, therefore cannot be checked. Exiting.\n");
+            exit(16);
+        }
+    }
+
+    endmntent(mtab);
 
     int prot = PROT_READ;
     int flags = O_RDONLY;
@@ -146,7 +166,7 @@ int main(int argc, char *argv[]) {
     if((fp = fopen(path, "r")) == NULL) {
         fatal("Error opening %s: %s.", path, strerror(errno));
         exit(16);
-    } 
+    }
     //Lock medium to ensure no-one is going to change during our operation. Make nonblocking, so it will fail when medium is already locked.
     if(flock(fd, LOCK_EX | LOCK_NB)) { 
         fatal("Error locking %s, %s. Is antoher process using it?\n", path, strerror(errno));
@@ -209,7 +229,7 @@ int main(int argc, char *argv[]) {
         seq->anchor[0].error = get_avdp(dev, &disc, &blocksize, st_size, FIRST_AVDP, force_sectorsize, &stats); //try load FIRST AVDP
         seq->anchor[1].error = get_avdp(dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize, &stats); //load AVDP
         seq->anchor[2].error = get_avdp(dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
-        
+
         if(seq->anchor[0].error)
             err("AVDP[0] is broken.\n");
         if(seq->anchor[1].error)
@@ -277,7 +297,7 @@ int main(int argc, char *argv[]) {
         err("Unable to continue without FSD. Consider submitting bug report. Exiting.\n");
         exit(status);
     }
-    
+
     note("LBNLSN: %d\n", lbnlsn);
     status |= get_file_structure(dev, &disc, lbnlsn, &stats, seq);
 
@@ -299,7 +319,7 @@ int main(int argc, char *argv[]) {
         note("\n");
     }
     get_volume_identifier(&disc, &stats, seq);  
-    
+
     uint64_t countedBits = count_used_bits(&stats);
     dbg("**** BITMAP USED SPACE: %d ****\n", countedBits);
 
@@ -399,7 +419,7 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
-        
+
         if(fixavdp) {
             if(seq->anchor[0].error & E_EXTLEN) {
                 status |= fix_avdp(dev, &disc, blocksize, st_size, FIRST_AVDP);                 

@@ -839,6 +839,7 @@ int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, 
             err("Volume Set Identifier Unique Identifier is broken.\n");
             append_error(seq, TAG_IDENT_PVD, MAIN_VDS, E_UUID);
             append_error(seq, TAG_IDENT_PVD, RESERVE_VDS, E_UUID);
+            //TODO create fix somewhere
             break;
         }
     }
