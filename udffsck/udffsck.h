@@ -91,7 +91,7 @@ struct filesystemStats {
     uint8_t * expPartitionBitmap;
     timestamp LVIDtimestamp;
     dstring * partitionIdent;
-    dstring * volumeSetIdent;
+    char * volumeSetIdent;
 };
 
 struct fileInfo {

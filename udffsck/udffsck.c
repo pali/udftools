@@ -37,6 +37,7 @@ void increment_used_space(struct filesystemStats *stats, uint64_t increment, uin
 uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status);
 void print_file_chunks(struct filesystemStats *stats);
 int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size);
+int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error);
 
 // Local defines
 #define MARK_BLOCK 1    ///< Mark switch for markUsedBlock() function
@@ -827,7 +828,22 @@ int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, 
         err("No correct PVD found. Aborting.\n");
         return 4;
     }
-    stats->volumeSetIdent = disc->udf_pvd[vds]->volSetIdent;
+    char *namebuf = calloc(1,128*2);
+    memset(namebuf, 0, 128*2);
+    int size = decode_utf8(disc->udf_pvd[vds]->volSetIdent, namebuf, 128);
+    
+    for(int i=0; i<8; i++) {
+        if((namebuf[i] >= '0' && namebuf[i]<='9') || (namebuf[i] >='A' && namebuf[i] <= 'Z') || (namebuf[i] >= 'a' && namebuf[i] <= 'z')) {
+           continue; 
+        } else {
+            err("Volume Set Identifier Unique Identifier is broken.\n");
+            append_error(seq, TAG_IDENT_PVD, MAIN_VDS, E_UUID);
+            append_error(seq, TAG_IDENT_PVD, RESERVE_VDS, E_UUID);
+            break;
+        }
+    }
+    
+    stats->volumeSetIdent = namebuf;
     stats->partitionIdent = disc->udf_fsd->logicalVolIdent;
     return 0;
 }
