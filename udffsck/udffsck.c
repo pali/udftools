@@ -354,7 +354,7 @@ int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
     int notFound = 0;
     int foundBEA = 0;
     uint16_t chunk = 0;
-    uint32_t pagesize = sysconf(_SC_PAGE_SIZE);
+    uint32_t chunksize = CHUNK_SIZE;
 
     for(int it=0; it<5; it++, ssize *= 2) {
         if(force_sectorsize) {
@@ -366,10 +366,10 @@ int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
         dbg("Try sectorsize %d\n", ssize);
 
         for(int i = 0; i<6; i++) {
-            chunk = (16*BLOCK_SIZE+i*ssize)/pagesize; 
-            dbg("try #%d at address 0x%x, chunk %d, chunk address: 0x%x\n", i, 16*BLOCK_SIZE+i*ssize, chunk, (16*BLOCK_SIZE+i*ssize)%pagesize);
+            chunk = (16*BLOCK_SIZE+i*ssize)/chunksize; 
+            dbg("try #%d at address 0x%x, chunk %d, chunk address: 0x%x\n", i, 16*BLOCK_SIZE+i*ssize, chunk, (16*BLOCK_SIZE+i*ssize)%chunksize);
             dbg("Chunk pointer: %p\n", dev[chunk]);
-            memcpy(&vsd, dev[chunk]+(16*BLOCK_SIZE+i*ssize)%pagesize, sizeof(vsd));
+            memcpy(&vsd, dev[chunk]+(16*BLOCK_SIZE+i*ssize)%chunksize, sizeof(vsd));
             dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
 
             if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BEA01, 5)) {
@@ -476,7 +476,7 @@ int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsi
     int ssize = 512;
     int it = 0;
     int status = 0;
-    uint32_t pagesize = sysconf(_SC_PAGE_SIZE);
+    uint32_t chunksize = CHUNK_SIZE;
     uint32_t chunk = 0;
     uint32_t offset = 0;
 
@@ -505,15 +505,17 @@ int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsi
 
         dbg("DevSize: %zu\n", devsize);
         dbg("Current position: %lx\n", position);
-        chunk = position/pagesize;
-        offset = position%pagesize;
+        chunk = position/chunksize;
+        offset = position%chunksize;
         dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
 
         if(disc->udf_anchor[type] == NULL) {
             disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
         }
 
+        dbg("AVDP chunk ptr: %p\n", dev[chunk]+offset);
         desc_tag = *(tag *)(dev[chunk]+offset);
+        dbg("Tag allocated\n");
 
         if(!checksum(desc_tag)) {
             status |= E_CHECKSUM;
@@ -589,7 +591,7 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
     int8_t counter = 0;
     tag descTag;
     uint64_t location = 0;
-    uint32_t pagesize = sysconf(_SC_PAGE_SIZE);
+    uint32_t chunksize = CHUNK_SIZE;
     uint32_t chunk = 0;
     uint32_t offset = 0;
 
@@ -604,8 +606,8 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
             dbg("VDS location: 0x%x\n", disc->udf_anchor[avdp]->reserveVolDescSeqExt.extLocation);
             break;
     }
-    chunk = location/pagesize;
-    offset = location%pagesize;
+    chunk = location/chunksize;
+    offset = location%chunksize;
     position = dev[chunk]+offset;
     dbg("VDS Location: 0x%x, chunk: %d, offset: 0x%x\n", location, chunk, offset);
 
@@ -709,8 +711,8 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
         }
 
         location = location + sectorsize;
-        chunk = location/pagesize;
-        offset = location%pagesize;
+        chunk = location/chunksize;
+        offset = location%chunksize;
         dbg("New VDS Location: 0x%x, chunk: %d, offset: 0x%x\n", location, chunk, offset);
         position = dev[chunk]+offset;
     }

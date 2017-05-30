@@ -187,12 +187,16 @@ int main(int argc, char *argv[]) {
     st_size = ftello(fp);
     dbg("Size: 0x%lx\n", (long)st_size);
  
-    uint32_t pagesize = sysconf(_SC_PAGE_SIZE);
-    dbg("Page size %d\n", pagesize);
-    dev = calloc(sizeof(uint8_t *), st_size/pagesize);
-    dbg("Amount of chunks: %d\n", st_size/pagesize);
-    for(uint32_t i=0; i<st_size/pagesize; i++) {
-        dev[i] = (uint8_t *)mmap(NULL, pagesize, prot, MAP_SHARED, fd, i*pagesize);
+    uint32_t chunksize = CHUNK_SIZE;
+    uint64_t rest = st_size%chunksize;
+    dbg("Chunk size %ld, rest: %ld\n", chunksize, rest);
+    dev = calloc(sizeof(uint8_t *), st_size/chunksize + (rest > 0 ? 1 : 0));
+    dbg("Amount of chunks: %d\n", st_size/chunksize + (rest > 0 ? 1 : 0));
+    for(uint64_t i=0; i<st_size/chunksize +(rest > 0 ? 1 : 0) ; i++) {
+        if(rest > 0 && i==st_size/chunksize)
+            dev[i] = (uint8_t *)mmap(NULL, rest, prot, MAP_SHARED, fd, i*chunksize);
+        else
+            dev[i] = (uint8_t *)mmap(NULL, chunksize, prot, MAP_SHARED, fd, i*chunksize);
         if(dev[i] == MAP_FAILED) {
             switch(errno) {
                 case EACCES: dbg("EACCES\n"); break;
@@ -208,12 +212,27 @@ int main(int argc, char *argv[]) {
                 default: dbg("EUnknown\n"); break;
             }
 
-
             fatal("Error maping %s: %s.\n", path, strerror(errno));
             exit(16);
         }
-//        dbg("Chunk #%d allocated, pointer: %p\n", i, dev[i]);
+        dbg("Chunk #%d allocated, pointer: %p, offset 0x%llx\n", i, dev[i], i*chunksize);
 
+    }
+
+    uint8_t *dd = dev[0]+/*0x327ffe00*/0x20000;
+    for(int i=0; i < 2048; ) {
+        for(int j=0; j<64; j++, i++) {
+            note("%02x ", *((dd)+i));
+        }
+        note("\n");
+    }
+    note("\n");
+    dd = dev[7]+0x327ffe00;
+    for(int i=0; i < 2048; ) {
+        for(int j=0; j<64; j++, i++) {
+            note("%02x ", *((dd)+i));
+        }
+        note("\n");
     }
 
     // Unalloc path
@@ -545,8 +564,9 @@ int main(int argc, char *argv[]) {
     //---------------- Clean up -----------------
 
     note("Clean allocations\n");
-    for(uint32_t i=0; i<st_size/pagesize; i++) {
-        munmap(dev[i], pagesize);
+    for(uint64_t i=0; i<st_size/chunksize + (rest > 0 ? 1 : 0); i++) {
+        munmap(dev[i], chunksize);
+        dbg("Chunk #%d cleared\n",i);
     }
     free(dev);
 

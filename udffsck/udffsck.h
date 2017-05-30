@@ -35,6 +35,7 @@
 
 #define VDS_STRUCT_AMOUNT 8 ///< Maximum amount of VDS descriptors 
 #define BLOCK_SIZE 2048 ///< Minimal VRS search block size
+#define CHUNK_SIZE ((uint32_t)0x80000000) ///< Chunk size for using
 
 typedef enum {
     FIRST_AVDP = 0, 
