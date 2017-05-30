@@ -25,6 +25,7 @@
 #include <math.h>
 #include <time.h>
 #include <limits.h>
+#include <sys/mman.h>
 
 #include "udffsck.h"
 #include "utils.h"
@@ -116,7 +117,7 @@ uint16_t calculate_crc(void * restrict desc, uint16_t size) {
     uint8_t offset = sizeof(tag);
     tag *descTag = desc;
     uint16_t crc = 0;
-   
+
     if(size >= 16) {
         uint16_t calcCrc = udf_crc((uint8_t *)(desc) + offset, size - offset, crc);
         return calcCrc;
@@ -331,6 +332,51 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
     msg("\n");
 }
 
+void unmap_chunk(uint8_t **dev, uint32_t chunk) {
+    munmap(dev[chunk], CHUNK_SIZE);
+    dbg("\tChunk #%d unmapped\n", chunk);
+}
+
+void map_chunk(int fd, uint8_t **dev, uint32_t chunk, uint64_t st_size) {
+    uint32_t chunksize = CHUNK_SIZE;
+    uint64_t rest = st_size%chunksize;
+    dbg("\tChunk size 0x%llx, rest: 0x%llx\n", chunksize, rest);
+
+    int prot = PROT_READ;
+    // If is there some request for corrections, we need read/write access to medium
+    if(interactive || autofix) {
+        prot |= PROT_WRITE;
+        dbg("\tRW\n");
+    }
+
+    if(rest > 0 && chunk==st_size/chunksize) {
+        dbg("\tRest used\n");
+        dev[chunk] = (uint8_t *)mmap(NULL, rest, prot, MAP_SHARED, fd, (uint64_t)(chunk)*chunksize);
+    } else {
+        dbg("\tChunk size used\n");
+        dev[chunk] = (uint8_t *)mmap(NULL, chunksize, prot, MAP_SHARED, fd, (uint64_t)(chunk)*chunksize);
+    }
+    if(dev[chunk] == MAP_FAILED) {
+        switch(errno) {
+            case EACCES: dbg("EACCES\n"); break;
+            case EAGAIN: dbg("EAGAIN\n"); break;
+            case EBADF: dbg("EBADF\n"); break;
+            case EINVAL: dbg("EINVAL\n"); break;
+            case ENFILE: dbg("ENFILE\n"); break;
+            case ENODEV: dbg("ENODEV\n"); break;
+            case ENOMEM: dbg("ENOMEM\n"); break;
+            case EPERM: dbg("EPERM\n"); break;
+            case ETXTBSY: dbg("ETXTBSY\n"); break;
+            case EOVERFLOW: dbg("EOVERFLOW\n"); break;
+            default: dbg("EUnknown\n"); break;
+        }
+
+        fatal("\tError maping: %s.\n", strerror(errno));
+        exit(16);
+    }
+    dbg("\tChunk #%d allocated, pointer: %p, offset 0x%llx\n", chunk, dev[chunk], chunk*chunksize);
+}
+
 /**
  * \brief UDF VRS detection function
  *
@@ -345,7 +391,7 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
  * \return -1 -- found BOOT2 or CDW02. Unsupported for now
  * \return 1 -- UDF not detected 
  */
-int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
+int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sectorsize) {
     struct volStructDesc vsd;
     struct beginningExtendedAreaDesc bea;
     struct volStructDesc nsr;
@@ -356,17 +402,20 @@ int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
     uint16_t chunk = 0;
     uint32_t chunksize = CHUNK_SIZE;
 
+    //void map_chunk(int fd, uint8_t **dev, uint32_t chunk, uint64_t st_size) {
+
     for(int it=0; it<5; it++, ssize *= 2) {
         if(force_sectorsize) {
             ssize = *sectorsize;
             it = INT_MAX - 1; //End after this iteration
             dbg("Forced sectorsize\n");
         }
-        
+
         dbg("Try sectorsize %d\n", ssize);
 
         for(int i = 0; i<6; i++) {
             chunk = (16*BLOCK_SIZE+i*ssize)/chunksize; 
+            map_chunk(fd, dev, chunk, st_size);
             dbg("try #%d at address 0x%x, chunk %d, chunk address: 0x%x\n", i, 16*BLOCK_SIZE+i*ssize, chunk, (16*BLOCK_SIZE+i*ssize)%chunksize);
             dbg("Chunk pointer: %p\n", dev[chunk]);
             memcpy(&vsd, dev[chunk]+(16*BLOCK_SIZE+i*ssize)%chunksize, sizeof(vsd));
@@ -378,11 +427,13 @@ int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
                 foundBEA = 1; 
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BOOT2, 5)) {
                 err("BOOT2 found, unsuported for now.\n");
+                unmap_chunk(dev, chunk);
                 return -1;
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CD001, 5)) { 
                 //CD001 means there is ISO9660, we try search for UDF at sector 18
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CDW02, 5)) {
                 err("CDW02 found, unsuported for now.\n");
+                unmap_chunk(dev, chunk);
                 return -1;
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR01, 5)) {
                 memcpy(&nsr, &vsd, sizeof(nsr));
@@ -393,8 +444,10 @@ int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_TEA01, 5)) {
                 //We found TEA01, so we can end recognition sequence
                 memcpy(&tea, &vsd, sizeof(tea));
+                unmap_chunk(dev, chunk);
                 break;
             } else if(vsd.stdIdent[0] == '\0') {
+                unmap_chunk(dev, chunk);
                 if(foundBEA) {
                     continue;
                 }
@@ -403,6 +456,7 @@ int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
             } else {
                 err("Unknown identifier: %s. Exiting\n", vsd.stdIdent);
                 notFound = 1;
+                unmap_chunk(dev, chunk);
                 break;
             }  
         }
@@ -417,10 +471,12 @@ int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
         dbg("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
 
         *sectorsize = ssize;
+        unmap_chunk(dev, chunk);
         return 0;
     }
-    
+
     err("Giving up VRS, maybe unclosed or bridged disc.\n");
+    unmap_chunk(dev, chunk);
     return 1;
 }
 
@@ -435,7 +491,7 @@ int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
 uint64_t count_used_bits(struct filesystemStats *stats) {
     if(stats->actPartitionBitmap == NULL)
         return -1;
-    
+
     uint64_t countedBits = 0;
     uint8_t rest = stats->partitionNumOfBits % 8;
     for(int i = 0; i<stats->partitionNumOfBytes; i++) {
@@ -463,14 +519,14 @@ uint64_t count_used_bits(struct filesystemStats *stats) {
  * \param[in] *dev pointer to device array
  * \param[out] *disc AVDP is stored in udf_disc structure
  * \param[in,out] *sectorsize device logical sector size
- * \param[in] devsize size of whole device in LSN
+ * \param[in] devsize size of whole device in B
  * \param[in] type selector of AVDP - first or second
  * \param[in] *stats statistics of file system
  *
  * \return  0 everything is ok
  * \return sum of E_CRC, E_CHECKSUM, E_WRONGDESC, E_POSITION, E_EXTLEN  
  */
-int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats) {
+int get_avdp(int fd, uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats) {
     int64_t position = 0;
     tag desc_tag;
     int ssize = 512;
@@ -508,6 +564,7 @@ int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsi
         chunk = position/chunksize;
         offset = position%chunksize;
         dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+        map_chunk(fd, dev, chunk, devsize); 
 
         if(disc->udf_anchor[type] == NULL) {
             disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
@@ -519,10 +576,12 @@ int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsi
 
         if(!checksum(desc_tag)) {
             status |= E_CHECKSUM;
+            unmap_chunk(dev, chunk); 
             continue;
         }
         if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
             status |= E_WRONGDESC;
+            unmap_chunk(dev, chunk); 
             continue;
         }
         dbg("Tag Serial Num: %d\n", desc_tag.tagSerialNum);
@@ -536,14 +595,16 @@ int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsi
 
         if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
             status |= E_CRC;
+            unmap_chunk(dev, chunk); 
             continue;
         }
 
         if(check_position(desc_tag, position/ssize)) {
             status |= E_POSITION;
+            unmap_chunk(dev, chunk); 
             continue;
         }
-            
+
         dbg("AVDP[%d]: Main Ext Len: %d, Reserve Ext Len: %d\n", type, disc->udf_anchor[type]->mainVolDescSeqExt.extLength, disc->udf_anchor[type]->reserveVolDescSeqExt.extLength);    
         dbg("AVDP[%d]: Main Ext Pos: 0x%08x, Reserve Ext Pos: 0x%08x\n", type, disc->udf_anchor[type]->mainVolDescSeqExt.extLocation, disc->udf_anchor[type]->reserveVolDescSeqExt.extLocation);    
         if(disc->udf_anchor[type]->mainVolDescSeqExt.extLength < 16*ssize ||  disc->udf_anchor[type]->reserveVolDescSeqExt.extLength < 16*ssize) {
@@ -552,7 +613,7 @@ int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsi
 
         msg("AVDP[%d] successfully loaded.\n", type);
         *sectorsize = ssize;
-        
+
         if(status & E_CHECKSUM) {
             err("Checksum failure at AVDP[%d]\n", type);
         }
@@ -567,9 +628,11 @@ int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsi
         }
         if(status & E_EXTLEN) {
             err("Main or Reserve Extent Length at AVDP[%d] is less than 16 sectors\n", type);
-        }   
+        }  
+        unmap_chunk(dev, chunk); 
         return status;
     }
+    unmap_chunk(dev, chunk); 
     return status;
 }
 
@@ -586,7 +649,7 @@ int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsi
  *         -3 found unknown tag
  *         -4 descriptor is already set
  */
-int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq) {
+int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t st_size, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq) {
     uint8_t *position;
     int8_t counter = 0;
     tag descTag;
@@ -608,6 +671,7 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
     }
     chunk = location/chunksize;
     offset = location%chunksize;
+    map_chunk(fd, dev, chunk, st_size); 
     position = dev[chunk]+offset;
     dbg("VDS Location: 0x%x, chunk: %d, offset: 0x%x\n", location, chunk, offset);
 
@@ -634,6 +698,7 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
             case TAG_IDENT_PVD:
                 if(disc->udf_pvd[vds] != 0) {
                     err("Structure PVD is already set. Probably error at tag or media\n");
+                    unmap_chunk(dev, chunk);
                     return -4;
                 }
                 disc->udf_pvd[vds] = malloc(sizeof(struct primaryVolDesc)); // Prepare memory
@@ -646,6 +711,7 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
             case TAG_IDENT_IUVD:
                 if(disc->udf_iuvd[vds] != 0) {
                     err("Structure IUVD is already set. Probably error at tag or media\n");
+                    unmap_chunk(dev, chunk);
                     return -4;
                 }
                 disc->udf_iuvd[vds] = malloc(sizeof(struct impUseVolDesc)); // Prepare memory
@@ -654,6 +720,7 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
             case TAG_IDENT_PD:
                 if(disc->udf_pd[vds] != 0) {
                     err("Structure PD is already set. Probably error at tag or media\n");
+                    unmap_chunk(dev, chunk);
                     return -4;
                 }
                 disc->udf_pd[vds] = malloc(sizeof(struct partitionDesc)); // Prepare memory
@@ -662,6 +729,7 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
             case TAG_IDENT_LVD:
                 if(disc->udf_lvd[vds] != 0) {
                     err("Structure LVD is already set. Probably error at tag or media\n");
+                    unmap_chunk(dev, chunk);
                     return -4;
                 }
                 dbg("LVD size: 0x%lx\n", sizeof(struct logicalVolDesc));
@@ -681,6 +749,7 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
             case TAG_IDENT_USD:
                 if(disc->udf_usd[vds] != 0) {
                     err("Structure USD is already set. Probably error at tag or media\n");
+                    unmap_chunk(dev, chunk);
                     return -4;
                 }
 
@@ -695,27 +764,34 @@ int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e av
             case TAG_IDENT_TD:
                 if(disc->udf_td[vds] != 0) {
                     err("Structure TD is already set. Probably error at tag or media\n");
+                    unmap_chunk(dev, chunk);
                     return -4;
                 }
                 disc->udf_td[vds] = malloc(sizeof(struct terminatingDesc)); // Prepare memory
                 memcpy(disc->udf_td[vds], position, sizeof(struct terminatingDesc)); 
                 // Found terminator, ending.
+                unmap_chunk(dev, chunk);
                 return 0;
             case 0:
                 // Found end of VDS, ending.
+                unmap_chunk(dev, chunk);
                 return 0;
             default:
                 // Unkown TAG
                 fatal("Unknown TAG found at %p. Ending.\n", position);
+                unmap_chunk(dev, chunk);
                 return -3;
         }
 
+        unmap_chunk(dev, chunk);
         location = location + sectorsize;
         chunk = location/chunksize;
         offset = location%chunksize;
         dbg("New VDS Location: 0x%x, chunk: %d, offset: 0x%x\n", location, chunk, offset);
+        map_chunk(fd, dev, chunk, st_size); 
         position = dev[chunk]+offset;
     }
+    unmap_chunk(dev, chunk);
     return 0;
 }
 
@@ -849,10 +925,10 @@ int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, 
     char *namebuf = calloc(1,128*2);
     memset(namebuf, 0, 128*2);
     int size = decode_utf8(disc->udf_pvd[vds]->volSetIdent, namebuf, 128);
-    
+
     for(int i=0; i<16; i++) {
         if((namebuf[i] >= '0' && namebuf[i]<='9') || (namebuf[i] >= 'a' && namebuf[i] <= 'z')) {
-           continue; 
+            continue; 
         } else {
             warn("Volume Set Identifier Unique Identifier is not compliant.\n");
             //append_error(seq, TAG_IDENT_PVD, MAIN_VDS, E_UUID);
@@ -861,7 +937,7 @@ int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, 
             break;
         }
     }
-    
+
     stats->volumeSetIdent = namebuf;
     stats->partitionIdent = disc->udf_fsd->logicalVolIdent;
     return 0;
@@ -983,11 +1059,11 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
         return 4;
     }
     uint32_t lbSize = le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize); 
-    
+
     lap = (long_ad *)disc->udf_lvd[vds]->logicalVolContentsUse; //FIXME BIG_ENDIAN use lela_to_cpu, but not on ptr to disc. Must store it on different place.
     lb_addr filesetblock = lelb_to_cpu(lap->extLocation);
     uint32_t filesetlen = lap->extLength;
-    
+
     dbg("FSD at (%d, p%d)\n", 
             lap->extLocation.logicalBlockNum,
             lap->extLocation.partitionReferenceNum);
@@ -1061,7 +1137,7 @@ uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint3
             err("AED position differs\n");
             *status |= 4;
         }
-        
+
         lad = aed->lengthAllocDescs;
         *ADArray = (uint8_t *)(aed)+sizeof(struct allocExtDesc);
         *lengthADArray = lad;
@@ -1113,7 +1189,7 @@ uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint3
  * \return 255 -- inspect_aed() failed
  */
 uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *allocDescs, uint32_t lengthAllocDescs, uint16_t icb_ad, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
-    
+
     uint32_t descSize = 0;
     uint8_t *fidArray = NULL;
     uint32_t nAD = 0;
@@ -1138,12 +1214,12 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
             dbg("Extended AD\n");
             descSize = sizeof(ext_ad);
             break;
-        defualt:
+defualt:
             err("[translate_fid] Unsupported icb_ad: 0x%04x\n", icb_ad);
             return 1;
     }
     dbg("LengthOfAllocDescs: %d\n", lengthAllocDescs);
-    
+
     nAD = lengthAllocDescs/descSize;
 
 #if 0 // For debug purposes only
@@ -1389,7 +1465,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
             dbg("%sFilename: %s\n", depth2str(depth), namebuf/*fid->fileIdent*/);
             info.filename = namebuf/*(char *)fid->fileIdent+1*/;
         }
-        
+
         dbg("Tag Serial Num: %d\n", fid->descTag.tagSerialNum);
         if(stats->AVDPSerialNum != fid->descTag.tagSerialNum) {
             err("(%s) Tag Serial Number differs.\n", info.filename);
@@ -1422,7 +1498,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
         }
 
         dbg("FileVersionNum: %d\n", fid->fileVersionNum);
-        
+
         info.fileCharacteristics = fid->fileCharacteristics;
         if((fid->fileCharacteristics & FID_FILE_CHAR_DELETED) == 0) { //NOT deleted, continue
             dbg("ICB: LSN: %d, length: %d\n", fid->icb.extLocation.logicalBlockNum + lsnBase, fid->icb.extLength);
@@ -1501,7 +1577,7 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                         err("(%s) FID parent FE not found.\n", info.filename);
                     }
                     imp("(%s) Unifinished file was removed.\n", info.filename);
-                  
+
                     tmp_status = 1;    
                 }
                 *status |= tmp_status;
@@ -1601,7 +1677,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     struct fileEntry *fe;
     struct extendedFileEntry *efe;
     int vds = -1;
-    
+
     if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
         err("No correct LVD found. Aborting.\n");
         return 4;
@@ -2004,7 +2080,7 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
     uint32_t lsnBase = lbnlsn; 
     int status = 0;
     uint32_t elen = 0, selen = 0;
-    
+
     int vds = -1;
     if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
         err("No correct LVD found. Aborting.\n");
@@ -2351,7 +2427,7 @@ int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devs
     }
     disc->udf_anchor[type]->descTag.descCRC = calculate_crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr));
     disc->udf_anchor[type]->descTag.tagChecksum = calculate_checksum(disc->udf_anchor[type]->descTag);
-    
+
     memcpy(dev+targetPosition, disc->udf_anchor[type], sizeof(struct anchorVolDescPtr));
 
     imp("AVDP[%d] Extent Length successfully fixed.\n", type);
@@ -2518,7 +2594,7 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         //Unhandled. Not found on any medium.
         err("[USD] Unallocated Space Table is unhandled. Skipping.\n");
     }
-    
+
     if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
         uint32_t lsnBase = disc->udf_pd[vds]->partitionStartingLocation;       
         struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
@@ -2646,7 +2722,7 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         dbg("Unused blocks: %d\n", unusedBlocks);
         dbg("Used Blocks: %d\n", usedBlocks);
     }
-    
+
     //Mark used space
     increment_used_space(stats, phd->unallocSpaceTable.extLength, phd->unallocSpaceTable.extPosition);
     increment_used_space(stats, phd->unallocSpaceBitmap.extLength, phd->unallocSpaceBitmap.extPosition);
@@ -2678,7 +2754,7 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
         err("No correct LVD found. Aborting.\n");
         return 4;
     }
-    
+
     uint32_t loc = disc->udf_lvd[vds]->integritySeqExt.extLocation;
     uint32_t len = disc->udf_lvd[vds]->integritySeqExt.extLength;
     uint16_t size = sizeof(struct logicalVolIntegrityDesc) + disc->udf_lvid->numOfPartitions*4*2 + disc->udf_lvid->lengthOfImpUse;

@@ -150,11 +150,11 @@ int main(int argc, char *argv[]) {
 
     endmntent(mtab);
 
-    int prot = PROT_READ;
+//    int prot = PROT_READ;
     int flags = O_RDONLY;
     // If is there some request for corrections, we need read/write access to medium
     if(interactive || autofix) {
-        prot |= PROT_WRITE;
+ //       prot |= PROT_WRITE;
         flags = O_RDWR;
         dbg("RW\n");
     }
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
     dbg("Chunk size %ld, rest: %ld\n", chunksize, rest);
     dev = calloc(sizeof(uint8_t *), st_size/chunksize + (rest > 0 ? 1 : 0));
     dbg("Amount of chunks: %d\n", st_size/chunksize + (rest > 0 ? 1 : 0));
-    for(uint64_t i=0; i<st_size/chunksize +(rest > 0 ? 1 : 0) ; i++) {
+    /*for(uint64_t i=0; i<st_size/chunksize +(rest > 0 ? 1 : 0) ; i++) {
         if(rest > 0 && i==st_size/chunksize)
             dev[i] = (uint8_t *)mmap(NULL, rest, prot, MAP_SHARED, fd, i*chunksize);
         else
@@ -217,23 +217,7 @@ int main(int argc, char *argv[]) {
         }
         dbg("Chunk #%d allocated, pointer: %p, offset 0x%llx\n", i, dev[i], i*chunksize);
 
-    }
-
-    uint8_t *dd = dev[0]+/*0x327ffe00*/0x20000;
-    for(int i=0; i < 2048; ) {
-        for(int j=0; j<64; j++, i++) {
-            note("%02x ", *((dd)+i));
-        }
-        note("\n");
-    }
-    note("\n");
-    dd = dev[7]+0x327ffe00;
-    for(int i=0; i < 2048; ) {
-        for(int j=0; j<64; j++, i++) {
-            note("%02x ", *((dd)+i));
-        }
-        note("\n");
-    }
+    }*/
 
     // Unalloc path
     free(path);
@@ -243,20 +227,20 @@ int main(int argc, char *argv[]) {
     seq = calloc(1, sizeof(vds_sequence_t));
 
     stats.AVDPSerialNum = 0xFFFF;
-    status = is_udf(dev, &blocksize, force_sectorsize); //this function is checking for UDF recognition sequence. It also tries to detect blocksize
+    status = is_udf(fd, dev, &blocksize, st_size, force_sectorsize); //this function is checking for UDF recognition sequence. It also tries to detect blocksize
     if(status < 0) {
         exit(status);
     } else if(status == 1) { //Unclosed or bridged medium 
-        status = get_avdp(dev, &disc, &blocksize, st_size, -1, force_sectorsize, &stats); //load AVDP and verify blocksize
+        status = get_avdp(fd, dev, &disc, &blocksize, st_size, -1, force_sectorsize, &stats); //load AVDP and verify blocksize
         source = FIRST_AVDP; // Unclosed medium have only one AVDP and that is saved at first position.
         if(status) {
             err("AVDP is broken. Aborting.\n");
             exit(4);
         }
     } else { //Normal medium
-        seq->anchor[0].error = get_avdp(dev, &disc, &blocksize, st_size, FIRST_AVDP, force_sectorsize, &stats); //try load FIRST AVDP
-        seq->anchor[1].error = get_avdp(dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize, &stats); //load AVDP
-        seq->anchor[2].error = get_avdp(dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
+        seq->anchor[0].error = get_avdp(fd, dev, &disc, &blocksize, st_size, FIRST_AVDP, force_sectorsize, &stats); //try load FIRST AVDP
+        seq->anchor[1].error = get_avdp(fd, dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize, &stats); //load AVDP
+        seq->anchor[2].error = get_avdp(fd, dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
 
         if(seq->anchor[0].error)
             err("AVDP[0] is broken.\n");
@@ -291,9 +275,9 @@ int main(int argc, char *argv[]) {
     }
 
     note("\nTrying to load first VDS\n");
-    status |= get_vds(dev, &disc, blocksize, source, MAIN_VDS, seq); //load main VDS
+    status |= get_vds(fd, dev, &disc, blocksize, st_size, source, MAIN_VDS, seq); //load main VDS
     note("\nTrying to load second VDS\n");
-    status |= get_vds(dev, &disc, blocksize, source, RESERVE_VDS, seq); //load reserve VDS
+    status |= get_vds(fd, dev, &disc, blocksize, st_size, source, RESERVE_VDS, seq); //load reserve VDS
 
     dbg("First VDS verification\n");
     verify_vds(&disc, MAIN_VDS, seq);
@@ -564,10 +548,6 @@ int main(int argc, char *argv[]) {
     //---------------- Clean up -----------------
 
     note("Clean allocations\n");
-    for(uint64_t i=0; i<st_size/chunksize + (rest > 0 ? 1 : 0); i++) {
-        munmap(dev[i], chunksize);
-        dbg("Chunk #%d cleared\n",i);
-    }
     free(dev);
 
     free(disc.udf_anchor[0]);
