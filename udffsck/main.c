@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
     int status = 0;
     int blocksize = -1;
     struct udf_disc disc = {0};
-    uint8_t *dev;
+    uint8_t **dev;
     off_t st_size;
     vds_sequence_t *seq; 
     struct filesystemStats stats =  {0};
@@ -186,25 +186,34 @@ int main(int argc, char *argv[]) {
     } 
     st_size = ftello(fp);
     dbg("Size: 0x%lx\n", (long)st_size);
-    dev = (uint8_t *)mmap(NULL, st_size, prot, MAP_SHARED, fd, 0);
-    if(dev == MAP_FAILED) {
-        switch(errno) {
-            case EACCES: dbg("EACCES\n"); break;
-            case EAGAIN: dbg("EAGAIN\n"); break;
-            case EBADF: dbg("EBADF\n"); break;
-            case EINVAL: dbg("EINVAL\n"); break;
-            case ENFILE: dbg("ENFILE\n"); break;
-            case ENODEV: dbg("ENODEV\n"); break;
-            case ENOMEM: dbg("ENOMEM\n"); break;
-            case EPERM: dbg("EPERM\n"); break;
-            case ETXTBSY: dbg("ETXTBSY\n"); break;
-            case EOVERFLOW: dbg("EOVERFLOW\n"); break;
-            default: dbg("EUnknown\n"); break;
+ 
+    uint32_t pagesize = sysconf(_SC_PAGE_SIZE);
+    dbg("Page size %d\n", pagesize);
+    dev = calloc(sizeof(uint8_t *), st_size/pagesize);
+    dbg("Amount of chunks: %d\n", st_size/pagesize);
+    for(uint32_t i=0; i<st_size/pagesize; i++) {
+        dev[i] = (uint8_t *)mmap(NULL, pagesize, prot, MAP_SHARED, fd, i*pagesize);
+        if(dev[i] == MAP_FAILED) {
+            switch(errno) {
+                case EACCES: dbg("EACCES\n"); break;
+                case EAGAIN: dbg("EAGAIN\n"); break;
+                case EBADF: dbg("EBADF\n"); break;
+                case EINVAL: dbg("EINVAL\n"); break;
+                case ENFILE: dbg("ENFILE\n"); break;
+                case ENODEV: dbg("ENODEV\n"); break;
+                case ENOMEM: dbg("ENOMEM\n"); break;
+                case EPERM: dbg("EPERM\n"); break;
+                case ETXTBSY: dbg("ETXTBSY\n"); break;
+                case EOVERFLOW: dbg("EOVERFLOW\n"); break;
+                default: dbg("EUnknown\n"); break;
+            }
+
+
+            fatal("Error maping %s: %s.\n", path, strerror(errno));
+            exit(16);
         }
+//        dbg("Chunk #%d allocated, pointer: %p\n", i, dev[i]);
 
-
-        fatal("Error maping %s: %s.\n", path, strerror(errno));
-        exit(16);
     }
 
     // Unalloc path
@@ -271,6 +280,8 @@ int main(int argc, char *argv[]) {
     verify_vds(&disc, MAIN_VDS, seq);
     dbg("Second VDS verification\n");
     verify_vds(&disc, RESERVE_VDS, seq);
+
+#if 0
 
     status |= get_lvid(dev, &disc, blocksize, &stats, seq); //load LVID
     if(stats.minUDFReadRev > MAX_VERSION){
@@ -530,10 +541,15 @@ int main(int argc, char *argv[]) {
     if(fix_status != 0) {
         status |= 1; // Errors were fixed
     }
-
+#endif
     //---------------- Clean up -----------------
 
     note("Clean allocations\n");
+    for(uint32_t i=0; i<st_size/pagesize; i++) {
+        munmap(dev[i], pagesize);
+    }
+    free(dev);
+
     free(disc.udf_anchor[0]);
     free(disc.udf_anchor[1]);
     free(disc.udf_anchor[2]);

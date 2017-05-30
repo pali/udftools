@@ -345,7 +345,7 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
  * \return -1 -- found BOOT2 or CDW02. Unsupported for now
  * \return 1 -- UDF not detected 
  */
-int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
+int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize) {
     struct volStructDesc vsd;
     struct beginningExtendedAreaDesc bea;
     struct volStructDesc nsr;
@@ -353,7 +353,8 @@ int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
     int ssize = 512;
     int notFound = 0;
     int foundBEA = 0;
-
+    uint16_t chunk = 0;
+    uint32_t pagesize = sysconf(_SC_PAGE_SIZE);
 
     for(int it=0; it<5; it++, ssize *= 2) {
         if(force_sectorsize) {
@@ -365,8 +366,10 @@ int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize) {
         dbg("Try sectorsize %d\n", ssize);
 
         for(int i = 0; i<6; i++) {
-            dbg("try #%d at address 0x%x\n", i, 16*BLOCK_SIZE+i*ssize);
-            memcpy(&vsd, dev+16*BLOCK_SIZE+i*ssize, sizeof(vsd));
+            chunk = (16*BLOCK_SIZE+i*ssize)/pagesize; 
+            dbg("try #%d at address 0x%x, chunk %d, chunk address: 0x%x\n", i, 16*BLOCK_SIZE+i*ssize, chunk, (16*BLOCK_SIZE+i*ssize)%pagesize);
+            dbg("Chunk pointer: %p\n", dev[chunk]);
+            memcpy(&vsd, dev[chunk]+(16*BLOCK_SIZE+i*ssize)%pagesize, sizeof(vsd));
             dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
 
             if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BEA01, 5)) {
@@ -467,12 +470,15 @@ uint64_t count_used_bits(struct filesystemStats *stats) {
  * \return  0 everything is ok
  * \return sum of E_CRC, E_CHECKSUM, E_WRONGDESC, E_POSITION, E_EXTLEN  
  */
-int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats) {
+int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats) {
     int64_t position = 0;
     tag desc_tag;
     int ssize = 512;
     int it = 0;
     int status = 0;
+    uint32_t pagesize = sysconf(_SC_PAGE_SIZE);
+    uint32_t chunk = 0;
+    uint32_t offset = 0;
 
     for(int it = 0; it < 5; it++, ssize *= 2) { 
 
@@ -499,12 +505,15 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsiz
 
         dbg("DevSize: %zu\n", devsize);
         dbg("Current position: %lx\n", position);
+        chunk = position/pagesize;
+        offset = position%pagesize;
+        dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
 
         if(disc->udf_anchor[type] == NULL) {
             disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
         }
 
-        desc_tag = *(tag *)(dev+position);
+        desc_tag = *(tag *)(dev[chunk]+offset);
 
         if(!checksum(desc_tag)) {
             status |= E_CHECKSUM;
@@ -521,7 +530,7 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsiz
             stats->AVDPSerialNum = 0; //No recovery support
         }
 
-        memcpy(disc->udf_anchor[type], dev+position, sizeof(struct anchorVolDescPtr));
+        memcpy(disc->udf_anchor[type], dev[chunk]+offset, sizeof(struct anchorVolDescPtr));
 
         if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
             status |= E_CRC;
@@ -575,26 +584,30 @@ int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsiz
  *         -3 found unknown tag
  *         -4 descriptor is already set
  */
-int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq) {
+int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq) {
     uint8_t *position;
     int8_t counter = 0;
     tag descTag;
     uint64_t location = 0;
+    uint32_t pagesize = sysconf(_SC_PAGE_SIZE);
+    uint32_t chunk = 0;
+    uint32_t offset = 0;
 
     // Go to first address of VDS
     switch(vds) {
         case MAIN_VDS:
             location = sectorsize*((uint64_t)(disc->udf_anchor[avdp]->mainVolDescSeqExt.extLocation));
-            position = dev + location;
             dbg("VDS location: 0x%x\n", disc->udf_anchor[avdp]->mainVolDescSeqExt.extLocation);
             break;
         case RESERVE_VDS:
             location = sectorsize*((uint64_t)(disc->udf_anchor[avdp]->reserveVolDescSeqExt.extLocation));
-            position = dev + location;
             dbg("VDS location: 0x%x\n", disc->udf_anchor[avdp]->reserveVolDescSeqExt.extLocation);
             break;
     }
-    dbg("Current position: %lx\n", position-dev);
+    chunk = location/pagesize;
+    offset = location%pagesize;
+    position = dev[chunk]+offset;
+    dbg("VDS Location: 0x%x, chunk: %d, offset: 0x%x\n", location, chunk, offset);
 
     // Go thru descriptors until TagIdent is 0 or amout is too big to be real
     while(counter < VDS_STRUCT_AMOUNT) {
@@ -606,10 +619,10 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
 
         if(vds == MAIN_VDS) {
             seq->main[counter].tagIdent = descTag.tagIdent;
-            seq->main[counter].tagLocation = (position-dev)/sectorsize;
+            seq->main[counter].tagLocation = (location)/sectorsize;
         } else {
             seq->reserve[counter].tagIdent = descTag.tagIdent;
-            seq->reserve[counter].tagLocation = (position-dev)/sectorsize;
+            seq->reserve[counter].tagLocation = (location)/sectorsize;
         }
 
         counter++;
@@ -695,8 +708,11 @@ int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avd
                 return -3;
         }
 
-        position = position + sectorsize;
-        dbg("New positon is 0x%lx\n", position-dev);
+        location = location + sectorsize;
+        chunk = location/pagesize;
+        offset = location%pagesize;
+        dbg("New VDS Location: 0x%x, chunk: %d, offset: 0x%x\n", location, chunk, offset);
+        position = dev[chunk]+offset;
     }
     return 0;
 }

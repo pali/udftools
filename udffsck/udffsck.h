@@ -131,13 +131,13 @@ uint64_t count_used_bits(struct filesystemStats *stats);
 int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, vds_sequence_t *seq );
 
 // UDF detection
-int is_udf(uint8_t *dev, int *sectorsize, int force_sectorsize);
-int get_avdp(uint8_t *dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats);
+int is_udf(uint8_t **dev, int *sectorsize, int force_sectorsize);
+int get_avdp(uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats);
 int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target);
 int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e target);
 
 // VDS functions
-int get_vds(uint8_t *dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq);
+int get_vds(uint8_t **dev, struct udf_disc *disc, int sectorsize, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq);
 int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq);
 int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq/*, uint8_t interactive, uint8_t autofix*/); 
 
