@@ -130,8 +130,8 @@ struct impUseLVID {
 char * print_timestamp(timestamp ts);
 uint64_t count_used_bits(struct filesystemStats *stats);
 int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, vds_sequence_t *seq );
-void unmap_chunk(uint8_t **dev, uint32_t chunk);
-void map_chunk(int fd, uint8_t **dev, uint32_t chunk, uint64_t st_size);
+void unmap_chunk(uint8_t **dev, uint32_t chunk, size_t st_size);
+void map_chunk(int fd, uint8_t **dev, uint32_t chunk, size_t st_size);
 
 // UDF detection
 int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sectorsize);

@@ -332,15 +332,34 @@ void print_file_info(struct fileInfo info, uint32_t depth) {
     msg("\n");
 }
 
-void unmap_chunk(uint8_t **dev, uint32_t chunk) {
-    munmap(dev[chunk], CHUNK_SIZE);
-    dbg("\tChunk #%d unmapped\n", chunk);
-}
-
-void map_chunk(int fd, uint8_t **dev, uint32_t chunk, uint64_t st_size) {
+void unmap_chunk(uint8_t **dev, uint32_t chunk, size_t st_size) {
     uint32_t chunksize = CHUNK_SIZE;
     uint64_t rest = st_size%chunksize;
-    dbg("\tChunk size 0x%llx, rest: 0x%llx\n", chunksize, rest);
+    if(dev[chunk] != NULL) {
+        dbg("Going to unmap chunk #%d, ptr: %p\n", chunk, dev[chunk]);
+        if(rest > 0 && chunk==st_size/chunksize) {
+            dbg("\tRest used\n");
+            munmap(dev[chunk], rest);
+        } else {
+            dbg("\tChunk size used\n");
+            munmap(dev[chunk], chunksize);
+        }
+        dev[chunk] = NULL;
+        dbg("\tChunk #%d unmapped\n", chunk);
+    } else {
+        dbg("\tChunk #%d is already unmapped\n");
+    }
+}
+
+void map_chunk(int fd, uint8_t **dev, uint32_t chunk, size_t st_size) {
+    uint32_t chunksize = CHUNK_SIZE;
+    uint64_t rest = st_size%chunksize;
+    if(dev[chunk] != NULL) {
+        dbg("\tChunk #%d is already mapped.\n", chunk);
+        return;
+    }
+
+    dbg("\tSize: 0x%llx, chunk size 0x%llx, rest: 0x%llx\n", st_size, chunksize, rest);
 
     int prot = PROT_READ;
     // If is there some request for corrections, we need read/write access to medium
@@ -348,7 +367,8 @@ void map_chunk(int fd, uint8_t **dev, uint32_t chunk, uint64_t st_size) {
         prot |= PROT_WRITE;
         dbg("\tRW\n");
     }
-
+    
+    dbg("\tst_size/chunksize = %d\n", st_size/chunksize);
     if(rest > 0 && chunk==st_size/chunksize) {
         dbg("\tRest used\n");
         dev[chunk] = (uint8_t *)mmap(NULL, rest, prot, MAP_SHARED, fd, (uint64_t)(chunk)*chunksize);
@@ -374,7 +394,7 @@ void map_chunk(int fd, uint8_t **dev, uint32_t chunk, uint64_t st_size) {
         fatal("\tError maping: %s.\n", strerror(errno));
         exit(16);
     }
-    dbg("\tChunk #%d allocated, pointer: %p, offset 0x%llx\n", chunk, dev[chunk], chunk*chunksize);
+    dbg("\tChunk #%d allocated, pointer: %p, offset 0x%llx\n", chunk, dev[chunk], (uint64_t)(chunk)*chunksize);
 }
 
 /**
@@ -399,7 +419,7 @@ int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sec
     int ssize = 512;
     int notFound = 0;
     int foundBEA = 0;
-    uint16_t chunk = 0;
+    uint32_t chunk = 0;
     uint32_t chunksize = CHUNK_SIZE;
 
     //void map_chunk(int fd, uint8_t **dev, uint32_t chunk, uint64_t st_size) {
@@ -427,13 +447,13 @@ int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sec
                 foundBEA = 1; 
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BOOT2, 5)) {
                 err("BOOT2 found, unsuported for now.\n");
-                unmap_chunk(dev, chunk);
+                unmap_chunk(dev, chunk, st_size);
                 return -1;
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CD001, 5)) { 
                 //CD001 means there is ISO9660, we try search for UDF at sector 18
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_CDW02, 5)) {
                 err("CDW02 found, unsuported for now.\n");
-                unmap_chunk(dev, chunk);
+                unmap_chunk(dev, chunk, st_size);
                 return -1;
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR01, 5)) {
                 memcpy(&nsr, &vsd, sizeof(nsr));
@@ -444,10 +464,9 @@ int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sec
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_TEA01, 5)) {
                 //We found TEA01, so we can end recognition sequence
                 memcpy(&tea, &vsd, sizeof(tea));
-                unmap_chunk(dev, chunk);
+                unmap_chunk(dev, chunk, st_size);
                 break;
             } else if(vsd.stdIdent[0] == '\0') {
-                unmap_chunk(dev, chunk);
                 if(foundBEA) {
                     continue;
                 }
@@ -456,7 +475,6 @@ int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sec
             } else {
                 err("Unknown identifier: %s. Exiting\n", vsd.stdIdent);
                 notFound = 1;
-                unmap_chunk(dev, chunk);
                 break;
             }  
         }
@@ -471,12 +489,12 @@ int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sec
         dbg("tea: type:%d, id:%s, v:%d\n", tea.structType, tea.stdIdent, tea.structVersion);
 
         *sectorsize = ssize;
-        unmap_chunk(dev, chunk);
+        unmap_chunk(dev, chunk, st_size);
         return 0;
     }
 
     err("Giving up VRS, maybe unclosed or bridged disc.\n");
-    unmap_chunk(dev, chunk);
+    unmap_chunk(dev, chunk, st_size);
     return 1;
 }
 
@@ -576,12 +594,12 @@ int get_avdp(int fd, uint8_t **dev, struct udf_disc *disc, int *sectorsize, size
 
         if(!checksum(desc_tag)) {
             status |= E_CHECKSUM;
-            unmap_chunk(dev, chunk); 
+            unmap_chunk(dev, chunk, devsize); 
             continue;
         }
         if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
             status |= E_WRONGDESC;
-            unmap_chunk(dev, chunk); 
+            unmap_chunk(dev, chunk, devsize); 
             continue;
         }
         dbg("Tag Serial Num: %d\n", desc_tag.tagSerialNum);
@@ -595,13 +613,13 @@ int get_avdp(int fd, uint8_t **dev, struct udf_disc *disc, int *sectorsize, size
 
         if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
             status |= E_CRC;
-            unmap_chunk(dev, chunk); 
+            unmap_chunk(dev, chunk, devsize); 
             continue;
         }
 
         if(check_position(desc_tag, position/ssize)) {
             status |= E_POSITION;
-            unmap_chunk(dev, chunk); 
+            unmap_chunk(dev, chunk, devsize); 
             continue;
         }
 
@@ -629,10 +647,10 @@ int get_avdp(int fd, uint8_t **dev, struct udf_disc *disc, int *sectorsize, size
         if(status & E_EXTLEN) {
             err("Main or Reserve Extent Length at AVDP[%d] is less than 16 sectors\n", type);
         }  
-        unmap_chunk(dev, chunk); 
+        unmap_chunk(dev, chunk, devsize); 
         return status;
     }
-    unmap_chunk(dev, chunk); 
+    unmap_chunk(dev, chunk, devsize); 
     return status;
 }
 
@@ -692,13 +710,14 @@ int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t
         }
 
         counter++;
+        dbg("Tag stored\n");
 
         // What kind of descriptor is that?
         switch(le16_to_cpu(descTag.tagIdent)) {
             case TAG_IDENT_PVD:
                 if(disc->udf_pvd[vds] != 0) {
                     err("Structure PVD is already set. Probably error at tag or media\n");
-                    unmap_chunk(dev, chunk);
+                    unmap_chunk(dev, chunk, st_size);
                     return -4;
                 }
                 disc->udf_pvd[vds] = malloc(sizeof(struct primaryVolDesc)); // Prepare memory
@@ -711,16 +730,19 @@ int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t
             case TAG_IDENT_IUVD:
                 if(disc->udf_iuvd[vds] != 0) {
                     err("Structure IUVD is already set. Probably error at tag or media\n");
-                    unmap_chunk(dev, chunk);
+                    unmap_chunk(dev, chunk, st_size);
                     return -4;
                 }
+                dbg("Store IUVD\n");
                 disc->udf_iuvd[vds] = malloc(sizeof(struct impUseVolDesc)); // Prepare memory
-                memcpy(disc->udf_iuvd[vds], position, sizeof(struct impUseVolDesc)); 
+                dbg("Malloc ptr: %p\n", disc->udf_iuvd[vds]);
+                memcpy(disc->udf_iuvd[vds], position, sizeof(struct impUseVolDesc));
+                dbg("Stored\n"); 
                 break;
             case TAG_IDENT_PD:
                 if(disc->udf_pd[vds] != 0) {
                     err("Structure PD is already set. Probably error at tag or media\n");
-                    unmap_chunk(dev, chunk);
+                    unmap_chunk(dev, chunk, st_size);
                     return -4;
                 }
                 disc->udf_pd[vds] = malloc(sizeof(struct partitionDesc)); // Prepare memory
@@ -729,7 +751,7 @@ int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t
             case TAG_IDENT_LVD:
                 if(disc->udf_lvd[vds] != 0) {
                     err("Structure LVD is already set. Probably error at tag or media\n");
-                    unmap_chunk(dev, chunk);
+                    unmap_chunk(dev, chunk, st_size);
                     return -4;
                 }
                 dbg("LVD size: 0x%lx\n", sizeof(struct logicalVolDesc));
@@ -749,7 +771,7 @@ int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t
             case TAG_IDENT_USD:
                 if(disc->udf_usd[vds] != 0) {
                     err("Structure USD is already set. Probably error at tag or media\n");
-                    unmap_chunk(dev, chunk);
+                    unmap_chunk(dev, chunk, st_size);
                     return -4;
                 }
 
@@ -764,26 +786,28 @@ int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t
             case TAG_IDENT_TD:
                 if(disc->udf_td[vds] != 0) {
                     err("Structure TD is already set. Probably error at tag or media\n");
-                    unmap_chunk(dev, chunk);
+                    unmap_chunk(dev, chunk, st_size);
                     return -4;
                 }
                 disc->udf_td[vds] = malloc(sizeof(struct terminatingDesc)); // Prepare memory
                 memcpy(disc->udf_td[vds], position, sizeof(struct terminatingDesc)); 
                 // Found terminator, ending.
-                unmap_chunk(dev, chunk);
+                unmap_chunk(dev, chunk, st_size);
                 return 0;
             case 0:
                 // Found end of VDS, ending.
-                unmap_chunk(dev, chunk);
+                unmap_chunk(dev, chunk, st_size);
                 return 0;
             default:
                 // Unkown TAG
                 fatal("Unknown TAG found at %p. Ending.\n", position);
-                unmap_chunk(dev, chunk);
+                unmap_chunk(dev, chunk, st_size);
                 return -3;
         }
 
-        unmap_chunk(dev, chunk);
+        dbg("Unmap old chunk...\n");
+        unmap_chunk(dev, chunk, st_size);
+        dbg("Unmapped\n");
         location = location + sectorsize;
         chunk = location/chunksize;
         offset = location%chunksize;
@@ -791,7 +815,7 @@ int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t
         map_chunk(fd, dev, chunk, st_size); 
         position = dev[chunk]+offset;
     }
-    unmap_chunk(dev, chunk);
+    //unmap_chunk(dev, chunk);
     return 0;
 }
 

@@ -192,6 +192,9 @@ int main(int argc, char *argv[]) {
     dbg("Chunk size %ld, rest: %ld\n", chunksize, rest);
     dev = calloc(sizeof(uint8_t *), st_size/chunksize + (rest > 0 ? 1 : 0));
     dbg("Amount of chunks: %d\n", st_size/chunksize + (rest > 0 ? 1 : 0));
+    for(uint64_t i=0; i<st_size/chunksize +(rest > 0 ? 1 : 0) ; i++) {
+        dev[i] = NULL;
+    }
     /*for(uint64_t i=0; i<st_size/chunksize +(rest > 0 ? 1 : 0) ; i++) {
         if(rest > 0 && i==st_size/chunksize)
             dev[i] = (uint8_t *)mmap(NULL, rest, prot, MAP_SHARED, fd, i*chunksize);
