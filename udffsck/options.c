@@ -33,6 +33,7 @@ verbosity_e verbose = NONE;
 int interactive = 0;
 int autofix = 0;
 int colored = 0;
+int fast_mode = 0;
 
 /**
  * Options for getopt_long() parser function.
@@ -46,6 +47,7 @@ static struct option long_options[] =
     {"autofix",    no_argument, 0, 'p'},
     {"check", no_argument, 0, 'c'},
     {"colors",    no_argument,       0, 'C'},
+    {"fast",    no_argument,       0, 'f'},
     {"help",    no_argument,       0, 'h'},
     {0, 0, 0, 0}
 };
@@ -60,6 +62,7 @@ static char * help[] = {
     "Medium is will be fixed automatically. All found errors will be fixed if possible.",
     "Medium will be only checked. This is default behavior, but this flag override -p.",
     "Tool output will be colored with ASCII color codes.",
+    "Fast mode: File tree check will be skipped.",
     "This help message.",
     ""
 }; 
@@ -108,7 +111,7 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "vB:ipcCh", long_options, &option_index);
+        c = getopt_long (argc, argv, "vB:ipcCfh", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -155,6 +158,10 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
 
             case 'C':
                 colored = 1;
+                break;
+            
+            case 'f':
+                fast_mode = 1;
                 break;
 
             case 'h':

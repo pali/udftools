@@ -35,6 +35,7 @@ extern int interactive;
 extern int autofix;
 extern verbosity_e verbosity;
 extern int colored;
+extern int fast_mode;
 
 /*
  * Command line option token values.

@@ -75,6 +75,30 @@ void segv_interrupt(int dummy) {
     exit(8);
 }
 
+/**
+ * \brief Return non-zero when error found in any generic descriptor (e.g. not in filetree)
+ *
+ * \param[in] seq Error sequence structure
+ *
+ * \return 0 all descriptors are Ok
+ */
+int any_error(vds_sequence_t *seq) {
+    int status = 0;
+
+    status |= seq->anchor[0].error;
+    status |= seq->anchor[1].error;
+    if(seq->anchor[2].error != 255)
+        status |= seq->anchor[2].error;
+    status |= seq->lvid.error;
+    status |= seq->pd.error;
+
+    for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
+        status |= seq->main[MAIN_VDS].error;
+        status |= seq->main[RESERVE_VDS].error;
+    }
+
+    return status;
+}
 
 #define ES_AVDP1 0x0001 
 #define ES_AVDP2 0x0002
@@ -124,6 +148,8 @@ int main(int argc, char *argv[]) {
     parse_args(argc, argv, &path, &blocksize);	
 
     note("Verbose: %d, Autofix: %d, Interactive: %d\n", verbosity, autofix, interactive);
+    if(fast_mode)
+        warn("Fast mode active. File tree checks will be skipped if rest of filesystem will be clean.\n");
 
     if(path == NULL) {
         err("No medium given. Use -h for help.\n");
@@ -301,18 +327,10 @@ int main(int argc, char *argv[]) {
     }
 
     note("LBNLSN: %d\n", lbnlsn);
-    status |= get_file_structure(fd, dev, &disc, st_size, lbnlsn, &stats, seq);
-/* //TODO remove this stub
-    dbg("USD Alloc Descs\n");
-    extent_ad *usdext;
-    uint8_t *usdarr;
-    for(int i=0; i<disc.udf_usd[0]->numAllocDescs; i++) {
-        usdext = &disc.udf_usd[0]->allocDescs[i];
-        dbg("Len: %d, Loc: 0x%x\n",usdext->extLength, usdext->extLocation);
-        dbg("LSN loc: 0x%x\n", lbnlsn+usdext->extLocation);
-        usdarr = (dev+(lbnlsn + usdext->extLocation)*blocksize);
+    if(any_error(seq) || disc.udf_lvid->integrityType != LVID_INTEGRITY_TYPE_CLOSE || fast_mode == 0) {
+        status |= get_file_structure(fd, dev, &disc, st_size, lbnlsn, &stats, seq);
     }
-*/
+    
     dbg("PD PartitionsContentsUse\n");
     for(int i=0; i<128; ) {
         for(int j=0; j<8; j++, i++) {
@@ -330,34 +348,45 @@ int main(int argc, char *argv[]) {
     msg("Volume set identifier: %s\n", stats.volumeSetIdent);
     msg("Partition identifier: %s\n", stats.partitionIdent);
     msg("Next UniqueID: %d\n", stats.actUUID);
+    if(fast_mode == 0) {
     msg("Max found UniqueID: %d\n", stats.maxUUID);
+    }
     msg("Last LVID recoreded change: %s\n", print_timestamp(stats.LVIDtimestamp));
     msg("expected number of files: %d\n", stats.expNumOfFiles);
     msg("expected number of dirs:  %d\n", stats.expNumOfDirs);
-    msg("counted number of files: %d\n", stats.countNumOfFiles);
-    msg("counted number of dirs:  %d\n", stats.countNumOfDirs);
-    if(stats.expNumOfDirs != stats.countNumOfDirs || stats.expNumOfFiles != stats.countNumOfFiles) {
-        seq->lvid.error |= E_FILES;
+    if(fast_mode == 0) {
+        msg("counted number of files: %d\n", stats.countNumOfFiles);
+        msg("counted number of dirs:  %d\n", stats.countNumOfDirs);
+        if(stats.expNumOfDirs != stats.countNumOfDirs || stats.expNumOfFiles != stats.countNumOfFiles) {
+            seq->lvid.error |= E_FILES;
+        }
     }
     msg("UDF rev: min read:  %04x\n", stats.minUDFReadRev);
     msg("         min write: %04x\n", stats.minUDFWriteRev);
     msg("         max write: %04x\n", stats.maxUDFWriteRev);
-    msg("Used Space: %lu (%lu)\n", stats.usedSpace, stats.usedSpace/blocksize);
+    if(fast_mode == 0) {
+        msg("Used Space: %lu (%lu)\n", stats.usedSpace, stats.usedSpace/blocksize);
+    }
     msg("Free Space: %lu (%lu)\n", stats.freeSpaceBlocks*blocksize, stats.freeSpaceBlocks);
     msg("Partition size: %lu (%lu)\n", stats.partitionSizeBlocks*blocksize, stats.partitionSizeBlocks);
-    uint64_t expUsedSpace = (stats.partitionSizeBlocks-stats.freeSpaceBlocks)*blocksize;
-    msg("Expected Used Space: %lu (%lu)\n", expUsedSpace, expUsedSpace/blocksize);
-    msg("Expected Used Blocks: %d\nExpected Unused Blocks: %d\n", stats.expUsedBlocks, stats.expUnusedBlocks);
-    int64_t usedSpaceDiff = expUsedSpace-stats.usedSpace;
-    if(usedSpaceDiff != 0) {
-        err("%d blocks is unused but not marked as unallocated in Free Space Table.\n", usedSpaceDiff/blocksize);
-        err("Correct free space: %lu\n", stats.freeSpaceBlocks + usedSpaceDiff/blocksize);
-        seq->lvid.error |= E_FREESPACE;
+    uint64_t expUsedSpace = 0;
+    if(fast_mode == 0) {
+        expUsedSpace = (stats.partitionSizeBlocks-stats.freeSpaceBlocks)*blocksize;
+        msg("Expected Used Space: %lu (%lu)\n", expUsedSpace, expUsedSpace/blocksize);
+        msg("Expected Used Blocks: %d\nExpected Unused Blocks: %d\n", stats.expUsedBlocks, stats.expUnusedBlocks);
     }
-    int32_t usedSpaceDiffBlocks = stats.expUsedBlocks - countedBits;//stats.usedSpace/blocksize;
-    if(usedSpaceDiffBlocks != 0) {
-        err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
-        seq->pd.error |= E_FREESPACE; 
+    if(fast_mode == 0) {
+        int64_t usedSpaceDiff = expUsedSpace-stats.usedSpace;
+        if(usedSpaceDiff != 0) {
+            err("%d blocks is unused but not marked as unallocated in Free Space Table.\n", usedSpaceDiff/blocksize);
+            err("Correct free space: %lu\n", stats.freeSpaceBlocks + usedSpaceDiff/blocksize);
+            seq->lvid.error |= E_FREESPACE;
+        }
+        int32_t usedSpaceDiffBlocks = stats.expUsedBlocks - countedBits;//stats.usedSpace/blocksize;
+        if(usedSpaceDiffBlocks != 0) {
+            err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
+            seq->pd.error |= E_FREESPACE; 
+        }
     }
 
     if(seq->anchor[0].error + seq->anchor[1].error + seq->anchor[2].error != 0) { //Something went wrong with AVDPs
@@ -531,6 +560,10 @@ int main(int argc, char *argv[]) {
 
     if(fix_status != 0) {
         status |= 1; // Errors were fixed
+    }
+
+    if(status <= 1) {
+        msg("Filesystem clean.\n");
     }
     //---------------- Clean up -----------------
 
