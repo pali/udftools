@@ -145,11 +145,11 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq);
 int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq/*, uint8_t interactive, uint8_t autofix*/); 
 
 // LVID functions
-int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
+int get_lvid(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t st_size, struct filesystemStats *stats, vds_sequence_t *seq );
 int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
 
 // PD (SBD) functions
-int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq); 
+int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size_t st_size, struct filesystemStats *stats, vds_sequence_t *seq); 
 int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq);
 
 // Filetree functions

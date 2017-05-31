@@ -287,9 +287,7 @@ int main(int argc, char *argv[]) {
     dbg("Second VDS verification\n");
     verify_vds(&disc, RESERVE_VDS, seq);
 
-#if 0
-
-    status |= get_lvid(dev, &disc, blocksize, &stats, seq); //load LVID
+    status |= get_lvid(fd, dev, &disc, blocksize, st_size, &stats, seq); //load LVID
     if(stats.minUDFReadRev > MAX_VERSION){
         err("Medium UDF revision is %04x and we are able to check up to %04x\n", stats.minUDFReadRev, MAX_VERSION);
         exit(8);
@@ -301,11 +299,12 @@ int main(int argc, char *argv[]) {
 
     stats.blocksize = blocksize;
 
-    if(get_pd(dev, &disc, blocksize, &stats, seq)) {
+    if(get_pd(fd, dev, &disc, blocksize, st_size, &stats, seq)) {
         err("PD error\n");
         exit(8);
     }
 
+#if 0
     uint32_t lbnlsn = 0;
     dbg("STATUS: 0x%02x\n", status);
     status |= get_fsd(dev, &disc, blocksize, &lbnlsn, &stats, seq);

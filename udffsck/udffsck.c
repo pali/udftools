@@ -856,7 +856,11 @@ int get_correct(vds_sequence_t *seq, uint16_t tagIdent) {
  * \return 0 everything ok
  * \return 4 structure is already set or no correct LVID found
  */
-int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesystemStats *stats, vds_sequence_t *seq ) {
+int get_lvid(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t st_size, struct filesystemStats *stats, vds_sequence_t *seq ) {
+    uint32_t chunksize = CHUNK_SIZE;
+    uint32_t chunk = 0;
+    uint32_t offset = 0;
+    
     if(disc->udf_lvid != 0) {
         err("Structure LVID is already set. Probably error at tag or media\n");
         return 4;
@@ -871,11 +875,15 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
     uint32_t len = disc->udf_lvd[vds]->integritySeqExt.extLength;
     dbg("LVID: loc: %d, len: %d\n", loc, len);
 
+    chunk = (loc*sectorsize)/chunksize;
+    offset = (loc*sectorsize)%chunksize;
+    map_chunk(fd, dev, chunk, st_size); 
+    
     struct logicalVolIntegrityDesc *lvid;
-    lvid = (struct logicalVolIntegrityDesc *)(dev+loc*sectorsize);
+    lvid = (struct logicalVolIntegrityDesc *)(dev[chunk]+offset);
 
     disc->udf_lvid = malloc(len);
-    memcpy(disc->udf_lvid, dev+loc*sectorsize, len);
+    memcpy(disc->udf_lvid, dev[chunk]+offset, len);
     dbg("LVID: lenOfImpUse: %d\n",disc->udf_lvid->lengthOfImpUse);
     dbg("LVID: numOfPartitions: %d\n", disc->udf_lvid->numOfPartitions);
 
@@ -925,6 +933,7 @@ int get_lvid(uint8_t *dev, struct udf_disc *disc, int sectorsize, struct filesys
         dbg("No other integrity extents are here.\n");
     }
 
+    unmap_chunk(dev, chunk, st_size); 
     return 0; 
 }
 
@@ -2659,8 +2668,12 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
  * \return -1 -- SBD not found even if declared
  * \return -128 -- UST, FST or FSB found
  */
-int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
+int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size_t st_size, struct filesystemStats *stats, vds_sequence_t *seq) { 
     int vds = -1;
+    uint32_t offset = 0, chunk = 0;
+    uint32_t chunksize = CHUNK_SIZE;
+    uint64_t position = 0;
+    
     if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
         err("No correct PD found. Aborting.\n");
         return 4;
@@ -2689,7 +2702,12 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
     if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
         uint32_t lsnBase = disc->udf_pd[vds]->partitionStartingLocation;      
         dbg("LSNBase: %d\n", lsnBase); 
-        struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
+        position = (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize;
+        chunk = position/chunksize;
+        offset = position%chunksize;
+        map_chunk(fd, dev, chunk, st_size);
+
+        struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev[chunk]+offset);
         if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
             err("SBD not found\n");
             return -1;
@@ -2745,6 +2763,8 @@ int get_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
         stats->expPartitionBitmap = sbd->bitmap;
         dbg("Unused blocks: %d\n", unusedBlocks);
         dbg("Used Blocks: %d\n", usedBlocks);
+        
+        unmap_chunk(dev, chunk, st_size);
     }
 
     //Mark used space
