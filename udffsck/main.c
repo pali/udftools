@@ -304,10 +304,9 @@ int main(int argc, char *argv[]) {
         exit(8);
     }
 
-#if 0
     uint32_t lbnlsn = 0;
     dbg("STATUS: 0x%02x\n", status);
-    status |= get_fsd(dev, &disc, blocksize, &lbnlsn, &stats, seq);
+    status |= get_fsd(fd, dev, &disc, blocksize, st_size, &lbnlsn, &stats, seq);
     dbg("STATUS: 0x%02x\n", status);
     if(status >= 8) {
         err("Unable to continue without FSD. Consider submitting bug report. Exiting.\n");
@@ -315,8 +314,8 @@ int main(int argc, char *argv[]) {
     }
 
     note("LBNLSN: %d\n", lbnlsn);
-    status |= get_file_structure(dev, &disc, lbnlsn, &stats, seq);
-
+    status |= get_file_structure(fd, dev, &disc, st_size, lbnlsn, &stats, seq);
+/* //TODO remove this stub
     dbg("USD Alloc Descs\n");
     extent_ad *usdext;
     uint8_t *usdarr;
@@ -326,7 +325,7 @@ int main(int argc, char *argv[]) {
         dbg("LSN loc: 0x%x\n", lbnlsn+usdext->extLocation);
         usdarr = (dev+(lbnlsn + usdext->extLocation)*blocksize);
     }
-
+*/
     dbg("PD PartitionsContentsUse\n");
     for(int i=0; i<128; ) {
         for(int j=0; j<8; j++, i++) {
@@ -373,7 +372,7 @@ int main(int argc, char *argv[]) {
         err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
         seq->pd.error |= E_FREESPACE; 
     }
-
+#if 0
     if(seq->anchor[0].error + seq->anchor[1].error + seq->anchor[2].error != 0) { //Something went wrong with AVDPs
         int target1 = -1;
         int target2 = -1;

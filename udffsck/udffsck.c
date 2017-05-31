@@ -33,9 +33,9 @@
 #include "options.h"
 
 // Local function protypes
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq );
+uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_size, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq );
 void increment_used_space(struct filesystemStats *stats, uint64_t increment, uint32_t position);
-uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status);
+uint8_t inspect_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_size, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status);
 void print_file_chunks(struct filesystemStats *stats);
 int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size);
 int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error);
@@ -367,7 +367,7 @@ void map_chunk(int fd, uint8_t **dev, uint32_t chunk, size_t st_size) {
         prot |= PROT_WRITE;
         dbg("\tRW\n");
     }
-    
+
     dbg("\tst_size/chunksize = %d\n", st_size/chunksize);
     if(rest > 0 && chunk==st_size/chunksize) {
         dbg("\tRest used\n");
@@ -860,7 +860,7 @@ int get_lvid(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_
     uint32_t chunksize = CHUNK_SIZE;
     uint32_t chunk = 0;
     uint32_t offset = 0;
-    
+
     if(disc->udf_lvid != 0) {
         err("Structure LVID is already set. Probably error at tag or media\n");
         return 4;
@@ -878,7 +878,7 @@ int get_lvid(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_
     chunk = (loc*sectorsize)/chunksize;
     offset = (loc*sectorsize)%chunksize;
     map_chunk(fd, dev, chunk, st_size); 
-    
+
     struct logicalVolIntegrityDesc *lvid;
     lvid = (struct logicalVolIntegrityDesc *)(dev[chunk]+offset);
 
@@ -1070,10 +1070,13 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
  * \return 0 everything ok
  * \return 4 no correct PD or LVD found
  */
-uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq) {
+uint8_t get_fsd(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t st_size, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq) {
     long_ad *lap;
     tag descTag;
     int vds = -1;
+    uint32_t offset = 0, chunk = 0;
+    uint32_t chunksize = CHUNK_SIZE;
+    uint64_t position = 0;
 
     if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
         err("No correct PD found. Aborting.\n");
@@ -1104,12 +1107,18 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     dbg("LAP: length: %x, LBN: %x, PRN: %x\n", filesetlen, filesetblock.logicalBlockNum, filesetblock.partitionReferenceNum);
     dbg("LAP: LSN: %d\n", lsnBase/*+filesetblock.logicalBlockNum*/);
 
+    position = (lsnBase+filesetblock.logicalBlockNum)*lbSize;
+    chunk = position/chunksize;
+    offset = position%chunksize;
+    map_chunk(fd, dev, chunk, st_size);
+
     disc->udf_fsd = malloc(sizeof(struct fileSetDesc));
-    memcpy(disc->udf_fsd, dev+(lsnBase+filesetblock.logicalBlockNum)*lbSize, sizeof(struct fileSetDesc));
+    memcpy(disc->udf_fsd, dev[chunk]+offset, sizeof(struct fileSetDesc));
 
     if(le16_to_cpu(disc->udf_fsd->descTag.tagIdent) != TAG_IDENT_FSD) {
         err("Error identifiing FSD. Tag ID: 0x%x\n", disc->udf_fsd->descTag.tagIdent);
         free(disc->udf_fsd);
+        unmap_chunk(dev, chunk, st_size);
         return 8;
     }
     dbg("LogicVolIdent: %s\nFileSetIdent: %s\n", (disc->udf_fsd->logicalVolIdent), (disc->udf_fsd->fileSetIdent));
@@ -1117,6 +1126,8 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
     increment_used_space(stats, filesetlen, lap->extLocation.logicalBlockNum);
 
     *lbnlsn = lsnBase;
+
+    unmap_chunk(dev, chunk, st_size);
     return 0;
 }
 
@@ -1138,13 +1149,19 @@ uint8_t get_fsd(uint8_t *dev, struct udf_disc *disc, int sectorsize, uint32_t *l
  * \return 4 -- checksum failed
  * \return 4 -- CRC failed
  */
-uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint32_t *lengthADArray, uint8_t **ADArray, struct filesystemStats *stats, uint8_t *status) {
+uint8_t inspect_aed(int fd, uint8_t **dev, size_t st_size, uint32_t lsnBase, uint32_t aedlbn, uint32_t *lengthADArray, uint8_t **ADArray, struct filesystemStats *stats, uint8_t *status) {
     uint16_t lbSize = stats->blocksize; 
     uint32_t lad = 0;
     uint32_t nAD = 0;
     short_ad *sad = NULL;
+    uint32_t offset = 0, chunk = 0, chunksize = CHUNK_SIZE;
 
-    struct allocExtDesc *aed = (struct allocExtDesc *)(dev + (lsnBase + aedlbn)*lbSize);
+    chunk = ((lsnBase + aedlbn)*lbSize)/chunksize;
+    offset = ((lsnBase + aedlbn)*lbSize)%chunksize;
+    dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+    map_chunk(fd, dev, chunk, st_size); 
+
+    struct allocExtDesc *aed = (struct allocExtDesc *)(dev[chunk]+offset);
     if(aed->descTag.tagIdent == TAG_IDENT_AED) {
         //checksum
         if(!checksum(aed->descTag)) {
@@ -1221,7 +1238,7 @@ uint8_t inspect_aed(const uint8_t *dev, uint32_t lsnBase, uint32_t aedlbn, uint3
  * \return 2 -- FID array allocation failed
  * \return 255 -- inspect_aed() failed
  */
-uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *allocDescs, uint32_t lengthAllocDescs, uint16_t icb_ad, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
+uint8_t translate_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_size, uint32_t lbnlsn, uint32_t lsn, uint8_t *allocDescs, uint32_t lengthAllocDescs, uint16_t icb_ad, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
 
     uint32_t descSize = 0;
     uint8_t *fidArray = NULL;
@@ -1233,6 +1250,7 @@ uint8_t translate_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t 
     ext_ad *ead = NULL;
     uint16_t lbSize = stats->blocksize;
     uint32_t lsnBase = lbnlsn;
+    uint32_t offset = 0, chunk = 0, chunksize = CHUNK_SIZE;
 
     switch(icb_ad) {
         case ICBTAG_FLAG_AD_SHORT:
@@ -1291,7 +1309,7 @@ defualt:
                     aedlbn = ead->extLocation.logicalBlockNum;
                     break;
             }
-            if(inspect_aed(dev, lsnBase, aedlbn, &lengthADArray, &ADArray, stats, status)) {
+            if(inspect_aed(fd, dev, st_size, lsnBase, aedlbn, &lengthADArray, &ADArray, stats, status)) {
                 err("AED inspection failed.\n");
                 return -1;
             }
@@ -1337,7 +1355,13 @@ defualt:
                     aed = 1;   
                     continue;     
                 }
-                memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), sad->extLength);
+
+                chunk = ((lsnBase + sad->extPosition)*lbSize)/chunksize;
+                offset = ((lsnBase + sad->extPosition)*lbSize)%chunksize;
+                dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+                map_chunk(fd, dev, chunk, st_size); 
+                
+                memcpy(fidArray+prevExtLength, (uint8_t *)(dev[chunk]+offset), sad->extLength);
                 increment_used_space(stats, 1, sad->extPosition);
                 prevExtLength += sad->extLength;
                 break;
@@ -1351,7 +1375,12 @@ defualt:
                     aed = 1;   
                     continue;     
                 }
-                memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + lad->extLocation.logicalBlockNum)*lbSize), lad->extLength);
+                chunk = ((lsnBase + lad->extLocation.logicalBlockNum)*lbSize)/chunksize;
+                offset = ((lsnBase + lad->extLocation.logicalBlockNum)*lbSize)%chunksize;
+                dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+                map_chunk(fd, dev, chunk, st_size); 
+                
+                memcpy(fidArray+prevExtLength, (uint8_t *)(dev[chunk]+offset), lad->extLength);
                 increment_used_space(stats, 1, lad->extLocation.logicalBlockNum);
                 prevExtLength += lad->extLength;
                 break;
@@ -1365,7 +1394,12 @@ defualt:
                     aed = 1;   
                     continue;     
                 }
-                memcpy(fidArray+prevExtLength, (uint8_t *)(dev + (lsnBase + ead->extLocation.logicalBlockNum)*lbSize), ead->extLength);
+                chunk = ((lsnBase + ead->extLocation.logicalBlockNum)*lbSize)/chunksize;
+                offset = ((lsnBase + ead->extLocation.logicalBlockNum)*lbSize)%chunksize;
+                dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+                map_chunk(fd, dev, chunk, st_size); 
+                
+                memcpy(fidArray+prevExtLength, (uint8_t *)(dev[chunk]+offset), ead->extLength);
                 increment_used_space(stats, 1, ead->extLocation.logicalBlockNum);
                 prevExtLength += ead->extLength;
                 break;
@@ -1376,7 +1410,7 @@ defualt:
     int counter = 0;
     for(uint32_t pos=0; pos < overallLength; ) {
         dbg("FID #%d\n", counter++);
-        if(inspect_fid(dev, disc, lbnlsn, lsn, fidArray, &pos, stats, depth+1, seq, &tempStatus) != 0) {
+        if(inspect_fid(fd, dev, disc, st_size, lbnlsn, lsn, fidArray, &pos, stats, depth+1, seq, &tempStatus) != 0) {
             dbg("1 FID inspection over.\n");
             break;
         }
@@ -1398,7 +1432,7 @@ defualt:
                         aed = 1;   
                         continue;     
                     }
-                    memcpy((uint8_t *)(dev + (lsnBase + sad->extPosition)*lbSize), fidArray+prevExtLength, sad->extLength);
+                    memcpy((uint8_t *)(dev[chunk]+offset), fidArray+prevExtLength, sad->extLength);
                     prevExtLength += sad->extLength;
                     break;
                 case ICBTAG_FLAG_AD_LONG:
@@ -1411,7 +1445,7 @@ defualt:
                         aed = 1;   
                         continue;     
                     }
-                    memcpy((uint8_t *)(dev + (lsnBase + lad->extLocation.logicalBlockNum)*lbSize), fidArray+prevExtLength, lad->extLength);
+                    memcpy((uint8_t *)(dev[chunk]+offset), fidArray+prevExtLength, lad->extLength);
                     prevExtLength += lad->extLength;
                     break;
                 case ICBTAG_FLAG_AD_EXTENDED:
@@ -1424,7 +1458,7 @@ defualt:
                         aed = 1;   
                         continue;     
                     }
-                    memcpy((uint8_t *)(dev + (lsnBase + ead->extLocation.logicalBlockNum)*lbSize), fidArray+prevExtLength, ead->extLength);
+                    memcpy((uint8_t *)(dev[chunk]+offset), fidArray+prevExtLength, ead->extLength);
                     prevExtLength += ead->extLength;
                     break;
             }
@@ -1462,11 +1496,14 @@ defualt:
  * \return 252 -- FID checksum failed
  * \return 251 -- FID CRC failed
  */
-uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
+uint8_t inspect_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_size, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status) {
     uint32_t flen, padding;
     uint32_t lsnBase = lbnlsn; 
     struct fileIdentDesc *fid = (struct fileIdentDesc *)(base + *pos);
     struct fileInfo info = {0};
+    uint32_t offset = 0, chunk = 0;
+    uint64_t position = 0;
+    uint32_t chunksize = CHUNK_SIZE;
 
     dbg("FID pos: 0x%x\n", *pos);
     if (!checksum(fid->descTag)) {
@@ -1512,8 +1549,15 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                 fid->descTag.tagSerialNum = stats->AVDPSerialNum;
                 fid->descTag.descCRC = calculate_crc(fid, flen+padding);             
                 fid->descTag.tagChecksum = calculate_checksum(fid->descTag);
-                struct fileEntry *fe = (struct fileEntry *)(dev + (lsn) * stats->blocksize);
-                struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (lsn) * stats->blocksize);
+
+                position = (lsn) * stats->blocksize;
+                chunk = position/chunksize;
+                offset = position%chunksize;
+                dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+                map_chunk(fd, dev, chunk, st_size); 
+                
+                struct fileEntry *fe = (struct fileEntry *)(dev[chunk]+offset);
+                struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev[chunk]+offset);
                 if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
                     efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
                     efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
@@ -1575,8 +1619,8 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                         fid->descTag.descCRC = calculate_crc(fid, flen+padding);             
                         fid->descTag.tagChecksum = calculate_checksum(fid->descTag);
                         dbg("Location: %d\n", fid->descTag.tagLocation);
-                        struct fileEntry *fe = (struct fileEntry *)(dev + (lsn) * stats->blocksize);
-                        struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (lsn) * stats->blocksize);
+                        struct fileEntry *fe = (struct fileEntry *)(dev[chunk]+offset);
+                        struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev[chunk]+offset);
                         if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
                             efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
                             efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
@@ -1591,15 +1635,22 @@ uint8_t inspect_fid(const uint8_t *dev, const struct udf_disc *disc, uint32_t lb
                     }
                 }
                 dbg("ICB to follow.\n");
-                int tmp_status = get_file(dev, disc, lbnlsn, (fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth, uuid, info, seq);
+                int tmp_status = get_file(fd, dev, disc, st_size, lbnlsn, (fid->icb).extLocation.logicalBlockNum + lsnBase, stats, depth, uuid, info, seq);
                 if(tmp_status == 32) { //32 means delete this FID
                     fid->fileCharacteristics |= FID_FILE_CHAR_DELETED; //Set deleted flag
                     memset(&(fid->icb), 0, sizeof(long_ad)); //clear ICB according ECMA-167r3, 4/14.4.5
                     fid->descTag.descCRC = calculate_crc(fid, flen+padding);             
                     fid->descTag.tagChecksum = calculate_checksum(fid->descTag);
                     dbg("Location: %d\n", fid->descTag.tagLocation);
-                    struct fileEntry *fe = (struct fileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
-                    struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev + (fid->descTag.tagLocation + lbnlsn) * stats->blocksize);
+
+                    position = (fid->descTag.tagLocation + lbnlsn) * stats->blocksize;
+                    chunk = position/chunksize;
+                    offset = position%chunksize;
+                    dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+                    map_chunk(fd, dev, chunk, st_size); 
+                    
+                    struct fileEntry *fe = (struct fileEntry *)(dev[chunk] + offset);
+                    struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev[chunk]+offset);
                     if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
                         efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
                         efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
@@ -1704,7 +1755,7 @@ void decrement_used_space(struct filesystemStats *stats, uint64_t increment, uin
  * \return 32 -- removed unfinished file
  * \return sum of status returned from inspect_fid(), translate_fid() or own actions (4 for unfixed error, 1 for fixed error, 0 for no error)
  */
-uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq ) {
+uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_size, uint32_t lbnlsn, uint32_t lsn, struct filesystemStats *stats, uint32_t depth, uint32_t uuid, struct fileInfo info, vds_sequence_t *seq ) {
     tag descTag;
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
@@ -1721,10 +1772,20 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
     uint32_t flen, padding;
     uint8_t dir = 0;
     uint8_t status = 0;
+    uint32_t chunksize = CHUNK_SIZE;
+    uint32_t chunk = 0;
+    uint32_t offset = 0;
+    uint64_t position = 0;
 
     dwarn("\n(%d) ---------------------------------------------------\n", lsn);
 
-    descTag = *(tag *)(dev+lbSize*lsn);
+    position = lbSize*lsn; 
+    chunk = position/chunksize;
+    offset = position%chunksize;
+    dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+    map_chunk(fd, dev, chunk, st_size); 
+
+    descTag = *(tag *)(dev[chunk]+offset);
     if(!checksum(descTag)) {
         err("Tag checksum failed. Unable to continue.\n");
         return 4;
@@ -1738,7 +1799,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
         case TAG_IDENT_FE:
         case TAG_IDENT_EFE:
             dir = 0;
-            fe = (struct fileEntry *)(dev+lbSize*lsn);
+            fe = (struct fileEntry *)(dev[chunk]+offset);
             efe = (struct extendedFileEntry *)fe;
             uint8_t ext = 0;
 
@@ -1753,6 +1814,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         }
                     }
                     if(cont == 0) {
+                        map_chunk(fd, dev, chunk, st_size); 
                         return 4;
                     }
                 }
@@ -1767,6 +1829,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                         }
                     }
                     if(cont == 0) {
+                        map_chunk(fd, dev, chunk, st_size); 
                         return 4;
                     }
                 }
@@ -1828,6 +1891,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     blank = malloc(stats->blocksize);
                     memcpy(fe, blank, stats->blocksize);
                     free(blank);
+                    map_chunk(fd, dev, chunk, st_size); 
                     return 32; 
                 }
             }
@@ -1947,7 +2011,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT) {
                 if(dir) {
                     fid_inspected = 1;
-                    translate_fid(dev, disc, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_SHORT, stats, depth, seq, &status);
+                    translate_fid(fd, dev, disc, st_size, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_SHORT, stats, depth, seq, &status);
                 } else {
                     dbg("SHORT\n");
                     dbg("LAD: %d, N: %d, rest: %d\n", lad, lad/sizeof(short_ad), lad%sizeof(short_ad));
@@ -1969,7 +2033,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG) {
                 if(dir) {
                     fid_inspected = 1;
-                    translate_fid(dev, disc, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_LONG, stats, depth, seq, &status);
+                    translate_fid(fd, dev, disc, st_size, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_LONG, stats, depth, seq, &status);
                 } else {
                     for(int si = 0; si < lad/sizeof(long_ad); si++) {
                         dbg("LONG\n");
@@ -1988,7 +2052,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
             } else if((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_EXTENDED) {
                 if(dir) {
                     fid_inspected = 1;
-                    translate_fid(dev, disc, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_EXTENDED, stats, depth, seq, &status);
+                    translate_fid(fd, dev, disc, st_size, lbnlsn, lsn, allocDescs, lad, ICBTAG_FLAG_AD_EXTENDED, stats, depth, seq, &status);
                 } else {
                     err("EAD found. Please report.\n");
                 }
@@ -2045,7 +2109,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
 
                         fid_inspected = 1;
                         for(uint32_t pos=0; ; ) {
-                            if(inspect_fid(dev, disc, lbnlsn, lsn, base, &pos, stats, depth, seq, &status) != 0) {
+                            if(inspect_fid(fd, dev, disc, st_size, lbnlsn, lsn, base, &pos, stats, depth, seq, &status) != 0) {
                                 dbg("FID inspection over\n");
                                 break;
                             }
@@ -2066,7 +2130,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     dbg("[EFE DIR] lengthExtendedAttr: %d\n", efe->lengthExtendedAttr);
                     dbg("[EFE DIR] lengthAllocDescs: %d\n", efe->lengthAllocDescs);
                     for(uint32_t pos=0; pos < efe->lengthAllocDescs; ) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats, depth+1, seq, &status) != 0) {
+                        if(inspect_fid(fd, dev, disc, st_size, lbnlsn, lsn, efe->allocDescs + efe->lengthExtendedAttr, &pos, stats, depth+1, seq, &status) != 0) {
                             break;
                         }
                     }
@@ -2074,7 +2138,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
                     dbg("[FE DIR] lengthExtendedAttr: %d\n", fe->lengthExtendedAttr);
                     dbg("[FE DIR] lengthAllocDescs: %d\n", fe->lengthAllocDescs);
                     for(uint32_t pos=0; pos < fe->lengthAllocDescs; ) {
-                        if(inspect_fid(dev, disc, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats, depth+1, seq, &status) != 0) {
+                        if(inspect_fid(fd, dev, disc, st_size, lbnlsn, lsn, fe->allocDescs + fe->lengthExtendedAttr, &pos, stats, depth+1, seq, &status) != 0) {
                             break;
                         }
                     }
@@ -2084,6 +2148,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
         default:
             err("IDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
     }            
+    map_chunk(fd, dev, chunk, st_size); 
     return status;
 }
 
@@ -2100,7 +2165,7 @@ uint8_t get_file(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnls
  *
  * \return sum of returns from stream and normal get_file()
  */
-uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq ) {
+uint8_t get_file_structure(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_size,  uint32_t lbnlsn, struct filesystemStats *stats, vds_sequence_t *seq ) {
     struct fileEntry *file;
     struct fileIdentDesc *fid;
     tag descTag;
@@ -2141,11 +2206,11 @@ uint8_t get_file_structure(const uint8_t *dev, const struct udf_disc *disc, uint
 
     if(selen > 0) {
         msg("\nStream file tree\n----------------\n");
-        status |= get_file(dev, disc, lbnlsn, slsn, stats, 0, 0, info, seq);
+        status |= get_file(fd, dev, disc, st_size, lbnlsn, slsn, stats, 0, 0, info, seq);
     }
     if(elen > 0) {
         msg("\nMedium file tree\n----------------\n");
-        status |= get_file(dev, disc, lbnlsn, lsn, stats, 0, 0, info, seq);
+        status |= get_file(fd, dev, disc, st_size, lbnlsn, lsn, stats, 0, 0, info, seq);
     }
     return status;
 }
@@ -2673,7 +2738,7 @@ int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size
     uint32_t offset = 0, chunk = 0;
     uint32_t chunksize = CHUNK_SIZE;
     uint64_t position = 0;
-    
+
     if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
         err("No correct PD found. Aborting.\n");
         return 4;
@@ -2763,7 +2828,7 @@ int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size
         stats->expPartitionBitmap = sbd->bitmap;
         dbg("Unused blocks: %d\n", unusedBlocks);
         dbg("Used Blocks: %d\n", usedBlocks);
-        
+
         unmap_chunk(dev, chunk, st_size);
     }
 
