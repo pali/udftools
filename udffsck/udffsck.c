@@ -561,6 +561,7 @@ uint64_t count_used_bits(struct filesystemStats *stats) {
  * \param[in] *stats statistics of file system
  *
  * \return  0 everything is ok
+ * \return 255 Only for Third AVDP: it is not AVDP. Abort.
  * \return sum of E_CRC, E_CHECKSUM, E_WRONGDESC, E_POSITION, E_EXTLEN  
  */
 int get_avdp(int fd, uint8_t **dev, struct udf_disc *disc, int *sectorsize, size_t devsize, avdp_type_e type, int force_sectorsize, struct filesystemStats *stats) {
@@ -613,12 +614,18 @@ int get_avdp(int fd, uint8_t **dev, struct udf_disc *disc, int *sectorsize, size
 
         if(!checksum(desc_tag)) {
             status |= E_CHECKSUM;
-            unmap_chunk(dev, chunk, devsize); 
+            unmap_chunk(dev, chunk, devsize);
+            if(type == THIRD_AVDP) {
+                return -1;
+            } 
             continue;
         }
         if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
             status |= E_WRONGDESC;
             unmap_chunk(dev, chunk, devsize); 
+            if(type == THIRD_AVDP) {
+                return -1;
+            } 
             continue;
         }
         dbg("Tag Serial Num: %d\n", desc_tag.tagSerialNum);

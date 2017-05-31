@@ -112,6 +112,7 @@ int main(int argc, char *argv[]) {
     uint16_t error_status = 0;
     uint16_t fix_status = 0;
     int force_sectorsize = 0;
+    int third_avdp_missing = 0;
 
     int source = -1;
 
@@ -195,32 +196,6 @@ int main(int argc, char *argv[]) {
     for(uint64_t i=0; i<st_size/chunksize +(rest > 0 ? 1 : 0) ; i++) {
         dev[i] = NULL;
     }
-    /*for(uint64_t i=0; i<st_size/chunksize +(rest > 0 ? 1 : 0) ; i++) {
-        if(rest > 0 && i==st_size/chunksize)
-            dev[i] = (uint8_t *)mmap(NULL, rest, prot, MAP_SHARED, fd, i*chunksize);
-        else
-            dev[i] = (uint8_t *)mmap(NULL, chunksize, prot, MAP_SHARED, fd, i*chunksize);
-        if(dev[i] == MAP_FAILED) {
-            switch(errno) {
-                case EACCES: dbg("EACCES\n"); break;
-                case EAGAIN: dbg("EAGAIN\n"); break;
-                case EBADF: dbg("EBADF\n"); break;
-                case EINVAL: dbg("EINVAL\n"); break;
-                case ENFILE: dbg("ENFILE\n"); break;
-                case ENODEV: dbg("ENODEV\n"); break;
-                case ENOMEM: dbg("ENOMEM\n"); break;
-                case EPERM: dbg("EPERM\n"); break;
-                case ETXTBSY: dbg("ETXTBSY\n"); break;
-                case EOVERFLOW: dbg("EOVERFLOW\n"); break;
-                default: dbg("EUnknown\n"); break;
-            }
-
-            fatal("Error maping %s: %s.\n", path, strerror(errno));
-            exit(16);
-        }
-        dbg("Chunk #%d allocated, pointer: %p, offset 0x%llx\n", i, dev[i], i*chunksize);
-
-    }*/
 
     // Unalloc path
     free(path);
@@ -242,21 +217,33 @@ int main(int argc, char *argv[]) {
         }
     } else { //Normal medium
         seq->anchor[0].error = get_avdp(fd, dev, &disc, &blocksize, st_size, FIRST_AVDP, force_sectorsize, &stats); //try load FIRST AVDP
-        seq->anchor[1].error = get_avdp(fd, dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize, &stats); //load AVDP
-        seq->anchor[2].error = get_avdp(fd, dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
-
-        if(seq->anchor[0].error)
+        if(seq->anchor[0].error) {
             err("AVDP[0] is broken.\n");
-        if(seq->anchor[1].error)
+        } else {
+            force_sectorsize = 1;
+        }
+        
+        seq->anchor[1].error = get_avdp(fd, dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize, &stats); //load AVDP
+        if(seq->anchor[1].error) {
             err("AVDP[1] is broken.\n");
-        if(seq->anchor[2].error)
-            err("AVDP[2] is broken.\n");
+        } else {
+            force_sectorsize = 1;
+        }
+        
+        seq->anchor[2].error = get_avdp(fd, dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
+        if(seq->anchor[2].error) {
+            if(seq->anchor[2].error < 255) { //Third AVDP is not necessarily present.
+                err("AVDP[2] is broken.\n");
+            } else {
+                third_avdp_missing = 1;
+            }
+        }
 
         if((seq->anchor[0].error & ~E_EXTLEN) == 0) {
             source = FIRST_AVDP;
         } else if((seq->anchor[1].error & ~E_EXTLEN) == 0) {
             source = SECOND_AVDP;
-        } else if((seq->anchor[2].error & ~E_EXTLEN) == 0) {
+        } else if((seq->anchor[2].error & ~E_EXTLEN && third_avdp_missing == 0) == 0) {
             source = THIRD_AVDP;
         } else {
             err("All AVDP are broken. Aborting.\n");
@@ -381,14 +368,14 @@ int main(int argc, char *argv[]) {
             source = FIRST_AVDP;
             if((seq->anchor[1].error & ~E_EXTLEN) != 0)
                 target1 = SECOND_AVDP;
-            if((seq->anchor[2].error & ~E_EXTLEN) != 0)
+            if((seq->anchor[2].error & ~E_EXTLEN) != 0 && third_avdp_missing == 0)
                 target2 = THIRD_AVDP;
         } else if((seq->anchor[1].error & ~E_EXTLEN) == 0) {
             source = SECOND_AVDP;
             target1 = FIRST_AVDP;
-            if((seq->anchor[2].error & ~E_EXTLEN) != 0)
+            if((seq->anchor[2].error & ~E_EXTLEN) != 0 && third_avdp_missing == 0)
                 target2 = THIRD_AVDP;
-        } else if((seq->anchor[2].error & ~E_EXTLEN) == 0) {
+        } else if((seq->anchor[2].error & ~E_EXTLEN) == 0 && third_avdp_missing == 0) {
             source = THIRD_AVDP;
             target1 = FIRST_AVDP;
             target2 = SECOND_AVDP;
@@ -442,7 +429,7 @@ int main(int argc, char *argv[]) {
             if(seq->anchor[1].error & E_EXTLEN) {
                 status |= fix_avdp(fd, dev, &disc, blocksize, st_size, SECOND_AVDP);                 
             }
-            if(seq->anchor[2].error & E_EXTLEN) {
+            if((seq->anchor[2].error & E_EXTLEN) && third_avdp_missing == 0) {
                 status |= fix_avdp(fd, dev, &disc, blocksize, st_size, THIRD_AVDP);                 
             }
         }
