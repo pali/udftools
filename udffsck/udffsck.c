@@ -1619,6 +1619,13 @@ uint8_t inspect_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t s
                         fid->descTag.descCRC = calculate_crc(fid, flen+padding);             
                         fid->descTag.tagChecksum = calculate_checksum(fid->descTag);
                         dbg("Location: %d\n", fid->descTag.tagLocation);
+                        
+                        position = (lsn) * stats->blocksize;
+                        chunk = position/chunksize;
+                        offset = position%chunksize;
+                        dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+                        map_chunk(fd, dev, chunk, st_size); 
+                        
                         struct fileEntry *fe = (struct fileEntry *)(dev[chunk]+offset);
                         struct extendedFileEntry *efe = (struct extendedFileEntry *)(dev[chunk]+offset);
                         if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
@@ -1814,7 +1821,7 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                         }
                     }
                     if(cont == 0) {
-                        map_chunk(fd, dev, chunk, st_size); 
+                        unmap_chunk(dev, chunk, st_size); 
                         return 4;
                     }
                 }
@@ -1829,7 +1836,7 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                         }
                     }
                     if(cont == 0) {
-                        map_chunk(fd, dev, chunk, st_size); 
+                        unmap_chunk(dev, chunk, st_size); 
                         return 4;
                     }
                 }
@@ -1891,7 +1898,7 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                     blank = malloc(stats->blocksize);
                     memcpy(fe, blank, stats->blocksize);
                     free(blank);
-                    map_chunk(fd, dev, chunk, st_size); 
+                    unmap_chunk(dev, chunk, st_size); 
                     return 32; 
                 }
             }
@@ -2148,7 +2155,7 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
         default:
             err("IDENT: %x, LSN: %d, addr: 0x%x\n", descTag.tagIdent, lsn, lsn*lbSize);
     }            
-    map_chunk(fd, dev, chunk, st_size); 
+   // unmap_chunk(dev, chunk, st_size); 
     return status;
 }
 
