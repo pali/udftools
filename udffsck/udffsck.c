@@ -37,7 +37,7 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
 void increment_used_space(struct filesystemStats *stats, uint64_t increment, uint32_t position);
 uint8_t inspect_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_size, uint32_t lbnlsn, uint32_t lsn, uint8_t *base, uint32_t *pos, struct filesystemStats *stats, uint32_t depth, vds_sequence_t *seq, uint8_t *status);
 void print_file_chunks(struct filesystemStats *stats);
-int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size);
+int copy_descriptor(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size);
 int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error);
 
 // Local defines
@@ -2375,13 +2375,20 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq) {
  *
  * return 0
  */
-int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size) {
+int copy_descriptor(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size) {
     tag sourceDescTag, destinationDescTag;
     uint8_t *destArray;
+    uint32_t offset = 0, chunk = 0;
+    uint32_t chunksize = CHUNK_SIZE;
 
     dbg("source: 0x%x, destination: 0x%x\n", sourcePosition, destinationPosition);
+    
+    chunk = (sourcePosition*sectorsize)/chunksize;
+    offset = (sourcePosition*sectorsize)%chunksize;
+    dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+    map_chunk(fd, dev, chunk, st_size); 
 
-    sourceDescTag = *(tag *)(dev+sourcePosition*sectorsize);
+    sourceDescTag = *(tag *)(dev[chunk]+offset);
     memcpy(&destinationDescTag, &sourceDescTag, sizeof(tag));
     destinationDescTag.tagLocation = destinationPosition;
     destinationDescTag.tagChecksum = calculate_checksum(destinationDescTag);
@@ -2390,11 +2397,19 @@ int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint
 
     destArray = calloc(1, size);
     memcpy(destArray, &destinationDescTag, sizeof(tag));
-    memcpy(destArray+sizeof(tag), dev+sourcePosition*sectorsize+sizeof(tag), size-sizeof(tag));
+    memcpy(destArray+sizeof(tag), dev[chunk]+offset+sizeof(tag), size-sizeof(tag));
+    
+    unmap_chunk(dev, chunk, st_size); 
+    chunk = (destinationPosition*sectorsize)/chunksize;
+    offset = (destinationPosition*sectorsize)%chunksize;
+    dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+    map_chunk(fd, dev, chunk, st_size); 
 
-    memcpy(dev+destinationPosition*sectorsize, destArray, size);
+    memcpy(dev[chunk]+offset, destArray, size);
 
     free(destArray);
+    
+    unmap_chunk(dev, chunk, st_size); 
 
     return 0;
 }
@@ -2413,11 +2428,13 @@ int copy_descriptor(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, uint
  * \return -2 after write checksum failed 
  * \return -4 after write CRC failed
  */
-int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target) {
+int write_avdp(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e source, avdp_type_e target) {
     uint64_t sourcePosition = 0;
     uint64_t targetPosition = 0;
     tag desc_tag;
     avdp_type_e type = target;
+    uint32_t offset = 0, chunk = 0;
+    uint32_t chunksize = CHUNK_SIZE;
 
     // Taget type to determine position on media
     if(source == 0) {
@@ -2445,29 +2462,38 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
     dbg("DevSize: %zu\n", devsize);
     dbg("Current position: %lx\n", targetPosition);
 
-    copy_descriptor(dev, disc, sectorsize, sourcePosition/sectorsize, targetPosition/sectorsize, sizeof(struct anchorVolDescPtr));
+    copy_descriptor(fd, dev, disc, devsize, sectorsize, sourcePosition/sectorsize, targetPosition/sectorsize, sizeof(struct anchorVolDescPtr));
 
     free(disc->udf_anchor[type]);
     disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
+    
+    chunk = targetPosition/chunksize;
+    offset = targetPosition%chunksize;
+    dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+    map_chunk(fd, dev, chunk, devsize); 
 
-    desc_tag = *(tag *)(dev+targetPosition);
+    desc_tag = *(tag *)(dev[chunk]+offset);
 
     if(!checksum(desc_tag)) {
         err("Checksum failure at AVDP[%d]\n", type);
+        map_chunk(fd, dev, chunk, devsize); 
         return -2;
     } else if(le16_to_cpu(desc_tag.tagIdent) != TAG_IDENT_AVDP) {
         err("AVDP not found at 0x%lx\n", targetPosition);
+        map_chunk(fd, dev, chunk, devsize); 
         return -4;
     }
 
-    memcpy(disc->udf_anchor[type], dev+targetPosition, sizeof(struct anchorVolDescPtr));
+    memcpy(disc->udf_anchor[type], dev[chunk]+offset, sizeof(struct anchorVolDescPtr));
 
     if(crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr))) {
         err("CRC error at AVDP[%d]\n", type);
+        map_chunk(fd, dev, chunk, devsize); 
         return -3;
     }
 
     imp("AVDP[%d] successfully written.\n", type);
+    map_chunk(fd, dev, chunk, devsize); 
     return 0;
 }
 
@@ -2484,10 +2510,12 @@ int write_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t de
  * \return -2 checksum failed 
  * \return -4 CRC failed
  */
-int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e target) {
+int fix_avdp(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size_t devsize,  avdp_type_e target) {
     uint64_t targetPosition = 0;
     tag desc_tag;
     avdp_type_e type = target;
+    uint32_t offset = 0, chunk = 0;
+    uint32_t chunksize = CHUNK_SIZE;
 
     // Taget type to determine position on media
     if(target == 0) {
@@ -2503,8 +2531,13 @@ int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devs
 
     dbg("DevSize: %zu\n", devsize);
     dbg("Current position: %lx\n", targetPosition);
+    
+    chunk = targetPosition/chunksize;
+    offset = targetPosition%chunksize;
+    dbg("Chunk: %d, offset: 0x%x\n", chunk, offset);
+    map_chunk(fd, dev, chunk, devsize); 
 
-    desc_tag = *(tag *)(dev+targetPosition);
+    desc_tag = *(tag *)(dev[chunk]+offset);
 
     if(!checksum(desc_tag)) {
         err("Checksum failure at AVDP[%d]\n", type);
@@ -2526,7 +2559,7 @@ int fix_avdp(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, size_t devs
     disc->udf_anchor[type]->descTag.descCRC = calculate_crc(disc->udf_anchor[type], sizeof(struct anchorVolDescPtr));
     disc->udf_anchor[type]->descTag.tagChecksum = calculate_checksum(disc->udf_anchor[type]->descTag);
 
-    memcpy(dev+targetPosition, disc->udf_anchor[type], sizeof(struct anchorVolDescPtr));
+    memcpy(dev[chunk]+offset, disc->udf_anchor[type], sizeof(struct anchorVolDescPtr));
 
     imp("AVDP[%d] Extent Length successfully fixed.\n", type);
     return 0;
@@ -2575,13 +2608,13 @@ char * descriptor_name(uint16_t descIdent) {
  *
  * \return sum of 0, 1 and 4 according fixing and found errors
  */
-int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq) { 
+int fix_vds(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq) { 
     uint32_t position_main, position_reserve;
     int8_t counter = 0;
     tag descTag;
     uint8_t fix=0;
     uint8_t status = 0;
-
+    
     // Go to first address of VDS
     position_main = (disc->udf_anchor[source]->mainVolDescSeqExt.extLocation);
     position_reserve = (disc->udf_anchor[source]->reserveVolDescSeqExt.extLocation);
@@ -2609,7 +2642,7 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
                 warn("src pos: 0x%x\n", position_reserve + i);
                 warn("dest pos: 0x%x\n", position_main + i);
                 //                memcpy(position_main + i*sectorsize, position_reserve + i*sectorsize, sectorsize);
-                copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
+                copy_descriptor(fd, dev, disc, st_size, sectorsize, position_reserve + i, position_main + i, sectorsize);
                 status |= 1;
             } else {
                 err("[%i] %s is broken.\n", i,descriptor_name(seq->reserve[i].tagIdent));
@@ -2626,7 +2659,7 @@ int fix_vds(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, avdp_type_e 
 
             if(fix) {
                 warn("[%i] Fixing Reserve %s\n", i,descriptor_name(seq->main[i].tagIdent));
-                copy_descriptor(dev, disc, sectorsize, position_reserve + i, position_main + i, sectorsize);
+                copy_descriptor(fd, dev, disc, st_size, sectorsize, position_reserve + i, position_main + i, sectorsize);
                 status |= 1;
             } else {
                 err("[%i] %s is broken.\n", i,descriptor_name(seq->main[i].tagIdent));
@@ -2668,8 +2701,12 @@ static const unsigned char BitsSetTable256[256] =
  * \return 4 -- No correct PD found
  * \return -1 -- no SBD found even if declared
  */
-int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
+int fix_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
     int vds = -1;
+    uint32_t chunksize = CHUNK_SIZE;
+    uint32_t chunk = 0;
+    uint32_t offset = 0;
+    
     if((vds=get_correct(seq, TAG_IDENT_PD)) < 0) {
         err("No correct PD found. Aborting.\n");
         return 4;
@@ -2695,7 +2732,12 @@ int fix_pd(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesy
 
     if(phd->unallocSpaceBitmap.extLength > 3) { //0,1,2,3 are special values ECMA 167r3 4/14.14.1.1
         uint32_t lsnBase = disc->udf_pd[vds]->partitionStartingLocation;       
-        struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev + (lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize);
+
+        chunk = ((lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize)/chunksize;
+        offset = ((lsnBase + phd->unallocSpaceBitmap.extPosition)*sectorsize)%chunksize;
+        map_chunk(fd, dev, chunk, st_size); 
+
+        struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)(dev[chunk]+offset);
         if(sbd->descTag.tagIdent != TAG_IDENT_SBD) {
             err("SBD not found\n");
             return -1;
@@ -2857,8 +2899,12 @@ int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size
  * \return 0 -- All Ok
  * \return 4 -- No correct LVD found
  */
-int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
+int fix_lvid(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
     int vds = -1;
+    uint32_t chunksize = CHUNK_SIZE;
+    uint32_t chunk = 0;
+    uint32_t offset = 0;
+    
     if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
         err("No correct LVD found. Aborting.\n");
         return 4;
@@ -2869,11 +2915,15 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     uint16_t size = sizeof(struct logicalVolIntegrityDesc) + disc->udf_lvid->numOfPartitions*4*2 + disc->udf_lvid->lengthOfImpUse;
     dbg("LVID: loc: %d, len: %d, size: %d\n", loc, len, size);
 
-    struct logicalVolIntegrityDesc *lvid = (struct logicalVolIntegrityDesc *)(dev+loc*sectorsize);
+    chunk = (loc*sectorsize)/chunksize;
+    offset = (loc*sectorsize)%chunksize;
+    map_chunk(fd, dev, chunk, st_size); 
+
+    struct logicalVolIntegrityDesc *lvid = (struct logicalVolIntegrityDesc *)(dev[chunk]+offset);
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
 
     // Fix PD too
-    fix_pd(dev, disc, sectorsize, stats, seq);
+    fix_pd(fd, dev, disc, st_size, sectorsize, stats, seq);
 
     // Fix files/dir amounts
     impUse->numOfFiles = stats->countNumOfFiles;
@@ -2892,11 +2942,11 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     }
 
     int8_t mino = tmlocal.tm_min - tm.tm_min;
-    int16_t offset = hrso*60+mino;
-    dbg("Offset: %d, hrs: %d, min: %d\n", offset, hrso, mino);
+    int16_t t_offset = hrso*60+mino;
+    dbg("Offset: %d, hrs: %d, min: %d\n", t_offset, hrso, mino);
     dbg("lhr: %d, hr: %d\n", tmlocal.tm_hour, tm.tm_hour);
     timestamp *ts = &(disc->udf_lvid->recordingDateAndTime);
-    ts->typeAndTimezone = (1 << 12) | (offset >= 0 ? offset : (0x1000-offset));
+    ts->typeAndTimezone = (1 << 12) | (t_offset >= 0 ? t_offset : (0x1000-t_offset));
     ts->year = tmlocal.tm_year + 1900;
     ts->month = tmlocal.tm_mon + 1;
     ts->day = tmlocal.tm_mday;
@@ -2921,6 +2971,7 @@ int fix_lvid(uint8_t *dev, struct udf_disc *disc, size_t sectorsize, struct file
     //Write changes back to medium
     memcpy(lvid, disc->udf_lvid, size);
 
+    unmap_chunk(dev, chunk, st_size); 
     imp("LVID recovery was successful.\n");
     return 0;
 }

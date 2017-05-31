@@ -372,7 +372,7 @@ int main(int argc, char *argv[]) {
         err("%d blocks is unused but not marked as unallocated in SBD.\n", usedSpaceDiffBlocks);
         seq->pd.error |= E_FREESPACE; 
     }
-#if 0
+
     if(seq->anchor[0].error + seq->anchor[1].error + seq->anchor[2].error != 0) { //Something went wrong with AVDPs
         int target1 = -1;
         int target2 = -1;
@@ -416,7 +416,7 @@ int main(int argc, char *argv[]) {
         if(fixavdp) {
             msg("Source: %d, Target1: %d, Target2: %d\n", source, target1, target2);
             if(target1 >= 0) {
-                if(write_avdp(dev, &disc, blocksize, st_size, source, target1) != 0) {
+                if(write_avdp(fd, dev, &disc, blocksize, st_size, source, target1) != 0) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
                 } else {
                     imp("AVDP recovery was successful.\n");
@@ -425,7 +425,7 @@ int main(int argc, char *argv[]) {
                 } 
             } 
             if(target2 >= 0) {
-                if(write_avdp(dev, &disc, blocksize, st_size, source, target2) != 0) {
+                if(write_avdp(fd, dev, &disc, blocksize, st_size, source, target2) != 0) {
                     fatal("AVDP recovery failed. Is medium writable?\n");
                 } else {
                     imp("AVDP recovery was successful.\n");
@@ -437,13 +437,13 @@ int main(int argc, char *argv[]) {
 
         if(fixavdp) {
             if(seq->anchor[0].error & E_EXTLEN) {
-                status |= fix_avdp(dev, &disc, blocksize, st_size, FIRST_AVDP);                 
+                status |= fix_avdp(fd, dev, &disc, blocksize, st_size, FIRST_AVDP);                 
             }
             if(seq->anchor[1].error & E_EXTLEN) {
-                status |= fix_avdp(dev, &disc, blocksize, st_size, SECOND_AVDP);                 
+                status |= fix_avdp(fd, dev, &disc, blocksize, st_size, SECOND_AVDP);                 
             }
             if(seq->anchor[2].error & E_EXTLEN) {
-                status |= fix_avdp(dev, &disc, blocksize, st_size, THIRD_AVDP);                 
+                status |= fix_avdp(fd, dev, &disc, blocksize, st_size, THIRD_AVDP);                 
             }
         }
 
@@ -451,8 +451,8 @@ int main(int argc, char *argv[]) {
 
 
     print_metadata_sequence(seq);
-
-    status |= fix_vds(dev, &disc, blocksize, source, seq); 
+    
+    status |= fix_vds(fd, dev, &disc, st_size, blocksize, source, seq); 
 
     int fixlvid = 0;
     int fixpd = 0;
@@ -508,12 +508,12 @@ int main(int argc, char *argv[]) {
 
 
     if(fixlvid == 1) {
-        if(fix_lvid(dev, &disc, blocksize, &stats, seq) == 0) {
+        if(fix_lvid(fd, dev, &disc, st_size, blocksize, &stats, seq) == 0) {
             error_status &= ~(ES_LVID | ES_PD); 
             fix_status |= (ES_LVID | ES_PD);
         }
     } else if(fixlvid == 0 && fixpd == 1) {
-        if(fix_pd(dev, &disc, blocksize, &stats, seq) == 0) {
+        if(fix_pd(fd, dev, &disc, st_size, blocksize, &stats, seq) == 0) {
             error_status &= ~(ES_PD); 
             fix_status |= ES_PD;
         }
@@ -545,7 +545,6 @@ int main(int argc, char *argv[]) {
     if(fix_status != 0) {
         status |= 1; // Errors were fixed
     }
-#endif
     //---------------- Clean up -----------------
 
     note("Clean allocations\n");
