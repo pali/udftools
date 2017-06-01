@@ -416,6 +416,54 @@ void map_chunk(int fd, uint8_t **dev, uint32_t chunk, size_t st_size) {
     dbg("\tChunk #%d allocated, pointer: %p, offset 0x%llx\n", chunk, dev[chunk], (uint64_t)(chunk)*chunksize);
 }
 
+void unmap_raw(uint8_t **ptr, uint32_t offset, size_t size) {
+    if(*ptr != NULL) {
+        dbg("Going to unmap area, ptr: %p\n", ptr);
+        munmap(*ptr, size);
+        ptr = NULL;
+        dbg("\tArea unmapped\n");
+    } else {
+        dbg("\tArea is already unmapped\n");
+    }
+}
+
+void map_raw(int fd, uint8_t **ptr, uint64_t offset, size_t size, size_t st_size) {
+    if(*ptr != NULL) {
+        dbg("\tArea is already mapped.\n");
+        return;
+    }
+
+    dbg("\tSize: 0x%llx, Alloc size 0x%llx\n", st_size, size);
+
+    int prot = PROT_READ;
+    // If is there some request for corrections, we need read/write access to medium
+    if(interactive || autofix) {
+        prot |= PROT_WRITE;
+        dbg("\tRW\n");
+    }
+
+    *ptr = (uint8_t *)mmap(NULL, size, prot, MAP_SHARED, fd, offset);
+    if(ptr == MAP_FAILED) {
+        switch(errno) {
+            case EACCES: dbg("EACCES\n"); break;
+            case EAGAIN: dbg("EAGAIN\n"); break;
+            case EBADF: dbg("EBADF\n"); break;
+            case EINVAL: dbg("EINVAL\n"); break;
+            case ENFILE: dbg("ENFILE\n"); break;
+            case ENODEV: dbg("ENODEV\n"); break;
+            case ENOMEM: dbg("ENOMEM\n"); break;
+            case EPERM: dbg("EPERM\n"); break;
+            case ETXTBSY: dbg("ETXTBSY\n"); break;
+            case EOVERFLOW: dbg("EOVERFLOW\n"); break;
+            default: dbg("EUnknown\n"); break;
+        }
+
+        fatal("\tError maping: %s.\n", strerror(errno));
+        exit(16);
+    }
+    dbg("\tArea allocated, pointer: %p, offset 0x%llx\n", ptr, offset);
+}
+
 /**
  * \brief UDF VRS detection function
  *
@@ -2792,7 +2840,11 @@ int fix_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t 
         }
         dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
         dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
-
+        
+        uint8_t *ptr = NULL;
+        map_raw(fd, &ptr, (uint64_t)(chunk)*CHUNK_SIZE, sbd->numOfBytes, st_size); 
+        sbd = (struct spaceBitmapDesc *)(ptr+offset);
+        
         dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
         memcpy(sbd->bitmap, stats->actPartitionBitmap, sbd->numOfBytes);
         dbg("MEMCPY DONE\n");
@@ -2800,6 +2852,9 @@ int fix_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t 
         //Recalculate CRC and checksum
         sbd->descTag.descCRC = calculate_crc(sbd, sbd->descTag.descCRCLength + sizeof(tag));
         sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
+        
+        unmap_raw(&ptr, (uint64_t)(chunk)*CHUNK_SIZE, sbd->numOfBytes);
+
         imp("PD SBD recovery was successful.\n");
         return 0;
     }
@@ -2886,6 +2941,15 @@ int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size
         stats->partitionNumOfBytes = sbd->numOfBytes;
         stats->partitionNumOfBits = sbd->numOfBits;
 
+        dbg("Crete array done\n");
+
+        uint8_t *ptr = NULL;
+        dbg("Chunk: %d\n", chunk);
+        map_raw(fd, &ptr, (uint64_t)(chunk)*CHUNK_SIZE, (sbd->numOfBytes + offset), st_size);
+        dbg("Ptr: %p\n", ptr); 
+        sbd = (struct spaceBitmapDesc *)(ptr+offset);
+       
+        dbg("Get bitmap statistics\n"); 
         //Get actual bitmap statistics
         uint32_t usedBlocks = 0;
         uint32_t unusedBlocks = 0;
@@ -2893,6 +2957,7 @@ int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size
         uint8_t v = 0;
         for(int i=0; i<sbd->numOfBytes-1; i++) {
             v = sbd->bitmap[i];
+            //if(i%1000 == 0) dbg("0x%02x %d\n",v, i);
             count = BitsSetTable256[v & 0xff] + BitsSetTable256[(v >> 8) & 0xff] + BitsSetTable256[(v >> 16) & 0xff] + BitsSetTable256[v >> 24];     
             usedBlocks += 8-count;
             unusedBlocks += count;
@@ -2919,6 +2984,8 @@ int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size
         dbg("Unused blocks: %d\n", unusedBlocks);
         dbg("Used Blocks: %d\n", usedBlocks);
 
+        sbd = (struct spaceBitmapDesc *)(dev[chunk]+offset);
+        unmap_raw(&ptr, (uint64_t)(chunk)*CHUNK_SIZE, sbd->numOfBytes);
         unmap_chunk(dev, chunk, st_size);
     }
 
