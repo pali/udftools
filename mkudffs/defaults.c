@@ -29,6 +29,17 @@
 
 #include "mkudffs.h"
 
+int default_media[] = {
+	[MEDIA_TYPE_HD] = DEFAULT_HD,
+	[MEDIA_TYPE_DVD] = DEFAULT_DVD,
+	[MEDIA_TYPE_DVDRAM] = DEFAULT_DVDRAM,
+	[MEDIA_TYPE_DVDRW] = DEFAULT_DVDRW,
+	[MEDIA_TYPE_WORM] = DEFAULT_WORM,
+	[MEDIA_TYPE_MO] = DEFAULT_MO,
+	[MEDIA_TYPE_CDRW] = DEFAULT_CDRW,
+	[MEDIA_TYPE_CDR] = DEFAULT_CDR,
+};
+
 struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 {
 //			align,	numSize,denomSize,minSize

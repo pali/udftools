@@ -69,7 +69,8 @@ Specify the size of blocks in bytes. Valid block size vales are 512, 1024,
 2048 and 4096 bytes per block. If omitted,
 .B mkudffs
 block-size is set to device logical block (sector) size. If it is unknown
-then block-size 2048 is used.
+then for \fB\-\-media\-type\fP=\fIhd\fP is used block-size 512 and for other
+media types 2048.
 
 .TP
 .BI \-r,\-\-udfrev= " udf-revision "

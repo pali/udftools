@@ -103,11 +103,11 @@ void usage(void)
 	exit(1);
 }
 
-void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int *blocksize)
+void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int *blocksize, int *media_ptr)
 {
 	int retval;
 	int i;
-	int media = DEFAULT_HD;
+	int media = MEDIA_TYPE_HD;
 	uint16_t packetlen = 0;
 	unsigned long int blocks = 0;
 	char *endptr = NULL;
@@ -342,7 +342,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 					exit(1);
 				}
 				add_type2_sparable_partition(disc, 0, spartable, packetlen);
-				media = DEFAULT_CDRW;
+				media = MEDIA_TYPE_CDRW;
 				break;
 			}
 			case OPT_PACKETLEN:
@@ -356,45 +356,48 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			}
 			case OPT_MEDIA_TYPE:
 			{
-				if (!strncmp(optarg, "hd", 2))
-					media = DEFAULT_HD;
+				if (!strcmp(optarg, "hd"))
+				{
+					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
+					media = MEDIA_TYPE_HD;
+				}
 				else if (!strcmp(optarg, "dvd"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
-					media = DEFAULT_DVD;
+					media = MEDIA_TYPE_DVD;
 				}
-				else if (!strncmp(optarg, "dvdram", 6))
+				else if (!strcmp(optarg, "dvdram"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
-					media = DEFAULT_DVDRAM;
+					media = MEDIA_TYPE_DVDRAM;
 				}
-				else if (!strncmp(optarg, "dvdrw", 5))
+				else if (!strcmp(optarg, "dvdrw"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
-					media = DEFAULT_DVDRW;
+					media = MEDIA_TYPE_DVDRW;
 					packetlen = 16;
 				}
-				else if (!strncmp(optarg, "worm", 4))
+				else if (!strcmp(optarg, "worm"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
-					media = DEFAULT_WORM;
+					media = MEDIA_TYPE_WORM;
 					disc->flags |= (FLAG_STRATEGY4096 | FLAG_BLANK_TERMINAL);
 				}
-				else if (!strncmp(optarg, "mo", 2))
+				else if (!strcmp(optarg, "mo"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
-					media = DEFAULT_MO;
+					media = MEDIA_TYPE_MO;
 					disc->flags |= (FLAG_STRATEGY4096 | FLAG_BLANK_TERMINAL);
 				}
-				else if (!strncmp(optarg, "cdrw", 4))
+				else if (!strcmp(optarg, "cdrw"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
-					media = DEFAULT_CDRW;
+					media = MEDIA_TYPE_CDRW;
 				}
-				else if (!strncmp(optarg, "cdr", 3))
+				else if (!strcmp(optarg, "cdr"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
-					media = DEFAULT_CDR;
+					media = MEDIA_TYPE_CDR;
 					disc->flags |= FLAG_VAT;
 					disc->flags &= ~FLAG_CLOSED;
 				}
@@ -471,9 +474,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 
 	if (le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) == 0)
 	{
-		if ((media == DEFAULT_CDRW || media == DEFAULT_DVDRW) && (disc->udf_rev != 0x0102))
+		if ((media == MEDIA_TYPE_CDRW || media == MEDIA_TYPE_DVDRW) && (disc->udf_rev != 0x0102))
 			add_type2_sparable_partition(disc, 0, 2, packetlen);
-		else if ((media == DEFAULT_CDR) && (disc->udf_rev != 0x0102))
+		else if ((media == MEDIA_TYPE_CDR) && (disc->udf_rev != 0x0102))
 		{
 			add_type1_partition(disc, 0);
 			add_type2_virtual_partition(disc, 0);
@@ -485,12 +488,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	if (!(disc->flags & FLAG_SPACE))
 		disc->flags |= FLAG_UNALLOC_BITMAP;
 
-	if (media == DEFAULT_CDR)
+	if (media == MEDIA_TYPE_CDR)
 		disc->flags &= ~FLAG_SPACE;
 
 	if (!(disc->flags & FLAG_BOOTAREA_MASK))
 	{
-		if (media == DEFAULT_HD)
+		if (media == MEDIA_TYPE_HD)
 			disc->flags |= FLAG_BOOTAREA_ERASE;
 		else
 			disc->flags |= FLAG_BOOTAREA_PRESERVE;
@@ -499,6 +502,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
 		if (disc->sizing[i].denomSize == 0)
-			disc->sizing[i] = default_sizing[media][i];
+			disc->sizing[i] = default_sizing[default_media[media]][i];
 	}
+
+	*media_ptr = media;
 }

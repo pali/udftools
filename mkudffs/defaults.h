@@ -23,6 +23,7 @@
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H 1
 
+extern int default_media[];
 extern struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE];
 
 extern struct primaryVolDesc default_pvd;

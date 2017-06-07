@@ -145,9 +145,11 @@ static void detect_blocksize(int fd, struct udf_disc *disc, int *blocksize)
 	{
 		disc->blocksize = 2048;
 		disc->blocksize_bits = 11;
+		*blocksize = -1;
 	}
+	else
+		*blocksize = disc->blocksize;
 	disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);
-	*blocksize = disc->blocksize;
 #endif
 }
 
@@ -218,10 +220,11 @@ int main(int argc, char *argv[])
 	char buf[128*3];
 	int fd;
 	int blocksize = -1;
+	int media;
 	int len;
 
 	udf_init_disc(&disc);
-	parse_args(argc, argv, &disc, filename, &blocksize);
+	parse_args(argc, argv, &disc, filename, &blocksize, &media);
 	fd = open(filename, O_RDWR | O_CREAT, 0660);
 	if (fd == -1) {
 		fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, strerror(errno));
@@ -229,6 +232,11 @@ int main(int argc, char *argv[])
 	}
 
 	detect_blocksize(fd, &disc, &blocksize);
+
+	if (blocksize == -1 && media == MEDIA_TYPE_HD) {
+		disc.blocksize = 512;
+		disc.udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc.blocksize);
+	}
 
 	disc.blocks = get_blocks(fd, disc.blocksize, disc.blocks);
 	disc.head->blocks = disc.blocks;
