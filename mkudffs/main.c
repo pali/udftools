@@ -235,6 +235,7 @@ int main(int argc, char *argv[])
 
 	if (blocksize == -1 && media == MEDIA_TYPE_HD) {
 		disc.blocksize = 512;
+		disc.blocksize_bits = 9;
 		disc.udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc.blocksize);
 	}
 
