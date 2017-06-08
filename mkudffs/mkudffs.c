@@ -417,7 +417,7 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	}
 	else
 	{
-		mbr_partition->ending_chs[0] = (lba_blocks / 63) % 255, 255, 244;
+		mbr_partition->ending_chs[0] = (lba_blocks / 63) % 255;
 		mbr_partition->ending_chs[1] = ((1 + lba_blocks % 63) & 63) | (((lba_blocks / (255*63)) >> 8) * 64);
 		mbr_partition->ending_chs[2] = (lba_blocks / (255*63)) & 255;
 	}
