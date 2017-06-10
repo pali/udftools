@@ -1,7 +1,7 @@
 /*
  * options.c
  *
- * Copyright (c) 2016       Vojtech Vladyka <vojtech.vladyka@gmail.com>
+ * Copyright (c) 2017       Vojtech Vladyka <vojtech.vladyka@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify

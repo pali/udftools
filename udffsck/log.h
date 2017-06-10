@@ -1,7 +1,7 @@
 /*
- * options.h
+ * log.h
  *
- * Copyright (c) 2017       Vojtech Vladyka <vojtech.vladyka@gmail.com>
+ * Copyright (c) 2017    Vojtech Vladyka <vojtch.vladyka@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,32 +19,41 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
-
-#ifndef _OPTIONS_H
-#define _OPTIONS_H
+#ifndef __LOG_G__
+#define __LOG_G__
 
 #include "config.h"
 
-#include <getopt.h>
-#include "utils.h"
-#include "log.h"
+#include <ecma_167.h>
+#include <libudffs.h>
 
-void usage(void);
-void parse_args(int, char *[], char **path, int *blocksize/*, struct cdrw_disc *, char **/);
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
 
-extern int interactive;
-extern int autofix;
+#include "udffsck.h"
+
+typedef enum {
+    NONE=0,
+    WARN,
+    MSG,
+    DBG
+} verbosity_e;
+
 extern verbosity_e verbosity;
-extern int colored;
-extern int fast_mode;
 
-/*
- * Command line option token values.
- *      0x0000-0x00ff   Single characters
- *      0x1000-0x1fff   Long switches (no arg)
- *      0x2000-0x2fff   Long settings (arg required)
- */
+void dbg(const char *format, ...);
+void dwarn(const char *format, ...);
+void note(const char *format, ...);
+void msg(const char *format, ...);
+void imp(const char *format, ...);
+void warn(const char *format, ...);
+void err(const char *format, ...);
+void fatal(const char *format, ...);
 
-#define OPT_HELP        0x1000
+char * verbosity_level_str(verbosity_e lvl);
 
-#endif /* _OPTIONS_H */
+
+#endif //__LOG_H__

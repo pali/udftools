@@ -1,7 +1,7 @@
 /*
  * utils.h
  *
- * Copyright (c) 2016    Vojtech Vladyka <vojtch.vladyka@gmail.com>
+ * Copyright (c) 2017    Vojtech Vladyka <vojtch.vladyka@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -35,28 +35,8 @@
 
 #include "udffsck.h"
 
-typedef enum {
-    NONE=0,
-    WARN,
-    MSG,
-    DBG
-} verbosity_e;
-
-extern verbosity_e verbosity;
-
 int print_disc(struct udf_disc *disc);
 int prompt(const char *format, ...);
-
-void dbg(const char *format, ...);
-void dwarn(const char *format, ...);
-void note(const char *format, ...);
-void msg(const char *format, ...);
-void imp(const char *format, ...);
-void warn(const char *format, ...);
-void err(const char *format, ...);
-void fatal(const char *format, ...);
-
-char * verbosity_level_str(verbosity_e lvl);
 
 void print_metadata_sequence(vds_sequence_t *seq);
 

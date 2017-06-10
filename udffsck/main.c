@@ -1,7 +1,7 @@
 /*
  * main.c
  *
- * Copyright (c) 2016    Vojtech Vladyka <vojtch.vladyka@gmail.com>
+ * Copyright (c) 2017    Vojtech Vladyka <vojtch.vladyka@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -177,11 +177,9 @@ int main(int argc, char *argv[]) {
 
     endmntent(mtab);
 
-//    int prot = PROT_READ;
     int flags = O_RDONLY;
     // If is there some request for corrections, we need read/write access to medium
     if(interactive || autofix) {
- //       prot |= PROT_WRITE;
         flags = O_RDWR;
         dbg("RW\n");
     }
@@ -564,6 +562,9 @@ int main(int argc, char *argv[]) {
 
     if(status <= 1) {
         msg("Filesystem clean.\n");
+    }
+    else if(status == 1) {
+        msg("Filesystem errors were fixed.\n");
     }
     //---------------- Clean up -----------------
 

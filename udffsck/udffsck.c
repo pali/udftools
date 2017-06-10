@@ -1,7 +1,7 @@
 /*
  * udffsck.c
  *
- * Copyright (c) 2016    Vojtech Vladyka <vojtch.vladyka@gmail.com>
+ * Copyright (c) 2017    Vojtech Vladyka <vojtch.vladyka@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
