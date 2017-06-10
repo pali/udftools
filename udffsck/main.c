@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
     msg("Medium to analyze: %s\n", path);
     
     //Check if medium is mounted or not
-    FILE* mtab = setmntent("/etc/mtab", "r");
+    FILE* mtab = setmntent("/proc/mounts", "r");
     struct mntent* m;
     struct mntent mnt;
     char strings[4096];
