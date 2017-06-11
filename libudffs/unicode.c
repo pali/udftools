@@ -29,14 +29,20 @@
 
 #include "libudffs.h"
 
-size_t decode_utf8(dstring *in, char *out, size_t inlen)
+size_t decode_utf8(dstring *in, char *out, size_t inlen, size_t outlen)
 {
 	size_t len = 0, i;
 	unsigned int c;
 
+	if (outlen == 0)
+		return 0;
+
 	if (in[inlen-1] == 0)
 		return 0;
 	else if (in[0] != 8 && in[0] != 16)
+		return 0;
+
+	if (in[0] == 16 && (inlen-1) % 2 != 0)
 		return 0;
 
 	for (i=1; i<inlen;)
@@ -48,20 +54,29 @@ size_t decode_utf8(dstring *in, char *out, size_t inlen)
 		if (c == 0x00U)
 			break;
 		else if (c < 0x80U)
+		{
+			if (len+1 >= outlen)
+				return 0;
 			out[len++] = (uint8_t)c;
+		}
 		else if (c < 0x800U)
 		{
+			if (len+2 >= outlen)
+				return 0;
 			out[len++] = (uint8_t)(0xc0 | (c >> 6));
 			out[len++] = (uint8_t)(0x80 | (c & 0x3f));
 		}
 		else
 		{
+			if (len+3 >= outlen)
+				return 0;
 			out[len++] = (uint8_t)(0xe0 | (c >> 12));
 			out[len++] = (uint8_t)(0x80 | ((c >> 6) & 0x3f));
 			out[len++] = (uint8_t)(0x80 | (c & 0x3f));
 		}
 	}
 
+	out[len] = 0;
 	return len;
 }
 
@@ -165,10 +180,10 @@ error_out:
 	return len;
 }
 
-size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen)
+size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen, size_t outlen)
 {
 	if (disc->flags & FLAG_UTF8)
-		return decode_utf8(in, out, inlen);
+		return decode_utf8(in, out, inlen, outlen);
 	else if (disc->flags & (FLAG_UNICODE8 | FLAG_UNICODE16))
 	{
 		memcpy(out, &in[1], inlen);

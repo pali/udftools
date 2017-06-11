@@ -247,12 +247,12 @@ int main(int argc, char *argv[])
 	printf("filename=%s\n", filename);
 
 	memset(buf, 0, sizeof(buf));
-	len = decode_utf8(disc.udf_lvd[0]->logicalVolIdent, buf, 128);
+	len = decode_utf8(disc.udf_lvd[0]->logicalVolIdent, buf, 128, sizeof(buf));
 	buf[len] = 0;
 	printf("label=%s\n", buf);
 
 	memset(buf, 0, sizeof(buf));
-	len = decode_utf8(disc.udf_pvd[0]->volSetIdent, buf, 128);
+	len = decode_utf8(disc.udf_pvd[0]->volSetIdent, buf, 128, sizeof(buf));
 	buf[len] = 0;
 	printf("uuid=%.16s\n", buf);
 
