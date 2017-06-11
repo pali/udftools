@@ -243,12 +243,12 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 
 size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outlen)
 {
-	memset(out, 0x00, outlen);
 	if (disc->flags & FLAG_UTF8)
 		return encode_utf8(out, in, outlen);
 	else if (disc->flags & (FLAG_UNICODE8|FLAG_UNICODE16))
 	{
 		size_t inlen = strlen(in);
+		memset(out, 0, outlen);
 		if (inlen >= outlen - 2)
 			return 0;
 		memcpy(&out[1], in, inlen);
@@ -256,6 +256,7 @@ size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outle
 			out[0] = 0x08;
 		else
 			out[0] = 0x10;
+		out[outlen-1] = inlen + 1;
 		return inlen + 1;
 	}
 	else
