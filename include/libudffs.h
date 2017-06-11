@@ -210,8 +210,8 @@ struct udf_data *alloc_data(void *, int);
 
 /* unicode.c */
 extern size_t decode_utf8(dstring *, char *, size_t);
-extern size_t encode_utf8(dstring *, char *, char *, size_t);
+extern size_t encode_utf8(dstring *, char *, size_t);
 extern size_t decode_string(struct udf_disc *, dstring *, char *, size_t);
-extern size_t encode_string(struct udf_disc *, dstring *, char *, char *, size_t);
+extern size_t encode_string(struct udf_disc *, dstring *, char *, size_t);
 
 #endif /* __LIBUDFFS_H */

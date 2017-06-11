@@ -118,7 +118,7 @@ findFileIdentDesc(Directory *dir, char* name)
     dstring             uName[256];
     size_t              uLen;
 
-    uLen = encode_utf8(uName, "", name, 256);
+    uLen = encode_utf8(uName, name, 256);
 
     data = dir->data;
 
@@ -199,7 +199,7 @@ makeFileIdentDesc(char* name)
 
     if( name[0] != 0 ) {				/* FID to parent directory has no name */
 	memset(&uName, 0, 256);
-        uLen = encode_utf8(uName, "", name, 256);
+        uLen = encode_utf8(uName, name, 256);
 	fid->lengthFileIdent = uLen;
 	memcpy(fid->fileIdent + fid->lengthOfImpUse, uName, fid->lengthFileIdent);
     }

@@ -65,32 +65,21 @@ size_t decode_utf8(dstring *in, char *out, size_t inlen)
 	return len;
 }
 
-size_t encode_utf8(dstring *out, char *hdr, char *in, size_t outlen)
+size_t encode_utf8(dstring *out, char *in, size_t outlen)
 {
 	size_t inlen = strlen(in);
-	size_t len = 1, i;
+	size_t len, i;
 	int utf_cnt;
 	uint32_t utf_char, max_val;
 	unsigned int c;
 
+	len = 1;
 	out[0] = 8;
 	max_val = 0xFF;
 
 try_again:
 	utf_cnt = 0;
 	utf_char = 0;
-
-	if (max_val == 0xFF)
-	{
-		memcpy(&out[1], hdr, strlen(hdr));
-		len = strlen(hdr) + 1;
-	}
-	else if (max_val == 0xFFFF)
-	{
-		for (i=0; i<strlen(hdr); i++)
-			out[2+(i*2)] = hdr[i];
-		len = (strlen(hdr) * 2) + 1;
-	}
 
 	for (i=0; i<inlen; i++)
 	{
@@ -150,6 +139,7 @@ try_again:
 		{
 			if ( 0xFF == max_val )
 			{
+				len = 1;
 				max_val = 0xFFFF;
 				out[0] = 0x10;
 				goto try_again;
@@ -188,37 +178,22 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 		return 0;
 }
 
-size_t encode_string(struct udf_disc *disc, dstring *out, char *hdr, char *in, size_t outlen)
+size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outlen)
 {
-	size_t i;
-
 	memset(out, 0x00, outlen);
 	if (disc->flags & FLAG_UTF8)
-		return encode_utf8(out, hdr, in, outlen);
-	else if (disc->flags & FLAG_UNICODE8)
+		return encode_utf8(out, in, outlen);
+	else if (disc->flags & (FLAG_UNICODE8|FLAG_UNICODE16))
 	{
-		if (strlen(hdr) + strlen(in) >= outlen - 2)
+		size_t inlen = strlen(in);
+		if (inlen >= outlen - 2)
 			return 0;
-		else
-		{
-			memcpy(&out[1], hdr, strlen(hdr));
-			memcpy(&out[1+strlen(hdr)], in, strlen(in));
+		memcpy(&out[1], in, inlen);
+		if (disc->flags & FLAG_UNICODE8)
 			out[0] = 0x08;
-			return strlen(hdr) + strlen(in) + 1;
-		}
-	}
-	else if (disc->flags & FLAG_UNICODE16)
-	{
-		if (strlen(hdr)*2 + strlen(in) >= outlen - 2)
-			return 0;
 		else
-		{
-			for (i=0; i<strlen(hdr); i++)
-				out[2+(i*2)] = hdr[i];
-			memcpy(&out[1+(strlen(hdr)*2)], in, strlen(in));
 			out[0] = 0x10;
-			return (strlen(hdr) * 2) + strlen(in) + 1;
-		}
+		return inlen + 1;
 	}
 	else
 		return 0;
