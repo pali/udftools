@@ -186,8 +186,56 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 		return decode_utf8(in, out, inlen, outlen);
 	else if (disc->flags & (FLAG_UNICODE8 | FLAG_UNICODE16))
 	{
-		memcpy(out, &in[1], inlen);
-		return inlen;
+		size_t i;
+		if (in[0] != 8 && in[0] != 16)
+			return 0;
+		if (in[inlen-1] >= inlen)
+			return 0;
+		inlen = in[inlen-1];
+		if (in[0] == 16 && (inlen-1) % 2 != 0)
+			return 0;
+		if ((in[0] == 8 && (disc->flags & FLAG_UNICODE8)) || (in[0] == 16 && (disc->flags & FLAG_UNICODE16)))
+		{
+			if (inlen > outlen)
+				return 0;
+			memcpy(out, &in[1], inlen);
+			if (in[0] == 0x10 && (disc->flags & FLAG_UNICODE16))
+			{
+				if (inlen+1 > outlen)
+					return 0;
+				out[inlen] = 0;
+				return inlen+1;
+			}
+			return inlen;
+		}
+		else if (disc->flags & FLAG_UNICODE8)
+		{
+			if (2*(inlen-1)+2 > outlen)
+				return 0;
+			for (i=1; i<inlen; ++i)
+			{
+				out[2*(i-1)] = 0;
+				out[2*(i-1)+1] = in[i];
+			}
+			out[2*(inlen-1)] = 0;
+			out[2*(inlen-1)+1] = 0;
+			return 2*(inlen-1);
+		}
+		else if (disc->flags & FLAG_UNICODE16)
+		{
+			if ((inlen-1)/2+1 > outlen)
+				return 0;
+			for (i=1; i<inlen; i+=2)
+			{
+				if (in[i])
+					return 0;
+				out[i/2] = in[i+1];
+			}
+			out[(inlen-1)/2] = 0;
+			return (inlen-1)/2;
+		}
+		else
+			return 0;
 	}
 	else
 		return 0;
