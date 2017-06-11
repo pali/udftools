@@ -229,25 +229,55 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			}
 			case OPT_VSID:
 			{
-				char ts[17];
-				if (disc->udf_pvd[0]->volSetIdent[0] == 16)
-					for (i = 0; i < 16; ++i)
-						ts[i] = disc->udf_pvd[0]->volSetIdent[2+(i*2)];
-				else
-					strncpy(ts, (char *)&disc->udf_pvd[0]->volSetIdent[1], 16);
-				ts[16] = 0;
-				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, ts, optarg, 128);
-				if (!disc->udf_pvd[0]->volSetIdent[127])
+				dstring ts[128];
+				size_t len = encode_string(disc, ts, "", optarg, 128);
+				if (!len || (ts[0] == 16 && len > 127-16*2) || (disc->udf_pvd[0]->volSetIdent[0] == 16 && len > (size_t)(127-16*(ts[0]/8))) || len > 127-16)
 				{
 					fprintf(stderr, "mkudffs: Error: vsid option is too long\n");
 					exit(1);
 				}
+				if (ts[0] == disc->udf_pvd[0]->volSetIdent[0])
+				{
+					for (i = 0; i < 16; ++i)
+					{
+						if (ts[0] == 8)
+						{
+							if (!disc->udf_pvd[0]->volSetIdent[i+1])
+								disc->udf_pvd[0]->volSetIdent[i+1] = '0';
+						}
+						else
+						{
+							if (!disc->udf_pvd[0]->volSetIdent[(2*i)+1] && !disc->udf_pvd[0]->volSetIdent[(2*i)+2])
+								disc->udf_pvd[0]->volSetIdent[(2*i)+2] = '0';
+						}
+					}
+				}
+				else if(ts[0] == 16)
+				{
+					disc->udf_pvd[0]->volSetIdent[0] = 16;
+					for (i = 17; i > 0; --i)
+					{
+						disc->udf_pvd[0]->volSetIdent[(2*(i-1))+2] = disc->udf_pvd[0]->volSetIdent[i];
+						disc->udf_pvd[0]->volSetIdent[(2*(i-1))+1] = 0;
+					}
+				}
+				else if(ts[0] == 8)
+				{
+					ts[0] = 16;
+					for (i = len; i > 0; --i)
+					{
+						ts[(2*(i-1))+2] = ts[i];
+						ts[(2*(i-1))+1] = 0;
+					}
+					len = (len-1)*2+1;
+				}
+				memcpy(&disc->udf_pvd[0]->volSetIdent[1+16*(ts[0]/8)], &ts[1], len-1+(ts[0]/8));
+				disc->udf_pvd[0]->volSetIdent[127] = 16*(ts[0]/8)+len;
 				break;
 			}
 			case OPT_UUID:
 			case 'u':
 			{
-				char ts[110];
 				if (strlen(optarg) != 16)
 				{
 					fprintf(stderr, "mkudffs: Error: uuid is not 16 bytes length\n");
@@ -261,13 +291,28 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 						exit(1);
 					}
 				}
-				strncpy(ts, (char *)&disc->udf_pvd[0]->volSetIdent[17], 109);
-				ts[109] = 0;
-				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, optarg, ts, 128);
-				if (!disc->udf_pvd[0]->volSetIdent[127])
+				if (disc->udf_pvd[0]->volSetIdent[0] == 8)
 				{
-					fprintf(stderr, "mkudffs: Error: vsid option is too long\n");
-					exit(1);
+					memcpy(&disc->udf_pvd[0]->volSetIdent[1], optarg, 16);
+					if (disc->udf_pvd[0]->volSetIdent[127] < 17)
+					{
+						disc->udf_pvd[0]->volSetIdent[17] = 0;
+						disc->udf_pvd[0]->volSetIdent[127] = 17;
+					}
+				}
+				else if (disc->udf_pvd[0]->volSetIdent[0] == 16)
+				{
+					for (i = 0; i < 16; ++i)
+					{
+						disc->udf_pvd[0]->volSetIdent[2*i+1] = 0;
+						disc->udf_pvd[0]->volSetIdent[2*i+2] = optarg[i];
+					}
+					if (disc->udf_pvd[0]->volSetIdent[127] < 2*16+1)
+					{
+						disc->udf_pvd[0]->volSetIdent[2*16+1] = 0;
+						disc->udf_pvd[0]->volSetIdent[2*16+2] = 0;
+						disc->udf_pvd[0]->volSetIdent[127] = 2*16+1;
+					}
 				}
 				break;
 			}
