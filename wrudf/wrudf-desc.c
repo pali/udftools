@@ -115,10 +115,12 @@ findFileIdentDesc(Directory *dir, char* name)
     uint64_t		i;
     char		*data;
     struct fileIdentDesc *fid;
-    dstring             uName[256];
+    dchars              uName[256];
     size_t              uLen;
 
     uLen = encode_utf8(uName, name, 256);
+    if (uLen == (size_t)-1)
+        return NULL;
 
     data = dir->data;
 
@@ -186,8 +188,8 @@ makeFileEntry()
 struct fileIdentDesc*
 makeFileIdentDesc(char* name) 
 {
-    dstring uName[256];
-    uint8_t uLen;
+    dchars uName[256];
+    size_t uLen;
     struct fileIdentDesc *fid;
 
     fid = (struct fileIdentDesc*) calloc(512,1);
@@ -198,8 +200,11 @@ makeFileIdentDesc(char* name)
     fid->icb.extLength = 2048;
 
     if( name[0] != 0 ) {				/* FID to parent directory has no name */
-	memset(&uName, 0, 256);
         uLen = encode_utf8(uName, name, 256);
+	if (uLen == (size_t)-1) {
+		uLen = 1;
+		uName[0] = 0x8;
+	}
 	fid->lengthFileIdent = uLen;
 	memcpy(fid->fileIdent + fid->lengthOfImpUse, uName, fid->lengthFileIdent);
     }

@@ -207,7 +207,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			{
 				if (retval != OPT_VID)
 				{
-					if (!encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, optarg, 128))
+					if (encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, optarg, 128) == (size_t)-1)
 					{
 						fprintf(stderr, "mkudffs: Error: lvid option is too long\n");
 						exit(1);
@@ -217,7 +217,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 				}
 				if (retval != OPT_LVID)
 				{
-					if (!encode_string(disc, disc->udf_pvd[0]->volIdent, optarg, 32))
+					if (encode_string(disc, disc->udf_pvd[0]->volIdent, optarg, 32) == (size_t)-1)
 					{
 						fprintf(stderr, "mkudffs: Error: vid option is too long\n");
 						exit(1);
@@ -229,7 +229,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			{
 				dstring ts[128];
 				size_t len = encode_string(disc, ts, optarg, 128);
-				if (!len || (ts[0] == 16 && len > 127-16*2) || (disc->udf_pvd[0]->volSetIdent[0] == 16 && len > (size_t)(127-16*(ts[0]/8))) || len > 127-16)
+				if (len == (size_t)-1 || (ts[0] == 16 && len > 127-16*2) || (disc->udf_pvd[0]->volSetIdent[0] == 16 && len > (size_t)(127-16*(ts[0]/8))) || len > 127-16)
 				{
 					fprintf(stderr, "mkudffs: Error: vsid option is too long\n");
 					exit(1);
@@ -316,7 +316,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			}
 			case OPT_FULLVSID:
 			{
-				if (!encode_string(disc, disc->udf_pvd[0]->volSetIdent, optarg, 128))
+				if (encode_string(disc, disc->udf_pvd[0]->volSetIdent, optarg, 128) == (size_t)-1)
 				{
 					fprintf(stderr, "mkudffs: Error: fullvsid option is too long\n");
 					exit(1);
@@ -325,7 +325,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			}
 			case OPT_FSID:
 			{
-				if (!encode_string(disc, disc->udf_fsd->fileSetIdent, optarg, 32))
+				if (encode_string(disc, disc->udf_fsd->fileSetIdent, optarg, 32) == (size_t)-1)
 				{
 					fprintf(stderr, "mkudffs: Error: fsid option is too long\n");
 					exit(1);

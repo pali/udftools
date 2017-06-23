@@ -35,13 +35,13 @@ size_t decode_utf8(dchars *in, char *out, size_t inlen, size_t outlen)
 	unsigned int c;
 
 	if (outlen == 0)
-		return 0;
+		return (size_t)-1;
 
 	if (in[0] != 8 && in[0] != 16)
-		return 0;
+		return (size_t)-1;
 
 	if (in[0] == 16 && (inlen-1) % 2 != 0)
-		return 0;
+		return (size_t)-1;
 
 	for (i=1; i<inlen;)
 	{
@@ -54,20 +54,20 @@ size_t decode_utf8(dchars *in, char *out, size_t inlen, size_t outlen)
 		else if (c < 0x80U)
 		{
 			if (len+1 >= outlen)
-				return 0;
+				return (size_t)-1;
 			out[len++] = (uint8_t)c;
 		}
 		else if (c < 0x800U)
 		{
 			if (len+2 >= outlen)
-				return 0;
+				return (size_t)-1;
 			out[len++] = (uint8_t)(0xc0 | (c >> 6));
 			out[len++] = (uint8_t)(0x80 | (c & 0x3f));
 		}
 		else
 		{
 			if (len+3 >= outlen)
-				return 0;
+				return (size_t)-1;
 			out[len++] = (uint8_t)(0xe0 | (c >> 12));
 			out[len++] = (uint8_t)(0x80 | ((c >> 6) & 0x3f));
 			out[len++] = (uint8_t)(0x80 | (c & 0x3f));
@@ -173,7 +173,7 @@ try_again:
 
 	if (utf_cnt)
 error_out:
-		return 0;
+		return (size_t)-1;
 
 	return len;
 }
@@ -181,7 +181,7 @@ error_out:
 size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen, size_t outlen)
 {
 	if (in[inlen-1] == 0 || in[inlen-1] >= inlen)
-		return 0;
+		return (size_t)-1;
 	inlen = in[inlen-1];
 	if (disc->flags & FLAG_UTF8)
 		return decode_utf8((dchars *)in, out, inlen, outlen);
@@ -189,18 +189,18 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 	{
 		size_t i;
 		if (in[0] != 8 && in[0] != 16)
-			return 0;
+			return (size_t)-1;
 		if (in[0] == 16 && (inlen-1) % 2 != 0)
-			return 0;
+			return (size_t)-1;
 		if ((in[0] == 8 && (disc->flags & FLAG_UNICODE8)) || (in[0] == 16 && (disc->flags & FLAG_UNICODE16)))
 		{
 			if (inlen > outlen)
-				return 0;
+				return (size_t)-1;
 			memcpy(out, &in[1], inlen);
 			if (in[0] == 0x10 && (disc->flags & FLAG_UNICODE16))
 			{
 				if (inlen+1 > outlen)
-					return 0;
+					return (size_t)-1;
 				out[inlen] = 0;
 				return inlen+1;
 			}
@@ -209,7 +209,7 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 		else if (disc->flags & FLAG_UNICODE8)
 		{
 			if (2*(inlen-1)+2 > outlen)
-				return 0;
+				return (size_t)-1;
 			for (i=1; i<inlen; ++i)
 			{
 				out[2*(i-1)] = 0;
@@ -222,28 +222,28 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 		else if (disc->flags & FLAG_UNICODE16)
 		{
 			if ((inlen-1)/2+1 > outlen)
-				return 0;
+				return (size_t)-1;
 			for (i=1; i<inlen; i+=2)
 			{
 				if (in[i])
-					return 0;
+					return (size_t)-1;
 				out[i/2] = in[i+1];
 			}
 			out[(inlen-1)/2] = 0;
 			return (inlen-1)/2;
 		}
 		else
-			return 0;
+			return (size_t)-1;
 	}
 	else
-		return 0;
+		return (size_t)-1;
 }
 
 size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outlen)
 {
-	size_t ret = 0;
+	size_t ret = (size_t)-1;
 	if (outlen == 0)
-		return 0;
+		return (size_t)-1;
 	if (disc->flags & FLAG_UTF8)
 		ret = encode_utf8((dchars *)out, in, outlen-1);
 	else if (disc->flags & (FLAG_UNICODE8|FLAG_UNICODE16))
@@ -251,7 +251,7 @@ size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outle
 		size_t inlen = strlen(in);
 		memset(out, 0, outlen);
 		if (inlen >= outlen - 2)
-			return 0;
+			return (size_t)-1;
 		memcpy(&out[1], in, inlen);
 		if (disc->flags & FLAG_UNICODE8)
 			out[0] = 0x08;
@@ -259,7 +259,7 @@ size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outle
 			out[0] = 0x10;
 		ret = inlen + 1;
 	}
-	if (ret > 1 && ret < 256)
+	if (ret != (size_t)-1 && ret > 1 && ret < 256)
 	{
 		memset(out+ret, 0, outlen-ret-1);
 		out[outlen-1] = ret;
@@ -267,7 +267,7 @@ size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outle
 	else
 	{
 		memset(out, 0, outlen);
-		ret = 0;
+		ret = (size_t)-1;
 	}
 	return ret;
 }

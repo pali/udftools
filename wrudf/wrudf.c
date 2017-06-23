@@ -93,7 +93,6 @@ initialise(char *devicename)
     struct sparablePartitionMap *spm;
     char			zeroes[5];
     char                        fsdOut[91];
-    int                         fsdLen;
     struct generic_desc 	*p;
     struct volStructDesc	*vsd;
 
@@ -306,8 +305,8 @@ initialise(char *devicename)
 	    fail("SpaceBitmap not found\n");
     }
 
-    if ((fsdLen = decode_utf8(fsd->fileSetIdent, fsdOut, fsd->fileSetIdent[31], sizeof(fsdOut)))>=0)
-        fsdOut[fsdLen] = '\0';
+    if (decode_utf8(fsd->fileSetIdent, fsdOut, fsd->fileSetIdent[31], sizeof(fsdOut)) == (size_t)-1)
+        fsdOut[0] = 0;
 
     printf("You are going to update fileset '%s'\nProceed (y/N) : ", fsdOut);
     readLine(NULL);
