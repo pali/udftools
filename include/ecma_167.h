@@ -42,6 +42,9 @@
 #ifndef _ECMA_167_H
 #define _ECMA_167_H 1
 
+/* Character sets and coding - d-characters (ECMA 167r3 1/7.2) */
+typedef uint8_t		dchars;
+
 /* Character set specification (ECMA 167r3 1/7.2.1) */
 typedef struct
 {
@@ -60,6 +63,7 @@ typedef struct
 #define CHARSPEC_TYPE_CS7		0x07	/* (1/7.2.9) */
 #define CHARSPEC_TYPE_CS8		0x08	/* (1/7.2.10) */
 
+/* Fixed-length character fields - d-string (EMCA 167r3 1/7.2.12) */
 typedef uint8_t		dstring;
 
 /* Timestamp (ECMA 167r3 1/7.3) */
@@ -465,7 +469,7 @@ struct fileIdentDesc
 	long_ad		icb;
 	uint16_t	lengthOfImpUse;
 	uint8_t		impUse[0];
-	uint8_t		fileIdent[0];
+	dchars		fileIdent[0];
 	uint8_t		padding[0];
 } __attribute__ ((packed));
 
@@ -790,7 +794,7 @@ struct pathComponent
 	uint8_t		componentType;
 	uint8_t		lengthComponentIdent;
 	uint16_t	componentFileVersionNum;
-	uint8_t		componentIdent[0];
+	dchars		componentIdent[0];
 } __attribute__ ((packed));
 
 /* File Entry (ECMA 167r3 4/14.17) */
