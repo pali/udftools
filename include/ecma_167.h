@@ -790,7 +790,7 @@ struct pathComponent
 	uint8_t		componentType;
 	uint8_t		lengthComponentIdent;
 	uint16_t	componentFileVersionNum;
-	dstring		componentIdent[0];
+	uint8_t		componentIdent[0];
 } __attribute__ ((packed));
 
 /* File Entry (ECMA 167r3 4/14.17) */
