@@ -243,7 +243,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 							if (!disc->udf_pvd[0]->volSetIdent[i+1])
 								disc->udf_pvd[0]->volSetIdent[i+1] = '0';
 						}
-						else
+						else if (ts[0] == 16)
 						{
 							if (!disc->udf_pvd[0]->volSetIdent[(2*i)+1] && !disc->udf_pvd[0]->volSetIdent[(2*i)+2])
 								disc->udf_pvd[0]->volSetIdent[(2*i)+2] = '0';
@@ -255,11 +255,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 					disc->udf_pvd[0]->volSetIdent[0] = 16;
 					for (i = 17; i > 0; --i)
 					{
-						disc->udf_pvd[0]->volSetIdent[(2*(i-1))+2] = disc->udf_pvd[0]->volSetIdent[i];
 						disc->udf_pvd[0]->volSetIdent[(2*(i-1))+1] = 0;
+						disc->udf_pvd[0]->volSetIdent[(2*(i-1))+2] = disc->udf_pvd[0]->volSetIdent[i];
+						if (!disc->udf_pvd[0]->volSetIdent[(2*(i-1))+2])
+							disc->udf_pvd[0]->volSetIdent[(2*(i-1))+2] = '0';
 					}
 				}
-				else if(ts[0] == 8)
+				else if(ts[0] == 8 && disc->udf_pvd[0]->volSetIdent[0] == 16)
 				{
 					ts[0] = 16;
 					for (i = len; i > 0; --i)
@@ -269,8 +271,11 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 					}
 					len = (len-1)*2+1;
 				}
-				memcpy(&disc->udf_pvd[0]->volSetIdent[1+16*(ts[0]/8)], &ts[1], len-1+(ts[0]/8));
+				if (len)
+					memcpy(&disc->udf_pvd[0]->volSetIdent[1+16*(ts[0]/8)], &ts[1], len-1+(ts[0]/8));
 				disc->udf_pvd[0]->volSetIdent[127] = 16*(ts[0]/8)+len;
+				for (i = disc->udf_pvd[0]->volSetIdent[127]; i < 127; ++i)
+					disc->udf_pvd[0]->volSetIdent[i] = 0;
 				break;
 			}
 			case OPT_UUID:
