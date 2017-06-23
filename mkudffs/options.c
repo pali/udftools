@@ -207,19 +207,17 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			{
 				if (retval != OPT_VID)
 				{
-					disc->udf_lvd[0]->logicalVolIdent[127] = encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, optarg, 128);
-					((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent[127] = encode_string(disc, ((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent, optarg, 128);
-					disc->udf_fsd->logicalVolIdent[127] = encode_string(disc, disc->udf_fsd->logicalVolIdent, optarg, 128);
-					if (!disc->udf_fsd->logicalVolIdent[127])
+					if (!encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, optarg, 128))
 					{
 						fprintf(stderr, "mkudffs: Error: lvid option is too long\n");
 						exit(1);
 					}
+					memcpy(((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent, disc->udf_lvd[0]->logicalVolIdent, 128);
+					memcpy(disc->udf_fsd->logicalVolIdent, disc->udf_lvd[0]->logicalVolIdent, 128);
 				}
 				if (retval != OPT_LVID)
 				{
-					disc->udf_pvd[0]->volIdent[31] = encode_string(disc, disc->udf_pvd[0]->volIdent, optarg, 32);
-					if (!disc->udf_pvd[0]->volIdent[31])
+					if (!encode_string(disc, disc->udf_pvd[0]->volIdent, optarg, 32))
 					{
 						fprintf(stderr, "mkudffs: Error: vid option is too long\n");
 						exit(1);
@@ -318,8 +316,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			}
 			case OPT_FULLVSID:
 			{
-				disc->udf_pvd[0]->volSetIdent[127] = encode_string(disc, disc->udf_pvd[0]->volSetIdent, optarg, 128);
-				if (!disc->udf_pvd[0]->volSetIdent[127])
+				if (!encode_string(disc, disc->udf_pvd[0]->volSetIdent, optarg, 128))
 				{
 					fprintf(stderr, "mkudffs: Error: fullvsid option is too long\n");
 					exit(1);
@@ -328,8 +325,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			}
 			case OPT_FSID:
 			{
-				disc->udf_fsd->fileSetIdent[31] = encode_string(disc, disc->udf_fsd->fileSetIdent, optarg, 32);
-				if (!disc->udf_fsd->fileSetIdent[31])
+				if (!encode_string(disc, disc->udf_fsd->fileSetIdent, optarg, 32))
 				{
 					fprintf(stderr, "mkudffs: Error: fsid option is too long\n");
 					exit(1);
