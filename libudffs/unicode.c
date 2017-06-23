@@ -180,6 +180,11 @@ error_out:
 
 size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen, size_t outlen)
 {
+	if (in[0] == 0 && outlen)
+	{
+		out[0] = 0;
+		return 0;
+	}
 	if (in[inlen-1] == 0 || in[inlen-1] >= inlen)
 		return (size_t)-1;
 	inlen = in[inlen-1];
@@ -244,6 +249,11 @@ size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outle
 	size_t ret = (size_t)-1;
 	if (outlen == 0)
 		return (size_t)-1;
+	if (in[0] == 0)
+	{
+		memset(out, 0, outlen);
+		return 0;
+	}
 	if (disc->flags & FLAG_UTF8)
 		ret = encode_utf8((dchars *)out, in, outlen-1);
 	else if (disc->flags & (FLAG_UNICODE8|FLAG_UNICODE16))
