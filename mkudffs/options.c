@@ -229,7 +229,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			{
 				dstring ts[128];
 				size_t len = encode_string(disc, ts, optarg, 128);
-				if (len == (size_t)-1 || (ts[0] == 16 && len > 127-16*2) || (disc->udf_pvd[0]->volSetIdent[0] == 16 && len > (size_t)(127-16*(ts[0]/8))) || len > 127-16)
+				if (len == (size_t)-1 || len > 127-16 || (ts[0] == 16 && len > 127-16*2) || (ts[0] == 8 && disc->udf_pvd[0]->volSetIdent[0] == 16 && 2*(len-1)+1 > 127-16*2))
 				{
 					fprintf(stderr, "mkudffs: Error: vsid option is too long\n");
 					exit(1);
