@@ -58,7 +58,7 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->blocksize = 2048;
 	disc->blocksize_bits = 11;
 	disc->udf_rev = le16_to_cpu(default_lvidiu.minUDFReadRev);
-	disc->flags = FLAG_UTF8 | FLAG_CLOSED;
+	disc->flags = FLAG_LOCALE | FLAG_CLOSED;
 	disc->blkssz = 512;
 
 	gettimeofday(&tv, NULL);

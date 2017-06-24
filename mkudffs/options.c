@@ -60,6 +60,7 @@ struct option long_options[] = {
 	{ "space", required_argument, NULL, OPT_SPACE },
 	{ "ad", required_argument, NULL, OPT_AD },
 	{ "noefe", no_argument, NULL, OPT_NO_EFE },
+	{ "locale", no_argument, NULL, OPT_LOCALE },
 	{ "u8", no_argument, NULL, OPT_UNICODE8 },
 	{ "u16", no_argument, NULL, OPT_UNICODE16 },
 	{ "utf8", no_argument, NULL, OPT_UTF8 },
@@ -186,6 +187,17 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 				if (strcmp(argv[1], "--utf8") != 0)
 				{
 					fprintf(stderr, "mkudffs: Option --utf8 must be specified as first argument\n");
+					exit(1);
+				}
+				break;
+			}
+			case OPT_LOCALE:
+			{
+				disc->flags &= ~FLAG_CHARSET;
+				disc->flags |= FLAG_LOCALE;
+				if (strcmp(argv[1], "--locale") != 0)
+				{
+					fprintf(stderr, "mkudffs: Option --locale must be specified as first argument\n");
 					exit(1);
 				}
 				break;

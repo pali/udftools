@@ -31,6 +31,7 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <locale.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -222,6 +223,8 @@ int main(int argc, char *argv[])
 	int blocksize = -1;
 	int media;
 	int len;
+
+	setlocale(LC_CTYPE, "");
 
 	udf_init_disc(&disc);
 	parse_args(argc, argv, &disc, filename, &blocksize, &media);
