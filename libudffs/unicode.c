@@ -29,6 +29,9 @@
 
 #include "libudffs.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 size_t decode_utf8(dchars *in, char *out, size_t inlen, size_t outlen)
 {
 	size_t len = 0, i;
@@ -178,9 +181,125 @@ error_out:
 	return len;
 }
 
+size_t decode_locale(dchars *in, char *out, size_t inlen, size_t outlen)
+{
+	size_t len = 0, i;
+	size_t wcslen;
+	wchar_t *wcs;
+
+	if (outlen == 0)
+		return (size_t)-1;
+
+	if (in[0] == 16 && (inlen-1) % 2 != 0)
+		return (size_t)-1;
+
+	if (in[0] == 8)
+		wcslen = (inlen-1);
+	else if (in[0] == 16)
+		wcslen = (inlen-1)/2;
+	else
+		return (size_t)-1;
+
+	wcs = calloc(wcslen+1, sizeof(wchar_t));
+	if (!wcs)
+		return (size_t)-1;
+
+	for (i=1; i<inlen;)
+	{
+		wcs[len] = in[i++];
+		if (in[0] == 16)
+			wcs[len] = (wcs[len] << 8) | in[i++];
+		++len;
+	}
+
+	len = wcstombs(NULL, wcs, 0);
+	if (len == (size_t)-1)
+	{
+		perror("Error");
+		free(wcs);
+		exit(1);
+	}
+	else if (len+1 >= outlen)
+	{
+		free(wcs);
+		return (size_t)-1;
+	}
+
+	len = wcstombs(out, wcs, outlen);
+	if (len == (size_t)-1)
+	{
+		free(wcs);
+		return (size_t)-1;
+	}
+
+	free(wcs);
+	return len;
+}
+
+size_t encode_locale(dchars *out, char *in, size_t outlen)
+{
+	size_t i;
+	size_t mbslen;
+	size_t len;
+	wchar_t max_val;
+	wchar_t *wcs;
+
+	mbslen = mbstowcs(NULL, in, 0);
+	if (mbslen == (size_t)-1)
+	{
+		perror("Error");
+		exit(1);
+	}
+
+	wcs = calloc(mbslen+1, sizeof(wchar_t));
+	if (!wcs)
+		goto error_out;
+
+	if (mbstowcs(wcs, in, mbslen+1) == (size_t)-1)
+		goto error_out;
+
+	len = 1;
+	out[0] = 8;
+	max_val = 0xFF;
+
+try_again:
+	for (i=0; i<mbslen; ++i)
+	{
+		if (wcs[i] > max_val)
+		{
+			if (max_val == 0xFF)
+			{
+				len = 1;
+				out[0] = 16;
+				max_val = 0xFFFF;
+				goto try_again;
+			}
+			goto error_out;
+		}
+
+		if (max_val == 0xFFFF)
+		{
+			if (len+2 > outlen)
+				goto error_out;
+			out[len++] = (wcs[i] >> 8) & 0xFF;
+		}
+
+		if (len+1 > outlen)
+			goto error_out;
+		out[len++] = wcs[i] & 0xFF;
+	}
+
+	free(wcs);
+	return len;
+
+error_out:
+	free(wcs);
+	return (size_t)-1;
+}
+
 size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen, size_t outlen)
 {
-	uint32_t flags = disc ? disc->flags : FLAG_UTF8;
+	uint32_t flags = disc ? disc->flags : FLAG_LOCALE;
 	if (in[0] == 0 && outlen)
 	{
 		out[0] = 0;
@@ -191,6 +310,8 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 	inlen = in[inlen-1];
 	if (flags & FLAG_UTF8)
 		return decode_utf8((dchars *)in, out, inlen, outlen);
+	else if (flags & FLAG_LOCALE)
+		return decode_locale((dchars *)in, out, inlen, outlen);
 	else if (flags & (FLAG_UNICODE8 | FLAG_UNICODE16))
 	{
 		size_t i;
@@ -247,7 +368,7 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 
 size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outlen)
 {
-	uint32_t flags = disc ? disc->flags : FLAG_UTF8;
+	uint32_t flags = disc ? disc->flags : FLAG_LOCALE;
 	size_t ret = (size_t)-1;
 	if (outlen == 0)
 		return (size_t)-1;
@@ -258,6 +379,8 @@ size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outle
 	}
 	if (flags & FLAG_UTF8)
 		ret = encode_utf8((dchars *)out, in, outlen-1);
+	else if (flags & FLAG_LOCALE)
+		ret = encode_locale((dchars *)out, in, outlen-1);
 	else if (flags & (FLAG_UNICODE8|FLAG_UNICODE16))
 	{
 		size_t inlen = strlen(in);

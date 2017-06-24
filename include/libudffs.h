@@ -40,12 +40,11 @@
 #define FLAG_SPACE_TABLE		(FLAG_FREED_TABLE|FLAG_UNALLOC_TABLE)
 #define FLAG_SPACE			(FLAG_SPACE_BITMAP|FLAG_SPACE_TABLE)
 
-#define FLAG_EFE			0x00000010
-
+#define FLAG_LOCALE			0x00000010
 #define FLAG_UNICODE8			0x00000020
 #define FLAG_UNICODE16			0x00000040
 #define FLAG_UTF8			0x00000080
-#define FLAG_CHARSET			(FLAG_UNICODE8|FLAG_UNICODE16|FLAG_UTF8)
+#define FLAG_CHARSET			(FLAG_LOCALE|FLAG_UNICODE8|FLAG_UNICODE16|FLAG_UTF8)
 
 #define FLAG_STRATEGY4096		0x00000100
 #define FLAG_BLANK_TERMINAL		0x00000200
@@ -53,6 +52,8 @@
 #define FLAG_BRIDGE			0x00000400
 #define FLAG_CLOSED			0x00000800
 #define FLAG_VAT			0x00001000
+
+#define FLAG_EFE			0x00002000
 
 #define FLAG_BOOTAREA_PRESERVE		0x00010000
 #define FLAG_BOOTAREA_ERASE		0x00020000
@@ -211,6 +212,8 @@ struct udf_data *alloc_data(void *, int);
 /* unicode.c */
 extern size_t decode_utf8(dchars *, char *, size_t, size_t);
 extern size_t encode_utf8(dchars *, char *, size_t);
+extern size_t decode_locale(dchars *, char *, size_t, size_t);
+extern size_t encode_locale(dchars *, char *, size_t);
 extern size_t decode_string(struct udf_disc *, dstring *, char *, size_t, size_t);
 extern size_t encode_string(struct udf_disc *, dstring *, char *, size_t);
 
