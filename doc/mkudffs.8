@@ -221,17 +221,20 @@ Don't Use Extended File Entries
 
 .TP
 .B \-\-u8
-Ident string options are encoded in 8-bit OSTA Compressed Unicode equivalent.
-Must be specified as first argument.
+Treat ident string options as strings encoded in 8-bit OSTA Compressed Unicode
+format, equivalent to Latin1 (ISO-8859-1). Must be specified as first argument.
 
 .TP
 .B \-\-u16
-Ident string options are encoded in 16-bit OSTA Compressed Unicode equivalent.
-Must be specified as first argument.
+Treat ident string options as strings encoded in 16-bit OSTA Compressed Unicode
+format, equivalent to UCS-2BE. Note that it is not possible to include zero
+byte in command line options, therefore any character which has at least one
+zero byte cannot be supplied (this applies to all Latin1 characters). Must be
+specified as first argument.
 
 .TP
 .B \-\-utf8
-Ident string options are encoded in UTF-8 (default).
+Treat ident string options as strings encoded in UTF-8 (default).
 Must be specified as first argument.
 
 .TP
