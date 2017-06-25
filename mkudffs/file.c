@@ -716,13 +716,12 @@ found_middle:
 /**
  * @brief allocate an aligned space bitmap on-disc
  * @param disc the udf disc
- * @param pspace the type:PSPACE udf_extent for on-disc allocations
  * @param bitmap the space bitmap tag:USB/FSB udf_descriptor
  * @param start the starting block number to search for on-disc allocations
  * @param blocks the number of blocks in the space bitmap
  * @return the starting block number of the on-disc aligned space bitmap
  */
-int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *bitmap, uint32_t start, uint32_t blocks)
+int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_desc *bitmap, uint32_t start, uint32_t blocks)
 {
 	uint32_t alignment = disc->sizing[PSPACE_SIZE].align;
 	struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)bitmap->data->buffer;
@@ -746,13 +745,12 @@ int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_extent *pspace, st
 /**
  * @brief allocate a space table on-disc
  * @param disc the udf_disc
- * @param pspace the type:PSPACE udf_extent for on-disc allocations
  * @param table the space table tag:USE/FSE udf_descriptor
  * @param start the starting block offset for the allocation search
  * @param blocks the number of blocks in the space table
  * @return the starting block number of the on-disc space table
  */
-int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *table, uint32_t start, uint32_t blocks)
+int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_desc *table, uint32_t start, uint32_t blocks)
 {
 	uint32_t alignment = disc->sizing[PSPACE_SIZE].align;
 	struct unallocSpaceEntry *use = (struct unallocSpaceEntry *)table->data->buffer;
@@ -821,22 +819,22 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 	if (disc->flags & FLAG_FREED_BITMAP)
 	{
 		desc = find_desc(pspace, le32_to_cpu(phd->freedSpaceBitmap.extPosition));
-		return udf_alloc_bitmap_blocks(disc, pspace, desc, start, blocks);
+		return udf_alloc_bitmap_blocks(disc, desc, start, blocks);
 	}
 	else if (disc->flags & FLAG_FREED_TABLE)
 	{
 		desc = find_desc(pspace, le32_to_cpu(phd->freedSpaceTable.extPosition));
-		return udf_alloc_table_blocks(disc, pspace, desc, start, blocks);
+		return udf_alloc_table_blocks(disc, desc, start, blocks);
 	}
 	else if (disc->flags & FLAG_UNALLOC_BITMAP)
 	{
 		desc = find_desc(pspace, le32_to_cpu(phd->unallocSpaceBitmap.extPosition));
-		return udf_alloc_bitmap_blocks(disc, pspace, desc, start, blocks);
+		return udf_alloc_bitmap_blocks(disc, desc, start, blocks);
 	}
 	else if (disc->flags & FLAG_UNALLOC_TABLE)
 	{
 		desc = find_desc(pspace, le32_to_cpu(phd->unallocSpaceTable.extPosition));
-		return udf_alloc_table_blocks(disc, pspace, desc, start, blocks);
+		return udf_alloc_table_blocks(disc, desc, start, blocks);
 	}
 	else if (disc->flags & FLAG_VAT)
 	{
