@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
 	int fd;
 	int blocksize = -1;
 	int media;
-	int len;
+	size_t len;
 
 	setlocale(LC_CTYPE, "");
 
@@ -254,9 +254,8 @@ int main(int argc, char *argv[])
 	printf("label=%s\n", buf);
 
 	memset(buf, 0, sizeof(buf));
-	len = decode_utf8(disc.udf_pvd[0]->volSetIdent, buf, 128, sizeof(buf));
-	buf[len] = 0;
-	printf("uuid=%.16s\n", buf);
+	len = gen_uuid_from_vol_set_ident(buf, disc.udf_pvd[0]->volSetIdent, 128);
+	printf("uuid=%s\n", buf);
 
 	printf("blocksize=%u\n", (unsigned int)disc.blocksize);
 	printf("blocks=%lu\n", (unsigned long int)disc.blocks);
@@ -283,6 +282,11 @@ int main(int argc, char *argv[])
 	setup_vds(&disc);
 
 	dump_space(&disc);
+
+	if (len == (size_t)-1)
+		fprintf(stderr, "mkudffs: Warning: Volume Set Identifier must be at least 8 characters long\n");
+	else if (len < 16)
+		fprintf(stderr, "mkudffs: Warning: First 16 characters of Volume Set Identifier are not hexadecimal lowercase digits\nmkudffs: Warning: This would cause problems for UDF uuid\n");
 
 	if (write_disc(&disc) < 0) {
 		fprintf(stderr, "mkudffs: Error: Cannot write to device '%s': %s\n", filename, strerror(errno));
