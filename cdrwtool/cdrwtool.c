@@ -107,6 +107,9 @@ void sig_progress(int sig)
 	static int did = 0;
 	int ret;
 
+	if (sig != SIGALRM)
+		return;
+
 	memset(&cgc, 0, sizeof(cgc));
 	memset(&sense, 0, sizeof(sense));
 
