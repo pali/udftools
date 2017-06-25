@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <locale.h>
 #include <sys/resource.h>
 
 #include "wrudf.h"
@@ -654,6 +655,8 @@ main(int argc, char** argv)
     char	*ptr;
     size_t	len;
     Directory	*d;
+
+    setlocale(LC_CTYPE, "");
 
     printf("wrudf from " PACKAGE_NAME " " PACKAGE_VERSION "\n");
     devicename= "/dev/cdrom";

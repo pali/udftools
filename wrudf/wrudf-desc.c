@@ -118,7 +118,7 @@ findFileIdentDesc(Directory *dir, char* name)
     dchars              uName[256];
     size_t              uLen;
 
-    uLen = encode_utf8(uName, name, 256);
+    uLen = encode_locale(uName, name, 256);
     if (uLen == (size_t)-1)
         return NULL;
 
@@ -200,7 +200,7 @@ makeFileIdentDesc(char* name)
     fid->icb.extLength = 2048;
 
     if( name[0] != 0 ) {				/* FID to parent directory has no name */
-        uLen = encode_utf8(uName, name, 256);
+	uLen = encode_locale(uName, name, 256);
 	if (uLen == (size_t)-1) {
 		uLen = 1;
 		uName[0] = 0x8;
