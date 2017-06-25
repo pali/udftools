@@ -377,12 +377,12 @@ uint32_t compute_ident_length(uint32_t length)
  * @param pspace the type:PSPACE udf_extent for on-disc allocations
  * @param desc the file tag:FE/EFE udf_descriptor
  * @param parent the directory tag:FE/EFE udf_descriptor
- * @param name the file name - the first byte is the OSTA unicode compression type
+ * @param name the file name in OSTA Compressed Unicode format (d-characters)
  * @param length the length of the file name in bytes
  * @param filechar the file characteristics
  * @return void
  */
-void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_desc *parent, uint8_t *name, uint8_t length, uint8_t filechar)
+void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_desc *parent, const dchars *name, uint8_t length, uint8_t filechar)
 {
 	struct udf_data *data;
 	struct fileIdentDesc *fid;
@@ -454,7 +454,7 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
  * @brief create a file tag:FE/EFE udf_descriptor and add the file to a directory
  * @param disc the udf_disc
  * @param pspace the type:PSPACE udf_extent for on-disc allocations
- * @param name the file name - the first byte is the OSTA unicode compression type
+ * @param name the file name in OSTA Compressed Unicode format (d-characters)
  * @param length the length of the file name in bytes
  * @param offset the starting block number to search for on-disc allocations
  * @param parent the directory tag:FE/EFE udf_descriptor
@@ -463,7 +463,7 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
  * @param flags the file flags
  * @return the in-memory address of file tag:FE/EFE udf_descriptor
  */
-struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, uint8_t *name, uint8_t length, uint32_t offset, struct udf_desc *parent, uint8_t filechar, uint8_t filetype, uint16_t flags)
+struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, const dchars *name, uint8_t length, uint32_t offset, struct udf_desc *parent, uint8_t filechar, uint8_t filetype, uint16_t flags)
 {
 	struct udf_desc *desc;
 
@@ -578,13 +578,13 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
  *        a parent directory
  * @param disc the udf_disc
  * @param pspace the type:PSPACE udf_extent for on-disc allocations
- * @param name the file name - the first byte is the OSTA unicode compression type
+ * @param name the file name in OSTA Compressed Unicode format (d-characters)
  * @param length the length of the file name in bytes
  * @param offset the starting block number to search for on-disc allocations
  * @param parent the parent directory tag:FE/EFE udf_descriptor
  * @return the in-memory address of the directory tag:FE/EFE udf_descriptor
  */
-struct udf_desc *udf_mkdir(struct udf_disc *disc, struct udf_extent *pspace, uint8_t *name, uint8_t length, uint32_t offset, struct udf_desc *parent)
+struct udf_desc *udf_mkdir(struct udf_disc *disc, struct udf_extent *pspace, const dchars *name, uint8_t length, uint32_t offset, struct udf_desc *parent)
 {
 	struct udf_desc *desc = udf_create(disc, pspace, name, length, offset, parent, FID_FILE_CHAR_DIRECTORY, ICBTAG_FILE_TYPE_DIRECTORY, 0);
 

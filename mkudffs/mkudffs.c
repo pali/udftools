@@ -778,7 +778,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 			disc->udf_fsd->streamDirectoryICB.extLocation.logicalBlockNum = cpu_to_le32(offset);
 			disc->udf_fsd->streamDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(0);
 #endif
-			nat = udf_create(disc, pspace, (uint8_t *)"\x08" "*UDF Non-Allocatable Space", 27, offset+1, ss, FID_FILE_CHAR_METADATA, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_STREAM | ICBTAG_FLAG_SYSTEM);
+			nat = udf_create(disc, pspace, (const dchars *)"\x08" "*UDF Non-Allocatable Space", 27, offset+1, ss, FID_FILE_CHAR_METADATA, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_STREAM | ICBTAG_FLAG_SYSTEM);
 
 			efe = (struct extendedFileEntry *)nat->data->buffer;
 			efe->icbTag.flags = cpu_to_le16((le16_to_cpu(efe->icbTag.flags) & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT);
@@ -788,7 +788,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 		else
 		{
 			struct fileEntry *fe;
-			nat = udf_create(disc, pspace, (uint8_t *)"\x08" "Non-Allocatable Space", 22, offset+1, desc, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_SYSTEM);
+			nat = udf_create(disc, pspace, (const dchars *)"\x08" "Non-Allocatable Space", 22, offset+1, desc, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_SYSTEM);
 			fe = (struct fileEntry *)nat->data->buffer;
 			fe->icbTag.flags = cpu_to_le16((le16_to_cpu(fe->icbTag.flags) & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT);
 			fe->descTag = query_tag(disc, pspace, nat, 1);
@@ -797,7 +797,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	}
 
 #if 0 // this works fine if you really want a lost+find directory on disc
-	desc = udf_mkdir(disc, pspace, "\x08" "lost+found", 11, offset+1, desc); // x08 is the compression id for 8-bit OSTA compressed unicode
+	desc = udf_mkdir(disc, pspace, (const dchars *)"\x08" "lost+found", 11, offset+1, desc);
 	offset = desc->offset;
 
 	if (disc->flags & FLAG_STRATEGY4096)
@@ -1066,7 +1066,7 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
 
 	if (disc->udf_rev >= 0x0200)
 	{
-		vtable = udf_create(disc, ext, (uint8_t *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_VAT20, 0);
+		vtable = udf_create(disc, ext, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_VAT20, 0);
 		len = sizeof(struct virtualAllocationTable20);
 		data = alloc_data(&default_vat20, len);
 		vat20 = data->buffer;
@@ -1079,7 +1079,7 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
 	}
 	else
 	{
-		vtable = udf_create(disc, ext, (uint8_t *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
+		vtable = udf_create(disc, ext, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
 		len = sizeof(struct virtualAllocationTable15);
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
 		insert_data(disc, ext, vtable, data);
