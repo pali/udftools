@@ -306,7 +306,7 @@ initialise(char *devicename)
 	    fail("SpaceBitmap not found\n");
     }
 
-    if (decode_utf8(fsd->fileSetIdent, fsdOut, fsd->fileSetIdent[31], sizeof(fsdOut)) == (size_t)-1)
+    if (decode_string(NULL, fsd->fileSetIdent, fsdOut, sizeof(fsd->fileSetIdent), sizeof(fsdOut)) == (size_t)-1)
         fsdOut[0] = 0;
 
     printf("You are going to update fileset '%s'\nProceed (y/N) : ", fsdOut);
