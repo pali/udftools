@@ -250,8 +250,7 @@ int main(int argc, char *argv[])
 	printf("filename=%s\n", filename);
 
 	memset(buf, 0, sizeof(buf));
-	len = decode_utf8(disc.udf_lvd[0]->logicalVolIdent, buf, 128, sizeof(buf));
-	buf[len] = 0;
+	len = decode_string(&disc, disc.udf_lvd[0]->logicalVolIdent, buf, 128, sizeof(buf));
 	printf("label=%s\n", buf);
 
 	memset(buf, 0, sizeof(buf));
