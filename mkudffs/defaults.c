@@ -98,7 +98,7 @@ struct primaryVolDesc default_pvd =
 	.maxInterchangeLvl = constant_cpu_to_le16(3),
 	.charSetList = constant_cpu_to_le32(CS0),
 	.maxCharSetList = constant_cpu_to_le32(CS0),
-	.volSetIdent = "\x08" "FFFFFFFFFFFFFFFFLinuxUDF",
+	.volSetIdent = "\x08" "0000000000000000LinuxUDF",
 	.descCharSet =
 	{
 		.charSetType = UDF_CHAR_SET_TYPE,
