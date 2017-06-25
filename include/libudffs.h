@@ -205,7 +205,7 @@ struct udf_extent *find_extent(struct udf_disc *, uint32_t);
 struct udf_extent *set_extent(struct udf_disc *, enum udf_space_type, uint32_t,uint32_t);
 struct udf_desc *next_desc(struct udf_desc *, uint16_t);
 struct udf_desc *find_desc(struct udf_extent *, uint32_t);
-struct udf_desc *set_desc(struct udf_disc *, struct udf_extent *, uint16_t, uint32_t, uint32_t, struct udf_data *);
+struct udf_desc *set_desc(struct udf_extent *, uint16_t, uint32_t, uint32_t, struct udf_data *);
 void append_data(struct udf_desc *, struct udf_data *);
 struct udf_data *alloc_data(void *, int);
 

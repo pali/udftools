@@ -433,7 +433,7 @@ void setup_mbr(struct udf_disc *disc)
 
 	if (!(ext = next_extent(disc->head, MBR)))
 		return;
-	desc = set_desc(disc, ext, 0x00, 0, ext->blocks << disc->blocksize_bits, NULL);
+	desc = set_desc(ext, 0x00, 0, ext->blocks << disc->blocksize_bits, NULL);
 	mbr = (struct mbr *)desc->data->buffer;
 	fill_mbr(disc, mbr, ext->start);
 }
@@ -445,16 +445,16 @@ void setup_vrs(struct udf_disc *disc)
 
 	if (!(ext = next_extent(disc->head, VRS)))
 		return;
-	desc = set_desc(disc, ext, 0x00, 0, sizeof(struct volStructDesc), NULL);
+	desc = set_desc(ext, 0x00, 0, sizeof(struct volStructDesc), NULL);
 	disc->udf_vrs[0] = (struct volStructDesc *)desc->data->buffer;
 	disc->udf_vrs[0]->structType = 0x00;
 	disc->udf_vrs[0]->structVersion = 0x01;
 	memcpy(disc->udf_vrs[0]->stdIdent, VSD_STD_ID_BEA01, VSD_STD_ID_LEN);
 
 	if (disc->blocksize >= 2048)
-		desc = set_desc(disc, ext, 0x00, 1, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 1, sizeof(struct volStructDesc), NULL);
 	else
-		desc = set_desc(disc, ext, 0x00, 2048 / disc->blocksize, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 2048 / disc->blocksize, sizeof(struct volStructDesc), NULL);
 	disc->udf_vrs[1] = (struct volStructDesc *)desc->data->buffer;
 	disc->udf_vrs[1]->structType = 0x00;
 	disc->udf_vrs[1]->structVersion = 0x01;
@@ -464,9 +464,9 @@ void setup_vrs(struct udf_disc *disc)
 		memcpy(disc->udf_vrs[1]->stdIdent, VSD_STD_ID_NSR02, VSD_STD_ID_LEN);
 
 	if (disc->blocksize >= 2048)
-		desc = set_desc(disc, ext, 0x00, 2, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 2, sizeof(struct volStructDesc), NULL);
 	else
-		desc = set_desc(disc, ext, 0x00, 4096 / disc->blocksize, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 4096 / disc->blocksize, sizeof(struct volStructDesc), NULL);
 	disc->udf_vrs[2] = (struct volStructDesc *)desc->data->buffer;
 	disc->udf_vrs[2]->structType = 0x00;
 	disc->udf_vrs[2]->structVersion = 0x01;
@@ -589,7 +589,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		int nBytes = (pspace->blocks+7)/8;
 
 		length = sizeof(struct spaceBitmapDesc) + nBytes;
-		desc = set_desc(disc, pspace, TAG_IDENT_SBD, offset, length, NULL);
+		desc = set_desc(pspace, TAG_IDENT_SBD, offset, length, NULL);
 		sbd = (struct spaceBitmapDesc *)desc->data->buffer;
 		sbd->numOfBits = cpu_to_le32(pspace->blocks);
 		sbd->numOfBytes = cpu_to_le32(nBytes);
@@ -611,7 +611,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 			length = disc->blocksize * 2;
 		else
 			length = disc->blocksize;
-		desc = set_desc(disc, pspace, TAG_IDENT_USE, offset, disc->blocksize, NULL);
+		desc = set_desc(pspace, TAG_IDENT_USE, offset, disc->blocksize, NULL);
 		use = (struct unallocSpaceEntry *)desc->data->buffer;
 		use->lengthAllocDescs = cpu_to_le32(sizeof(short_ad));
 		sad = (short_ad *)&use->allocDescs[0];
@@ -661,11 +661,11 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 
 			if (disc->flags & FLAG_BLANK_TERMINAL)
 			{
-//				tdesc = set_desc(disc, pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
+//				tdesc = set_desc(pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
 			}
 			else
 			{
-				tdesc = set_desc(disc, pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
+				tdesc = set_desc(pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
 				te = (struct terminalEntry *)tdesc->data->buffer;
 				te->icbTag.priorRecordedNumDirectEntries = cpu_to_le32(1);
 				te->icbTag.strategyType = cpu_to_le16(4096);
@@ -695,7 +695,7 @@ int setup_fileset(struct udf_disc *disc, struct udf_extent *pspace)
 	((long_ad *)disc->udf_lvd[0]->logicalVolContentsUse)->extLocation.partitionReferenceNum = cpu_to_le16(0);
 //	((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
 
-	desc = set_desc(disc, pspace, TAG_IDENT_FSD, offset, 0, NULL);
+	desc = set_desc(pspace, TAG_IDENT_FSD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_fsd;
 
@@ -740,12 +740,12 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	{
 		if (disc->flags & FLAG_BLANK_TERMINAL)
 		{
-//			tdesc = set_desc(disc, pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
+//			tdesc = set_desc(pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
 			offset ++;
 		}
 		else
 		{
-			tdesc = set_desc(disc, pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
+			tdesc = set_desc(pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
 			te = (struct terminalEntry *)tdesc->data->buffer;
 			te->icbTag.priorRecordedNumDirectEntries = cpu_to_le32(1);
 			te->icbTag.strategyType = cpu_to_le16(4096);
@@ -804,12 +804,12 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	{
 		if (disc->flags & FLAG_BLANK_TERMINAL)
 		{
-//			tdesc = set_desc(disc, pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
+//			tdesc = set_desc(pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
 			offset ++;
 		}
 		else
 		{
-			tdesc = set_desc(disc, pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
+			tdesc = set_desc(pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
 			te = (struct terminalEntry *)tdesc->data->buffer;
 			te->icbTag.priorRecordedNumDirectEntries = cpu_to_le32(1);
 			te->icbTag.strategyType = cpu_to_le16(4096);
@@ -876,12 +876,12 @@ void setup_pvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent
 	struct udf_desc *desc;
 	int length = sizeof(struct primaryVolDesc);
 
-	desc = set_desc(disc, pvds, TAG_IDENT_PVD, offset, 0, NULL);
+	desc = set_desc(pvds, TAG_IDENT_PVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_pvd[0];
 	disc->udf_pvd[0]->descTag = query_tag(disc, pvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_PVD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_PVD, offset, length, NULL);
 	memcpy(disc->udf_pvd[1] = desc->data->buffer, disc->udf_pvd[0], length);
 	disc->udf_pvd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
@@ -895,12 +895,12 @@ void setup_lvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent
 	disc->udf_lvd[0]->integritySeqExt.extLocation = cpu_to_le32(lvid->start);
 //	((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
 
-	desc = set_desc(disc, pvds, TAG_IDENT_LVD, offset, 0, NULL);
+	desc = set_desc(pvds, TAG_IDENT_LVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_lvd[0];
 	disc->udf_lvd[0]->descTag = query_tag(disc, pvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_LVD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_LVD, offset, length, NULL);
 	memcpy(disc->udf_lvd[1] = desc->data->buffer, disc->udf_lvd[0], length);
 	disc->udf_lvd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
@@ -925,12 +925,12 @@ void setup_pd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent 
 		strcpy(disc->udf_pd[0]->partitionContents.ident, PARTITION_CONTENTS_NSR02);
 #endif
 
-	desc = set_desc(disc, pvds, TAG_IDENT_PD, offset, 0, NULL);
+	desc = set_desc(pvds, TAG_IDENT_PD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_pd[0];
 	disc->udf_pd[0]->descTag = query_tag(disc, pvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_PD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_PD, offset, length, NULL);
 	memcpy(disc->udf_pd[1] = desc->data->buffer, disc->udf_pd[0], length);
 	disc->udf_pd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
@@ -954,12 +954,12 @@ void setup_usd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent
 		ext = next_extent(ext->next, USPACE);
 	}
 
-	desc = set_desc(disc, pvds, TAG_IDENT_USD, offset, 0, NULL);
+	desc = set_desc(pvds, TAG_IDENT_USD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_usd[0];
 	disc->udf_usd[0]->descTag = query_tag(disc, pvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_USD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_USD, offset, length, NULL);
 	memcpy(disc->udf_usd[1] = desc->data->buffer, disc->udf_usd[0], length);
 	disc->udf_usd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
@@ -971,12 +971,12 @@ void setup_iuvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_exten
 
 //	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
 
-	desc = set_desc(disc, pvds, TAG_IDENT_IUVD, offset, 0, NULL);
+	desc = set_desc(pvds, TAG_IDENT_IUVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_iuvd[0];
 	disc->udf_iuvd[0]->descTag = query_tag(disc, pvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_IUVD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_IUVD, offset, length, NULL);
 	memcpy(disc->udf_iuvd[1] = desc->data->buffer, disc->udf_iuvd[0], length);
 	disc->udf_iuvd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
@@ -986,12 +986,12 @@ void setup_td(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent 
 	struct udf_desc *desc;
 	int length = sizeof(struct terminatingDesc);
 
-	desc = set_desc(disc, pvds, TAG_IDENT_TD, offset, 0, NULL);
+	desc = set_desc(pvds, TAG_IDENT_TD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_td[0];
 	disc->udf_td[0]->descTag = query_tag(disc, pvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_TD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_TD, offset, length, NULL);
 	memcpy(disc->udf_td[1] = desc->data->buffer, disc->udf_td[0], length);
 	disc->udf_td[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
@@ -1007,14 +1007,14 @@ void setup_lvid(struct udf_disc *disc, struct udf_extent *lvid)
 //	disc->udf_lvid->sizeTable[1] = cpu_to_le32(ext->blocks);
 	if (disc->flags & FLAG_VAT)
 		disc->udf_lvid->integrityType = cpu_to_le32(LVID_INTEGRITY_TYPE_OPEN);
-	desc = set_desc(disc, lvid, TAG_IDENT_LVID, 0, 0, NULL);
+	desc = set_desc(lvid, TAG_IDENT_LVID, 0, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_lvid;
 	disc->udf_lvid->descTag = query_tag(disc, lvid, desc, 1);
 
 	if (!(disc->flags & FLAG_BLANK_TERMINAL) && lvid->blocks > 1)
 	{
-		desc = set_desc(disc, lvid, TAG_IDENT_TD, 1, sizeof(struct terminatingDesc), NULL);
+		desc = set_desc(lvid, TAG_IDENT_TD, 1, sizeof(struct terminatingDesc), NULL);
 		((struct terminatingDesc *)desc->data->buffer)->descTag = query_tag(disc, lvid, desc, 1);
 	}
 }
@@ -1040,14 +1040,14 @@ void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct ud
 		disc->udf_stable[0]->mapEntry[i].origLocation = cpu_to_le32(0xFFFFFFFF);
 		disc->udf_stable[0]->mapEntry[i].mappedLocation = cpu_to_le32(sspace->start + (i * packetlen));
 	}
-	desc = set_desc(disc, stable[0], 0, 0, 0, NULL);
+	desc = set_desc(stable[0], 0, 0, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_stable[0];
 	disc->udf_stable[0]->descTag = query_tag(disc, stable[0], desc, 1);
 
 	for (i=1; i<4 && stable[i]; i++)
 	{
-		desc = set_desc(disc, stable[i], 0, 0, length, NULL);
+		desc = set_desc(stable[i], 0, 0, length, NULL);
 		memcpy(disc->udf_stable[i] = desc->data->buffer, disc->udf_stable[0], length);
 		disc->udf_stable[i]->descTag = query_tag(disc, stable[i], desc, 1);
 	}

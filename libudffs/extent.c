@@ -382,7 +382,6 @@ struct udf_desc *find_desc(struct udf_extent *ext, uint32_t offset)
 /**
  * @brief allocate a new udf_descriptor having a udf_data item and insert it
  *        into the udf_descriptor list of a udf_extent ordered by block number
- * @param disc the udf_disc - unused
  * @oaram ext the udf_extent containing the udf_descriptor list head
  * @param ident the tag ident of the new udf_descriptor
  * @param offset the first block the new descriptor describes
@@ -390,7 +389,7 @@ struct udf_desc *find_desc(struct udf_extent *ext, uint32_t offset)
  * @param data the udf_data item, if NULL allocate memory for the udf_data item
  * @return the in-memory address of the new udf_descriptor
  */
-struct udf_desc *set_desc(struct udf_disc *disc, struct udf_extent *ext, uint16_t ident, uint32_t offset, uint32_t length, struct udf_data *data)
+struct udf_desc *set_desc(struct udf_extent *ext, uint16_t ident, uint32_t offset, uint32_t length, struct udf_data *data)
 {
 	struct udf_desc *start_desc, *new_desc = calloc(1, sizeof(struct udf_desc));
 

@@ -192,7 +192,7 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 			if (le32_to_cpu(efe->lengthAllocDescs) == 0)
 			{
 				block = udf_alloc_blocks(disc, pspace, desc->offset, 1);
-				fiddesc = set_desc(disc, pspace, TAG_IDENT_FID, block, data->length, data);
+				fiddesc = set_desc(pspace, TAG_IDENT_FID, block, data->length, data);
 				if ((le16_to_cpu(efe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT)
 				{
 					short_ad *sad;
@@ -264,7 +264,7 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 			if (le32_to_cpu(fe->lengthAllocDescs) == 0)
 			{
 				block = udf_alloc_blocks(disc, pspace, desc->offset, 1);
-				fiddesc = set_desc(disc, pspace, TAG_IDENT_FID, block, data->length, data);
+				fiddesc = set_desc(pspace, TAG_IDENT_FID, block, data->length, data);
 				if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT)
 				{
 					short_ad *sad;
@@ -476,7 +476,7 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 	{
 		struct extendedFileEntry *efe;
 
-		desc = set_desc(disc, pspace, TAG_IDENT_EFE, offset, sizeof(struct extendedFileEntry), NULL);
+		desc = set_desc(pspace, TAG_IDENT_EFE, offset, sizeof(struct extendedFileEntry), NULL);
 		efe = (struct extendedFileEntry *)desc->data->buffer;
 		memcpy(efe, &default_efe, sizeof(struct extendedFileEntry));
 		memcpy(&efe->accessTime, &disc->udf_pvd[0]->recordingDateAndTime, sizeof(timestamp));
@@ -525,7 +525,7 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 	{
 		struct fileEntry *fe;
 
-		desc = set_desc(disc, pspace, TAG_IDENT_FE, offset, sizeof(struct fileEntry), NULL);
+		desc = set_desc(pspace, TAG_IDENT_FE, offset, sizeof(struct fileEntry), NULL);
 		fe = (struct fileEntry *)desc->data->buffer;
 		memcpy(fe, &default_fe, sizeof(struct fileEntry));
 		memcpy(&fe->accessTime, &disc->udf_pvd[0]->recordingDateAndTime, sizeof(timestamp));
