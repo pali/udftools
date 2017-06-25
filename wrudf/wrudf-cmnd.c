@@ -987,11 +987,8 @@ int lscCommand(void) {
 
 	if( fid->fileCharacteristics & FID_FILE_CHAR_PARENT )
 	    strcpy(filename, "..");
-	else {
-	    memset(filename, 0, sizeof(filename));
-	    strncpy(filename, (char *)(fid->fileIdent + fid->lengthOfImpUse + 1), fid->lengthFileIdent - 1);
-	    /* Look at udf filesystem how to convert dstring to ordinary characters     */
-	}	    
+	else
+	    decode_locale((dchars *)(fid->fileIdent + fid->lengthOfImpUse), filename, fid->lengthFileIdent, sizeof(filename));
 
 	fe = readTaggedBlock( fid->icb.extLocation.logicalBlockNum, fid->icb.extLocation.partitionReferenceNum);
 
