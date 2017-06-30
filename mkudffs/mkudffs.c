@@ -178,12 +178,12 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 
 	((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev);
 	((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev);
-	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = le16_to_cpu(udf_rev);
+	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = cpu_to_le16(udf_rev);
 	lvidiu = query_lvidiu(disc);
-	lvidiu->minUDFReadRev = le16_to_cpu(udf_rev);
-	lvidiu->minUDFWriteRev = le16_to_cpu(udf_rev);
-	lvidiu->maxUDFWriteRev = le16_to_cpu(udf_rev);
-	((uint16_t *)disc->udf_stable[0]->sparingIdent.identSuffix)[0] = le16_to_cpu(udf_rev);
+	lvidiu->minUDFReadRev = cpu_to_le16(udf_rev);
+	lvidiu->minUDFWriteRev = cpu_to_le16(udf_rev);
+	lvidiu->maxUDFWriteRev = cpu_to_le16(udf_rev);
+	((uint16_t *)disc->udf_stable[0]->sparingIdent.identSuffix)[0] = cpu_to_le16(udf_rev);
 	return 0;
 }
 
