@@ -263,7 +263,7 @@ int main(int argc, char *argv[])
 
 	if (((disc.flags & FLAG_BRIDGE) && disc.blocks < 513) || disc.blocks < 281)
 	{
-		fprintf(stderr, "mkudffs: Error: Not enough blocks on device '%s', try decreasing blocksize\n", filename);
+		fprintf(stderr, "mkudffs: Error: Not enough blocks on device '%s'\n", filename);
 		exit(1);
 	}
 
