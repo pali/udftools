@@ -34,6 +34,7 @@
 #include <malloc.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "mkudffs.h"
 #include "defaults.h"
@@ -79,7 +80,7 @@ void usage(void)
 		"\t--label=, -l       UDF label, synonym for both --lvid and --vid (default: LinuxUDF)\n"
 		"\t--uuid=, -u        UDF uuid, first 16 characters of Volume set identifier (default: random)\n"
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096; default: detect)\n"
-		"\t--udfrev=, -r      UDF revision (0x201, 0x200, 0x150, 0x102; default: 0x201)\n"
+		"\t--udfrev=, -r      UDF revision (2.01, 2.00, 1.50, 1.02; default: 2.01)\n"
 		"\t--lvid=            Logical volume identifier (default: LinuxUDF)\n"
 		"\t--vid=             Volume identifier (default: LinuxUDF)\n"
 		"\t--vsid=            17.-127. character of Volume set identifier (default: LinuxUDF)\n"
@@ -170,8 +171,21 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			case OPT_UDF_REV:
 			case 'r':
 			{
-				int rev = strtoul_safe(optarg, 16, &failed);
-				if (failed || udf_set_version(disc, rev))
+				int rev = 0;
+				unsigned char maj = 0;
+				unsigned char min = 0;
+				int len = 0;
+				if (sscanf(optarg, "%hhu.%hhu%n", &maj, &min, &len) >= 2 && !optarg[len])
+				{
+					rev = (maj << 8) | min;
+				}
+				else
+				{
+					unsigned long int rev_opt = strtoul_safe(optarg, 16, &failed);
+					if (!failed && rev_opt < INT_MAX)
+						rev = rev_opt;
+				}
+				if (!rev || udf_set_version(disc, rev))
 				{
 					fprintf(stderr, "mkudffs: invalid udf revision\n");
 					exit(1);
