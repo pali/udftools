@@ -104,6 +104,26 @@ void usage(void)
 	exit(1);
 }
 
+static unsigned long int strtoul_safe(const char *str, int base, int *failed)
+{
+	char *endptr = NULL;
+	unsigned long int ret;
+	errno = 0;
+	ret = strtoul(str, &endptr, base);
+	*failed = (!*str || *endptr || errno) ? 1 : 0;
+	return ret;
+}
+
+static long int strtol_safe(const char *str, int base, int *failed)
+{
+	char *endptr = NULL;
+	long int ret;
+	errno = 0;
+	ret = strtol(str, &endptr, base);
+	*failed = (!*str || *endptr || errno) ? 1 : 0;
+	return ret;
+}
+
 void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int *blocksize, int *media_ptr)
 {
 	int retval;
@@ -111,7 +131,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	int media = MEDIA_TYPE_HD;
 	uint16_t packetlen = 0;
 	unsigned long int blocks = 0;
-	char *endptr = NULL;
+	int failed;
 
 	while ((retval = getopt_long(argc, argv, "l:u:b:r:h", long_options, NULL)) != EOF)
 	{
@@ -125,8 +145,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			case 'b':
 			{
 				uint16_t bs;
-
-				disc->blocksize = strtoul(optarg, NULL, 0);
+				disc->blocksize = strtoul_safe(optarg, 0, &failed);
+				if (failed)
+				{
+					fprintf(stderr, "mkudffs: invalid blocksize\n");
+					exit(1);
+				}
 				for (bs=512,disc->blocksize_bits=9;
 					disc->blocksize_bits<13;
 					disc->blocksize_bits++,bs<<=1)
@@ -146,7 +170,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			case OPT_UDF_REV:
 			case 'r':
 			{
-				if (udf_set_version(disc, strtoul(optarg, NULL, 16)))
+				int rev = strtoul_safe(optarg, 16, &failed);
+				if (failed || udf_set_version(disc, rev))
 				{
 					fprintf(stderr, "mkudffs: invalid udf revision\n");
 					exit(1);
@@ -351,12 +376,22 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			}
 			case OPT_UID:
 			{
-				disc->uid = strtol(optarg, NULL, 0);
+				disc->uid = strtol_safe(optarg, 0, &failed);
+				if (failed)
+				{
+					fprintf(stderr, "mkudffs: invalid uid\n");
+					exit(1);
+				}
 				break;
 			}
 			case OPT_GID:
 			{
-				disc->gid = strtol(optarg, NULL, 0);
+				disc->gid = strtol_safe(optarg, 0, &failed);
+				if (failed)
+				{
+					fprintf(stderr, "mkudffs: invalid gid\n");
+					exit(1);
+				}
 				break;
 			}
 			case OPT_BOOTAREA:
@@ -377,24 +412,22 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			}
 			case OPT_STRATEGY:
 			{
-				uint16_t strategy;
-
-				strategy = strtoul(optarg, NULL, 0);
-				if (strategy == 4096)
-					disc->flags |= FLAG_STRATEGY4096;
-				else if (strategy != 4)
+				unsigned long int strategy = strtoul_safe(optarg, 0, &failed);
+				if (failed || (strategy != 4 && strategy != 4096))
 				{
 					fprintf(stderr, "mkudffs: invalid strategy type\n");
 					exit(1);
 				}
+				if (strategy == 4096)
+					disc->flags |= FLAG_STRATEGY4096;
+				else
+					disc->flags &= ~FLAG_STRATEGY4096;
 				break;
 			}
 			case OPT_SPARTABLE:
 			{
-				uint8_t spartable;
-
-				spartable = strtoul(optarg, NULL, 0);
-				if (spartable > 4)
+				unsigned long int spartable = strtoul_safe(optarg, 0, &failed);
+				if (failed || spartable > 4)
 				{
 					fprintf(stderr, "mkudffs: invalid spartable count\n");
 					exit(1);
@@ -406,8 +439,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			case OPT_PACKETLEN:
 			{
 				struct sparablePartitionMap *spm;
-
-				packetlen = strtoul(optarg, NULL, 0);
+				unsigned long int packetlen_opt = strtoul_safe(optarg, 0, &failed);
+				if (failed || packetlen_opt > UINT16_MAX)
+				{
+					fprintf(stderr, "mkudffs: invalid packetlen\n");
+					exit(1);
+				}
+				packetlen = packetlen_opt;
 				if ((spm = find_type2_sparable_partition(disc, 0)))
 					spm->packetLength = cpu_to_le16(packetlen);
 				break;
@@ -431,9 +469,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 				}
 				else if (!strcmp(optarg, "dvdrw"))
 				{
+					struct sparablePartitionMap *spm;
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 					media = MEDIA_TYPE_DVDRW;
 					packetlen = 16;
+					if ((spm = find_type2_sparable_partition(disc, 0)))
+						spm->packetLength = cpu_to_le16(packetlen);
 				}
 				else if (!strcmp(optarg, "worm"))
 				{
@@ -518,9 +559,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	optind ++;
 	if (optind < argc)
 	{
-		errno = 0;
-		blocks = strtoul(argv[optind++], &endptr, 0);
-		if (errno || *endptr || blocks > UINT32_MAX)
+		blocks = strtoul_safe(argv[optind++], 0, &failed);
+		if (failed || blocks > UINT32_MAX)
 		{
 			fprintf(stderr, "mkudffs: invalid block-count\n");
 			exit(1);
