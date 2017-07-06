@@ -217,6 +217,7 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 int main(int argc, char *argv[])
 {
 	struct udf_disc	disc;
+	struct stat stat;
 	char filename[NAME_MAX];
 	char buf[128*3];
 	int fd;
@@ -228,10 +229,71 @@ int main(int argc, char *argv[])
 
 	udf_init_disc(&disc);
 	parse_args(argc, argv, &disc, filename, &blocksize, &media);
-	fd = open(filename, O_RDWR | O_CREAT, 0660);
-	if (fd == -1) {
-		fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, strerror(errno));
-		exit(1);
+	fd = open(filename, O_RDONLY);
+	if (fd < 0)
+	{
+		if (errno != ENOENT)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, strerror(errno));
+			exit(1);
+		}
+
+		if (!disc.blocks)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot create new file '%s': block-count was not specified\n", filename);
+			exit(1);
+		}
+
+		// Create new file disk image
+		fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0660);
+		if (fd < 0)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot create new file '%s': %s\n", filename, strerror(errno));
+			exit(1);
+		}
+	}
+	else
+	{
+		int fd2;
+		int flags2;
+		char filename2[NAME_MAX];
+		const char *error;
+
+		if (fstat(fd, &stat) != 0)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot stat device '%s': %s\n", filename, strerror(errno));
+			exit(1);
+		}
+
+		flags2 = O_RDWR;
+		snprintf(filename2, sizeof(filename2), "/proc/self/fd/%d", fd);
+
+		// Re-open block device with O_EXCL mode which fails when device is already mounted
+		if (S_ISBLK(stat.st_mode))
+			flags2 |= O_EXCL;
+
+		fd2 = open(filename2, flags2);
+		if (fd2 < 0)
+		{
+			if (errno != ENOENT)
+			{
+				error = (errno != EBUSY) ? strerror(errno) : "Device is mounted or mkudffs is already running";
+				fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, error);
+				exit(1);
+			}
+
+			// Fallback to orignal filename when /proc is not available, but this introduce race condition between stat and open
+			fd2 = open(filename, flags2);
+			if (fd2 < 0)
+			{
+				error = (errno != EBUSY) ? strerror(errno) : "Device is mounted or mkudffs is already running";
+				fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, error);
+				exit(1);
+			}
+		}
+
+		close(fd);
+		fd = fd2;
 	}
 
 	detect_blocksize(fd, &disc, &blocksize);
