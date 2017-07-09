@@ -30,8 +30,6 @@ addons: &addons
 
 before_script:
   - cd ..
-  - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples.sh
-  - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples-extra.sh
   - mkdir cmocka
   - cd cmocka
   - PTH=$(pwd)
@@ -56,5 +54,7 @@ script:
   - ./autogen.sh $TESTS
   - ./configure $TESTS
   - make
-  - if [ -n "$TESTS" ]; then ./udffsck/travis-tests.sh; fi
+  - if [ -n "$TESTS" ]; then ./udffsck/travis-tests.sh basic; fi
+# No space available for extra tests.
+# - if [ -n "$TESTS" ]; then ./udffsck/travis-tests.sh extra; fi
 
