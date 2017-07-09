@@ -56,5 +56,5 @@ script:
   - ./autogen.sh $TESTS
   - ./configure $TESTS
   - make
-  - if [ -n "$DEBUG" ]; then ./udffsck/travis-tests.sh; fi
+  - if [ -n "$TESTS" ]; then ./udffsck/travis-tests.sh; fi
 
