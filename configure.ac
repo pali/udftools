@@ -39,6 +39,18 @@ esac],
 
 AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 
+AC_ARG_ENABLE(tests,
+AS_HELP_STRING([--enable-tests],
+[enable tests building, default: no]),
+[case "${enableval}" in
+    yes) tests=true ;;
+    no)  tests=false ;;
+    *)   AC_MSG_ERROR([bad value ${enableval} for --enable-tests]) ;;
+esac],
+[tests=false])
+
+AM_CONDITIONAL(TESTS, test x"$tests" = x"true")
+
 AC_C_BIGENDIAN
 AM_CONDITIONAL(WORDS_LITTLEENDIAN, test "x$ac_cv_c_bigendian" = "xno")
 AM_CONDITIONAL(WORDS_BIGENDIAN, test "x$ac_cv_c_bigendian" = "xyes")

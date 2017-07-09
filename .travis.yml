@@ -5,8 +5,8 @@ compiler:
   - clang
 
 env:
-  - DEBUG=
-  - DEBUG=--enable-debug
+  - TESTS=
+  - TESTS=--enable-tests
 
 addons: &addons
   apt:
@@ -53,8 +53,8 @@ before_script:
 
 script:
   - if [ -n "$COVERITY_SCAN_TOKEN" ]; then exit 0; fi
-  - ./autogen.sh $DEBUG
-  - ./configure $DEBUG
+  - ./autogen.sh $TESTS
+  - ./configure $TESTS
   - make
   - if [ -n "$DEBUG" ]; then ./udffsck/travis-tests.sh; fi
 
