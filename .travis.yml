@@ -29,7 +29,8 @@ addons: &addons
         #  branch_pattern: master
 
 before_script:
-  - export CFLAGS="-W -Wall -O2 -g"
+  - export CFLAGS="-W -Wall -O2 -g -I/home/travis/build/argorain/cmocka/include/"
+  - export LDFLAGS="-L/home/travis/build/argorain/cmocka/lib/"
   - cd ..
   - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples.sh
   - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples-extra.sh
