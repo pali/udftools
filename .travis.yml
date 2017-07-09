@@ -4,10 +4,16 @@ compiler:
   - gcc
   - clang
 
+env:
+  - PLATFORM=x86
+  - PLATFORM=x86_64
+
 addons: &addons
   apt:
     packages:
       - libreadline-dev
+      - libreadline-dev:i386
+      - gcc-multilib
 
 matrix:
   include:
@@ -26,7 +32,9 @@ matrix:
           branch_pattern: master
 
 before_script:
-  - export CFLAGS="-W -Wall -Werror -Wno-error=strict-aliasing -Wno-error=unused-function -O2 -g"
+  - CFLAGS="-W -Wall -Werror -Wno-error=strict-aliasing -Wno-error=unused-function -O2 -g"
+  - if [ "$PLATFORM" = "x86" ]; then CFLAGS="-m32 $CFLAGS"; fi
+  - export CFLAGS
 
 script:
   - if [ -n "$COVERITY_SCAN_TOKEN" ]; then exit 0; fi
