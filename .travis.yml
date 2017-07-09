@@ -29,8 +29,6 @@ addons: &addons
         #  branch_pattern: master
 
 before_script:
-  - export CFLAGS="-W -Wall -O2 -g -I$HOME/cmocka/include/"
-  - export LDFLAGS="-L$HOME/cmocka/lib/"
   - cd ..
   - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples.sh
   - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples-extra.sh
@@ -40,6 +38,8 @@ before_script:
   - cd ..
   - export PATH="$PTH:$PATH"
   - export LD_LIBRARY_PATH="$PTH/lib"
+  - export CFLAGS="-W -Wall -O2 -g -I$PTH/include/"
+  - export LDFLAGS="-L$PTH/lib/"
   - wget --no-check-certificate https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
   - tar xf cmocka-1.1.0.tar.xz
   - cd cmocka-1.1.0
