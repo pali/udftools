@@ -5,10 +5,10 @@ compiler:
   - clang
 
 env:
-  - TESTS=
-  - TESTS=--enable-tests
-  - PLATFORM=x86
-  - PLATFORM=x86_64
+  - PLATFORM=x86    TESTS=
+  - PLATFORM=x86_64 TESTS=
+  - PLATFORM=x86    TESTS=--enable-tests
+  - PLATFORM=x86_64 TESTS=--enable-tests
 
 addons: &addons
   apt:
