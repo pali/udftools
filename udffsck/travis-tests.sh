@@ -7,7 +7,9 @@ bash decompress-samples.sh
 cd udftools/udffsck
 ./test
 cd ../..
+ls
 rm udf-samples.tar.xz udf-samples -r
+ls
 wget --no-check-certificate https://pac.chapadla.cz/~rain/udffsck-test-samples/udf-samples-extra.tar.xz 
 bash decompress-samples-extra.sh
 cd udftools/udffsck
