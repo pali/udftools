@@ -36,19 +36,20 @@ matrix:
 
 before_script:
   - export CFLAGS="-W -Wall -O2 -g"
-  - cd ~
+  - cd ..
   - mkdir cmocka
-  - export PATH=~/cmocka/:$PATH
+  - PTH=$(pwd)
+  - export PATH=$PTH:$PATH
   - wget --no-check-certificate https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
   - tar xf cmocka-1.1.0.tar.xz
   - cd cmocka-1.1.0
   - sudo apt-get -y install cmake
   - mkdir build
   - cd build
-  - cmake -DCMAKE_INSTALL_PREFIX=~/cmocka -DCMAKE_BUILD_TYPE=Release ..
+  - cmake -DCMAKE_INSTALL_PREFIX=PTH -DCMAKE_BUILD_TYPE=Release ..
   - make
   - make install
-  - cd udftools
+  - cd ../../udftools
 
 script:
   - if [ -n "$COVERITY_SCAN_TOKEN" ]; then exit 0; fi
