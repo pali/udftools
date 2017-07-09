@@ -11,19 +11,7 @@ addons: &addons
 
 matrix:
   include:
-    - compiler: gcc
-      addons:
-        <<: *addons
-        #coverity_scan:
-        #  project:
-        #    name: "argorain/udftools"
-        #    description: "Build submitted via Travis CI"
-        #  notification_email: vojtech.vladyka@gmail.com
-        #  build_command_prepend: "./autogen.sh && ./configure"
-        #  build_command: make
-        #  branch_pattern: master
-    - compiler: clang
-      addons:
+    - addons:
         <<: *addons
         #coverity_scan:
         #  project:
