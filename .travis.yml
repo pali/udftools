@@ -47,6 +47,7 @@ script:
   - ./autogen.sh
   - ./configure
   - make
+  - cd ..
   - wget --no-check-certificate https://pac.chapadla.cz/~rain/udffsck-test-samples/udf-samples.tar.xz 
   - bash decompress-samples.sh
   - cd udftools/udffsck
