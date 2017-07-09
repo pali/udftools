@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 cd ..
 wget --no-check-certificate https://pac.chapadla.cz/~rain/udffsck-test-samples/udf-samples.tar.xz 
