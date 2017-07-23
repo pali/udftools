@@ -270,8 +270,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 				{
 					if (encode_string(disc, disc->udf_pvd[0]->volIdent, optarg, 32) == (size_t)-1)
 					{
-						fprintf(stderr, "mkudffs: Error: vid option is too long\n");
-						exit(1);
+						if (retval == OPT_VID)
+						{
+							fprintf(stderr, "mkudffs: Error: vid option is too long\n");
+							exit(1);
+						}
+						/* This code was not triggered by --vid option, do not throw error but rather store truncated --lvid */
+						memcpy(disc->udf_pvd[0]->volIdent, disc->udf_lvd[0]->logicalVolIdent, 32);
+						disc->udf_pvd[0]->volIdent[31] = 31;
 					}
 				}
 				break;
