@@ -88,7 +88,7 @@ void usage(void)
 		"\t--fullvsid=        Full Volume set identifier, overwrite --uuid and --vsid\n"
 		"\t--uid=             Uid of the root directory (default: 0)\n"
 		"\t--gid=             Gid of the root directory (default: 0)\n"
-		"\t--bootarea=        UDF boot area (preserve, erase, mbr; default: erase for hd, preserve otherwise)\n"
+		"\t--bootarea=        UDF boot area (preserve, erase, mbr; default: based on media type)\n"
 		"\t--strategy=        Allocation strategy to use (4, 4096; default: based on media type)\n"
 		"\t--spartable=       Number of sparing tables for cdrw (1 - 4)\n"
 		"\t--packetlen=       Packet length in number of sectors for cdrw and dvdrw (default: detect)\n"
@@ -608,14 +608,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 
 	if (media == MEDIA_TYPE_CDR)
 		disc->flags &= ~FLAG_SPACE;
-
-	if (!(disc->flags & FLAG_BOOTAREA_MASK))
-	{
-		if (media == MEDIA_TYPE_HD)
-			disc->flags |= FLAG_BOOTAREA_ERASE;
-		else
-			disc->flags |= FLAG_BOOTAREA_PRESERVE;
-	}
 
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{

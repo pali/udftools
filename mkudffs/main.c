@@ -40,6 +40,7 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <limits.h>
+#include <dirent.h>
 #include <sys/ioctl.h>
 #include <linux/fs.h>
 #include <linux/fd.h>
@@ -152,6 +153,98 @@ static void detect_blocksize(int fd, struct udf_disc *disc, int *blocksize)
 		*blocksize = disc->blocksize;
 	disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);
 #endif
+}
+
+static int is_whole_disk(int fd)
+{
+	struct stat st;
+	char buf[512];
+	DIR *dir;
+	int maj;
+	int min;
+	int has_slave;
+	int slave_errno;
+
+	if (fstat(fd, &st) != 0)
+		return -1;
+
+	if (!S_ISBLK(st.st_mode))
+		return 1;
+
+	maj = major(st.st_rdev);
+	min = minor(st.st_rdev);
+
+	if (snprintf(buf, sizeof(buf), "/sys/dev/block/%d:%d/partition", maj, min) >= (int)sizeof(buf))
+		return -1;
+
+	if (stat(buf, &st) == 0)
+		return 0;
+	else if (errno != ENOENT)
+		return -1;
+
+	if (snprintf(buf, sizeof(buf), "/sys/dev/block/%d:%d/slaves/", maj, min) >= (int)sizeof(buf))
+		return -1;
+
+	dir = opendir(buf);
+	if (!dir && errno != ENOENT)
+		return -1;
+
+	if (dir)
+	{
+		errno = 0;
+		has_slave = readdir(dir) ? 1 : 0;
+		slave_errno = errno;
+
+		closedir(dir);
+
+		if (slave_errno)
+			return -1;
+
+		if (has_slave)
+			return 0;
+	}
+
+	if (snprintf(buf, sizeof(buf), "/sys/dev/block/%d:%d/", maj, min) >= (int)sizeof(buf))
+		return -1;
+
+	if (stat(buf, &st) != 0)
+		return -1;
+
+	return 1;
+}
+
+static int is_removable_disk(int fd)
+{
+	struct stat st;
+	char buf[512];
+	ssize_t ret;
+
+	if (fstat(fd, &st) != 0)
+		return -1;
+
+	if (!S_ISBLK(st.st_mode))
+		return -1;
+
+	if (snprintf(buf, sizeof(buf), "/sys/dev/block/%d:%d/removable", major(st.st_rdev), minor(st.st_rdev)) >= (int)sizeof(buf))
+		return -1;
+
+	int rem_fd = open(buf, O_RDONLY);
+	if (rem_fd < 0)
+		return -1;
+
+	ret = read(rem_fd, buf, sizeof(buf)-1);
+	close(rem_fd);
+
+	if (ret < 0)
+		return -1;
+
+	buf[ret] = 0;
+	if (strcmp(buf, "1\n") == 0)
+		return 1;
+	else if (strcmp(buf, "0\n") == 0)
+		return 0;
+
+	return -1;
 }
 
 int write_func(struct udf_disc *disc, struct udf_extent *ext)
@@ -308,6 +401,16 @@ int main(int argc, char *argv[])
 	disc.head->blocks = disc.blocks;
 	disc.write = write_func;
 	disc.write_data = &fd;
+
+	if (!(disc.flags & FLAG_BOOTAREA_MASK))
+	{
+		if (media != MEDIA_TYPE_HD)
+			disc.flags |= FLAG_BOOTAREA_PRESERVE;
+		else if (is_removable_disk(fd) == 0 && is_whole_disk(fd) == 1)
+			disc.flags |= FLAG_BOOTAREA_MBR;
+		else
+			disc.flags |= FLAG_BOOTAREA_ERASE;
+	}
 
 	printf("filename=%s\n", filename);
 
