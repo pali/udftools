@@ -32,6 +32,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <wchar.h>
+#include <errno.h>
 
 size_t decode_utf8(dchars *in, char *out, size_t inlen, size_t outlen)
 {
@@ -185,8 +187,10 @@ error_out:
 size_t decode_locale(dchars *in, char *out, size_t inlen, size_t outlen)
 {
 	size_t len = 0, i;
-	size_t wcslen;
+	size_t wcslen, clen;
 	wchar_t *wcs;
+	mbstate_t ps;
+	char cbuf[MB_CUR_MAX];
 
 	if (outlen == 0)
 		return (size_t)-1;
@@ -213,25 +217,35 @@ size_t decode_locale(dchars *in, char *out, size_t inlen, size_t outlen)
 		++len;
 	}
 
-	len = wcstombs(NULL, wcs, 0);
-	if (len == (size_t)-1)
-	{
-		perror("Error");
-		free(wcs);
-		exit(1);
-	}
-	else if (len+1 >= outlen)
-	{
-		free(wcs);
-		return (size_t)-1;
-	}
+	memset(&ps, 0, sizeof(ps));
 
-	len = wcstombs(out, wcs, outlen);
-	if (len == (size_t)-1)
+	len = 0;
+	for (i=0; wcs[i]; ++i)
 	{
-		free(wcs);
-		return (size_t)-1;
+		clen = wcrtomb(cbuf, wcs[i], &ps);
+		if (clen == (size_t)-1)
+		{
+			if (errno == EILSEQ)
+			{
+				cbuf[0] = '?';
+				clen = 1;
+			}
+			else
+			{
+				perror("Error");
+				free(wcs);
+				exit(1);
+			}
+		}
+		if (len+clen+1 > outlen)
+		{
+			free(wcs);
+			return (size_t)-1;
+		}
+		memcpy(out+len, cbuf, clen);
+		len += clen;
 	}
+	out[len] = 0;
 
 	free(wcs);
 	return len;
