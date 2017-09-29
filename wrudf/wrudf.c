@@ -63,9 +63,6 @@ extern	uint64_t  CDRuniqueID;				/* in wrudf-cdr.c ex VAT FE */
 struct partitionDesc		*pd;			/* for the writable partition */
 uint16_t			virtualPartitionNum  = 0xFFFF;
 uint32_t			*vat;
-uint32_t			newVATindex;
-uint32_t			maxVATindex;
-uint32_t			prevVATlbn;
 struct logicalVolDesc		*lvd;
 struct unallocSpaceDesc		*usd;
 struct spaceBitmapDesc		*spaceMap;

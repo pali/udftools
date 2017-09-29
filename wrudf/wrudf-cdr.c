@@ -12,10 +12,10 @@
 #include "ide-pc.h"
 #include "bswap.h"
 
-unsigned char	*blockBuffer;
-uint32_t	newVATindex;
-uint32_t	sizeVAT;
-uint32_t	prevVATlbn;
+static unsigned char *blockBuffer;
+static uint32_t newVATindex;
+static uint32_t sizeVAT;
+static uint32_t prevVATlbn;
 uint64_t  CDRuniqueID;			// from VAT FE
 
 
