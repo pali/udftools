@@ -1,27 +1,364 @@
 language: c
 
-compiler:
-  - gcc
-  - clang
-
-env:
-  - PLATFORM=x86
-  - PLATFORM=x86_64
-
-addons: &addons
-  apt:
-    packages:
-      - libreadline-dev
-      - libreadline-dev:i386
-      - gcc-multilib
-
 matrix:
   include:
+    - compiler: gcc-4.4
+      env: PLATFORM=x86
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-4.4-multilib
+    - compiler: gcc-4.4
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - gcc-4.4
+    - compiler: gcc-4.6
+      env: PLATFORM=x86
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-4.6-multilib
+    - compiler: gcc-4.6
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - gcc-4.6
+    - compiler: gcc-4.7
+      env: PLATFORM=x86
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-4.7-multilib
+    - compiler: gcc-4.7
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - gcc-4.7
+    - compiler: gcc-4.8
+      env: PLATFORM=x86
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-4.8-multilib
+    - compiler: gcc-4.8
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - gcc-4.8
+    - compiler: gcc-4.9
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-4.9-multilib
+    - compiler: gcc-4.9
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev
+            - gcc-4.9
+    - compiler: gcc-5
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-5-multilib
+    - compiler: gcc-5
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev
+            - gcc-5
+    - compiler: gcc-6
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-6-multilib
+    - compiler: gcc-6
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev
+            - gcc-6
+    - compiler: gcc-7
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-7-multilib
+    - compiler: gcc-7
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev
+            - gcc-7
+    - compiler: clang-3.3
+      env: PLATFORM=x86
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-3.3
+            - gcc-multilib
+    - compiler: clang-3.3
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - clang-3.3
+    - compiler: clang-3.4
+      env: PLATFORM=x86
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-3.4
+            - gcc-multilib
+    - compiler: clang-3.4
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - clang-3.4
+    - compiler: clang-3.5
+      env: PLATFORM=x86
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-3.5
+            - gcc-multilib
+    - compiler: clang-3.5
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - clang-3.5
+    - compiler: clang-3.6
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-3.6
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-3.6
+            - gcc-multilib
+    - compiler: clang-3.6
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-3.6
+          packages:
+            - libreadline-dev
+            - clang-3.6
+    - compiler: clang-3.7
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-3.7
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-3.7
+            - gcc-multilib
+    - compiler: clang-3.7
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-3.7
+          packages:
+            - libreadline-dev
+            - clang-3.7
+    - compiler: clang-3.8
+      env: PLATFORM=x86
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-3.8
+            - gcc-multilib
+    - compiler: clang-3.8
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - clang-3.8
+    - compiler: clang-3.9
+      env: PLATFORM=x86
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-3.9
+            - gcc-multilib
+    - compiler: clang-3.9
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - clang-3.9
+    - compiler: clang-4.0
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-4.0
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-4.0
+            - gcc-multilib
+    - compiler: clang-4.0
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-4.0
+          packages:
+            - libreadline-dev
+            - clang-4.0
+    - compiler: clang-5.0
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-5.0
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-5.0
+            - gcc-multilib
+    - compiler: clang-5.0
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-5.0
+          packages:
+            - libreadline-dev
+            - clang-5.0
+    - compiler: gcc
+      dist: precise
+      env: PLATFORM=x86
+           DIST=precise
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: precise
+      env: PLATFORM=x86_64
+           DIST=precise
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: gcc
+      dist: trusty
+      env: PLATFORM=x86
+           DIST=trusty
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: trusty
+      env: PLATFORM=x86_64
+           DIST=trusty
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: tcc
+      dist: precise
+      env: PLATFORM=x86_64
+           DIST=precise
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - tcc
+    - compiler: tcc
+      dist: trusty
+      env: PLATFORM=x86_64
+           DIST=trusty
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - tcc
     - compiler: gcc
       env:
         - secure: "rH+rQS0W+0U3C/W/uRqJ8E5A3KrlbWaDRpZtdT1/SO0kEMnmuG2b0UvoadcIKOEXNHnQeZ3kPQbG2Wjfo/D6up0mXGZLXAvaJZozagxdfF2QPHSpvj2NDRLM71+UaKK/ksq3auPq+o3Y74FZOc4oBr7kPpr01H0pK8/2lljxS2daINRgFfcsaRhKNshtvHBn/KLgbwa5vEB/jadKBKM+mgAYE1sFv8P3yZ3+MzxygpurJ6enU6/9JITF5QgB11ybivYCbqoEf+IhzxgsmELz0zgL+PCVzTvrrNzpCT1UZJ35vWht5Yf7/AmK3sI/rMJm7TYswFKAc7NUbn80oIw6opp7sW1oFqMEHnHNLMNSljg8BwUrbH+y6+yV7sRfG6djCTYUYGYY9ZC2Ef4r3s3ZrRwHuBujZx/DOnFj0nd0AuvETNPkMWD1996bvSQ+WkfZ4JdW335/G61GdQv7kMTutWLKrlDquqxKM1AsoP1d99vCBzpEfRKyZjDUUSmnjdvZ/QgIDidGzH3vYFO81N39HjgKZlxH+oCuoX2ak3A6BrOT7t6mgEXnGM4H9vWhoKb7hseadBsR7YnbFSRmF2FDihEoIJ/BCPykGSZWzxTF94zC3WURI1C3HL0sAHGg3M620FgFj3M4Xkf0CPsmdsjwsnZg6TgVkYwAaKKP0HI2MFs="
       addons:
-        <<: *addons
+        apt:
+          packages:
+            - libreadline-dev
         coverity_scan:
           project:
             name: "pali/udftools"
@@ -32,6 +369,7 @@ matrix:
           branch_pattern: master
 
 before_script:
+  - if ! which "$CC" &>/dev/null; then export CC=${CC%%-*}; fi
   - CFLAGS="-W -Wall -Werror -Wno-error=strict-aliasing -Wno-error=unused-function -O2 -g"
   - if [ "$PLATFORM" = "x86" ]; then CFLAGS="-m32 $CFLAGS"; fi
   - export CFLAGS
