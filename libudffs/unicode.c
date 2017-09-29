@@ -94,7 +94,7 @@ size_t encode_utf8(dchars *out, char *in, size_t outlen)
 
 	len = 1;
 	out[0] = 8;
-	max_val = 0xFF;
+	max_val = 0x7F;
 
 try_again:
 	utf_cnt = 0;
@@ -156,7 +156,7 @@ try_again:
 		/* Choose no compression if necessary */
 		if (utf_char > max_val)
 		{
-			if ( 0xFF == max_val )
+			if (max_val == 0x7F)
 			{
 				len = 1;
 				max_val = 0xFFFF;
@@ -169,7 +169,12 @@ try_again:
 		if (max_val == 0xFFFF)
 		{
 			if (len + 2 > outlen)
-				goto error_out;
+			{
+				len = 1;
+				max_val = 0xFF;
+				out[0] = 0x8;
+				goto try_again;
+			}
 			out[len++] = utf_char >> 8;
 		}
 		if (len + 1 > outlen)
@@ -275,14 +280,14 @@ size_t encode_locale(dchars *out, char *in, size_t outlen)
 
 	len = 1;
 	out[0] = 8;
-	max_val = 0xFF;
+	max_val = 0x7F;
 
 try_again:
 	for (i=0; i<mbslen; ++i)
 	{
 		if (wcs[i] > max_val)
 		{
-			if (max_val == 0xFF)
+			if (max_val == 0x7F)
 			{
 				len = 1;
 				out[0] = 16;
@@ -295,7 +300,12 @@ try_again:
 		if (max_val == 0xFFFF)
 		{
 			if (len+2 > outlen)
-				goto error_out;
+			{
+				len = 1;
+				out[0] = 8;
+				max_val = 0xFF;
+				goto try_again;
+			}
 			out[len++] = (wcs[i] >> 8) & 0xFF;
 		}
 
