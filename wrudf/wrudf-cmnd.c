@@ -50,6 +50,7 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
     uint32_t	maxVarPktSize;		// in bytes
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
+    struct allocDescImpUse *adiu;
     uint8_t	p[2048];
 
     fd = open(inName, O_RDONLY);
@@ -130,13 +131,15 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	    }
 	    ad->extLocation.logicalBlockNum = loc;
 	    ad->extLocation.partitionReferenceNum = pd->partitionNumber;
-	    *(uint32_t*)&((struct allocDescImpUse*)(ad->impUse))->impUse = (uint32_t) fe->uniqueID;
+	    adiu = (struct allocDescImpUse*)(ad->impUse);
+	    memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
 	    loc += ((ad->extLength + 2047) >> 11) + 7;
 	}
 
 	if( ((ad-1)->extLength & 2047) == 0 ) {
 	    memset(ad, 0, sizeof(long_ad));
-	    *(uint32_t*)&((struct allocDescImpUse*)(ad->impUse))->impUse = (uint32_t) fe->uniqueID;
+	    adiu = (struct allocDescImpUse*)(ad->impUse);
+	    memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
 	    ad++;
 	}
 
@@ -239,7 +242,8 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
     if( devicetype == DISK_IMAGE && medium == CDR )
 	writeHDlink();
 
-    *(uint32_t*)(&( (struct allocDescImpUse*)fid->icb.impUse)->impUse) = (uint32_t) fe->uniqueID;
+    adiu = (struct allocDescImpUse*)(fid->icb.impUse);
+    memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
     insertFileIdentDesc(dir, fid);
     ((struct logicalVolIntegrityDescImpUse*)
 	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions))->numFiles++;
@@ -482,6 +486,7 @@ updateDirectory(Directory* dir)
 
 	if( medium == CDR ) {
 	    long_ad *ad;
+	    struct allocDescImpUse *adiu;
 	    uint32_t	blkno;
 
 	    dir->fe.icbTag.flags = (dir->fe.icbTag.flags & ~ ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_LONG;
@@ -489,7 +494,8 @@ updateDirectory(Directory* dir)
 	    ad->extLength = dir->fe.informationLength;
 	    ad->extLocation.logicalBlockNum  =  blkno = getNWA() + 1 - pd->partitionStartingLocation;
 	    ad->extLocation.partitionReferenceNum = pd->partitionNumber;
-	    *(uint32_t*)&((struct allocDescImpUse*)(ad->impUse))->impUse = (uint32_t) dir->fe.uniqueID;
+	    adiu = (struct allocDescImpUse*)(ad->impUse);
+	    memcpy(&adiu->impUse, &dir->fe.uniqueID, sizeof(uint32_t));
 	    memset(ad + 1, 0, sizeof(long_ad));			/* necessary only if infolength multiple of 2048 */
 	    dir->fe.lengthAllocDescs = 2 * sizeof(long_ad);
 
@@ -592,6 +598,7 @@ makeDir(Directory *dir, char* name )
     Directory		*newDir;
     struct fileEntry	*fe;
     struct fileIdentDesc *backFid, *forwFid;
+    struct allocDescImpUse *adiu;
     short_ad		allocDescs[2];
 
 
@@ -609,7 +616,8 @@ makeDir(Directory *dir, char* name )
     /* forward reference to new directory in parent directory */
     forwFid = makeFileIdentDesc(name);
     forwFid->fileCharacteristics = FID_FILE_CHAR_DIRECTORY;
-    *(uint32_t*)(&( (struct allocDescImpUse*)forwFid->icb.impUse)->impUse) = (uint32_t) fe->uniqueID;
+    adiu = (struct allocDescImpUse*)forwFid->icb.impUse;
+    memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
 
     if( medium == CDR ) {
 	fe->descTag.tagLocation = newVATentry();

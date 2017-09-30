@@ -93,6 +93,8 @@ initialise(char *devicename)
     char                        fsdOut[91];
     struct generic_desc 	*p;
     struct volStructDesc	*vsd;
+    struct partitionHeaderDesc	*phd;
+    struct logicalVolHeaderDesc	*lvhd;
 
     initIO(devicename);
     memset(zeroes, 0, 5);
@@ -286,7 +288,8 @@ initialise(char *devicename)
 	fail("No File Set Descriptor\n");
 
     /* load Spacemap extent */
-    adSpaceMap = (short_ad*) &((struct partitionHeaderDesc*)pd->partitionContentsUse)->unallocSpaceBitmap;
+    phd = (struct partitionHeaderDesc*)pd->partitionContentsUse;
+    adSpaceMap = &phd->unallocSpaceBitmap;
 
     if( adSpaceMap->extLength != 0 ) {
 	blkno = adSpaceMap->extPosition;
@@ -354,8 +357,11 @@ initialise(char *devicename)
 	fail("CDR volume has been closed\n");
 
     if( medium == CDR )
+    {
 	// take from VAT FileEntry
-	((struct logicalVolHeaderDesc*)lvid->logicalVolContentsUse)->uniqueID = CDRuniqueID;
+	lvhd = (struct logicalVolHeaderDesc*)lvid->logicalVolContentsUse;
+	lvhd->uniqueID = CDRuniqueID;
+    }
     
     curDir = rootDir = (Directory*)malloc(sizeof(Directory));
     memset(rootDir, 0, sizeof(Directory));
@@ -415,6 +421,7 @@ finalise(void)
     int		i, lbn, len, size, blkno ;
     struct generic_desc 	*p;
     short_ad	*adSpaceMap;
+    struct partitionHeaderDesc *phd;
 
     updateDirectory(rootDir);				/* and any dirty children */
 
@@ -423,7 +430,8 @@ finalise(void)
     } else {
 	/* rewrite Space Bitmap */
 	if( spaceMapDirty) {
-	    adSpaceMap = (short_ad*) &((struct partitionHeaderDesc*)pd->partitionContentsUse)->unallocSpaceBitmap;
+	    phd = (struct partitionHeaderDesc*)pd->partitionContentsUse;
+	    adSpaceMap = &phd->unallocSpaceBitmap;
 	    lbn = adSpaceMap->extPosition;
 	    len = adSpaceMap->extLength;
 

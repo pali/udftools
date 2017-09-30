@@ -314,13 +314,15 @@ writeVATtable()
     int		stat, retries, size;
     uint32_t	startBlk;
     short_ad	*ext;
+    uint16_t	udf_rev_le16;
 
     retries = 0;
 
     id = (regid*)(&vat[newVATindex]);
     memset(id, 0, sizeof(regid));
     strcpy((char *)id->ident, UDF_ID_ALLOC);
-    *(uint16_t*)id->identSuffix = 0x150;
+    udf_rev_le16 = cpu_to_le16(0x150);
+    memcpy(id->identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
     id->identSuffix[2] = UDF_OS_CLASS_UNIX;
     id->identSuffix[3] = UDF_OS_ID_LINUX;
     *(uint32_t*)(id+1) = prevVATlbn;

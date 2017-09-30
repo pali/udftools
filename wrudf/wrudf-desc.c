@@ -160,6 +160,7 @@ struct fileEntry*
 makeFileEntry() 
 {
     struct fileEntry *fe = (struct fileEntry*) calloc(2048, 1);
+    struct logicalVolHeaderDesc* lvhd = (struct logicalVolHeaderDesc*)lvid->logicalVolContentsUse;
 
     updateTimestamp(0,0);
     fe->descTag.tagIdent = TAG_IDENT_FE;
@@ -176,7 +177,7 @@ makeFileEntry()
     fe->modificationTime = timeStamp;
     fe->attrTime = timeStamp;
     fe->impIdent = entityWRUDF;
-    fe->uniqueID = ((struct logicalVolHeaderDesc*)lvid->logicalVolContentsUse)->uniqueID++;
+    fe->uniqueID = lvhd->uniqueID++;
     return fe;
 }
 
