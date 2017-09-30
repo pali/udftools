@@ -252,10 +252,11 @@ int
 reserve_track(int fd, int size)
 {
     CGC pc;
+    uint32_t size_be32 = cpu_to_be32(size);
 
     initpc(&pc);
     pc.cmd[0]=GPCMD_RESERVE_RZONE_TRACK;		/* 0x53 */
-    *(u_int*)&pc.cmd[5] = cpu_to_be32(size);
+    memcpy(&pc.cmd[5], &size_be32, sizeof(size_be32));
     return rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
 }
 

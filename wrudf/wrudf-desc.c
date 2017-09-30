@@ -50,6 +50,7 @@ deleteFID(Directory * dir, struct fileIdentDesc * fid)
 {
     int		rv;
     struct fileEntry *fe;
+    struct logicalVolIntegrityDescImpUse *lvidiu;
 
     rv = CMND_OK;
 
@@ -77,11 +78,13 @@ deleteFID(Directory * dir, struct fileIdentDesc * fid)
 	} else {
 	    if( fe->icbTag.fileType == ICBTAG_FILE_TYPE_DIRECTORY ) {
 		dir->fe.fileLinkCount--;
-		((struct logicalVolIntegrityDescImpUse*)
-		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions))->numDirs--;
+		lvidiu = (struct logicalVolIntegrityDescImpUse*)
+		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+		lvidiu->numDirs--;
 	    } else {
-		((struct logicalVolIntegrityDescImpUse*)
-		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions))->numFiles--;
+		lvidiu = (struct logicalVolIntegrityDescImpUse*)
+		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+		lvidiu->numFiles--;
 	    }
 
 	    /* free file data */
