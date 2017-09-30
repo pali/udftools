@@ -386,9 +386,11 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 {
 	struct udf_data *data;
 	struct fileIdentDesc *fid;
+	struct allocDescImpUse *adiu;
 	int ilength = compute_ident_length(sizeof(struct fileIdentDesc) + length);
 	int offset;
 	uint64_t uniqueID;
+	uint32_t uniqueID_le32;
 
 	data = alloc_data(NULL, ilength);
 	fid = data->buffer;
@@ -411,7 +413,11 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 			fid->icb.extLength = cpu_to_le32(disc->blocksize);
 		fid->icb.extLocation.logicalBlockNum = cpu_to_le32(desc->offset);
 		fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
-		*(uint32_t *)((struct allocDescImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
+
+		uniqueID_le32 = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
+		adiu = (struct allocDescImpUse *)fid->icb.impUse;
+		memcpy(adiu->impUse, &uniqueID_le32, sizeof(uniqueID_le32));
+
 		fid->fileVersionNum = cpu_to_le16(1);
 		fid->fileCharacteristics = filechar;
 		fid->lengthFileIdent = length;
@@ -437,7 +443,11 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 			fid->icb.extLength = cpu_to_le32(disc->blocksize);
 		fid->icb.extLocation.logicalBlockNum = cpu_to_le32(desc->offset);
 		fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
-		*(uint32_t *)((struct allocDescImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
+
+		uniqueID_le32 = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
+		adiu = (struct allocDescImpUse *)fid->icb.impUse;
+		memcpy(adiu->impUse, &uniqueID_le32, sizeof(uniqueID_le32));
+
 		fid->fileVersionNum = cpu_to_le16(1);
 		fid->fileCharacteristics = filechar;
 		fid->lengthFileIdent = length;
@@ -475,6 +485,7 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 	if (disc->flags & FLAG_EFE)
 	{
 		struct extendedFileEntry *efe;
+		uint64_t uniqueID_le64;
 
 		desc = set_desc(pspace, TAG_IDENT_EFE, offset, sizeof(struct extendedFileEntry), NULL);
 		efe = (struct extendedFileEntry *)desc->data->buffer;
@@ -488,11 +499,12 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 			efe->uniqueID = cpu_to_le64(0);
 		else
 		{
-			efe->uniqueID = cpu_to_le64(le64_to_cpu(((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0]));
+			memcpy(&efe->uniqueID, disc->udf_lvid->logicalVolContentsUse, sizeof(efe->uniqueID));
 			if (!(le64_to_cpu(efe->uniqueID) & 0x00000000FFFFFFFFUL))
-				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 16);
+				uniqueID_le64 = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 16);
 			else
-				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 1);
+				uniqueID_le64 = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 1);
+			memcpy(disc->udf_lvid->logicalVolContentsUse, &uniqueID_le64, sizeof(uniqueID_le64));
 		}
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
@@ -524,6 +536,7 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 	else
 	{
 		struct fileEntry *fe;
+		uint64_t uniqueID_le64;
 
 		desc = set_desc(pspace, TAG_IDENT_FE, offset, sizeof(struct fileEntry), NULL);
 		fe = (struct fileEntry *)desc->data->buffer;
@@ -536,11 +549,12 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 			fe->uniqueID = cpu_to_le64(0);
 		else
 		{
-			fe->uniqueID = cpu_to_le64(le64_to_cpu(((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0]));
+			memcpy(&fe->uniqueID, disc->udf_lvid->logicalVolContentsUse, sizeof(fe->uniqueID));
 			if (!(le64_to_cpu(fe->uniqueID) & 0x00000000FFFFFFFFUL))
-				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(fe->uniqueID) + 16);
+				uniqueID_le64 = cpu_to_le64(le64_to_cpu(fe->uniqueID) + 16);
 			else
-				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(fe->uniqueID) + 1);
+				uniqueID_le64 = cpu_to_le64(le64_to_cpu(fe->uniqueID) + 1);
+			memcpy(disc->udf_lvid->logicalVolContentsUse, &uniqueID_le64, sizeof(uniqueID_le64));
 		}
 		if (disc->flags & FLAG_STRATEGY4096)
 		{

@@ -258,12 +258,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 			{
 				if (retval != OPT_VID)
 				{
+					struct impUseVolDescImpUse *iuvdiu;
 					if (encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, optarg, 128) == (size_t)-1)
 					{
 						fprintf(stderr, "mkudffs: Error: lvid option is too long\n");
 						exit(1);
 					}
-					memcpy(((struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse)->logicalVolIdent, disc->udf_lvd[0]->logicalVolIdent, 128);
+					iuvdiu = (struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse;
+					memcpy(iuvdiu->logicalVolIdent, disc->udf_lvd[0]->logicalVolIdent, 128);
 					memcpy(disc->udf_fsd->logicalVolIdent, disc->udf_lvd[0]->logicalVolIdent, 128);
 				}
 				if (retval != OPT_LVID)
