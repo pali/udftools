@@ -77,11 +77,12 @@ int
 blank(int fd, int type, int start)
 {
     CGC pc;
+    uint32_t start_be32 = cpu_to_be32(start);
 
     initpc(&pc);
     pc.cmd[0]=GPCMD_BLANK;
     pc.cmd[1]= type & 7;
-    *(u_int*)&pc.cmd[2] = cpu_to_be32(start);		/* blank track tail : lba to start blanking
+    memcpy(&pc.cmd[2], &start_be32, sizeof(start_be32));/* blank track tail : lba to start blanking
 							 * blank track : track number to blank */
     return rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
 }
@@ -130,11 +131,13 @@ int
 set_cdspeed(int fd, int readspeed, int writespeed)
 {
     CGC pc;
+    uint16_t readspeed_be16 = cpu_to_be16(readspeed);
+    uint16_t writespeed_be16 = cpu_to_be16(writespeed);
 
     initpc(&pc);
     pc.cmd[0]=GPCMD_SET_SPEED;
-    *(u_short*) &pc.cmd[2] = cpu_to_be16(readspeed);
-    *(u_short*) &pc.cmd[4] = cpu_to_be16(writespeed);
+    memcpy(&pc.cmd[2], &readspeed_be16, sizeof(readspeed_be16));
+    memcpy(&pc.cmd[4], &writespeed_be16, sizeof(writespeed_be16));
 
     return rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
 }
@@ -231,11 +234,12 @@ int
 read_buffercapacity(int fd, struct cdrom_buffercapacity *bufcap)
 {
     CGC pc;
+    uint16_t size_be16 = cpu_to_be16(sizeof(struct cdrom_buffercapacity));
 
     initpc(&pc);
     pc.data_direction = CGC_DATA_READ;
     pc.cmd[0] = 0x5C;				// READ BUFFER CAPACITY
-    *(u_short*)&pc.cmd[7] = cpu_to_be16(sizeof(struct cdrom_buffercapacity));
+    memcpy(&pc.cmd[7], &size_be16, sizeof(size_be16));
     pc.buffer=(void*)bufcap;
     pc.buflen=sizeof(struct cdrom_buffercapacity);
     rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
@@ -270,12 +274,13 @@ int
 read_discinfo(int fd, struct cdrom_discinfo *di)
 {
     CGC pc;
+    uint16_t size_be16 = cpu_to_be16( sizeof(struct cdrom_discinfo) );
 
     initpc(&pc);
     pc.data_direction = CGC_DATA_READ;
 
     pc.cmd[0]=GPCMD_READ_DISC_INFO;
-    *(u_short*) &pc.cmd[7] = cpu_to_be16( sizeof(struct cdrom_discinfo) );
+    memcpy(&pc.cmd[7], &size_be16, sizeof(size_be16));
     pc.buffer=(void*)di;
     pc.buflen=sizeof(struct cdrom_discinfo);
 
@@ -290,12 +295,14 @@ int
 read_header(int fd, struct cdrom_header *hd, u_int block)
 {
     CGC pc;
+    uint32_t block_be32 = cpu_to_be32( block );
+    uint16_t size_be16 = cpu_to_be16( sizeof(struct cdrom_header) );
 
     initpc(&pc);
     pc.data_direction = CGC_DATA_READ;
     pc.cmd[0]=GPCMD_READ_HEADER;
-    *(u_int*)&pc.cmd[2] = cpu_to_be32( block);
-    *(u_short*)&pc.cmd[7] = cpu_to_be16( sizeof(struct cdrom_header) );
+    memcpy(&pc.cmd[2], &block_be32, sizeof(block_be32));
+    memcpy(&pc.cmd[7], &size_be16, sizeof(size_be16));
     pc.buffer=(void*)hd;
     pc.buflen=sizeof(struct cdrom_header);
     rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
@@ -308,13 +315,15 @@ int
 read_trackinfo(int fd, struct cdrom_trackinfo *ti, int trackno)
 {
     CGC pc;
+    uint32_t trackno_be32 = cpu_to_be32( trackno );
+    uint16_t size_be16 = cpu_to_be16( sizeof(struct cdrom_trackinfo) );
 
     initpc(&pc);
     pc.data_direction = CGC_DATA_READ;
     pc.cmd[0]=GPCMD_READ_TRACK_RZONE_INFO;
     pc.cmd[1]=1;
-    *(u_int*)&pc.cmd[2] = cpu_to_be32( trackno );
-    *(u_short*)&pc.cmd[7] = cpu_to_be16( sizeof(struct cdrom_trackinfo) );	/* 28; if higher data underrun error */
+    memcpy(&pc.cmd[2], &trackno_be32, sizeof(trackno_be32));
+    memcpy(&pc.cmd[7], &size_be16, sizeof(size_be16));	/* 28; if higher data underrun error */
     pc.buffer=(void*)ti;
     pc.buflen=sizeof(struct cdrom_trackinfo);
     rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
@@ -332,12 +341,13 @@ int
 readCD(int fd, int sectortype, int lba, int n, unsigned char* buf)
 {
     CGC pc;
+    uint32_t lba_be32 = cpu_to_be32(lba);
 
     initpc(&pc);
     pc.data_direction = CGC_DATA_READ;
     pc.cmd[0]=GPCMD_READ_CD;
     pc.cmd[1]=sectortype << 2;			/* Sector type per MCC table 31 */
-    *(int*) &pc.cmd[2] = cpu_to_be32(lba);
+    memcpy(&pc.cmd[2], &lba_be32, sizeof(lba_be32));
     pc.cmd[8]=n;				/* read n blocks */
     pc.cmd[9]=0x10;				/* user data only */
     pc.buffer=buf;
@@ -349,13 +359,15 @@ int
 writeCD(int fd, int lba, int nblks, unsigned char* buf)
 {
     CGC pc;
+    uint32_t lba_be32 = cpu_to_be32(lba);
+    uint16_t nblks_be16 = cpu_to_be16(nblks);
 
     initpc(&pc);
     pc.data_direction = CGC_DATA_WRITE;
     pc.cmd[0] = GPCMD_WRITE_10;
     pc.cmd[1] = 0;				/* DPO 0x10; FUA 0x08 */
-    *(u_int*)  &pc.cmd[2] = cpu_to_be32(lba);
-    *(u_short*)&pc.cmd[7] = cpu_to_be16(nblks);
+    memcpy(&pc.cmd[2], &lba_be32, sizeof(lba_be32));
+    memcpy(&pc.cmd[7], &nblks_be16, sizeof(nblks_be16));
     pc.buffer = buf;
     pc.buflen = nblks * 2048;
     return rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
@@ -367,11 +379,12 @@ int
 verify(int fd, int lba, int nblocks)
 {
     CGC pc;
+    uint32_t lba_be32 = cpu_to_be32(lba);
 
     initpc(&pc);
     pc.cmd[0] = GPCMD_VERIFY_10;
     pc.cmd[1] = 0;
-    *(u_int*) &pc.cmd[2] = cpu_to_be32(lba);
+    memcpy(&pc.cmd[2], &lba_be32, sizeof(lba_be32));
     pc.cmd[8] = (u_char) nblocks;
     return rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
 }
@@ -401,6 +414,7 @@ mode_select(int fd, u_char *buffer)
 {
     CGC pc;
     int len = 2 + be16_to_cpu(((mode_hdr*)buffer)->data_length);
+    uint16_t len_be16 = cpu_to_be16(len);
 
     initpc(&pc);
     pc.data_direction = CGC_DATA_WRITE;
@@ -408,7 +422,7 @@ mode_select(int fd, u_char *buffer)
     pc.cmd[1] = 0x10;					// PF bit
     pc.buffer = buffer;
     pc.buflen = len;
-    *(u_short*) &pc.cmd[7] = cpu_to_be16(len);
+    memcpy(&pc.cmd[7], &len_be16, sizeof(len_be16));
     return rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
 }
 
@@ -418,6 +432,8 @@ mode_sense(int fd, u_char **buffer, u_char **mode, u_char pageno, int pgctl)
     CGC pc;
     mode_hdr h;
     int len, offset;
+    uint16_t size_be16 = cpu_to_be16(sizeof(mode_hdr));
+    uint16_t len_be16;
 
     memset(&h, 0x00, sizeof(mode_hdr));
 
@@ -425,7 +441,7 @@ mode_sense(int fd, u_char **buffer, u_char **mode, u_char pageno, int pgctl)
     pc.data_direction = CGC_DATA_READ;
     pc.cmd[0] = GPCMD_MODE_SENSE_10;
     pc.cmd[2] = (pgctl<<6) + (pageno & 0x3F);
-    *(u_short*) &pc.cmd[7] = cpu_to_be16(sizeof(mode_hdr));
+    memcpy(&pc.cmd[7], &size_be16, sizeof(size_be16));
     pc.buffer = (void *)&h;
     pc.buflen = sizeof(mode_hdr);
     rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
@@ -443,7 +459,8 @@ mode_sense(int fd, u_char **buffer, u_char **mode, u_char pageno, int pgctl)
     pc.buffer = *buffer;
 
     pc.buflen = len;
-    *(u_short*) &pc.cmd[7] = cpu_to_be16(len);
+    len_be16 = cpu_to_be16(len);
+    memcpy(&pc.cmd[7], &len_be16, sizeof(len_be16));
     return ioctl(fd, CDROM_SEND_PACKET, &pc);
 }
 
@@ -454,13 +471,16 @@ int
 get_configuration(int fd, u_char* buffer, int size, u_char feature)
 {
     int i, realsize;
+    uint16_t tmp_be16;
     CGC pc;
 
     initpc(&pc);
     pc.data_direction = CGC_DATA_READ;
     pc.cmd[0] = 0x46;				// GET CONFIGURATION
-    *(u_short*) &pc.cmd[2] = cpu_to_be16(feature);
-    *(u_short*) &pc.cmd[7] = cpu_to_be16(8);		// only to see how much will be returned
+    tmp_be16 = cpu_to_be16(feature);
+    memcpy(&pc.cmd[2], &tmp_be16, sizeof(tmp_be16));
+    tmp_be16 = cpu_to_be16(8);
+    memcpy(&pc.cmd[7], &tmp_be16, sizeof(tmp_be16));	// only to see how much will be returned
     pc.buffer=(void*)buffer;
     if( size < 8 ) return -EINVAL;
     pc.buflen = 8;
@@ -472,11 +492,12 @@ get_configuration(int fd, u_char* buffer, int size, u_char feature)
     realsize = be32_to_cpu((int)buffer[0]) + 4;
     if( realsize < size ) {
 	pc.buflen = realsize;
-	*(u_short*) &pc.cmd[7] = cpu_to_be16(realsize);
+	tmp_be16 = cpu_to_be16(realsize);
     } else {
 	pc.buflen = size;
-	*(u_short*) &pc.cmd[7] = cpu_to_be16(size);
+	tmp_be16 = cpu_to_be16(size);
     }
+    memcpy(&pc.cmd[7], &tmp_be16, sizeof(tmp_be16));
     return rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
 }
 #endif		// MMC2

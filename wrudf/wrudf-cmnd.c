@@ -51,6 +51,7 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
     struct allocDescImpUse *adiu;
+    struct logicalVolIntegrityDescImpUse *lvidiu;
     uint8_t	p[2048];
 
     fd = open(inName, O_RDONLY);
@@ -245,8 +246,10 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
     adiu = (struct allocDescImpUse*)(fid->icb.impUse);
     memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
     insertFileIdentDesc(dir, fid);
-    ((struct logicalVolIntegrityDescImpUse*)
-	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions))->numFiles++;
+
+    lvidiu = (struct logicalVolIntegrityDescImpUse*)
+	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+    lvidiu->numFiles++;
 
     close(fd);
     free(fe);
@@ -599,6 +602,7 @@ makeDir(Directory *dir, char* name )
     struct fileEntry	*fe;
     struct fileIdentDesc *backFid, *forwFid;
     struct allocDescImpUse *adiu;
+    struct logicalVolIntegrityDescImpUse *lvidiu;
     short_ad		allocDescs[2];
 
 
@@ -663,8 +667,10 @@ makeDir(Directory *dir, char* name )
     memcpy(newDir->data, backFid, fe->informationLength);
     newDir->dirDirty = 1;
 
-    ((struct logicalVolIntegrityDescImpUse*)
-	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions))->numDirs++;
+    lvidiu = (struct logicalVolIntegrityDescImpUse*)
+	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+    lvidiu->numDirs++;
+
     free(backFid);
     free(forwFid);
     free(fe);
