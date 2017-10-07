@@ -107,6 +107,8 @@ try_again:
 		/* Complete a multi-byte UTF-8 character */
 		if (utf_cnt)
 		{
+			if ((c & 0xC0) != 0x80)
+				goto error_out;
 			utf_char = (utf_char << 6) | (c & 0x3F);
 			if (--utf_cnt)
 				continue;
