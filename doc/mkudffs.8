@@ -35,13 +35,13 @@ mkudffs \- create an UDF filesystem
 .SH DESCRIPTION
 .B mkudffs
 is used to create a UDF filesystem on a device (usually a disk).
-\fIdevice\fP is the special file corresponding to the device (e.g
+\fIdevice\fP is the special file corresponding to the device (e.g.
 \fI/dev/hdX\fP). \fIblocks-count\fP is the number of blocks on the device.
 If omitted,
 .B mkudffs
 automagically figures the file system size. The order of options matters.
 Ident string options must be first and options to override default
-settings implied by the media-type or UDF revison should be after
+settings implied by the media-type or UDF revision should be after
 the option they are overriding.
 
 .SH OPTIONS
