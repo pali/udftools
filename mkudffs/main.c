@@ -60,7 +60,7 @@ static int valid_offset(int fd, off_t offset)
 	return 1;
 }
 
-uint32_t get_blocks(int fd, int blocksize, uint32_t opt_blocks)
+static uint32_t get_blocks(int fd, int blocksize, uint32_t opt_blocks)
 {
 	uint64_t blocks;
 #ifdef BLKGETSIZE64
@@ -255,7 +255,7 @@ static int is_removable_disk(int fd)
 	return -1;
 }
 
-int write_func(struct udf_disc *disc, struct udf_extent *ext)
+static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 {
 	static char *buffer = NULL;
 	static size_t bufferlen = 0;

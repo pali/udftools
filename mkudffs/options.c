@@ -40,7 +40,7 @@
 #include "defaults.h"
 #include "options.h"
 
-struct option long_options[] = {
+static struct option long_options[] = {
 	{ "help", no_argument, NULL, OPT_HELP },
 	{ "label", required_argument, NULL, OPT_LABEL },
 	{ "uuid", required_argument, NULL, OPT_UUID },
