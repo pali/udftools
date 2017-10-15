@@ -255,13 +255,15 @@ void split_space(struct udf_disc *disc)
 	}
 
 	start = next_extent_size(find_extent(disc, 256), USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
-	if (!start) {
+	if (!start)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
 		exit(1);
 	}
 	set_extent(disc, PVDS, start, sizes[VDS_SIZE]);
 	start = next_extent_size(find_extent(disc, 256), USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
-	if (!start) {
+	if (!start)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
 		exit(1);
 	}
@@ -269,7 +271,8 @@ void split_space(struct udf_disc *disc)
 	if (disc->flags & FLAG_VAT)
 	{
 		start = next_extent_size(find_extent(disc, 256), USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
-		if (!start) {
+		if (!start)
+		{
 			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
 			exit(1);
 		}
@@ -278,7 +281,8 @@ void split_space(struct udf_disc *disc)
 	else
 	{
 		start = prev_extent_size(disc->tail, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
-		if (!start) {
+		if (!start)
+		{
 			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
 			exit(1);
 		}
@@ -293,14 +297,16 @@ void split_space(struct udf_disc *disc)
 				start = prev_extent_size(disc->tail, USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
 			else
 				start = next_extent_size(find_extent(disc, 256), USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
-			if (!start) {
+			if (!start)
+			{
 				fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
 				exit(1);
 			}
 			set_extent(disc, STABLE, start, sizes[STABLE_SIZE]);
 		}
 		start = next_extent_size(find_extent(disc, 256), USPACE, sizes[SSPACE_SIZE], offsets[SSPACE_SIZE]);
-		if (!start) {
+		if (!start)
+		{
 			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
 			exit(1);
 		}
@@ -308,12 +314,14 @@ void split_space(struct udf_disc *disc)
 	}
 
 	start = next_extent(disc->head, LVID)->start;
-	if (!start) {
+	if (!start)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find LVID extent\n");
 		exit(1);
 	}
 	ext = next_extent(find_extent(disc, start), USPACE);
-	if (!ext) {
+	if (!ext)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find USPACE extent\n");
 		exit(1);
 	}
@@ -482,7 +490,8 @@ void setup_anchor(struct udf_disc *disc)
 	int i = 0;
 
 	ext = next_extent(disc->head, PVDS);
-	if (!ext) {
+	if (!ext)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find PVDS extent\n");
 		exit(1);
 	}
@@ -490,7 +499,8 @@ void setup_anchor(struct udf_disc *disc)
 	mlen = ext->blocks << disc->blocksize_bits;
 
 	ext = next_extent(disc->head, RVDS);
-	if (!ext) {
+	if (!ext)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find RVDS extent\n");
 		exit(1);
 	}
@@ -498,7 +508,8 @@ void setup_anchor(struct udf_disc *disc)
 	rlen = ext->blocks << disc->blocksize_bits;
 
 	ext = next_extent(disc->head, ANCHOR);
-	if (!ext) {
+	if (!ext)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find ANCHOR extent\n");
 		exit(1);
 	}
@@ -527,7 +538,8 @@ void setup_partition(struct udf_disc *disc)
 	struct udf_extent *pspace;
 
 	pspace = next_extent(disc->head, PSPACE);
-	if (!pspace) {
+	if (!pspace)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find PSPACE extent\n");
 		exit(1);
 	}
@@ -618,7 +630,8 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		use->lengthAllocDescs = cpu_to_le32(sizeof(short_ad));
 		sad = (short_ad *)&use->allocDescs[0];
 		rem = (long long)pspace->blocks * disc->blocksize - length;
-		if (disc->blocksize - sizeof(struct unallocSpaceEntry) < (rem / max) * sizeof(short_ad)) {
+		if (disc->blocksize - sizeof(struct unallocSpaceEntry) < (rem / max) * sizeof(short_ad))
+		{
 			fprintf(stderr, "Creation of so large filesystems with unalloc table not supported.\n");
 			exit(1);
 		}
@@ -838,17 +851,20 @@ void setup_vds(struct udf_disc *disc)
 	struct udf_extent *pvds, *rvds, *lvid, *stable[4], *sspace;
 
 	pvds = next_extent(disc->head, PVDS);
-	if (!pvds) {
+	if (!pvds)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find PVDS extent\n");
 		exit(1);
 	}
 	rvds = next_extent(disc->head, RVDS);
-	if (!rvds) {
+	if (!rvds)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find RVDS extent\n");
 		exit(1);
 	}
 	lvid = next_extent(disc->head, LVID);
-	if (!lvid) {
+	if (!lvid)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find LVID extent\n");
 		exit(1);
 	}
@@ -916,7 +932,8 @@ void setup_pd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent 
 	int length = sizeof(struct partitionDesc);
 
 	ext = next_extent(disc->head, PSPACE);
-	if (!ext) {
+	if (!ext)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot find PSPACE extent\n");
 		exit(1);
 	}

@@ -399,7 +399,8 @@ int main(int argc, char *argv[])
 
 	detect_blocksize(fd, &disc, &blocksize);
 
-	if (blocksize == -1 && media == MEDIA_TYPE_HD) {
+	if (blocksize == -1 && media == MEDIA_TYPE_HD)
+	{
 		disc.blocksize = 512;
 		disc.blocksize_bits = 9;
 		disc.udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc.blocksize);
@@ -464,7 +465,8 @@ int main(int argc, char *argv[])
 	if (is_whole_disk(fd) == 0)
 		fprintf(stderr, "mkudffs: Warning: Creating new UDF filesystem on partition, and not on whole disk device\nmkudffs: Warning: UDF filesystem on partition cannot be read on Apple systems\n");
 
-	if (write_disc(&disc) < 0) {
+	if (write_disc(&disc) < 0)
+	{
 		fprintf(stderr, "mkudffs: Error: Cannot write to device '%s': %s\n", filename, strerror(errno));
 		return 1;
 	}
