@@ -160,6 +160,7 @@ static int is_whole_disk(int fd)
 	struct stat st;
 	char buf[512];
 	DIR *dir;
+	struct dirent *d;
 	int maj;
 	int min;
 	int has_slave;
@@ -192,7 +193,14 @@ static int is_whole_disk(int fd)
 	if (dir)
 	{
 		errno = 0;
-		has_slave = readdir(dir) ? 1 : 0;
+		has_slave = 0;
+		while ((d = readdir(dir)))
+		{
+			if (strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0)
+				continue;
+			has_slave = 1;
+			break;
+		}
 		slave_errno = errno;
 
 		closedir(dir);
