@@ -461,6 +461,9 @@ int main(int argc, char *argv[])
 	else if (len < 16)
 		fprintf(stderr, "mkudffs: Warning: First 16 characters of Volume Set Identifier are not hexadecimal lowercase digits\nmkudffs: Warning: This would cause problems for UDF uuid\n");
 
+	if (is_whole_disk(fd) == 0)
+		fprintf(stderr, "mkudffs: Warning: Creating new UDF filesystem on partition, and not on whole disk device\nmkudffs: Warning: UDF filesystem on partition cannot be read on Apple systems\n");
+
 	if (write_disc(&disc) < 0) {
 		fprintf(stderr, "mkudffs: Error: Cannot write to device '%s': %s\n", filename, strerror(errno));
 		return 1;
