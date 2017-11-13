@@ -360,7 +360,7 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 			}
 			return inlen;
 		}
-		else if (flags & FLAG_UNICODE8)
+		else if (flags & FLAG_UNICODE16)
 		{
 			if (2*(inlen-1)+2 > outlen)
 				return (size_t)-1;
@@ -373,7 +373,7 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 			out[2*(inlen-1)+1] = 0;
 			return 2*(inlen-1);
 		}
-		else if (flags & FLAG_UNICODE16)
+		else if (flags & FLAG_UNICODE8)
 		{
 			if ((inlen-1)/2+1 > outlen)
 				return (size_t)-1;
