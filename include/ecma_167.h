@@ -323,7 +323,7 @@ struct genericPartitionMap
 
 /* Partition Map Type (ECMA 167r3 3/10.7.1.1) */
 #define GP_PARTITION_MAP_TYPE_UNDEF	0x00
-#define GP_PARTIITON_MAP_TYPE_1		0x01
+#define GP_PARTITION_MAP_TYPE_1		0x01
 #define GP_PARTITION_MAP_TYPE_2		0x02
 
 /* Type 1 Partition Map (ECMA 167r3 3/10.7.2) */
