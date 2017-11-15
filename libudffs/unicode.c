@@ -35,7 +35,7 @@
 #include <wchar.h>
 #include <errno.h>
 
-size_t decode_utf8(dchars *in, char *out, size_t inlen, size_t outlen)
+size_t decode_utf8(const dchars *in, char *out, size_t inlen, size_t outlen)
 {
 	size_t len = 0, i;
 	unsigned int c;
@@ -84,7 +84,7 @@ size_t decode_utf8(dchars *in, char *out, size_t inlen, size_t outlen)
 	return len;
 }
 
-size_t encode_utf8(dchars *out, char *in, size_t outlen)
+size_t encode_utf8(dchars *out, const char *in, size_t outlen)
 {
 	size_t inlen = strlen(in);
 	size_t len, i;
@@ -191,7 +191,7 @@ error_out:
 	return len;
 }
 
-size_t decode_locale(dchars *in, char *out, size_t inlen, size_t outlen)
+size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 {
 	size_t len = 0, i;
 	size_t wcslen, clen;
@@ -258,7 +258,7 @@ size_t decode_locale(dchars *in, char *out, size_t inlen, size_t outlen)
 	return len;
 }
 
-size_t encode_locale(dchars *out, char *in, size_t outlen)
+size_t encode_locale(dchars *out, const char *in, size_t outlen)
 {
 	size_t i;
 	size_t mbslen;
@@ -324,7 +324,7 @@ error_out:
 	return (size_t)-1;
 }
 
-size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen, size_t outlen)
+size_t decode_string(struct udf_disc *disc, const dstring *in, char *out, size_t inlen, size_t outlen)
 {
 	uint32_t flags = disc ? disc->flags : FLAG_LOCALE;
 	if (in[0] == 0 && outlen)
@@ -393,7 +393,7 @@ size_t decode_string(struct udf_disc *disc, dstring *in, char *out, size_t inlen
 		return (size_t)-1;
 }
 
-size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outlen)
+size_t encode_string(struct udf_disc *disc, dstring *out, const char *in, size_t outlen)
 {
 	uint32_t flags = disc ? disc->flags : FLAG_LOCALE;
 	size_t ret = (size_t)-1;
@@ -434,7 +434,7 @@ size_t encode_string(struct udf_disc *disc, dstring *out, char *in, size_t outle
 	return ret;
 }
 
-size_t gen_uuid_from_vol_set_ident(char uuid[17], dstring *vol_set_ident, size_t size)
+size_t gen_uuid_from_vol_set_ident(char uuid[17], const dstring *vol_set_ident, size_t size)
 {
 	size_t i;
 	size_t len;

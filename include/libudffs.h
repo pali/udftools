@@ -210,13 +210,13 @@ void append_data(struct udf_desc *, struct udf_data *);
 struct udf_data *alloc_data(void *, int);
 
 /* unicode.c */
-extern size_t decode_utf8(dchars *, char *, size_t, size_t);
-extern size_t encode_utf8(dchars *, char *, size_t);
-extern size_t decode_locale(dchars *, char *, size_t, size_t);
-extern size_t encode_locale(dchars *, char *, size_t);
-extern size_t decode_string(struct udf_disc *, dstring *, char *, size_t, size_t);
-extern size_t encode_string(struct udf_disc *, dstring *, char *, size_t);
+extern size_t decode_utf8(const dchars *, char *, size_t, size_t);
+extern size_t encode_utf8(dchars *, const char *, size_t);
+extern size_t decode_locale(const dchars *, char *, size_t, size_t);
+extern size_t encode_locale(dchars *, const char *, size_t);
+extern size_t decode_string(struct udf_disc *, const dstring *, char *, size_t, size_t);
+extern size_t encode_string(struct udf_disc *, dstring *, const char *, size_t);
 
-size_t gen_uuid_from_vol_set_ident(char[17], dstring *, size_t);
+size_t gen_uuid_from_vol_set_ident(char[17], const dstring *, size_t);
 
 #endif /* __LIBUDFFS_H */
