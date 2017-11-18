@@ -674,7 +674,9 @@ static inline unsigned long udf_find_next_one_bit (void * addr, unsigned long si
 	}
 	if (!size)
 		return result;
-	tmp = leBPL_to_cpup(p);
+	tmp = 0;
+	memcpy(&tmp, p, (size+7)/8);
+	tmp = leBPL_to_cpup(&tmp);
 found_first:
 	tmp &= ~0UL >> (BITS_PER_LONG-size);
 found_middle:
@@ -718,7 +720,9 @@ static inline unsigned long udf_find_next_zero_bit(void * addr, unsigned long si
 	}
 	if (!size)
 		return result;
-	tmp = leBPL_to_cpup(p);
+	tmp = 0;
+	memcpy(&tmp, p, (size+7)/8);
+	tmp = leBPL_to_cpup(&tmp);
 found_first:
 	tmp |= (~0UL << size);
 	if (tmp == (uintBPL)~0UL)	/* Are any bits zero? */
