@@ -217,6 +217,7 @@ void split_space(struct udf_disc *disc)
 	uint32_t start, size;
 	struct sparablePartitionMap *spm;
 	struct udf_extent *ext;
+	uint32_t accessType;
 	uint32_t i, j;
 
 	if (disc->flags & FLAG_BRIDGE) // UDF-Bridge had both UDF and ISO-9660 filesystems mapping the same files
@@ -253,6 +254,10 @@ void split_space(struct udf_disc *disc)
 			sizes[i] = disc->sizing[i].minSize;
 		offsets[i] = disc->sizing[i].align;
 	}
+
+	accessType = le32_to_cpu(disc->udf_pd[0]->accessType);
+	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && sizes[LVID_SIZE] * disc->blocksize < 8192)
+		sizes[LVID_SIZE] = (8192 + disc->blocksize-1) / disc->blocksize;
 
 	start = next_extent_size(find_extent(disc, 256), USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 	if (!start)
