@@ -239,7 +239,7 @@ void split_space(struct udf_disc *disc)
 		set_extent(disc, ANCHOR, 256, 1); // First Anchor Point at sector 256
 	}
 
-	if (disc->flags & FLAG_CLOSED) // Second anchor point at sector (End-Of-Volume - 256)
+	if (disc->flags & FLAG_CLOSED && blocks-257 > 256) // Second anchor point at sector (End-Of-Volume - 256)
 		set_extent(disc, ANCHOR, blocks-257, 1);
 
 	if (!(disc->flags & FLAG_VAT)) // Final anchor point at sector End-Of-Volume/Session for sequentially writable media
