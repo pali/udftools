@@ -125,7 +125,7 @@ static long int strtol_safe(const char *str, int base, int *failed)
 	return ret;
 }
 
-void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int *blocksize, int *media_ptr)
+void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, int *blocksize, int *media_ptr)
 {
 	int retval;
 	int i;
@@ -133,7 +133,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	uint16_t packetlen = 0;
 	unsigned long int blocks = 0;
 	int failed;
-	size_t len;
 
 	while ((retval = getopt_long(argc, argv, "l:u:b:r:h", long_options, NULL)) != EOF)
 	{
@@ -577,13 +576,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char *device, int
 	}
 	if (optind == argc)
 		usage();
-	len = strlen(argv[optind]);
-	if (len >= NAME_MAX)
-	{
-		fprintf(stderr, "mkudffs: Error: device name is too long\n");
-		exit(1);
-	}
-	memcpy(device, argv[optind], len+1);
+	*device = argv[optind];
 	optind ++;
 	if (optind < argc)
 	{

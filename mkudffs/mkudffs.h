@@ -51,10 +51,6 @@ enum media_type {
 	MEDIA_TYPE_CDR,
 };
 
-#ifndef NAME_MAX
-#define NAME_MAX	255
-#endif
-
 extern char *udf_space_type_str[UDF_SPACE_TYPE_SIZE];
 
 void udf_init_disc(struct udf_disc *);

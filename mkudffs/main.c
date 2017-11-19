@@ -319,7 +319,7 @@ int main(int argc, char *argv[])
 {
 	struct udf_disc	disc;
 	struct stat stat;
-	char filename[NAME_MAX];
+	char *filename;
 	char buf[128*3];
 	int fd;
 	int blocksize = -1;
@@ -329,7 +329,7 @@ int main(int argc, char *argv[])
 	setlocale(LC_CTYPE, "");
 
 	udf_init_disc(&disc);
-	parse_args(argc, argv, &disc, filename, &blocksize, &media);
+	parse_args(argc, argv, &disc, &filename, &blocksize, &media);
 	fd = open(filename, O_RDONLY);
 	if (fd < 0)
 	{
@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
 	{
 		int fd2;
 		int flags2;
-		char filename2[NAME_MAX];
+		char filename2[64];
 		const char *error;
 
 		if (fstat(fd, &stat) != 0)

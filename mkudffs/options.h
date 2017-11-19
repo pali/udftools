@@ -24,7 +24,7 @@
 #define _OPTIONS_H 1
 
 void usage(void);
-void parse_args(int, char *[], struct udf_disc *, char *, int *, int *);
+void parse_args(int, char *[], struct udf_disc *, char **, int *, int *);
 
 /*
  * Command line option token values.
