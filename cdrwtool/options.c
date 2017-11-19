@@ -66,10 +66,9 @@ void usage(void)
 	exit(1);
 }
 
-void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
+void parse_args(int argc, char *argv[], struct cdrw_disc *disc, const char **device)
 {
 	int retval;
-	size_t len;
 
 	while ((retval = getopt_long(argc, argv, "r:t:im:u:v:d:sgq::c:C:b:p:z:l:w:f:o:h", long_options, NULL)) != EOF)
 	{
@@ -138,14 +137,8 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			}
 			case 'd':
 			{
-				len = strlen(optarg);
-				if (len >= NAME_MAX)
-				{
-					printf("device name is too long\n");
-					exit(1);
-				}
-				memcpy(device, optarg, len+1);
-				printf("using device %s\n", device);
+				*device = optarg;
+				printf("using device %s\n", *device);
 				break;
 			}
 			case 'g':
@@ -218,13 +211,7 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			}
 			case 'f':
 			{
-				len = strlen(optarg);
-				if (len >= NAME_MAX)
-				{
-					printf("file name is too long\n");
-					exit(1);
-				}
-				memcpy(disc->filename, optarg, len+1);
+				disc->filename = optarg;
 				printf("write file %s\n", disc->filename);
 				break;
 			}

@@ -26,7 +26,7 @@
 #include <getopt.h>
 
 void usage(void);
-void parse_args(int, char *[], struct cdrw_disc *, char *);
+void parse_args(int, char *[], struct cdrw_disc *, const char **);
 
 /*
  * Command line option token values.

@@ -115,7 +115,7 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 	return 0;
 }
 
-int quick_setup(int fd, struct cdrw_disc *disc, char *device)
+int quick_setup(int fd, struct cdrw_disc *disc, const char *device)
 {
 	disc_info_t di;
 	track_info_t ti;
@@ -238,14 +238,14 @@ int main(int argc, char *argv[])
 {
 	struct cdrw_disc disc;
 	write_params_t w;
-	char filename[NAME_MAX];
+	const char *filename;
 	int fd, ret;
 
 	memset(&disc, 0x00, sizeof(disc));
 	cdrw_init_disc(&disc);
 	udf_init_disc(&disc.udf_disc);
-	strcpy(filename, CDROM_DEVICE);
-	parse_args(argc, argv, &disc, filename);
+	filename = CDROM_DEVICE;
+	parse_args(argc, argv, &disc, &filename);
 	if (((fd = open(filename, O_RDWR | O_NONBLOCK)) < 0) &&
 		((errno != EROFS) ||
 		((fd = open(filename, O_RDONLY | O_NONBLOCK)) < 0)))
@@ -345,7 +345,7 @@ int main(int argc, char *argv[])
 		return ret;
 	}
 
-	if (disc.filename[0] != '\0')
+	if (disc.filename)
 	{
 		ret = write_file(fd, &disc);
 		cdrom_close(fd);
