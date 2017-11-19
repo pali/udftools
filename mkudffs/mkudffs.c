@@ -636,7 +636,6 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 			exit(1);
 		}
 		pos = offset + (length/disc->blocksize);
-		printf("pos=%d, rem=%lld\n", pos, rem);
 		if (rem > 0x3FFFFFFF)
 		{
 			while (rem > max)
