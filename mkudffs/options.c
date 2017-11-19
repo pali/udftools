@@ -175,7 +175,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				unsigned char maj = 0;
 				unsigned char min = 0;
 				int len = 0;
-				if (sscanf(optarg, "%hhu.%hhu%n", &maj, &min, &len) >= 2 && !optarg[len])
+				if (sscanf(optarg, "%hhx.%hhx%n", &maj, &min, &len) >= 2 && !optarg[len])
 				{
 					rev = (maj << 8) | min;
 				}

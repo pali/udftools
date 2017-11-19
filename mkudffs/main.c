@@ -433,7 +433,7 @@ int main(int argc, char *argv[])
 
 	printf("blocksize=%u\n", (unsigned int)disc.blocksize);
 	printf("blocks=%lu\n", (unsigned long int)disc.blocks);
-	printf("udfrev=%d.%02d\n", (int)(disc.udf_rev >> 8), (int)(disc.udf_rev & 0xFF));
+	printf("udfrev=%x.%02x\n", (unsigned int)(disc.udf_rev >> 8), (unsigned int)(disc.udf_rev & 0xFF));
 
 	if (((disc.flags & FLAG_BRIDGE) && disc.blocks < 513) || disc.blocks < 281)
 	{
