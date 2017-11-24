@@ -19,12 +19,16 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
+#define _GNU_SOURCE
+
 #include "config.h"
 #include "utils.h"
 #include "options.h"
 
 #include <stdio.h>
 #include <stdarg.h>
+
+#include <dlfcn.h>
 
 /**
  * \brief Support function for printing basic tag information
@@ -161,3 +165,38 @@ void print_metadata_sequence(vds_sequence_t *seq) {
         note("%5d |   0x%02x | %5d |   0x%02x \n", seq->main[i].tagIdent, seq->main[i].error, seq->reserve[i].tagIdent, seq->reserve[i].error);
     }
 }
+
+#if MEMTRACE
+uint64_t alloc_size = 0;
+uint64_t map_size = 0;
+
+void *custom_malloc(size_t size, char * file, int line) {
+    void *(*libc_malloc)(size_t) = dlsym(RTLD_NEXT, "malloc");
+    void * ptr = libc_malloc(size);
+    dbg("[MEMTRACE] malloc %s:%d (%d) -> %p\n", file, line, size, ptr);
+    return ptr;
+}
+
+void custom_free(void *ptr, char * file, int line) {
+    void (*libc_free)(void*) = dlsym(RTLD_NEXT, "free");
+    dbg("[MEMTRACE] free %s:%d %p\n", file, line, ptr);
+    libc_free(ptr); 
+}
+
+
+void *custom_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset, char * file, int line) {
+    void *(*libc_mmap)(void *, size_t, int, int, int, off_t) = dlsym(RTLD_NEXT, "mmap");
+    void * ptr = libc_mmap(addr, length, prot, flags, fd, offset);
+    map_size += length;
+    dbg("[MEMTRACE] mmap %s:%d (%d) -> %p, Total: %ld\n", file, line, length, ptr, map_size);
+    return ptr;
+}
+
+int custom_munmap(void *addr, size_t length, char * file, int line) {
+    int (*libc_munmap)(void*, size_t) = dlsym(RTLD_NEXT, "munmap");
+    map_size -= length;
+    dbg("[MEMTRACE] munmap %s:%d %p -> (%d), Total: %ld\n", file, line, addr, length, map_size);
+    return libc_munmap(addr, length); 
+}
+#endif
+

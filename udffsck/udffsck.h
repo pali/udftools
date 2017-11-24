@@ -37,6 +37,7 @@
 #define BLOCK_SIZE 2048 ///< Minimal VRS search block size
 #define CHUNK_SIZE ((uint32_t)0x800000) ///< Chunk size for using
 
+
 typedef enum {
     FIRST_AVDP = 0, 
     SECOND_AVDP,    
@@ -131,7 +132,7 @@ char * print_timestamp(timestamp ts);
 uint64_t count_used_bits(struct filesystemStats *stats);
 int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, vds_sequence_t *seq );
 void unmap_chunk(uint8_t **dev, uint32_t chunk, size_t st_size);
-void map_chunk(int fd, uint8_t **dev, uint32_t chunk, size_t st_size);
+void map_chunk(int fd, uint8_t **dev, uint32_t chunk, size_t st_size, char * file, int line);
 
 // UDF detection
 int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sectorsize);

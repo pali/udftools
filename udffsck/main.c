@@ -145,7 +145,8 @@ int main(int argc, char *argv[]) {
     signal(SIGSEGV, segv_interrupt);
 #endif
 
-    parse_args(argc, argv, &path, &blocksize);	
+    parse_args(argc, argv, &path, &blocksize);
+    dbg("Path: %p\n", path);    
 
     note("Verbose: %d, Autofix: %d, Interactive: %d\n", verbosity, autofix, interactive);
     if(fast_mode)

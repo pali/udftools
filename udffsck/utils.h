@@ -40,4 +40,18 @@ int prompt(const char *format, ...);
 
 void print_metadata_sequence(vds_sequence_t *seq);
 
+#if MEMTRACE
+
+void *custom_malloc(size_t size, char * file, int line);
+void custom_free(void *ptr, char * file, int line);
+int custom_munmap(void *addr, size_t length, char * file, int line);
+void *custom_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset, char * file, int line);
+
+#define malloc(size) custom_malloc(size, __FILE__, __LINE__)
+#define free(ptr) custom_free(ptr, __FILE__, __LINE__)
+#define mmap(addr, length, prot, flags, fd, offset) custom_mmap(addr, length, prot, flags, fd, offset, __FILE__, __LINE__)
+#define munmap(addr, length) custom_munmap(addr, length, __FILE__, __LINE__)
+
+#endif
+
 #endif //__UTILS_H__
