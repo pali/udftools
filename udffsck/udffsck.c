@@ -1031,7 +1031,7 @@ int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, 
     }
     char *namebuf = calloc(1,128*2);
     memset(namebuf, 0, 128*2);
-    int size = decode_utf8(disc->udf_pvd[vds]->volSetIdent, namebuf, 128);
+    int size = decode_string(disc, disc->udf_pvd[vds]->volSetIdent, namebuf, 128);
 
     for(int i=0; i<16; i++) {
         if((namebuf[i] >= '0' && namebuf[i]<='9') || (namebuf[i] >= 'a' && namebuf[i] <= 'z')) {
@@ -1040,7 +1040,7 @@ int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, 
             warn("Volume Set Identifier Unique Identifier is not compliant.\n");
             //append_error(seq, TAG_IDENT_PVD, MAIN_VDS, E_UUID);
             //append_error(seq, TAG_IDENT_PVD, RESERVE_VDS, E_UUID);
-            //TODO create fix somewhere
+            //TODO create fix somewhere. Use this gen_uuid_from_vol_set_ident() for generating new UUID.
             break;
         }
     }
@@ -1619,9 +1619,13 @@ uint8_t inspect_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t s
             char *namebuf = calloc(1,256*2);
             memset(namebuf, 0, 256*2);
             int size = decode_utf8(fid->fileIdent, namebuf, fid->lengthFileIdent);
-            dbg("Size: %d\n", size);
-            dbg("%sFilename: %s\n", depth2str(depth), namebuf/*fid->fileIdent*/);
-            info.filename = namebuf/*(char *)fid->fileIdent+1*/;
+            if(size == (size_t) - 1) { //Decoding failed
+                warn("Filename decoding failed."); //TODO add tests
+            } else {
+                dbg("Size: %d\n", size);
+                dbg("%sFilename: %s\n", depth2str(depth), namebuf/*fid->fileIdent*/);
+                info.filename = namebuf/*(char *)fid->fileIdent+1*/;
+            }
         }
 
         dbg("Tag Serial Num: %d\n", fid->descTag.tagSerialNum);
