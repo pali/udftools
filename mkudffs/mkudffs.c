@@ -265,7 +265,7 @@ void split_space(struct udf_disc *disc)
 		fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
 		exit(1);
 	}
-	set_extent(disc, PVDS, start, sizes[VDS_SIZE]);
+	set_extent(disc, MVDS, start, sizes[VDS_SIZE]);
 	start = next_extent_size(find_extent(disc, 256), USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
 	if (!start)
 	{
@@ -494,10 +494,10 @@ void setup_anchor(struct udf_disc *disc)
 	uint32_t mloc, rloc, mlen, rlen;
 	int i = 0;
 
-	ext = next_extent(disc->head, PVDS);
+	ext = next_extent(disc->head, MVDS);
 	if (!ext)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find PVDS extent\n");
+		fprintf(stderr, "mkudffs: Error: Cannot find MVDS extent\n");
 		exit(1);
 	}
 	mloc = ext->start;
@@ -852,12 +852,12 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 
 void setup_vds(struct udf_disc *disc)
 {
-	struct udf_extent *pvds, *rvds, *lvid, *stable[4], *sspace;
+	struct udf_extent *mvds, *rvds, *lvid, *stable[4], *sspace;
 
-	pvds = next_extent(disc->head, PVDS);
-	if (!pvds)
+	mvds = next_extent(disc->head, MVDS);
+	if (!mvds)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find PVDS extent\n");
+		fprintf(stderr, "mkudffs: Error: Cannot find MVDS extent\n");
 		exit(1);
 	}
 	rvds = next_extent(disc->head, RVDS);
@@ -875,7 +875,7 @@ void setup_vds(struct udf_disc *disc)
 	stable[0] = next_extent(disc->head, STABLE);
 	sspace = next_extent(disc->head, SSPACE);
 
-	setup_pvd(disc, pvds, rvds, 0);
+	setup_pvd(disc, mvds, rvds, 0);
 	setup_lvid(disc, lvid);
 	if (stable[0] && sspace)
 	{
@@ -887,30 +887,30 @@ void setup_vds(struct udf_disc *disc)
 		}
 		setup_stable(disc, stable, sspace);
 	}
-	setup_lvd(disc, pvds, rvds, lvid, 1);
-	setup_pd(disc, pvds, rvds, 2);
-	setup_usd(disc, pvds, rvds, 3);
-	setup_iuvd(disc, pvds, rvds, 4);
-	if (pvds->blocks > 5)
-		setup_td(disc, pvds, rvds, 5);
+	setup_lvd(disc, mvds, rvds, lvid, 1);
+	setup_pd(disc, mvds, rvds, 2);
+	setup_usd(disc, mvds, rvds, 3);
+	setup_iuvd(disc, mvds, rvds, 4);
+	if (mvds->blocks > 5)
+		setup_td(disc, mvds, rvds, 5);
 }
 
-void setup_pvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_pvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	int length = sizeof(struct primaryVolDesc);
 
-	desc = set_desc(pvds, TAG_IDENT_PVD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_PVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_pvd[0];
-	disc->udf_pvd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_pvd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
 	desc = set_desc(rvds, TAG_IDENT_PVD, offset, length, NULL);
 	memcpy(disc->udf_pvd[1] = desc->data->buffer, disc->udf_pvd[0], length);
 	disc->udf_pvd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_lvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, struct udf_extent *lvid, uint32_t offset)
+void setup_lvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, struct udf_extent *lvid, uint32_t offset)
 {
 	struct udf_desc *desc;
 	int length = sizeof(struct logicalVolDesc) + le32_to_cpu(disc->udf_lvd[0]->mapTableLength);
@@ -919,17 +919,17 @@ void setup_lvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent
 	disc->udf_lvd[0]->integritySeqExt.extLocation = cpu_to_le32(lvid->start);
 //	((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
 
-	desc = set_desc(pvds, TAG_IDENT_LVD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_LVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_lvd[0];
-	disc->udf_lvd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_lvd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
 	desc = set_desc(rvds, TAG_IDENT_LVD, offset, length, NULL);
 	memcpy(disc->udf_lvd[1] = desc->data->buffer, disc->udf_lvd[0], length);
 	disc->udf_lvd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_pd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_pd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	struct udf_extent *ext;
@@ -950,17 +950,17 @@ void setup_pd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent 
 		strcpy(disc->udf_pd[0]->partitionContents.ident, PARTITION_CONTENTS_NSR02);
 #endif
 
-	desc = set_desc(pvds, TAG_IDENT_PD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_PD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_pd[0];
-	disc->udf_pd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_pd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
 	desc = set_desc(rvds, TAG_IDENT_PD, offset, length, NULL);
 	memcpy(disc->udf_pd[1] = desc->data->buffer, disc->udf_pd[0], length);
 	disc->udf_pd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_usd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_usd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	struct udf_extent *ext;
@@ -979,42 +979,42 @@ void setup_usd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent
 		ext = next_extent(ext->next, USPACE);
 	}
 
-	desc = set_desc(pvds, TAG_IDENT_USD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_USD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_usd[0];
-	disc->udf_usd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_usd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
 	desc = set_desc(rvds, TAG_IDENT_USD, offset, length, NULL);
 	memcpy(disc->udf_usd[1] = desc->data->buffer, disc->udf_usd[0], length);
 	disc->udf_usd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_iuvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_iuvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	int length = sizeof(struct impUseVolDesc);
 
 //	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
 
-	desc = set_desc(pvds, TAG_IDENT_IUVD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_IUVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_iuvd[0];
-	disc->udf_iuvd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_iuvd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
 	desc = set_desc(rvds, TAG_IDENT_IUVD, offset, length, NULL);
 	memcpy(disc->udf_iuvd[1] = desc->data->buffer, disc->udf_iuvd[0], length);
 	disc->udf_iuvd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_td(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_td(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	int length = sizeof(struct terminatingDesc);
 
-	desc = set_desc(pvds, TAG_IDENT_TD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_TD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_td[0];
-	disc->udf_td[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_td[0]->descTag = query_tag(disc, mvds, desc, 1);
 
 	desc = set_desc(rvds, TAG_IDENT_TD, offset, length, NULL);
 	memcpy(disc->udf_td[1] = desc->data->buffer, disc->udf_td[0], length);
@@ -1248,4 +1248,4 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 }
 
 
-char *udf_space_type_str[UDF_SPACE_TYPE_SIZE] = { "RESERVED", "VRS", "ANCHOR", "PVDS", "RVDS", "LVID", "STABLE", "SSPACE", "PSPACE", "USPACE", "BAD", "MBR" };
+char *udf_space_type_str[UDF_SPACE_TYPE_SIZE] = { "RESERVED", "VRS", "ANCHOR", "MVDS", "RVDS", "LVID", "STABLE", "SSPACE", "PSPACE", "USPACE", "BAD", "MBR" };
