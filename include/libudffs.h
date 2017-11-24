@@ -70,8 +70,8 @@ enum udf_space_type
 	VRS		= 0x0002,	/* Volume Recognition Sequence */
 	ANCHOR		= 0x0004,	/* Anchor */
 	MVDS		= 0x0008,	/* Main Volume Descriptor Sequence */
-	RVDS		= 0x0010,	/* Reserved Volume Descriptor Sequence */
-	LVID		= 0x0020,	/* Logical Volume Identifier */
+	RVDS		= 0x0010,	/* Reserve Volume Descriptor Sequence */
+	LVID		= 0x0020,	/* Logical Volume Integrity Descriptor */
 	STABLE		= 0x0040,	/* Sparing Table */
 	SSPACE		= 0x0080,	/* Sparing Space */
 	PSPACE		= 0x0100,	/* Partition Space */
