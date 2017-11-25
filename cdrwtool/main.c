@@ -244,6 +244,7 @@ int main(int argc, char *argv[])
 	memset(&disc, 0x00, sizeof(disc));
 	cdrw_init_disc(&disc);
 	udf_init_disc(&disc.udf_disc);
+	udf_set_version(&disc.udf_disc, 0x150);
 	filename = CDROM_DEVICE;
 	parse_args(argc, argv, &disc, &filename);
 	if (((fd = open(filename, O_RDWR | O_NONBLOCK)) < 0) &&
