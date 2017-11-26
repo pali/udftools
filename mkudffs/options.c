@@ -91,7 +91,7 @@ void usage(void)
 		"\t--bootarea=        UDF boot area (preserve, erase, mbr; default: based on media type)\n"
 		"\t--strategy=        Allocation strategy to use (4, 4096; default: based on media type)\n"
 		"\t--spartable=       Number of sparing tables for cdrw (1 - 4)\n"
-		"\t--packetlen=       Packet length in number of sectors for cdrw and dvdrw (default: detect)\n"
+		"\t--packetlen=       Packet length in number of blocks for cdrw and dvdrw (default: based on media type)\n"
 		"\t--media-type=      Media type (hd, dvd, dvdram, dvdrw, worm, mo, cdrw, cdr; default: hd)\n"
 		"\t--space=           Space (freedbitmap, freedtable, unallocbitmap, unalloctable)\n"
 		"\t--ad=              Allocation descriptor (inicb, short, long)\n"
