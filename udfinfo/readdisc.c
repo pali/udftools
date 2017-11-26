@@ -1394,7 +1394,7 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, uint32_t locat
 	free(use);
 
 	blocks = (space + disc->blocksize-1) / disc->blocksize;
-	if (blocks > UINT32_MAX)
+	if (space > UINT64_MAX - (disc->blocksize-1) || blocks > UINT32_MAX)
 		return UINT32_MAX;
 	else
 		return blocks;
