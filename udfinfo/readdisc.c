@@ -1247,26 +1247,25 @@ static uint32_t count_bitmap_blocks(int fd, struct udf_disc *disc, uint32_t loca
 {
 	unsigned long int buffer[512/sizeof(unsigned long int)];
 	unsigned long int val;
-	struct spaceBitmapDesc *sbd;
+	struct spaceBitmapDesc sbd;
 	uint32_t bits;
 	uint32_t bytes;
 	uint32_t blocks;
 	size_t i;
 
-	if (sizeof(*sbd) > length)
+	if (sizeof(sbd) > length)
 	{
 		fprintf(stderr, "%s: Warning: Invalid Space Bitmap Descriptor\n", appname);
 		return 0;
 	}
 
-	if (read_offset(fd, disc, &buffer, (size_t)location * disc->blocksize, sizeof(*sbd), 1) < 0)
+	if (read_offset(fd, disc, &sbd, (size_t)location * disc->blocksize, sizeof(sbd), 1) < 0)
 		return 0;
 
-	sbd = (struct spaceBitmapDesc *)&buffer;
-	bits = le32_to_cpu(sbd->numOfBits);
-	bytes = le32_to_cpu(sbd->numOfBytes);
+	bits = le32_to_cpu(sbd.numOfBits);
+	bytes = le32_to_cpu(sbd.numOfBytes);
 
-	if (bytes > length - sizeof(*sbd) || bytes < (bits+7) / 8)
+	if (bytes > length - sizeof(sbd) || bytes < (bits+7) / 8)
 	{
 		fprintf(stderr, "%s: Warning: Invalid Space Bitmap Descriptor\n", appname);
 		return 0;
