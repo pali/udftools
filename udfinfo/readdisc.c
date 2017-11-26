@@ -1323,7 +1323,7 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, uint32_t locat
 {
 	unsigned char buffer[512];
 	struct unallocSpaceEntry *use;
-	uint32_t use_len;
+	size_t use_len;
 	uint64_t space;
 	size_t i, count;
 	short_ad *sad;
