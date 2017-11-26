@@ -231,6 +231,12 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 {
 	struct udf_extent *new_ext, *start_ext = find_extent(disc, start);
 
+	if (start < start_ext->start)
+	{
+		printf("trying to change type of multiple extents\n");
+		exit(1);
+	}
+
 	if (start == start_ext->start)
 	{
 		if (blocks == start_ext->blocks)
