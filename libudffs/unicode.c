@@ -487,11 +487,5 @@ size_t gen_uuid_from_vol_set_ident(char uuid[17], const dstring *vol_set_ident, 
 	if (nonhexpos < 16)
 		return nonhexpos;
 
-	for (i = 0; i < 16; ++i)
-	{
-		if (uuid[i] != buf[i])
-			return i;
-	}
-
 	return 16;
 }
