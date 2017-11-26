@@ -507,13 +507,13 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 	uint32_t location, length, count, i;
 	uint32_t next_vdp_num, next_location, next_length, next_count;
 	uint16_t type, udf_rev_le16;
-	uint32_t gd_length;
-	struct genericDesc gd;
+	size_t gd_length;
 	struct genericDesc *gd_ptr;
 	struct udf_extent *ext;
 	struct volDescPtr *vdp;
 	struct logicalVolDesc *lvd;
 	struct unallocSpaceDesc *usd;
+	unsigned char buffer[512];
 	int id, anchor;
 	int nested;
 
@@ -575,14 +575,15 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 				break;
 			}
 
-			if (read_offset(fd, disc, &gd, ((size_t)location+i) * disc->blocksize, sizeof(gd), 1) < 0)
+			if (read_offset(fd, disc, &buffer, ((size_t)location+i) * disc->blocksize, sizeof(buffer), 1) < 0)
 				return -3;
 
-			type = le16_to_cpu(gd.descTag.tagIdent);
+			gd_ptr = (struct genericDesc *)&buffer;
+			type = le16_to_cpu(gd_ptr->descTag.tagIdent);
 			if (type == 0)
 				break;
 
-			if (le32_to_cpu(gd.descTag.tagLocation) != location+i)
+			if (le32_to_cpu(gd_ptr->descTag.tagLocation) != location+i)
 			{
 				fprintf(stderr, "%s: Warning: Incorrect Volume Descriptor\n", appname);
 				return -3;
@@ -596,26 +597,26 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 				case TAG_IDENT_TD:
 				case TAG_IDENT_VDP:
 				default:
-					gd_ptr = malloc(sizeof(gd));
+					gd_ptr = malloc(sizeof(buffer));
 					if (!gd_ptr)
 					{
 						fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
 						return -1;
 					}
-					memcpy(gd_ptr, &gd, sizeof(gd));
-					set_desc(ext, type, i, sizeof(gd), alloc_data(gd_ptr, sizeof(gd)));
+					memcpy(gd_ptr, &buffer, sizeof(buffer));
+					set_desc(ext, type, i, sizeof(buffer), alloc_data(gd_ptr, sizeof(buffer)));
 
-					if (type == TAG_IDENT_PVD && (!disc->udf_pvd[id] || le32_to_cpu(disc->udf_pvd[id]->volDescSeqNum) < le32_to_cpu(gd.volDescSeqNum)))
+					if (type == TAG_IDENT_PVD && (!disc->udf_pvd[id] || le32_to_cpu(disc->udf_pvd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum)))
 						disc->udf_pvd[id] = (struct primaryVolDesc *)gd_ptr;
-					else if (type == TAG_IDENT_PD && (!disc->udf_pd[id] || le32_to_cpu(disc->udf_pd[id]->volDescSeqNum) < le32_to_cpu(gd.volDescSeqNum)))
+					else if (type == TAG_IDENT_PD && (!disc->udf_pd[id] || le32_to_cpu(disc->udf_pd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum)))
 						disc->udf_pd[id] = (struct partitionDesc *)gd_ptr;
-					else if (type == TAG_IDENT_IUVD && (!disc->udf_iuvd[id] || le32_to_cpu(disc->udf_iuvd[id]->volDescSeqNum) < le32_to_cpu(gd.volDescSeqNum)))
+					else if (type == TAG_IDENT_IUVD && (!disc->udf_iuvd[id] || le32_to_cpu(disc->udf_iuvd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum)))
 						disc->udf_iuvd[id] = (struct impUseVolDesc *)gd_ptr;
 					else if (type == TAG_IDENT_TD && !disc->udf_td[id])
 						disc->udf_td[id] = (struct terminatingDesc *)gd_ptr;
 					else if (type == TAG_IDENT_VDP)
 					{
-						vdp = (struct volDescPtr *)&gd;
+						vdp = (struct volDescPtr *)gd_ptr;
 						if (next_vdp_num < le32_to_cpu(vdp->volDescSeqNum))
 						{
 							next_vdp_num = le32_to_cpu(vdp->volDescSeqNum);
@@ -629,7 +630,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					break;
 
 				case TAG_IDENT_LVD:
-					lvd = (struct logicalVolDesc *)&gd;
+					lvd = (struct logicalVolDesc *)gd_ptr;
 
 					gd_length = sizeof(*lvd) + le32_to_cpu(lvd->mapTableLength);
 					if (i*disc->blocksize + gd_length > length)
@@ -646,13 +647,13 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 						return -1;
 					}
 
-					if (gd_length <= sizeof(gd))
-						memcpy(lvd, &gd, gd_length);
+					if (gd_length <= sizeof(buffer))
+						memcpy(lvd, &buffer, gd_length);
 					else
 					{
-						memcpy(lvd, &gd, sizeof(gd));
+						memcpy(lvd, &buffer, sizeof(buffer));
 						errno = 0;
-						if (read(fd, (void *)lvd + sizeof(gd), gd_length - sizeof(gd)) != (ssize_t)(gd_length - sizeof(gd)))
+						if (read(fd, (void *)lvd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
 						{
 							fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 							free(lvd);
@@ -665,7 +666,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					if (gd_length > disc->blocksize)
 						i += (gd_length + (disc->blocksize-1)) / disc->blocksize - 1;
 
-					if (!disc->udf_lvd[id] || le32_to_cpu(disc->udf_lvd[id]->volDescSeqNum) < le32_to_cpu(gd.volDescSeqNum))
+					if (!disc->udf_lvd[id] || le32_to_cpu(disc->udf_lvd[id]->volDescSeqNum) < le32_to_cpu(lvd->volDescSeqNum))
 					{
 						disc->udf_lvd[id] = lvd;
 						if (strncmp((char *)disc->udf_lvd[id]->domainIdent.ident, UDF_ID_COMPLIANT, sizeof(disc->udf_lvd[id]->domainIdent.ident)) == 0)
@@ -682,7 +683,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					break;
 
 				case TAG_IDENT_USD:
-					usd = (struct unallocSpaceDesc *)&gd;
+					usd = (struct unallocSpaceDesc *)&buffer;
 
 					gd_length = sizeof(*usd) + le32_to_cpu(usd->numAllocDescs) * sizeof(*usd->allocDescs);
 					if (i*disc->blocksize + gd_length > length)
@@ -699,13 +700,13 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 						return -1;
 					}
 
-					if (gd_length <= sizeof(gd))
-						memcpy(usd, &gd, gd_length);
+					if (gd_length <= sizeof(buffer))
+						memcpy(usd, &buffer, gd_length);
 					else
 					{
-						memcpy(usd, &gd, sizeof(gd));
+						memcpy(usd, &buffer, sizeof(buffer));
 						errno = 0;
-						if (read(fd, (void *)usd + sizeof(gd), gd_length - sizeof(gd)) != (ssize_t)(gd_length - sizeof(gd)))
+						if (read(fd, (void *)usd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
 						{
 							fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 							free(usd);
@@ -718,7 +719,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					if (gd_length > disc->blocksize)
 						i += (gd_length + (disc->blocksize-1)) / disc->blocksize - 1;
 
-					if (!disc->udf_usd[id] || le32_to_cpu(disc->udf_usd[id]->volDescSeqNum) < le32_to_cpu(gd.volDescSeqNum))
+					if (!disc->udf_usd[id] || le32_to_cpu(disc->udf_usd[id]->volDescSeqNum) < le32_to_cpu(usd->volDescSeqNum))
 						disc->udf_usd[id] = usd;
 
 					break;
