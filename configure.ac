@@ -25,6 +25,6 @@ AC_SYS_LARGEFILE
 dnl Checks for library functions.
 AC_SUBST(LTLIBOBJS)
 
-AC_CONFIG_FILES(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile wrudf/Makefile doc/Makefile)
+AC_CONFIG_FILES(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile udfinfo/Makefile wrudf/Makefile doc/Makefile)
 
 AC_OUTPUT

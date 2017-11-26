@@ -25,6 +25,8 @@
 
 #include "libudffs.h"
 
+const char *appname;
+
 size_t gen_uuid_from_vol_set_ident(char uuid[17], const dstring *vol_set_ident, size_t size)
 {
 	size_t i;

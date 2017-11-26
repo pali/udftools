@@ -102,11 +102,17 @@ enum udf_alloc_type
 struct udf_disc
 {
 	uint16_t			udf_rev;
+	uint16_t			udf_write_rev;
 	uint16_t			blocksize;
 	uint8_t				blocksize_bits;
 	uint32_t			blocks;
 	uint32_t			flags;
 	int				blkssz;
+	uint64_t			blksize;
+	uint32_t			num_files;
+	uint32_t			num_dirs;
+	uint32_t			free_space_blocks;
+	uint32_t			total_space_blocks;
 
 	uint32_t			uid;
 	uint32_t			gid;
@@ -218,6 +224,7 @@ extern size_t decode_string(struct udf_disc *, const dstring *, char *, size_t, 
 extern size_t encode_string(struct udf_disc *, dstring *, const char *, size_t);
 
 /* misc.c */
+extern const char *appname;
 size_t gen_uuid_from_vol_set_ident(char[17], const dstring *, size_t);
 
 #endif /* __LIBUDFFS_H */

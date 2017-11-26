@@ -201,7 +201,15 @@ struct NSRDesc
 	uint8_t		reserved;
 	uint8_t		structData[2040];
 } __attribute__ ((packed));
-	
+
+/* Generic Descriptor */
+struct genericDesc
+{
+	tag		descTag;
+	uint32_t	volDescSeqNum;
+	uint8_t		reserved[492];
+} __attribute__ ((packed));
+
 /* Primary Volume Descriptor (ECMA 167r3 3/10.1) */
 struct primaryVolDesc
 {
@@ -772,6 +780,7 @@ struct partitionIntegrityEntry
 /* Short Allocation Descriptor (ECMA 167r3 4/14.14.1) */
 
 /* Extent Length (ECMA 167r3 4/14.14.1.1) */
+#define EXT_LENGTH_MASK			0x3FFFFFFF
 #define EXT_RECORDED_ALLOCATED		0x00000000
 #define EXT_NOT_RECORDED_ALLOCATED	0x40000000
 #define EXT_NOT_RECORDED_NOT_ALLOCATED	0x80000000

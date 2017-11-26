@@ -64,6 +64,7 @@
 #define UDF_ID_SPARABLE			"*UDF Sparable Partition"
 #define UDF_ID_ALLOC			"*UDF Virtual Alloc Tbl"
 #define UDF_ID_SPARING			"*UDF Sparing Table"
+#define UDF_ID_METADATA			"*UDF Metadata Partition"
 
 /* Identifier Suffix (UDF 2.01 2.1.5.3) */
 #define IS_DF_HARD_WRITE_PROTECT	0x01
