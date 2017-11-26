@@ -441,12 +441,6 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if ((disc.flags & FLAG_BOOTAREA_MBR) && (((uint64_t)disc.blocks) << disc.blocksize_bits)/disc.blkssz >= UINT32_MAX)
-	{
-		fprintf(stderr, "mkudffs: Error: Cannot create MBR on disc larger then 2^32 logical sectors\n");
-		exit(1);
-	}
-
 	split_space(&disc);
 
 	setup_mbr(&disc);
