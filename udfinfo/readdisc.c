@@ -963,9 +963,10 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 static void read_stable(int fd, struct udf_disc *disc)
 {
 	long_ad *ad;
+	size_t st_len;
 	uint8_t count, i;
 	uint16_t partition, packet_len, num, j;
-	uint32_t location, length, st_len;
+	uint32_t location, length;
 	unsigned char buffer[512];
 	struct sparablePartitionMap *spm;
 	struct sparingTable *st;
