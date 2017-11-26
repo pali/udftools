@@ -1276,7 +1276,7 @@ static uint32_t count_bitmap_blocks(int fd, struct udf_disc *disc, uint32_t loca
 
 	for (bytes = (bits+7) / 8; bytes > sizeof(buffer); bytes -= sizeof(buffer))
 	{
-		if (read(fd, &buffer, sizeof(buffer)) != sizeof(buffer))
+		if (read(fd, &buffer, sizeof(buffer)) != (ssize_t)sizeof(buffer))
 		{
 			fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 			return 0;
@@ -1296,7 +1296,7 @@ static uint32_t count_bitmap_blocks(int fd, struct udf_disc *disc, uint32_t loca
 	if (bytes)
 	{
 		memset(&buffer, 0, sizeof(buffer));
-		if (read(fd, &buffer, bytes) != bytes)
+		if (read(fd, &buffer, bytes) != (ssize_t)bytes)
 		{
 			fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 			return 0;
