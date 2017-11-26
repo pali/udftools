@@ -1324,7 +1324,7 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, uint32_t locat
 	unsigned char buffer[512];
 	struct unallocSpaceEntry *use;
 	size_t use_len;
-	uint64_t space;
+	uint64_t space, blocks;
 	size_t i, count;
 	short_ad *sad;
 	long_ad *lad;
@@ -1392,7 +1392,11 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, uint32_t locat
 
 	free(use);
 
-	return (space + disc->blocksize-1) / disc->blocksize;
+	blocks = (space + disc->blocksize-1) / disc->blocksize;
+	if (blocks > UINT32_MAX)
+		return UINT32_MAX;
+	else
+		return blocks;
 }
 
 static void scan_free_space_blocks(int fd, struct udf_disc *disc)
