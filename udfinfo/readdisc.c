@@ -331,7 +331,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	if (disc->blocksize)
 	{
 		if (disc->blksize / disc->blocksize > UINT32_MAX)
-			fprintf(stderr, "%s: Warning: Disk is too big, using only %lu blocks\n", appname, (unsigned long int)UINT32_MAX);
+			fprintf(stderr, "%s: Warning: Disk is too big (%llu), using only %lu blocks\n", appname, (unsigned long long int)(disc->blksize / disc->blocksize), (unsigned long int)UINT32_MAX);
 
 		setup_blocks(disc);
 
@@ -460,7 +460,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	}
 
 	if (disc->blksize / disc->blocksize > UINT32_MAX)
-		fprintf(stderr, "%s: Warning: Disk is too big, using only %lu blocks\n", appname, (unsigned long int)UINT32_MAX);
+		fprintf(stderr, "%s: Warning: Disk is too big (%llu), using only %lu blocks\n", appname, (unsigned long long int)(disc->blksize / disc->blocksize), (unsigned long int)UINT32_MAX);
 
 	if (disc->blkssz && disc->blkssz != disc->blocksize)
 		fprintf(stderr, "%s: Warning: Disk logical sector size (%d) does not match UDF block size (%u)\n", appname, disc->blkssz, (unsigned int)disc->blocksize);
@@ -564,14 +564,14 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 
 		ext = set_extent(disc, vds_type, location, count);
 
-		if (count > 64)
-			length = 64 * disc->blocksize;
+		if (count > 256)
+			length = 256 * disc->blocksize;
 
 		for (i = 0; i < count; ++i)
 		{
-			if (count >= 64)
+			if (count >= 256)
 			{
-				fprintf(stderr, "%s: Warning: Too many descriptors in Volume Descriptor Sequence, stopping scanning\n", appname);
+				fprintf(stderr, "%s: Warning: Too many descriptors (%lu) in Volume Descriptor Sequence, stopping scanning\n", appname, (long unsigned int)count);
 				break;
 			}
 
@@ -635,7 +635,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					gd_length = sizeof(*lvd) + le32_to_cpu(lvd->mapTableLength);
 					if (i*disc->blocksize + gd_length > length)
 					{
-						fprintf(stderr, "%s: Warning: Logical Volume Descriptor is too big\n", appname);
+						fprintf(stderr, "%s: Warning: Logical Volume Descriptor is too big (%llu)\n", appname, (unsigned long long int)(i*disc->blocksize + gd_length));
 						i = count-1;
 						break;
 					}
@@ -688,7 +688,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					gd_length = sizeof(*usd) + le32_to_cpu(usd->numAllocDescs) * sizeof(*usd->allocDescs);
 					if (i*disc->blocksize + gd_length > length)
 					{
-						fprintf(stderr, "%s: Warning: Unallocated Space Descriptor is too big\n", appname);
+						fprintf(stderr, "%s: Warning: Unallocated Space Descriptor is too big (%llu)\n", appname, (unsigned long long int)(i*disc->blocksize + gd_length));
 						i = count-1;
 						break;
 					}
@@ -780,9 +780,9 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 
 	while (location && length)
 	{
-		if (length > 64*disc->blocksize)
+		if (length > 256*disc->blocksize)
 		{
-			fprintf(stderr, "%s: Warning: Logical Volume Integrity Descriptor is too big\n", appname);
+			fprintf(stderr, "%s: Warning: Logical Volume Integrity Descriptor is too big (%lu)\n", appname, (unsigned long int)length);
 			break;
 		}
 
@@ -1026,7 +1026,7 @@ static void read_stable(int fd, struct udf_disc *disc)
 		st_len = sizeof(*st) + num * sizeof(struct sparingEntry);
 		if (st_len > length)
 		{
-			fprintf(stderr, "%s: Warning: Sparing Table is too big\n", appname);
+			fprintf(stderr, "%s: Warning: Sparing Table is too big (%llu)\n", appname, (unsigned long long int)st_len);
 			return;
 		}
 
