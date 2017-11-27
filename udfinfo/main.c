@@ -98,6 +98,25 @@ static uint32_t compute_windows_serial_num(struct udf_disc *disc)
 	return (checksum[0] << 24) | (checksum[1] << 16) | (checksum[2] << 8) | checksum[3];
 }
 
+static uint32_t compute_behind_blocks(struct udf_disc *disc)
+{
+	struct udf_extent *start_ext;
+	uint32_t last_block = 0;
+
+	for (start_ext = disc->head; start_ext != NULL; start_ext = start_ext->next)
+	{
+		if (start_ext->space_type & USPACE)
+			continue;
+		if (last_block < start_ext->start + start_ext->blocks)
+			last_block = start_ext->start + start_ext->blocks;
+	}
+
+	if (disc->blocks > last_block)
+		return disc->blocks - last_block;
+	else
+		return 0;
+}
+
 static void print_dstring(struct udf_disc *disc, const char *name, const dstring *string, size_t len)
 {
 	char buf[256];
@@ -152,6 +171,7 @@ int main(int argc, char *argv[])
 	struct partitionDesc *pd;
 	uint32_t serial_num;
 	uint32_t used_blocks;
+	uint32_t behind_blocks;
 	size_t ret;
 	int fd;
 
@@ -208,6 +228,8 @@ int main(int argc, char *argv[])
 	else
 		used_blocks = disc.total_space_blocks - disc.free_space_blocks;
 
+	behind_blocks = compute_behind_blocks(&disc);
+
 	serial_num = compute_windows_serial_num(&disc);
 
 	if (pvd)
@@ -252,6 +274,7 @@ int main(int argc, char *argv[])
 	printf("blocks=%lu\n", (unsigned long int)disc.blocks);
 	printf("usedblocks=%lu\n", (unsigned long int)used_blocks);
 	printf("freeblocks=%lu\n", (unsigned long int)disc.free_space_blocks);
+	printf("behindblocks=%lu\n", (unsigned long int)behind_blocks);
 	printf("numfiles=%lu\n", (unsigned long int)disc.num_files);
 	printf("numdirs=%lu\n", (unsigned long int)disc.num_dirs);
 	printf("udfrev=%x.%02x\n", (unsigned int)(disc.udf_rev >> 8), (unsigned int)(disc.udf_rev & 0xFF));
