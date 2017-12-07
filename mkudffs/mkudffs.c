@@ -38,6 +38,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include <errno.h>
+#include <sys/ioctl.h>
+#include <linux/hdreg.h>
 
 #include "mkudffs.h"
 #include "file.h"
@@ -403,6 +405,9 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 {
 	struct mbr old_mbr;
 	uint64_t lba_blocks;
+	struct stat st;
+	struct hd_geometry geometry;
+	unsigned int heads, sectors;
 	struct mbr_partition *mbr_partition;
 	int fd = *(int *)disc->write_data;
 
@@ -423,7 +428,28 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 
 	lba_blocks = ((((uint64_t)disc->blocks) << disc->blocksize_bits) + disc->blkssz - 1) / disc->blkssz;
 
-	if (lba_blocks >= 255*63*1024)
+	if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, HDIO_GETGEO, &geometry) == 0)
+	{
+		heads = geometry.heads;
+		sectors = geometry.sectors;
+	}
+	else
+	{
+		/* Use LBA-Assist Translation for calculating CHS when disk geometry is not available */
+		sectors = 63;
+		if (lba_blocks < 16*63*1024)
+			heads = 16;
+		else if (lba_blocks < 32*63*1024)
+			heads = 32;
+		else if (lba_blocks < 64*63*1024)
+			heads = 64;
+		else if (lba_blocks < 128*63*1024)
+			heads = 128;
+		else
+			heads = 255;
+	}
+
+	if (heads > 255 || sectors > 63 || lba_blocks >= heads*sectors*1024)
 	{
 		/* If CHS address is too large use tuple (1023, 254, 63) */
 		mbr_partition->ending_chs[0] = 254;
@@ -432,9 +458,9 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	}
 	else
 	{
-		mbr_partition->ending_chs[0] = (lba_blocks / 63) % 255;
-		mbr_partition->ending_chs[1] = ((1 + lba_blocks % 63) & 63) | (((lba_blocks / (255*63)) >> 8) * 64);
-		mbr_partition->ending_chs[2] = (lba_blocks / (255*63)) & 255;
+		mbr_partition->ending_chs[0] = (lba_blocks / sectors) % heads;
+		mbr_partition->ending_chs[1] = ((1 + lba_blocks % sectors) & 63) | (((lba_blocks / (heads*sectors)) >> 8) * 64);
+		mbr_partition->ending_chs[2] = (lba_blocks / (heads*sectors)) & 255;
 	}
 
 	mbr_partition->size_in_lba = cpu_to_le32(lba_blocks);
