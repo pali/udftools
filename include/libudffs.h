@@ -104,7 +104,6 @@ struct udf_disc
 	uint16_t			udf_rev;
 	uint16_t			udf_write_rev;
 	uint16_t			blocksize;
-	uint8_t				blocksize_bits;
 	uint32_t			blocks;
 	uint32_t			flags;
 	int				blkssz;
