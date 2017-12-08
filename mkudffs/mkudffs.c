@@ -648,8 +648,9 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 	{
 		struct unallocSpaceEntry *use;
 		short_ad *sad;
-		int max = (0x3FFFFFFF / disc->blocksize) * disc->blocksize;
-		int pos=0;
+		uint32_t max_value = (UINT32_MAX & EXT_LENGTH_MASK);
+		uint32_t max = (max_value / disc->blocksize) * disc->blocksize;
+		uint32_t pos=0;
 		long long rem;
 
 		if (disc->flags & FLAG_STRATEGY4096)
@@ -667,7 +668,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 			exit(1);
 		}
 		pos = offset + (length/disc->blocksize);
-		if (rem > 0x3FFFFFFF)
+		if (rem > max_value)
 		{
 			while (rem > max)
 			{
