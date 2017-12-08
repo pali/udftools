@@ -392,7 +392,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 		}
 	}
 
-	for (disc->blocksize = 512; disc->blocksize <= 4096; disc->blocksize *= 2)
+	for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 	{
 		if (disc->blocksize <= 2048 && vsd_2048_valid)
 		{
@@ -424,7 +424,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 
 	if (disc->blocksize > 4096)
 	{
-		for (disc->blocksize = 512; disc->blocksize <= 4096; disc->blocksize *= 2)
+		for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 		{
 			ret = detect_vrs_and_anchor(fd, disc, 1, &found_vrs, &vsd_2048_valid, &bea, &nsr, &tea);
 			if (ret == -3 || ret == -2)
@@ -437,7 +437,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 
 		if (disc->blocksize > 4096)
 		{
-			for (disc->blocksize = 512; disc->blocksize <= 4096; disc->blocksize *= 2)
+			for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 			{
 				ret = detect_vrs_and_anchor(fd, disc, 2, &found_vrs, &vsd_2048_valid, &bea, &nsr, &tea);
 				if (ret == -3 || ret == -2)
