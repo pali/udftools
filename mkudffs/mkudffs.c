@@ -58,7 +58,6 @@ void udf_init_disc(struct udf_disc *disc)
 	memset(disc, 0x00, sizeof(*disc));
 
 	disc->blocksize = 2048;
-	disc->blocksize_bits = 11;
 	disc->udf_rev = le16_to_cpu(default_lvidiu.minUDFReadRev);
 	disc->flags = FLAG_LOCALE | FLAG_CLOSED | FLAG_EFE;
 	disc->blkssz = 512;
@@ -414,7 +413,7 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	memcpy(mbr, &default_mbr, sizeof(struct mbr));
 	mbr_partition = &mbr->partitions[0];
 
-	if (lseek(fd, ((off_t)start) << disc->blocksize_bits, SEEK_SET) >= 0)
+	if (lseek(fd, ((off_t)start) * disc->blocksize, SEEK_SET) >= 0)
 	{
 		if (read(fd, &old_mbr, sizeof(struct mbr)) == sizeof(struct mbr))
 		{
@@ -426,7 +425,7 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	if (!mbr->disk_signature)
 		get_random_bytes(&mbr->disk_signature, sizeof(mbr->disk_signature));
 
-	lba_blocks = ((((uint64_t)disc->blocks) << disc->blocksize_bits) + disc->blkssz - 1) / disc->blkssz;
+	lba_blocks = ((uint64_t)disc->blocks * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
 
 	if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, HDIO_GETGEO, &geometry) == 0)
 	{
@@ -474,7 +473,7 @@ void setup_mbr(struct udf_disc *disc)
 
 	if (!(ext = next_extent(disc->head, MBR)))
 		return;
-	desc = set_desc(ext, 0x00, 0, ext->blocks << disc->blocksize_bits, NULL);
+	desc = set_desc(ext, 0x00, 0, ext->blocks * disc->blocksize, NULL);
 	mbr = (struct mbr *)desc->data->buffer;
 	fill_mbr(disc, mbr, ext->start);
 }
@@ -527,7 +526,7 @@ void setup_anchor(struct udf_disc *disc)
 		exit(1);
 	}
 	mloc = ext->start;
-	mlen = ext->blocks << disc->blocksize_bits;
+	mlen = ext->blocks * disc->blocksize;
 
 	ext = next_extent(disc->head, RVDS);
 	if (!ext)
@@ -536,7 +535,7 @@ void setup_anchor(struct udf_disc *disc)
 		exit(1);
 	}
 	rloc = ext->start;
-	rlen = ext->blocks << disc->blocksize_bits;
+	rlen = ext->blocks * disc->blocksize;
 
 	ext = next_extent(disc->head, ANCHOR);
 	if (!ext)
@@ -585,13 +584,13 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 {
 	struct udf_desc *desc;
 	struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)disc->udf_pd[0]->partitionContentsUse;
-	int length = (((sizeof(struct spaceBitmapDesc) + pspace->blocks) >> (disc->blocksize_bits + 3)) + 1) << disc->blocksize_bits;
+	int length = (((sizeof(struct spaceBitmapDesc) + pspace->blocks) / (disc->blocksize*8)) + 1) * disc->blocksize;
 
 	if (disc->flags & FLAG_FREED_BITMAP)
 	{
 		phd->freedSpaceBitmap.extPosition = cpu_to_le32(offset);
 		phd->freedSpaceBitmap.extLength = cpu_to_le32(length);
-		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length >> disc->blocksize_bits));
+		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length / disc->blocksize));
 	}
 	else if (disc->flags & FLAG_FREED_TABLE)
 	{
@@ -611,7 +610,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 	{
 		phd->unallocSpaceBitmap.extPosition = cpu_to_le32(offset);
 		phd->unallocSpaceBitmap.extLength = cpu_to_le32(length);
-		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length >> disc->blocksize_bits));
+		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length / disc->blocksize));
 	}
 	else if (disc->flags & FLAG_UNALLOC_TABLE)
 	{
@@ -641,7 +640,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		memset(sbd->bitmap, 0xFF, sizeof(uint8_t) * nBytes);
 		if (pspace->blocks%8)
 			sbd->bitmap[nBytes-1] = 0xFF >> (8-(pspace->blocks%8));
-		clear_bits(sbd->bitmap, offset, (length + disc->blocksize - 1) >> disc->blocksize_bits);
+		clear_bits(sbd->bitmap, offset, (length + disc->blocksize - 1) / disc->blocksize);
 		sbd->descTag = udf_query_tag(disc, TAG_IDENT_SBD, 1, desc->offset, desc->data, sizeof(tag));
 	}
 	else if (disc->flags & FLAG_SPACE_TABLE)
@@ -725,7 +724,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		}
 	}
 
-	return (length + disc->blocksize - 1) >> disc->blocksize_bits;
+	return (length + disc->blocksize - 1) / disc->blocksize;
 }
 
 int setup_fileset(struct udf_disc *disc, struct udf_extent *pspace)
@@ -763,7 +762,7 @@ int setup_fileset(struct udf_disc *disc, struct udf_extent *pspace)
 
 	disc->udf_fsd->descTag = query_tag(disc, pspace, desc, 1);
 
-	return (length + disc->blocksize - 1) >> disc->blocksize_bits;
+	return (length + disc->blocksize - 1) / disc->blocksize;
 }
 
 int setup_root(struct udf_disc *disc, struct udf_extent *pspace)

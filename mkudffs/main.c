@@ -125,10 +125,9 @@ static uint32_t get_blocks(int fd, int blocksize, uint32_t opt_blocks)
 
 static void detect_blocksize(int fd, struct udf_disc *disc, int *blocksize)
 {
-	int size;
-	uint16_t bs;
-
 #ifdef BLKSSZGET
+	int size;
+
 	if (ioctl(fd, BLKSSZGET, &size) != 0)
 		return;
 
@@ -137,20 +136,13 @@ static void detect_blocksize(int fd, struct udf_disc *disc, int *blocksize)
 	if (*blocksize != -1)
 		return;
 
-	disc->blocksize = size;
-	for (bs=512,disc->blocksize_bits=9; disc->blocksize_bits<13; disc->blocksize_bits++,bs<<=1)
+	if (size < 512 || size > 4096 || (size & (size - 1)))
 	{
-		if (disc->blocksize == bs)
-			break;
+		fprintf(stderr, "mkudffs: Warning: Disk logical sector size (%d) is not suitable for UDF\n", size);
+		return;
 	}
-	if (disc->blocksize_bits == 13)
-	{
-		disc->blocksize = 2048;
-		disc->blocksize_bits = 11;
-		*blocksize = -1;
-	}
-	else
-		*blocksize = disc->blocksize;
+
+	*blocksize = disc->blocksize;
 	disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);
 #endif
 }
@@ -276,7 +268,7 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 		desc = ext->head;
 		while (desc != NULL)
 		{
-			if (lseek(fd, (off_t)(ext->start + desc->offset) << disc->blocksize_bits, SEEK_SET) < 0)
+			if (lseek(fd, (off_t)(ext->start + desc->offset) * disc->blocksize, SEEK_SET) < 0)
 				return -1;
 			data = desc->data;
 			offset = 0;
@@ -304,7 +296,7 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 		length = disc->blocksize;
 		blocks = ext->blocks;
 		memset(buffer, 0, length);
-		if (lseek(fd, (off_t)(ext->start) << disc->blocksize_bits, SEEK_SET) < 0)
+		if (lseek(fd, (off_t)(ext->start) * disc->blocksize, SEEK_SET) < 0)
 			return -1;
 		while (blocks-- > 0)
 		{
@@ -402,7 +394,6 @@ int main(int argc, char *argv[])
 	if (blocksize == -1 && media == MEDIA_TYPE_HD)
 	{
 		disc.blocksize = 512;
-		disc.blocksize_bits = 9;
 		disc.udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc.blocksize);
 	}
 

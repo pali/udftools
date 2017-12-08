@@ -781,7 +781,7 @@ int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_desc *table, uint32
 		if (start < le32_to_cpu(sad->extPosition))
 			start = le32_to_cpu(sad->extPosition);
 		start = ((start + alignment - 1) / alignment) * alignment;
-		end = le32_to_cpu(sad->extPosition) + ((le32_to_cpu(sad->extLength) & EXT_LENGTH_MASK) >> disc->blocksize_bits);
+		end = le32_to_cpu(sad->extPosition) + ((le32_to_cpu(sad->extLength) & EXT_LENGTH_MASK) / disc->blocksize);
 		if (start > end)
 			start = end;
 		offset += sizeof(short_ad);
@@ -860,8 +860,7 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 		if (pspace->tail)
 		{
 			offset = pspace->tail->offset;
-			length = (pspace->tail->length + disc->blocksize - 1) >>
-				disc->blocksize_bits;
+			length = (pspace->tail->length + disc->blocksize - 1) / disc->blocksize;
 		}
 		if (offset + length > start)
 			start = offset + length;

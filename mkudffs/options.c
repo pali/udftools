@@ -144,22 +144,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				break;
 			case OPT_BLK_SIZE:
 			case 'b':
-			{
-				uint16_t bs;
 				disc->blocksize = strtoul_safe(optarg, 0, &failed);
-				if (failed)
-				{
-					fprintf(stderr, "mkudffs: invalid blocksize\n");
-					exit(1);
-				}
-				for (bs=512,disc->blocksize_bits=9;
-					disc->blocksize_bits<13;
-					disc->blocksize_bits++,bs<<=1)
-				{
-					if (disc->blocksize == bs)
-						break;
-				}
-				if (disc->blocksize_bits == 13)
+				if (failed || disc->blocksize < 512 || disc->blocksize > 4096 || (disc->blocksize & (disc->blocksize - 1)))
 				{
 					fprintf(stderr, "mkudffs: invalid blocksize\n");
 					exit(1);
@@ -167,7 +153,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);
 				*blocksize = disc->blocksize;
 				break;
-			}
 			case OPT_UDF_REV:
 			case 'r':
 			{
