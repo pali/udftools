@@ -77,7 +77,7 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 				memset(buffer, 0x00, bufferlen);
 			}
 			data = desc->data;
-			offset = ((uint64_t)(ext->start + desc->offset) - (packet * 32)) << disc->blocksize_bits;
+			offset = ((uint64_t)(ext->start + desc->offset) - (packet * 32)) * disc->blocksize;
 			while (data != NULL)
 			{
 				if (data->length + offset > bufferlen)
