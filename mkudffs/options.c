@@ -79,7 +79,7 @@ void usage(void)
 		"\t--help, -h         Display this help\n"
 		"\t--label=, -l       UDF label, synonym for both --lvid and --vid (default: LinuxUDF)\n"
 		"\t--uuid=, -u        UDF uuid, first 16 characters of Volume set identifier (default: random)\n"
-		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096; default: detect)\n"
+		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
 		"\t--udfrev=, -r      UDF revision (2.01, 2.00, 1.50, 1.02; default: 2.01)\n"
 		"\t--lvid=            Logical volume identifier (default: LinuxUDF)\n"
 		"\t--vid=             Volume identifier (default: LinuxUDF)\n"
@@ -145,7 +145,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			case OPT_BLK_SIZE:
 			case 'b':
 				disc->blocksize = strtoul_safe(optarg, 0, &failed);
-				if (failed || disc->blocksize < 512 || disc->blocksize > 4096 || (disc->blocksize & (disc->blocksize - 1)))
+				if (failed || disc->blocksize < 512 || disc->blocksize > 32768 || (disc->blocksize & (disc->blocksize - 1)))
 				{
 					fprintf(stderr, "mkudffs: invalid blocksize\n");
 					exit(1);

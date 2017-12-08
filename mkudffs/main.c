@@ -136,7 +136,7 @@ static void detect_blocksize(int fd, struct udf_disc *disc, int *blocksize)
 	if (*blocksize != -1)
 		return;
 
-	if (size < 512 || size > 4096 || (size & (size - 1)))
+	if (size < 512 || size > 32768 || (size & (size - 1)))
 	{
 		fprintf(stderr, "mkudffs: Warning: Disk logical sector size (%d) is not suitable for UDF\n", size);
 		return;
