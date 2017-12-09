@@ -128,7 +128,7 @@ static void detect_blocksize(int fd, struct udf_disc *disc, int *blocksize)
 #ifdef BLKSSZGET
 	int size;
 
-	if (ioctl(fd, BLKSSZGET, &size) != 0)
+	if (ioctl(fd, BLKSSZGET, &size) != 0 || size <= 0)
 		return;
 
 	disc->blkssz = size;

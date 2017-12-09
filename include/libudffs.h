@@ -103,10 +103,10 @@ struct udf_disc
 {
 	uint16_t			udf_rev;
 	uint16_t			udf_write_rev;
-	uint16_t			blocksize;
+	uint32_t			blocksize;
 	uint32_t			blocks;
 	uint32_t			flags;
-	int				blkssz;
+	unsigned int			blkssz;
 	uint64_t			blksize;
 	uint32_t			num_files;
 	uint32_t			num_dirs;
