@@ -422,7 +422,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 		break;
 	}
 
-	if (disc->blocksize > 4096)
+	if (disc->blocksize > 32768)
 	{
 		for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 		{
@@ -435,7 +435,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 			break;
 		}
 
-		if (disc->blocksize > 4096)
+		if (disc->blocksize > 32768)
 		{
 			for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 			{
@@ -448,7 +448,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 				break;
 			}
 
-			if (disc->blocksize > 4096)
+			if (disc->blocksize > 32768)
 			{
 				if (found_vrs)
 					fprintf(stderr, "%s: Error: UDF Volume Recognition Sequence found but not Anchor Volume Descriptor Pointer, maybe wrong blocksize?\n", appname);
