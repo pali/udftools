@@ -59,6 +59,7 @@ static unsigned long int strtoul_safe(const char *str, int base, int *failed)
 
 void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename)
 {
+	unsigned long int value;
 	int failed;
 	int ret;
 
@@ -72,12 +73,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename)
 				break;
 			case OPT_BLK_SIZE:
 			case 'b':
-				disc->blocksize = strtoul_safe(optarg, 0, &failed);
-				if (failed || disc->blocksize < 512 || disc->blocksize > 32768 || (disc->blocksize & (disc->blocksize - 1)))
+				value = strtoul_safe(optarg, 0, &failed);
+				if (failed || value < 512 || value > 32768 || (value & (value - 1)))
 				{
 					fprintf(stderr, "%s: Error: Invalid blocksize\n", appname);
 					exit(1);
 				}
+				disc->blocksize = value;
 				break;
 			case OPT_UNICODE8:
 				disc->flags &= ~FLAG_CHARSET;
