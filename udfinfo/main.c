@@ -304,6 +304,8 @@ int main(int argc, char *argv[])
 				break;
 		}
 	}
+	else
+		printf("accesstype=unknown\n");
 
 	dump_space(&disc);
 
