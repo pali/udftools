@@ -352,7 +352,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 				ret = read_anchor_512(fd, disc);
 				if (ret < 0)
 				{
-					fprintf(stderr, "%s: Error: UDF Volume Recognition Sequence found but not Anchor Volume Descriptor Pointer, maybe wrong blocksize?\n", appname);
+					fprintf(stderr, "%s: Error: UDF Volume Recognition Sequence found but not Anchor Volume Descriptor Pointer, maybe wrong --blocksize?\n", appname);
 					return -1;
 				}
 			}
@@ -451,7 +451,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 			if (disc->blocksize > 32768)
 			{
 				if (found_vrs)
-					fprintf(stderr, "%s: Error: UDF Volume Recognition Sequence found but not Anchor Volume Descriptor Pointer, maybe wrong blocksize?\n", appname);
+					fprintf(stderr, "%s: Error: UDF Volume Recognition Sequence found but not Anchor Volume Descriptor Pointer, maybe wrong --blocksize?\n", appname);
 				else
 					fprintf(stderr, "%s: Error: UDF Volume Recognition Sequence not found\n", appname);
 				return -1;
