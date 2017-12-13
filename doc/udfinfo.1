@@ -126,10 +126,17 @@ UDF revision needed for reading UDF disk
 udfwriterev
 UDF revision needed for writing or modifying UDF disk
 .TP
+integrity
+UDF integrity of Logical Volume, one of: \fIopened\fP, \fIclosed\fP,
+\fIunknown\fP
+.TP
 accesstype
 UDF Access Type, one of: \fIoverwritable\fP, \fIrewritable\fP, \fIwriteonce\fP,
 \fIreadonly\fP, \fIpseudo\-overwritable\fP, \fIunknown\fP
 .RE
+
+When UDF integrity is not \fIclosed\fP it means that the UDF disk was not
+properly unmounted, is in inconsistent state and needs repairing.
 
 All UDF string identifiers are stored on UDF disk in Unicode, therefore they are
 locale or code page agnostic. Options \fB\-\-locale\fP, \fB\-\-u8\fP,

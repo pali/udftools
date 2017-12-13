@@ -261,6 +261,9 @@ int main(int argc, char *argv[])
 		vsid[127] = 0;
 	}
 
+	if (!disc.udf_lvid || le32_to_cpu(disc.udf_lvid->integrityType) != LVID_INTEGRITY_TYPE_CLOSE)
+		fprintf(stderr, "%s: Warning: Logical Volume is in inconsistent state\n", appname);
+
 	printf("filename=%s\n", filename);
 	print_dstring(&disc, "label", lvd ? lvd->logicalVolIdent : NULL, sizeof(lvd->logicalVolIdent));
 	printf("uuid=%s\n", uuid);
@@ -279,6 +282,24 @@ int main(int argc, char *argv[])
 	printf("numdirs=%lu\n", (unsigned long int)disc.num_dirs);
 	printf("udfrev=%x.%02x\n", (unsigned int)(disc.udf_rev >> 8), (unsigned int)(disc.udf_rev & 0xFF));
 	printf("udfwriterev=%x.%02x\n", (unsigned int)(disc.udf_write_rev >> 8), (unsigned int)(disc.udf_write_rev & 0xFF));
+
+	if (disc.udf_lvid)
+	{
+		switch (le32_to_cpu(disc.udf_lvid->integrityType))
+		{
+			case LVID_INTEGRITY_TYPE_OPEN:
+				printf("integrity=opened\n");
+				break;
+			case LVID_INTEGRITY_TYPE_CLOSE:
+				printf("integrity=closed\n");
+				break;
+			default:
+				printf("integrity=unknown\n");
+				break;
+		}
+	}
+	else
+		printf("integrity=unknown\n");
 
 	if (pd)
 	{
