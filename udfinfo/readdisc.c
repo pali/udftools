@@ -24,8 +24,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <linux/cdrom.h>
+#include <sys/ioctl.h>
 
 #include "libudffs.h"
 #include "readdisc.h"
@@ -244,11 +248,7 @@ static int read_anchor_second(int fd, struct udf_disc *disc)
 		return -1;
 
 	if (disc->udf_anchor[0])
-	{
-		if (ret1 < 0 && ret2 < 0)
-			fprintf(stderr, "%s: Warning: Second and third Anchor Volume Descriptor Pointer not found\n", appname);
 		return 0;
-	}
 
 	if (ret1 < 0 && ret2 < 0)
 		return -2;
@@ -870,7 +870,41 @@ static void parse_lvidiu(struct udf_disc *disc)
 	disc->num_dirs = le32_to_cpu(lvidiu->numDirs);
 }
 
-static struct genericPartitionMap *find_partition(struct udf_disc *disc, int id, uint16_t partition)
+static struct genericPartitionMap *find_partition(struct udf_disc *disc, uint8_t type, const char *ident)
+{
+	uint32_t i, offset;
+	struct genericPartitionMap *pmap;
+	struct udfPartitionMap2 *upm2;
+	int id;
+
+	if (disc->udf_lvd[0])
+		id = 0;
+	else if (disc->udf_lvd[1])
+		id = 1;
+	else
+		return NULL;
+
+	offset = 0;
+	for (i = 0; i < le32_to_cpu(disc->udf_lvd[id]->numPartitionMaps); ++i)
+	{
+		if (offset >= le32_to_cpu(disc->udf_lvd[id]->mapTableLength))
+			return NULL;
+		pmap = (struct genericPartitionMap *)&disc->udf_lvd[id]->partitionMaps[offset];
+		if (pmap->partitionMapType == type)
+		{
+			if (!ident)
+				return pmap;
+			upm2 = (struct udfPartitionMap2 *)pmap;
+			if (strncmp((char *)upm2->partIdent.ident, ident, sizeof(upm2->partIdent.ident)) == 0)
+				return pmap;
+		}
+		offset += pmap->partitionMapLength;
+	}
+
+	return NULL;
+}
+
+static struct genericPartitionMap *get_partition(struct udf_disc *disc, int id, uint16_t partition)
 {
 	uint16_t i;
 	uint32_t offset;
@@ -909,9 +943,12 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 		upm2 = (struct udfPartitionMap2 *)pmap;
 		if (strncmp((char *)upm2->partIdent.ident, UDF_ID_VIRTUAL, sizeof(upm2->partIdent.ident)) == 0)
 		{
-			/* TODO: Add support for VAT */
-			fprintf(stderr, "%s: Warning: Virtual Partition Map is not supported\n", appname);
-			return UINT32_MAX;
+			if (!disc->vat)
+				return UINT32_MAX;
+			else if (block < disc->vat_entries)
+				return disc->vat[block];
+			else
+				return block;
 		}
 		else if (strncmp((char *)upm2->partIdent.ident, UDF_ID_SPARABLE, sizeof(upm2->partIdent.ident)) == 0)
 		{
@@ -963,35 +1000,17 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 
 static void read_stable(int fd, struct udf_disc *disc)
 {
-	long_ad *ad;
 	size_t st_len;
 	uint8_t count, i;
-	uint16_t partition, packet_len, num, j;
+	uint16_t packet_len, num, j;
 	uint32_t location, length;
 	unsigned char buffer[512];
 	struct sparablePartitionMap *spm;
 	struct sparingTable *st;
 	struct udf_extent *ext;
-	int id;
 
-	if (disc->udf_lvd[0])
-		id = 0;
-	else if (disc->udf_lvd[1])
-		id = 1;
-	else
-		return;
-
-	ad = (long_ad *)disc->udf_lvd[id]->logicalVolContentsUse;
-	partition = le16_to_cpu(ad->extLocation.partitionReferenceNum);
-
-	spm = (struct sparablePartitionMap *)find_partition(disc, id, partition);
+	spm = (struct sparablePartitionMap *)find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_SPARABLE);
 	if (!spm)
-		return;
-
-	if (spm->partitionMapType != GP_PARTITION_MAP_TYPE_2)
-		return;
-
-	if (strncmp((char *)spm->partIdent.ident, UDF_ID_SPARABLE, sizeof(spm->partIdent.ident)) != 0)
 		return;
 
 	count = spm->numSparingTables;
@@ -1068,6 +1087,164 @@ static void read_stable(int fd, struct udf_disc *disc)
 			}
 		}
 	}
+}
+
+static void read_vat(int fd, struct udf_disc *disc)
+{
+	long last;
+	uint32_t i, vat_block;
+	uint32_t length, offset, location;
+	struct stat st;
+	struct fileEntry *fe;
+	struct extendedFileEntry *efe;
+	struct virtualAllocationTable15 *vat15;
+	struct virtualAllocationTable20 *vat20;
+	unsigned char *vat;
+	unsigned char buffer[512];
+	int id;
+
+	if (disc->udf_pd[0])
+		id = 0;
+	else if (disc->udf_pd[1])
+		id = 1;
+	else
+		return;
+
+	location = le32_to_cpu(disc->udf_pd[id]->partitionStartingLocation);
+
+	if (!find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL))
+		return;
+
+	if (disc->vat_block)
+		vat_block = disc->vat_block;
+	else if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, CDROM_LAST_WRITTEN, &last) == 0)
+		vat_block = last;
+	else
+		vat_block = disc->blocks - 1;
+
+	for (i = vat_block; i > 0 && i > vat_block - 32; --i)
+	{
+		if (read_offset(fd, disc, &buffer, (size_t)i * disc->blocksize, sizeof(buffer), 0) < 0)
+			continue;
+
+		fe = (struct fileEntry *)&buffer;
+
+		if (le16_to_cpu(fe->descTag.tagIdent) != TAG_IDENT_FE && le16_to_cpu(fe->descTag.tagIdent) != TAG_IDENT_EFE)
+			continue;
+
+		if (fe->icbTag.fileType != ICBTAG_FILE_TYPE_UNDEF && fe->icbTag.fileType != ICBTAG_FILE_TYPE_VAT20)
+			continue;
+
+		if (location + le32_to_cpu(fe->descTag.tagLocation) != i)
+		{
+			fprintf(stderr, "%s: Warning: Found Virtual Allocation Table at location %u (block %u), but with expected at location %u\n", appname, (unsigned int)(i-location), (unsigned int)i, (unsigned int)(le32_to_cpu(fe->descTag.tagLocation)));
+			continue;
+		}
+
+		if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) != ICBTAG_FLAG_AD_IN_ICB)
+		{
+			fprintf(stderr, "%s: Warning: Reading Virtual Allocation Table outside of Information Control Block is not supported yet\n", appname);
+			break;
+		}
+
+		if (le16_to_cpu(fe->descTag.tagIdent) == TAG_IDENT_FE)
+		{
+			offset = sizeof(*fe) + le32_to_cpu(fe->lengthExtendedAttr);
+			length = le32_to_cpu(fe->lengthAllocDescs);
+		}
+		else if (le16_to_cpu(fe->descTag.tagIdent) == TAG_IDENT_EFE)
+		{
+			efe = (struct extendedFileEntry *)&buffer;
+			offset = sizeof(*efe) + le32_to_cpu(efe->lengthExtendedAttr);
+			length = le32_to_cpu(efe->lengthAllocDescs);
+		}
+		else
+			continue;
+
+		if (le64_to_cpu(fe->informationLength) > length)
+		{
+			fprintf(stderr, "%s: Warning: Virtual Allocation Table inside of Information Control Block is larger then allocated block\n", appname);
+			break;
+		}
+
+		length = le64_to_cpu(fe->informationLength);
+
+		if (length < 36)
+		{
+			fprintf(stderr, "%s: Warning: Virtual Allocation Table is too small\n", appname);
+			break;
+		}
+
+		if (offset+length > disc->blocksize)
+		{
+			fprintf(stderr, "%s: Warning: Virtual Allocation Table inside of Information Control Block is larger then block size\n", appname);
+			break;
+		}
+
+		vat = malloc(length);
+		if (!vat)
+		{
+			fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+			break;
+		}
+
+		if (read_offset(fd, disc, vat, (size_t)i * disc->blocksize + offset, length, 1) < 0)
+		{
+			free(vat);
+			break;
+		}
+
+		if (fe->icbTag.fileType == ICBTAG_FILE_TYPE_UNDEF)
+		{
+			vat15 = (struct virtualAllocationTable15 *)(vat + ((length - 36) / 4) * 4);
+			if (strncmp((const char *)vat15->vatIdent.ident, UDF_ID_ALLOC, sizeof(vat15->vatIdent.ident)) != 0)
+			{
+				fprintf(stderr, "%s: Warning: Virtual Allocation Table is damaged\n", appname);
+				free(vat);
+				break;
+			}
+			disc->vat = (uint32_t *)vat;
+			disc->vat_entries = (length - 36) / 4;
+		}
+		else if (fe->icbTag.fileType == ICBTAG_FILE_TYPE_VAT20)
+		{
+			vat20 = (struct virtualAllocationTable20 *)vat;
+			if (vat20->lengthHeader < sizeof(*vat20) || vat20->lengthHeader != sizeof(*vat20) + vat20->lengthImpUse || vat20->lengthHeader > length)
+			{
+				fprintf(stderr, "%s: Warning: Virtual Allocation Table is damaged\n", appname);
+				free(vat);
+				break;
+			}
+			if (disc->udf_lvd[0])
+				memcpy(disc->udf_lvd[0]->logicalVolIdent, vat20->logicalVolIdent, sizeof(vat20->logicalVolIdent));
+			if (disc->udf_lvd[1])
+				memcpy(disc->udf_lvd[1]->logicalVolIdent, vat20->logicalVolIdent, sizeof(vat20->logicalVolIdent));
+			if (disc->udf_lvid)
+			{
+				disc->udf_rev = le16_to_cpu(vat20->minUDFReadRev);
+				disc->udf_write_rev = le16_to_cpu(vat20->minUDFWriteRev);
+				disc->num_files = le32_to_cpu(vat20->numFiles);
+				disc->num_dirs = le32_to_cpu(vat20->numDirs);
+			}
+			disc->vat = (uint32_t *)(vat + vat20->lengthHeader);
+			disc->vat_entries = (length - vat20->lengthHeader) / 4;
+		}
+		else
+		{
+			free(vat);
+			continue;
+		}
+
+		disc->vat_block = i;
+		disc->udf_lvid->integrityType = cpu_to_le32(LVID_INTEGRITY_TYPE_CLOSE);
+
+		if (i != vat_block)
+			fprintf(stderr, "%s: Note: Found Virtual Allocation Table at block %u (expected at block %u)\n", appname, (unsigned int)i, (unsigned int)vat_block);
+
+		return;
+	}
+
+	fprintf(stderr, "%s: Error: Virtual Allocation Table not found, maybe wrong --vatblock?\n", appname);
 }
 
 static void setup_pspace(struct udf_disc *disc)
@@ -1162,7 +1339,7 @@ static void read_fsd(int fd, struct udf_disc *disc)
 	partition = le16_to_cpu(ad->extLocation.partitionReferenceNum);
 	length = le32_to_cpu(ad->extLength) & EXT_LENGTH_MASK;
 
-	pmap = find_partition(disc, id, partition);
+	pmap = get_partition(disc, id, partition);
 	if (!pmap)
 	{
 		fprintf(stderr, "%s: Warning: Incorrect Logical Volume Descriptor\n", appname);
@@ -1433,7 +1610,7 @@ static void scan_free_space_blocks(int fd, struct udf_disc *disc)
 		}
 	}
 
-	pmap = find_partition(disc, id, partition);
+	pmap = get_partition(disc, id, partition);
 	if (!pmap)
 		return;
 
@@ -1460,6 +1637,12 @@ static void scan_free_space_blocks(int fd, struct udf_disc *disc)
 
 	location = le32_to_cpu(disc->udf_pd[id]->partitionStartingLocation);
 	phd = (struct partitionHeaderDesc *)disc->udf_pd[id]->partitionContentsUse;
+
+	if (disc->vat)
+	{
+		disc->free_space_blocks = location + disc->total_space_blocks - (disc->vat_block+1);
+		return;
+	}
 
 	length = le32_to_cpu(phd->unallocSpaceBitmap.extLength) & EXT_LENGTH_MASK;
 	if (length)
@@ -1522,6 +1705,9 @@ int read_disc(int fd, struct udf_disc *disc)
 	scan_mvds(fd, disc);
 	scan_rvds(fd, disc);
 
+	if (!disc->udf_anchor[1] && !disc->udf_anchor[2] && !find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL))
+		fprintf(stderr, "%s: Warning: Second and third Anchor Volume Descriptor Pointer not found\n", appname);
+
 	if (!disc->udf_pvd[0] && !disc->udf_pvd[1])
 		fprintf(stderr, "%s: Warning: Primary Volume Descriptor not found\n", appname);
 	if (!disc->udf_pd[0] && !disc->udf_pd[1])
@@ -1543,6 +1729,7 @@ int read_disc(int fd, struct udf_disc *disc)
 
 	parse_lvidiu(disc);
 	read_stable(fd, disc);
+	read_vat(fd, disc);
 	setup_pspace(disc);
 
 	/* TODO: setup USPACE extents */

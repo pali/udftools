@@ -41,6 +41,21 @@ size. If omitted, \fBudfinfo\fP tries to autodetect block size. It tries logical
 (sector) size and then all valid block sizes.
 
 .TP
+.BI \-\-vatblock= " vat\-block "
+Specify the block location of the Virtual Allocation Table. Virtual Allocation
+Table is present only on UDF disks with Virtual Partition Map and must be at the
+last written/recorded disk block.
+
+If omitted, \fBudfinfo\fP for optical disc tries to detect the last recorded
+block with fallback to the last block of block device or disk file image. In
+most cases this fallback does not have to work and for disk file images with
+Virtual Allocation Table is necessary to specify correct location.
+
+Virtual Allocation Table contains locations of UDF disk blocks needed to read
+data storage, determinate used and free space blocks, read File Set Identifier
+and calculate Windows specific Volume Serial Number.
+
+.TP
 .B \-\-locale
 Encode UDF string identifiers on output according to current locale settings
 (default).
@@ -206,12 +221,11 @@ moreover 64 bit long. This non-standard checksum is used only by Windows systems
 systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil\fP.
 
 .SH LIMITATIONS
-\fBudfinfo\fP is not able to read Virtual Partition Map, Metadata Partition Map,
-Virtual Allocation Table (VAT) and Metadata Partition yet. Therefore determining
+\fBudfinfo\fP is not able to read Metadata Partition and Virtual Allocation
+Table stored outside of Information Control Block yet. Therefore determining
 used and free space blocks, reading File Set Identifier and calculating Windows
-specific Volume Serial Number may not be available for Write Once media, disks
-with Pseudo-overwritable Access Type and for disks with UDF revisions higher
-then 2.01.
+specific Volume Serial Number may not be available for some Write Once media
+and disks with UDF revisions higher then 2.01 which have Metadata Partition.
 
 .SH AUTHOR
 .nf
