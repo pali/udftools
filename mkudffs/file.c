@@ -748,6 +748,11 @@ int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_desc *bitmap, uint
 	do
 	{
 		start = ((start + alignment - 1) / alignment) * alignment;
+		if (start + blocks >= sbd->numOfBits)
+		{
+			fprintf(stderr, "Error: Cannot find free block\n");
+			exit(1);
+		}
 		if (sbd->bitmap[start/8] & (1 << (start%8)))
 		{
 			end = udf_find_next_zero_bit(sbd->bitmap, sbd->numOfBits, start);
@@ -777,6 +782,11 @@ int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_desc *table, uint32
 
 	do
 	{
+		if (offset >= use->lengthAllocDescs)
+		{
+			fprintf(stderr, "Error: Cannot find free block\n");
+			exit(1);
+		}
 		sad = (short_ad *)&use->allocDescs[offset];
 		if (start < le32_to_cpu(sad->extPosition))
 			start = le32_to_cpu(sad->extPosition);
@@ -864,6 +874,11 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 		}
 		if (offset + length > start)
 			start = offset + length;
+		if (start >= pspace->blocks)
+		{
+			fprintf(stderr, "Error: Cannot find free block\n");
+			exit(1);
+		}
 		disc->vat[disc->vat_entries++] = start;
 		return start;
 	}
