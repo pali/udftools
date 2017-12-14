@@ -1236,7 +1236,9 @@ static void read_vat(int fd, struct udf_disc *disc)
 		}
 
 		disc->vat_block = i;
-		disc->udf_lvid->integrityType = cpu_to_le32(LVID_INTEGRITY_TYPE_CLOSE);
+
+		if (disc->udf_lvid)
+			disc->udf_lvid->integrityType = cpu_to_le32(LVID_INTEGRITY_TYPE_CLOSE);
 
 		if (i != vat_block)
 			fprintf(stderr, "%s: Note: Found Virtual Allocation Table at block %u (expected at block %u)\n", appname, (unsigned int)i, (unsigned int)vat_block);
