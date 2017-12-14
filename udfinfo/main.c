@@ -283,6 +283,9 @@ int main(int argc, char *argv[])
 	printf("udfrev=%x.%02x\n", (unsigned int)(disc.udf_rev >> 8), (unsigned int)(disc.udf_rev & 0xFF));
 	printf("udfwriterev=%x.%02x\n", (unsigned int)(disc.udf_write_rev >> 8), (unsigned int)(disc.udf_write_rev & 0xFF));
 
+	if (disc.vat_block)
+		printf("vatblock=%lu\n", (unsigned long int)disc.vat_block);
+
 	if (disc.udf_lvid)
 	{
 		switch (le32_to_cpu(disc.udf_lvid->integrityType))
