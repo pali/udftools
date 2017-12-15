@@ -426,7 +426,7 @@ int main(int argc, char *argv[])
 	printf("blocks=%lu\n", (unsigned long int)disc.blocks);
 	printf("udfrev=%x.%02x\n", (unsigned int)(disc.udf_rev >> 8), (unsigned int)(disc.udf_rev & 0xFF));
 
-	if (((disc.flags & FLAG_BRIDGE) && disc.blocks < 513) || disc.blocks < 281)
+	if (disc.blocks < 281)
 	{
 		fprintf(stderr, "mkudffs: Error: Not enough blocks on device '%s'\n", filename);
 		exit(1);

@@ -65,7 +65,6 @@ static struct option long_options[] = {
 	{ "u8", no_argument, NULL, OPT_UNICODE8 },
 	{ "u16", no_argument, NULL, OPT_UNICODE16 },
 	{ "utf8", no_argument, NULL, OPT_UTF8 },
-	{ "bridge", no_argument, NULL, OPT_BRIDGE },
 	{ "closed", no_argument, NULL, OPT_CLOSED },
 	{ 0, 0, NULL, 0 },
 };
@@ -224,11 +223,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					fprintf(stderr, "mkudffs: Option --locale must be specified as first argument\n");
 					exit(1);
 				}
-				break;
-			}
-			case OPT_BRIDGE:
-			{
-				disc->flags |= FLAG_BRIDGE;
 				break;
 			}
 			case OPT_CLOSED:

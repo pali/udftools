@@ -221,24 +221,20 @@ void split_space(struct udf_disc *disc)
 	uint32_t accessType;
 	uint32_t i, j;
 
-	if (disc->flags & FLAG_BRIDGE) // UDF-Bridge had both UDF and ISO-9660 filesystems mapping the same files
-	{
-		set_extent(disc, RESERVED, 0, 512);
-		set_extent(disc, ANCHOR, 512, 1);
-	}
+	// OS boot area
+	if (disc->flags & FLAG_BOOTAREA_MBR)
+		set_extent(disc, MBR, 0, 1);
 	else
-	{
-		// OS boot area
-		if (disc->flags & FLAG_BOOTAREA_MBR)
-			set_extent(disc, MBR, 0, 1);
-		else
-			set_extent(disc, RESERVED, 0, 32768 / disc->blocksize);
-		if (disc->blocksize >= 2048) // Volume Recognition Sequence
-			set_extent(disc, VRS, (2048 * 16) / disc->blocksize, 3);
-		else
-			set_extent(disc, VRS, (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize - 1) / disc->blocksize);
-		set_extent(disc, ANCHOR, 256, 1); // First Anchor Point at sector 256
-	}
+		set_extent(disc, RESERVED, 0, 32768 / disc->blocksize);
+
+	// Volume Recognition Sequence
+	if (disc->blocksize >= 2048)
+		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, 3);
+	else
+		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize - 1) / disc->blocksize);
+
+	// First Anchor Point at sector 256
+	set_extent(disc, ANCHOR, 256, 1);
 
 	if (disc->flags & FLAG_CLOSED && blocks-257 > 256) // Second anchor point at sector (End-Of-Volume - 256)
 		set_extent(disc, ANCHOR, blocks-257, 1);

@@ -39,7 +39,6 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, int *);
 #define OPT_UNICODE8	0x1003
 #define OPT_UNICODE16	0x1004
 #define OPT_UTF8	0x1005
-#define OPT_BRIDGE	0x1006
 #define OPT_CLOSED	0x1007
 
 #define OPT_BLK_SIZE	0x2000
