@@ -175,26 +175,26 @@ struct udf_extent *prev_extent(struct udf_extent *start_ext, enum udf_space_type
  */
 uint32_t prev_extent_size(struct udf_extent *start_ext, enum udf_space_type type, uint32_t blocks, uint32_t offset)
 {
-	uint32_t dec;
+	uint32_t inc;
 
 	start_ext = prev_extent(start_ext, type);
 cont:
 	while (start_ext != NULL && start_ext->blocks < blocks)
 		start_ext = prev_extent(start_ext->prev, type);
 
-	if (start_ext != NULL && (start_ext->start + start_ext->blocks) % offset)
+	if (start_ext != NULL && (start_ext->start % offset))
 	{
-		dec = (start_ext->start + start_ext->blocks) % offset;
-		if (start_ext->blocks - dec < blocks)
+		inc = offset - (start_ext->start % offset);
+		if (start_ext->blocks - inc < blocks)
 		{
 			start_ext = prev_extent(start_ext->prev, type);
 			goto cont;
 		}
 	}
 	else
-		dec = 0;
+		inc = 0;
 
-	return start_ext ? start_ext->start + start_ext->blocks - dec - blocks : 0; // could this cause fragmentation?
+	return start_ext ? start_ext->start + inc + ((start_ext->blocks - inc - blocks)/offset)*offset : 0;
 }
 
 /**
