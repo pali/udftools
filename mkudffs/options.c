@@ -116,16 +116,6 @@ static unsigned long int strtoul_safe(const char *str, int base, int *failed)
 	return ret;
 }
 
-static long int strtol_safe(const char *str, int base, int *failed)
-{
-	char *endptr = NULL;
-	long int ret;
-	errno = 0;
-	ret = strtol(str, &endptr, base);
-	*failed = (!*str || *endptr || errno) ? 1 : 0;
-	return ret;
-}
-
 void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, int *blocksize, int *media_ptr)
 {
 	int retval;
@@ -409,22 +399,34 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_UID:
 			{
-				disc->uid = strtol_safe(optarg, 0, &failed);
-				if (failed)
+				unsigned long int uid = strtoul_safe(optarg, 0, &failed);
+				if (strcmp(optarg, "-1") == 0)
+				{
+					uid = UINT32_MAX;
+					failed = 0;
+				}
+				if (failed || uid > UINT32_MAX)
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --uid\n", appname);
 					exit(1);
 				}
+				disc->uid = uid;
 				break;
 			}
 			case OPT_GID:
 			{
-				disc->gid = strtol_safe(optarg, 0, &failed);
-				if (failed)
+				unsigned long int gid = strtoul_safe(optarg, 0, &failed);
+				if (strcmp(optarg, "-1") == 0)
+				{
+					gid = UINT32_MAX;
+					failed = 0;
+				}
+				if (failed || gid > UINT32_MAX)
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --gid\n", appname);
 					exit(1);
 				}
+				disc->gid = gid;
 				break;
 			}
 			case OPT_BOOTAREA:

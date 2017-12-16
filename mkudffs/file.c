@@ -531,8 +531,6 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 		}
 		efe->icbTag.fileType = filetype;
 		efe->icbTag.flags = cpu_to_le16(le16_to_cpu(efe->icbTag.flags) | flags);
-		efe->uid = cpu_to_le32(disc->uid);
-		efe->gid = cpu_to_le32(disc->gid);
 		if (parent)
 		{
 //			efe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(parent->offset); // for strategy type != 4
@@ -544,6 +542,11 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 		{
 			efe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(0);
 			efe->icbTag.parentICBLocation.partitionReferenceNum = cpu_to_le16(0);
+			if (filetype == ICBTAG_FILE_TYPE_DIRECTORY) // root directory
+			{
+				efe->uid = cpu_to_le32(disc->uid);
+				efe->gid = cpu_to_le32(disc->gid);
+			}
 		}
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
 			query_lvidiu(disc)->numDirs = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numDirs)+1);
@@ -581,8 +584,6 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 		}
 		fe->icbTag.fileType = filetype;
 		fe->icbTag.flags = cpu_to_le16(le16_to_cpu(fe->icbTag.flags) | flags);
-		fe->uid = cpu_to_le32(disc->uid);
-		fe->gid = cpu_to_le32(disc->gid);
 		if (parent)
 		{
 //			fe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(parent->offset); // for strategy type != 4
@@ -594,6 +595,11 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 		{
 			fe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(0);
 			fe->icbTag.parentICBLocation.partitionReferenceNum = cpu_to_le16(0);
+			if (filetype == ICBTAG_FILE_TYPE_DIRECTORY) // root directory
+			{
+				fe->uid = cpu_to_le32(disc->uid);
+				fe->gid = cpu_to_le32(disc->gid);
+			}
 		}
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
 			query_lvidiu(disc)->numDirs = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numDirs)+1);
