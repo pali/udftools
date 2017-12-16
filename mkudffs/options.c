@@ -467,6 +467,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					fprintf(stderr, "mkudffs: invalid sparspace\n");
 					exit(1);
 				}
+				break;
 			}
 			case OPT_PACKETLEN:
 			{
