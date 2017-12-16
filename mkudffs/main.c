@@ -77,6 +77,9 @@ static uint32_t get_blocks(int fd, int blocksize, uint32_t opt_blocks)
 	if (opt_blocks)
 		return opt_blocks;
 
+	if (fd <= 0)
+		return 0;
+
 #ifdef BLKGETSIZE64
 	if (ioctl(fd, BLKGETSIZE64, &size64) >= 0)
 		blocks = size64 / blocksize;
@@ -336,14 +339,6 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "mkudffs: Error: Cannot create new file '%s': block-count was not specified\n", filename);
 			exit(1);
 		}
-
-		// Create new file disk image
-		fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0660);
-		if (fd < 0)
-		{
-			fprintf(stderr, "mkudffs: Error: Cannot create new file '%s': %s\n", filename, strerror(errno));
-			exit(1);
-		}
 	}
 	else
 	{
@@ -389,7 +384,8 @@ int main(int argc, char *argv[])
 		fd = fd2;
 	}
 
-	detect_blocksize(fd, &disc, &blocksize);
+	if (fd >= 0)
+		detect_blocksize(fd, &disc, &blocksize);
 
 	if (blocksize == -1 && media == MEDIA_TYPE_HD)
 	{
@@ -406,7 +402,7 @@ int main(int argc, char *argv[])
 	{
 		if (media != MEDIA_TYPE_HD)
 			disc.flags |= FLAG_BOOTAREA_PRESERVE;
-		else if (is_removable_disk(fd) == 0 && is_whole_disk(fd) == 1)
+		else if (fd >= 0 && is_removable_disk(fd) == 0 && is_whole_disk(fd) == 1)
 			disc.flags |= FLAG_BOOTAREA_MBR;
 		else
 			disc.flags |= FLAG_BOOTAREA_ERASE;
@@ -450,8 +446,19 @@ int main(int argc, char *argv[])
 	else if (len < 16)
 		fprintf(stderr, "mkudffs: Warning: First 16 characters of Volume Set Identifier are not hexadecimal lowercase digits\nmkudffs: Warning: This would cause problems for UDF uuid\n");
 
-	if (is_whole_disk(fd) == 0)
+	if (fd >= 0 && is_whole_disk(fd) == 0)
 		fprintf(stderr, "mkudffs: Warning: Creating new UDF filesystem on partition, and not on whole disk device\nmkudffs: Warning: UDF filesystem on partition cannot be read on Apple systems\n");
+
+	if (fd < 0)
+	{
+		// Create new file disk image
+		fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0660);
+		if (fd < 0)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot create new file '%s': %s\n", filename, strerror(errno));
+			exit(1);
+		}
+	}
 
 	if (write_disc(&disc) < 0)
 	{

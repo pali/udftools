@@ -483,12 +483,12 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	struct hd_geometry geometry;
 	unsigned int heads, sectors;
 	struct mbr_partition *mbr_partition;
-	int fd = *(int *)disc->write_data;
+	int fd = disc->write_data ? (*(int *)disc->write_data) : -1;
 
 	memcpy(mbr, &default_mbr, sizeof(struct mbr));
 	mbr_partition = &mbr->partitions[0];
 
-	if (lseek(fd, ((off_t)start) * disc->blocksize, SEEK_SET) >= 0)
+	if (fd >= 0 && lseek(fd, ((off_t)start) * disc->blocksize, SEEK_SET) >= 0)
 	{
 		if (read(fd, &old_mbr, sizeof(struct mbr)) == sizeof(struct mbr))
 		{
@@ -502,7 +502,7 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 
 	lba_blocks = ((uint64_t)disc->blocks * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
 
-	if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, HDIO_GETGEO, &geometry) == 0)
+	if (fd >= 0 && fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, HDIO_GETGEO, &geometry) == 0)
 	{
 		heads = geometry.heads;
 		sectors = geometry.sectors;
