@@ -253,7 +253,7 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 
 	if (start < start_ext->start)
 	{
-		printf("trying to change type of multiple extents\n");
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 
@@ -287,11 +287,8 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 		}
 		else /* blocks > start_ext->blocks */
 		{
-			printf("trying to change type of multiple extents\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
-			start_ext->space_type = type;
-
-			return start_ext;
 		}
 	}
 	else /* start > start_ext->start */
@@ -345,7 +342,7 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 		{
 			if (start_ext->blocks < blocks)
 			{
-				printf("trying to change type of multiple extents\n");
+				fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 				exit(1);
 			}
 			new_ext = malloc(sizeof(struct udf_extent));
