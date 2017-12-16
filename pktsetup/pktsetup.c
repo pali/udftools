@@ -138,7 +138,7 @@ static int usage(void)
 	printf("  pktsetup /dev/pktcdvd0 /dev/cdrom  setup device\n");
 	printf("  pktsetup -d /dev/pktcdvd0          tear down device\n");
 	printf("For pktcdvd >= 0.2.0:\n");
-	printf("  pktsetup dev_name /dev/cdrom       setup device\n");
+	printf("  pktsetup [dev_name] /dev/cdrom     setup device\n");
 	printf("  pktsetup -d dev_name               tear down device\n");
 	printf("  pktsetup -d major:minor            tear down device\n");
 	printf("  pktsetup -s                        show device mappings\n");
@@ -274,7 +274,7 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 		c.command = PKT_CTRL_CMD_SETUP;
 		c.dev = stat_buf.st_rdev;
 
-		if (remove_stale_dev_node(ctl_fd, pkt_device) != 0) {
+		if (pkt_device && remove_stale_dev_node(ctl_fd, pkt_device) != 0) {
 			fprintf(stderr, "Device node '%s' already in use\n", pkt_device);
 			goto out_close;
 		}
@@ -282,7 +282,7 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 			perror("ioctl");
 			goto out_close;
 		}
-		if (mknod(pkt_dev_name(pkt_device), S_IFBLK | 0640, c.pkt_dev) < 0) {
+		if (pkt_device && mknod(pkt_dev_name(pkt_device), S_IFBLK | 0640, c.pkt_dev) < 0 && errno != EEXIST) {
 			fprintf(stderr, "Can't create device node '%s': %s\n", pkt_dev_name(pkt_device), strerror(errno));
 			goto out_close;
 		}
@@ -294,7 +294,10 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 		    S_ISBLK(stat_buf.st_mode)) {
 			major = MAJOR(stat_buf.st_rdev);
 			minor = MINOR(stat_buf.st_rdev);
-			remove_node = 1;
+			if (strncmp(pkt_device, "pktcdvd", sizeof("pktcdvd")-1) == 0)
+				remove_node = 0;
+			else
+				remove_node = 1;
 		} else if (sscanf(pkt_device, "%d:%d", &major, &minor) == 2) {
 			remove_node = 0;
 		} else {
@@ -378,14 +381,19 @@ int main(int argc, char **argv)
 				return usage();
 		}
 	}
-	if (optind == argc || (!rem && optind+1 == argc) || (rem && optind+1 < argc) || (!rem && optind+2 < argc))
+
+	if (optind == argc || (!rem && optind+2 < argc) || (rem && optind+1 < argc))
 		return usage();
-	pkt_device = argv[optind];
-	if (!rem)
-		device = argv[optind + 1];
-	else
-		device = NULL;
-	if (strchr(pkt_device, '/'))
+
+	if (!rem && optind+1 == argc) {
+		device = argv[optind];
+		pkt_device = NULL;
+	} else {
+		pkt_device = argv[optind];
+		device = rem ? NULL : argv[optind + 1];
+	}
+
+	if (pkt_device && strchr(pkt_device, '/'))
 		return setup_dev(pkt_device, device, rem);
 	else
 		return setup_dev_chardev(pkt_device, device, rem);
