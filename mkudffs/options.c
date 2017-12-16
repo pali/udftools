@@ -659,6 +659,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	if (!(disc->flags & FLAG_VAT) && !(disc->flags & FLAG_SPACE))
 		disc->flags |= FLAG_UNALLOC_BITMAP;
 
+	if ((disc->flags & FLAG_STRATEGY4096) && (disc->flags & FLAG_VAT))
+	{
+		fprintf(stderr, "mkudffs: Cannot use strategy type 4096 for VAT\n");
+		exit(1);
+	}
+
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
 		if (disc->sizing[i].denomSize == 0)

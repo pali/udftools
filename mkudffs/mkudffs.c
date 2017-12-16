@@ -810,7 +810,10 @@ int setup_fileset(struct udf_disc *disc, struct udf_extent *pspace)
 	memset(&ad, 0, sizeof(ad));
 	ad.extLength = cpu_to_le32(disc->blocksize);
 	ad.extLocation.logicalBlockNum = cpu_to_le32(offset);
-	ad.extLocation.partitionReferenceNum = cpu_to_le16(0);
+	if (disc->flags & FLAG_VAT)
+		ad.extLocation.partitionReferenceNum = cpu_to_le16(1);
+	else
+		ad.extLocation.partitionReferenceNum = cpu_to_le16(0);
 	memcpy(disc->udf_lvd[0]->logicalVolContentsUse, &ad, sizeof(ad));
 
 	desc = set_desc(pspace, TAG_IDENT_FSD, offset, 0, NULL);
@@ -850,7 +853,10 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	else
 		disc->udf_fsd->rootDirectoryICB.extLength = cpu_to_le32(disc->blocksize);
 	disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum = cpu_to_le32(offset);
-	disc->udf_fsd->rootDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(0);
+	if (disc->flags & FLAG_VAT)
+		disc->udf_fsd->rootDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(1);
+	else
+		disc->udf_fsd->rootDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(0);
 	fsd_desc = next_desc(pspace->head, TAG_IDENT_FSD);
 	disc->udf_fsd->descTag = query_tag(disc, pspace, fsd_desc, 1);
 
@@ -1198,9 +1204,10 @@ void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct ud
 	}
 }
 
-void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
+void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 {
 	uint32_t offset = 0;
+	struct udf_extent *anchor;
 	struct udf_desc *vtable;
 	struct udf_data *data;
 	uint32_t len;
@@ -1208,11 +1215,21 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
 	struct virtualAllocationTable20 *vat20;
 	uint16_t udf_rev_le16;
 
-	ext = disc->tail;
+	if (disc->flags & FLAG_CLOSED)
+	{
+		anchor = prev_extent(disc->tail, ANCHOR);
+		if (pspace->start - anchor->start > 256)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot find AVDP extent\n");
+			exit(1);
+		}
+		offset = 256 - (pspace->start - anchor->start);
+	}
 
 	if (disc->udf_rev >= 0x0200)
 	{
-		vtable = udf_create(disc, ext, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_VAT20, 0);
+		vtable = udf_create(disc, pspace, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_VAT20, 0);
+		disc->vat_entries--; // Remove VAT file itself from VAT table
 		len = sizeof(struct virtualAllocationTable20);
 		data = alloc_data(&default_vat20, len);
 		vat20 = data->buffer;
@@ -1222,22 +1239,25 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
 		vat20->minUDFWriteRev = query_lvidiu(disc)->minUDFWriteRev;
 		vat20->maxUDFWriteRev = query_lvidiu(disc)->maxUDFWriteRev;
 		memcpy(vat20->logicalVolIdent, disc->udf_lvd[0]->logicalVolIdent, 128);
-		insert_data(disc, ext, vtable, data);
+		insert_data(disc, pspace, vtable, data);
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
-		insert_data(disc, ext, vtable, data);
+		insert_data(disc, pspace, vtable, data);
 	}
 	else
 	{
-		vtable = udf_create(disc, ext, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
+		vtable = udf_create(disc, pspace, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
+		disc->vat_entries--; // Remove VAT file itself from VAT table
 		len = sizeof(struct virtualAllocationTable15);
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
-		insert_data(disc, ext, vtable, data);
+		insert_data(disc, pspace, vtable, data);
 		data = alloc_data(&default_vat15, len);
 		vat15 = data->buffer;
 		udf_rev_le16 = cpu_to_le16(disc->udf_rev);
 		memcpy(vat15->vatIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
-		insert_data(disc, ext, vtable, data);
+		insert_data(disc, pspace, vtable, data);
 	}
+
+	disc->vat_block = pspace->start + vtable->offset;
 }
 
 void add_type1_partition(struct udf_disc *disc, uint16_t partitionNum)

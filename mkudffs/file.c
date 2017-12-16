@@ -344,6 +344,11 @@ void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_de
 			efe->informationLength = cpu_to_le64(le64_to_cpu(efe->informationLength) + data->length);
 			efe->objectSize = cpu_to_le64(le64_to_cpu(efe->objectSize) + data->length);
 		}
+		else
+		{
+			fprintf(stderr, "Error: Cannot insert data when inicb is not used\n");
+			exit(1);
+		}
 	}
 	else
 	{
@@ -354,6 +359,11 @@ void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_de
 			append_data(desc, data);
 			fe->lengthAllocDescs = cpu_to_le32(le32_to_cpu(fe->lengthAllocDescs) + data->length);
 			fe->informationLength = cpu_to_le64(le64_to_cpu(fe->informationLength) + data->length);
+		}
+		else
+		{
+			fprintf(stderr, "Error: Cannot insert data when inicb is not used\n");
+			exit(1);
 		}
 	}
 
@@ -413,7 +423,10 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 		else
 			fid->icb.extLength = cpu_to_le32(disc->blocksize);
 		fid->icb.extLocation.logicalBlockNum = cpu_to_le32(desc->offset);
-		fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
+		if (disc->flags & FLAG_VAT)
+			fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(1);
+		else
+			fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
 
 		uniqueID_le32 = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
 		adiu = (struct allocDescImpUse *)fid->icb.impUse;
@@ -443,7 +456,10 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 		else
 			fid->icb.extLength = cpu_to_le32(disc->blocksize);
 		fid->icb.extLocation.logicalBlockNum = cpu_to_le32(desc->offset);
-		fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
+		if (disc->flags & FLAG_VAT)
+			fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(1);
+		else
+			fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
 
 		uniqueID_le32 = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
 		adiu = (struct allocDescImpUse *)fid->icb.impUse;
@@ -867,7 +883,7 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 	}
 	else if (disc->flags & FLAG_VAT)
 	{
-		uint32_t offset = 0, length = 0;
+		uint32_t offset = 0, length = 0, i = 0;
 		if (pspace->tail)
 		{
 			offset = pspace->tail->offset;
@@ -880,7 +896,8 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 			fprintf(stderr, "Error: Cannot find free block\n");
 			exit(1);
 		}
-		disc->vat[disc->vat_entries++] = start;
+		for (i = 0; i < blocks; ++i)
+			disc->vat[disc->vat_entries++] = start+i;
 		return start;
 	}
 	else

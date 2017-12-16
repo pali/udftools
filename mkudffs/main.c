@@ -440,6 +440,9 @@ int main(int argc, char *argv[])
 	setup_partition(&disc);
 	setup_vds(&disc);
 
+	if (disc.vat_block)
+		printf("vatblock=%lu\n", (unsigned long int)disc.vat_block);
+
 	dump_space(&disc);
 
 	if (len == (size_t)-1)
