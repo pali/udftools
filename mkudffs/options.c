@@ -82,7 +82,7 @@ void usage(void)
 		"\t--uuid=, -u        UDF uuid, first 16 characters of Volume set identifier (default: random)\n"
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
 		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, dvdr, worm, mo, cdrw, cdr, cd; default: hd)\n"
-		"\t--udfrev=, -r      UDF revision (2.01, 2.00, 1.50, 1.02; default: 2.01)\n"
+		"\t--udfrev=, -r      UDF revision (1.02, 1.50, 2.00, 2.01, 2.50, 2.60; default: 2.01)\n"
 		"\t--lvid=            Logical volume identifier (default: LinuxUDF)\n"
 		"\t--vid=             Volume identifier (default: LinuxUDF)\n"
 		"\t--vsid=            17.-127. character of Volume set identifier (default: LinuxUDF)\n"
@@ -660,6 +660,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		}
 		else
 			add_type1_partition(disc, 0);
+	}
+
+	/* TODO: UDF 2.50+ require for non-VAT disks Metadata partition which mkudffs cannot create yet */
+	if (rev > 0x0201 && !(disc->flags & FLAG_VAT))
+	{
+		fprintf(stderr, "mkudffs: UDF revision above 2.01 is not currently supported for specified media type\n");
+		exit(1);
 	}
 
 	if ((disc->flags & FLAG_VAT) && (disc->flags & FLAG_SPACE))

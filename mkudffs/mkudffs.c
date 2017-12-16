@@ -153,7 +153,8 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 		udf_rev != 0x0150 &&
 		udf_rev != 0x0200 &&
 		udf_rev != 0x0201 &&
-		udf_rev != 0x0250)
+		udf_rev != 0x0250 &&
+		udf_rev != 0x0260)
 	{
 		return 1;
 	}
@@ -184,7 +185,10 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 	memcpy(disc->udf_iuvd[0]->impIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
 	memcpy(disc->udf_stable[0]->sparingIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
 	lvidiu = query_lvidiu(disc);
-	lvidiu->minUDFReadRev = cpu_to_le16(udf_rev);
+	if (udf_rev == 0x0260)
+		lvidiu->minUDFReadRev = cpu_to_le16(0x0250);
+	else
+		lvidiu->minUDFReadRev = cpu_to_le16(udf_rev);
 	lvidiu->minUDFWriteRev = cpu_to_le16(udf_rev);
 	lvidiu->maxUDFWriteRev = cpu_to_le16(udf_rev);
 	return 0;
