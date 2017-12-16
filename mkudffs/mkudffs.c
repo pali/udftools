@@ -1218,6 +1218,9 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
 		vat20 = data->buffer;
 		vat20->numFiles = query_lvidiu(disc)->numFiles;
 		vat20->numDirs = query_lvidiu(disc)->numDirs;
+		vat20->minUDFReadRev = query_lvidiu(disc)->minUDFReadRev;
+		vat20->minUDFWriteRev = query_lvidiu(disc)->minUDFWriteRev;
+		vat20->maxUDFWriteRev = query_lvidiu(disc)->maxUDFWriteRev;
 		memcpy(vat20->logicalVolIdent, disc->udf_lvd[0]->logicalVolIdent, 128);
 		insert_data(disc, ext, vtable, data);
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
