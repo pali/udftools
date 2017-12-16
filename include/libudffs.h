@@ -114,6 +114,7 @@ struct udf_disc
 
 	uint32_t			uid;
 	uint32_t			gid;
+	uint16_t			mode;
 
 	struct udf_sizing		sizing[UDF_ALLOC_TYPE_SIZE];
 

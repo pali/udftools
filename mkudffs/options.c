@@ -35,6 +35,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <sys/stat.h>
 
 #include "mkudffs.h"
 #include "defaults.h"
@@ -53,6 +54,7 @@ static struct option long_options[] = {
 	{ "fullvsid", required_argument, NULL, OPT_FULLVSID },
 	{ "uid", required_argument, NULL, OPT_UID },
 	{ "gid", required_argument, NULL, OPT_GID },
+	{ "mode", required_argument, NULL, OPT_MODE },
 	{ "bootarea", required_argument, NULL, OPT_BOOTAREA },
 	{ "strategy", required_argument, NULL, OPT_STRATEGY },
 	{ "spartable", optional_argument, NULL, OPT_SPARTABLE },
@@ -90,6 +92,7 @@ void usage(void)
 		"\t--fullvsid=        Full Volume set identifier, overwrite --uuid and --vsid\n"
 		"\t--uid=             Uid of the root directory (default: 0)\n"
 		"\t--gid=             Gid of the root directory (default: 0)\n"
+		"\t--mode=            Permissions (octal mode bits) of the root directory (default: 0755)\n"
 		"\t--bootarea=        UDF boot area (preserve, erase, mbr; default: based on media type)\n"
 		"\t--strategy=        Allocation strategy to use (4, 4096; default: based on media type)\n"
 		"\t--spartable=       Number of sparing tables for cdrw (1 - 4)\n"
@@ -427,6 +430,17 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					exit(1);
 				}
 				disc->gid = gid;
+				break;
+			}
+			case OPT_MODE:
+			{
+				unsigned long int mode = strtoul_safe(optarg, 8, &failed);
+				if (failed || mode > UINT16_MAX || (mode & ~(S_IRWXU|S_IRWXG|S_IRWXO)))
+				{
+					fprintf(stderr, "%s: Error: Invalid value for option --mode\n", appname);
+					exit(1);
+				}
+				disc->mode = mode;
 				break;
 			}
 			case OPT_BOOTAREA:

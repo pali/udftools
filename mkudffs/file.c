@@ -29,6 +29,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "libudffs.h"
 #include "file.h"
@@ -546,6 +547,15 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 			{
 				efe->uid = cpu_to_le32(disc->uid);
 				efe->gid = cpu_to_le32(disc->gid);
+				efe->permissions = cpu_to_le32(
+					((disc->mode & S_IRWXU) << 4) |
+					((disc->mode & S_IRWXG) << 2) |
+					((disc->mode & S_IRWXO) << 0) |
+					((disc->mode & S_IWUSR) ? FE_PERM_U_CHATTR : 0) |
+					((disc->mode & S_IWGRP) ? FE_PERM_G_CHATTR : 0) |
+					((disc->mode & S_IWOTH) ? FE_PERM_O_CHATTR : 0) |
+					0 // Do not allow deleting root directory
+				);
 			}
 		}
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
@@ -599,6 +609,15 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 			{
 				fe->uid = cpu_to_le32(disc->uid);
 				fe->gid = cpu_to_le32(disc->gid);
+				fe->permissions = cpu_to_le32(
+					((disc->mode & S_IRWXU) << 4) |
+					((disc->mode & S_IRWXG) << 2) |
+					((disc->mode & S_IRWXO) << 0) |
+					((disc->mode & S_IWUSR) ? FE_PERM_U_CHATTR : 0) |
+					((disc->mode & S_IWGRP) ? FE_PERM_G_CHATTR : 0) |
+					((disc->mode & S_IWOTH) ? FE_PERM_O_CHATTR : 0) |
+					0 // Do not allow deleting root directory
+				);
 			}
 		}
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
