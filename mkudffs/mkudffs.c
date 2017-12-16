@@ -717,7 +717,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		if (pspace->blocks%8)
 			sbd->bitmap[nBytes-1] = 0xFF >> (8-(pspace->blocks%8));
 		clear_bits(sbd->bitmap, offset, (length + disc->blocksize - 1) / disc->blocksize);
-		sbd->descTag = udf_query_tag(disc, TAG_IDENT_SBD, 1, desc->offset, desc->data, sizeof(tag));
+		sbd->descTag = udf_query_tag(disc, TAG_IDENT_SBD, 1, desc->offset, desc->data, sizeof(struct spaceBitmapDesc));
 	}
 	else if (disc->flags & FLAG_SPACE_TABLE)
 	{
