@@ -56,6 +56,7 @@ static struct option long_options[] = {
 	{ "bootarea", required_argument, NULL, OPT_BOOTAREA },
 	{ "strategy", required_argument, NULL, OPT_STRATEGY },
 	{ "spartable", optional_argument, NULL, OPT_SPARTABLE },
+	{ "sparspace", required_argument, NULL, OPT_SPARSPACE },
 	{ "packetlen", required_argument, NULL, OPT_PACKETLEN },
 	{ "media-type", required_argument, NULL, OPT_MEDIA_TYPE },
 	{ "space", required_argument, NULL, OPT_SPACE },
@@ -132,6 +133,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	uint16_t packetlen = 0;
 	unsigned long int blocks = 0;
 	int use_sparable = 0;
+	unsigned long int sparspace = 0;
 	int failed;
 
 	while ((retval = getopt_long(argc, argv, "l:u:b:r:h", long_options, NULL)) != EOF)
@@ -452,6 +454,20 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				use_sparable = 1;
 				break;
 			}
+			case OPT_SPARSPACE:
+			{
+				if (!use_sparable)
+				{
+					fprintf(stderr, "mkudffs: Option --spartable must be specified before option --sparspace\n");
+					exit(1);
+				}
+				sparspace = strtoul_safe(optarg, 0, &failed);
+				if (failed || sparspace > UINT32_MAX)
+				{
+					fprintf(stderr, "mkudffs: invalid sparspace\n");
+					exit(1);
+				}
+			}
 			case OPT_PACKETLEN:
 			{
 				struct sparablePartitionMap *spm;
@@ -628,6 +644,11 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 	if (use_sparable)
 	{
+		if (sparspace)
+		{
+			disc->sizing[SSPACE_SIZE].minSize = sparspace;
+			disc->sizing[STABLE_SIZE].minSize = 0; // recalculation is implemented in split_space()
+		}
 		if (!packetlen)
 			packetlen = le16_to_cpu(default_sparmap.packetLength);
 		disc->sizing[PSPACE_SIZE].align = packetlen;

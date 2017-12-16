@@ -51,6 +51,7 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, int *);
 #define OPT_STRATEGY	0x2006
 #define OPT_SPARTABLE	0x2007
 #define OPT_PACKETLEN	0x2008
+#define OPT_SPARSPACE	0x2009
 #define OPT_SPACE	0x200A
 #define OPT_AD		0x200B
 #define OPT_LABEL	0x200C
