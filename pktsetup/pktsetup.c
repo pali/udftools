@@ -134,10 +134,13 @@ static int usage(void)
 {
 	printf("pktsetup from " PACKAGE_NAME " " PACKAGE_VERSION "\n");
 	printf("Set up and tear down packet device associations\n");
+#if 0
+	/* pktcdvd >= 0.2.0 is in linux kernel since 2.6.10, so hide help for old interface */
 	printf("For pktcdvd < 0.2.0:\n");
 	printf("  pktsetup /dev/pktcdvd0 /dev/cdrom  setup device\n");
 	printf("  pktsetup -d /dev/pktcdvd0          tear down device\n");
 	printf("For pktcdvd >= 0.2.0:\n");
+#endif
 	printf("  pktsetup [dev_name] /dev/cdrom     setup device\n");
 	printf("  pktsetup -d dev_name               tear down device\n");
 	printf("  pktsetup -d major:minor            tear down device\n");
