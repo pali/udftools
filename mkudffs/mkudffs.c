@@ -276,7 +276,7 @@ void split_space(struct udf_disc *disc)
 	}
 
 	accessType = le32_to_cpu(disc->udf_pd[0]->accessType);
-	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && sizes[LVID_SIZE] * disc->blocksize < 8192)
+	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && sizes[LVID_SIZE] * (size_t)disc->blocksize < 8192)
 		sizes[LVID_SIZE] = (8192 + disc->blocksize-1) / disc->blocksize;
 
 	if (blocks < 770)
@@ -660,7 +660,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 {
 	struct udf_desc *desc;
 	struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)disc->udf_pd[0]->partitionContentsUse;
-	int length = (((sizeof(struct spaceBitmapDesc) + pspace->blocks) / (disc->blocksize*8)) + 1) * disc->blocksize;
+	uint32_t length = (((sizeof(struct spaceBitmapDesc) + pspace->blocks) / (disc->blocksize*8)) + 1) * disc->blocksize;
 
 	if (disc->flags & FLAG_FREED_BITMAP)
 	{
@@ -726,7 +726,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		uint32_t max_value = (UINT32_MAX & EXT_LENGTH_MASK);
 		uint32_t max = (max_value / disc->blocksize) * disc->blocksize;
 		uint32_t pos=0;
-		long long rem;
+		uint64_t rem;
 
 		if (disc->flags & FLAG_STRATEGY4096)
 			length = disc->blocksize * 2;
@@ -736,7 +736,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		use = (struct unallocSpaceEntry *)desc->data->buffer;
 		use->lengthAllocDescs = cpu_to_le32(sizeof(short_ad));
 		sad = (short_ad *)&use->allocDescs[0];
-		rem = (long long)pspace->blocks * disc->blocksize - length;
+		rem = (uint64_t)pspace->blocks * disc->blocksize - length;
 		if (disc->blocksize - sizeof(struct unallocSpaceEntry) < (rem / max) * sizeof(short_ad))
 		{
 			fprintf(stderr, "%s: Error: Creation of so large filesystems with unalloc table not supported.\n", appname);
