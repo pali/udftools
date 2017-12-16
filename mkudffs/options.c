@@ -130,7 +130,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 {
 	int retval;
 	int i;
-	int media = MEDIA_TYPE_HD;
+	int media = MEDIA_TYPE_NONE;
 	uint16_t packetlen = 0;
 	unsigned long int blocks = 0;
 	int rev = 0;
@@ -178,6 +178,16 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				if (!rev || udf_set_version(disc, rev))
 				{
 					fprintf(stderr, "mkudffs: invalid udf revision\n");
+					exit(1);
+				}
+				if (rev < 0x0150 && (media == MEDIA_TYPE_DVDRW || media == MEDIA_TYPE_DVDR || media == MEDIA_TYPE_CDRW || media == MEDIA_TYPE_CDR))
+				{
+					fprintf(stderr, "mkudffs: At least UDF revision 1.50 is needed for CD-R/CD-RW/DVD-R/DVD-RW discs\n");
+					exit(1);
+				}
+				if (rev < 0x0250 && media == MEDIA_TYPE_BDR)
+				{
+					fprintf(stderr, "mkudffs: At least UDF revision 2.50 is needed for BD-R discs\n");
 					exit(1);
 				}
 				if (rev < 0x0150 && use_sparable)
@@ -500,6 +510,21 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			case OPT_MEDIA_TYPE:
 			case 'm':
 			{
+				if (rev)
+				{
+					fprintf(stderr, "mkudffs: Option --media-type must be specified before option --udfrev\n");
+					exit(1);
+				}
+				if (packetlen)
+				{
+					fprintf(stderr, "mkudffs: Option --media-type must be specified before option --packetlen\n");
+					exit(1);
+				}
+				if (media != MEDIA_TYPE_NONE)
+				{
+					fprintf(stderr, "mkudffs: Option --media-type was specified more times\n");
+					exit(1);
+				}
 				if (!strcmp(optarg, "hd"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
@@ -691,6 +716,10 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		fprintf(stderr, "mkudffs: Cannot use strategy type 4096 for VAT\n");
 		exit(1);
 	}
+
+	/* TODO: autodetection */
+	if (media == MEDIA_TYPE_NONE)
+		media = MEDIA_TYPE_HD;
 
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{

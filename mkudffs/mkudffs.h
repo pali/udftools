@@ -44,6 +44,7 @@
 #define DEFAULT_DVDR	5
 
 enum media_type {
+	MEDIA_TYPE_NONE,
 	MEDIA_TYPE_HD,
 	MEDIA_TYPE_DVD,
 	MEDIA_TYPE_DVDRAM,
