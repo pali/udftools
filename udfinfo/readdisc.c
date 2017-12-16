@@ -1273,13 +1273,13 @@ static void setup_pspace(struct udf_disc *disc)
 		return;
 	}
 
-	if (location + blocks > disc->blocks)
+	if (location + blocks > disc->blocks && !find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL))
 		fprintf(stderr, "%s: Warning: Partition Space is beyond end of disk\n", appname);
 
 	ext = find_extent(disc, location);
 	if (ext->space_type != USPACE)
 	{
-		fprintf(stderr, "%s: Warning: Partition Space overlaps with older blocks\n", appname);
+		fprintf(stderr, "%s: Warning: Partition Space overlaps with other blocks\n", appname);
 		ext = ext->next;
 		if (ext->space_type == USPACE)
 		{
@@ -1307,7 +1307,8 @@ static void setup_pspace(struct udf_disc *disc)
 	{
 		if ((location == ext->start || (location > ext->start && location + blocks > ext->start + ext->blocks)) && blocks > ext->blocks)
 		{
-			fprintf(stderr, "%s: Warning: Partition Space overlaps with older blocks\n", appname);
+			if (ext != disc->tail)
+				fprintf(stderr, "%s: Warning: Partition Space overlaps with other blocks\n", appname);
 			ext = set_extent(disc, PSPACE, location, ext->blocks);
 			ext->blocks = blocks;
 		}
@@ -1419,7 +1420,7 @@ static void setup_total_space_blocks(struct udf_disc *disc)
 
 	disc->total_space_blocks = le32_to_cpu(disc->udf_pd[id]->partitionLength);
 
-	if (disc->total_space_blocks + le32_to_cpu(disc->udf_pd[id]->partitionStartingLocation) > disc->blocks)
+	if (disc->total_space_blocks + le32_to_cpu(disc->udf_pd[id]->partitionStartingLocation) > disc->blocks && !find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL))
 		fprintf(stderr, "%s: Warning: Some space blocks are beyond end of disk\n", appname);
 }
 
