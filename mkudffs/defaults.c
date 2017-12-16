@@ -34,6 +34,7 @@ int default_media[] = {
 	[MEDIA_TYPE_DVD] = DEFAULT_DVD,
 	[MEDIA_TYPE_DVDRAM] = DEFAULT_DVDRAM,
 	[MEDIA_TYPE_DVDRW] = DEFAULT_DVDRW,
+	[MEDIA_TYPE_DVDR] = DEFAULT_DVDR,
 	[MEDIA_TYPE_WORM] = DEFAULT_WORM,
 	[MEDIA_TYPE_MO] = DEFAULT_MO,
 	[MEDIA_TYPE_CDRW] = DEFAULT_CDRW,
@@ -78,6 +79,13 @@ struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 		{       16,     0,      1,      5       }, // 56+8*1024 bytes ~~ 5 blocks
 		{       16,     0,      1,      1024    },
 		{       16,     0,      1,      0       },
+	},
+	{ // Media 5 = DVDR
+		{	16,	0,	1,	16	},
+		{	16,	0,	1,	1	},
+		{	16,	0,	1,	0	},
+		{	16,	0,	1,	0	},
+		{	16,	0,	1,	0	},
 	}
 };
 

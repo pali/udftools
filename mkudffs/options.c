@@ -81,7 +81,7 @@ void usage(void)
 		"\t--label=, -l       UDF label, synonym for both --lvid and --vid (default: LinuxUDF)\n"
 		"\t--uuid=, -u        UDF uuid, first 16 characters of Volume set identifier (default: random)\n"
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
-		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, worm, mo, cdrw, cdr, cd; default: hd)\n"
+		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, dvdr, worm, mo, cdrw, cdr, cd; default: hd)\n"
 		"\t--udfrev=, -r      UDF revision (2.01, 2.00, 1.50, 1.02; default: 2.01)\n"
 		"\t--lvid=            Logical volume identifier (default: LinuxUDF)\n"
 		"\t--vid=             Volume identifier (default: LinuxUDF)\n"
@@ -524,6 +524,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					packetlen = 16;
 					if ((spm = find_type2_sparable_partition(disc, 0)))
 						spm->packetLength = cpu_to_le16(packetlen);
+				}
+				else if (!strcmp(optarg, "dvdr"))
+				{
+					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
+					media = MEDIA_TYPE_DVDR;
+					disc->flags |= FLAG_VAT;
+					disc->flags &= ~FLAG_CLOSED;
 				}
 				else if (!strcmp(optarg, "worm"))
 				{
