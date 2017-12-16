@@ -241,6 +241,8 @@ int main(int argc, char *argv[])
 	const char *filename;
 	int fd, ret;
 
+	appname = "cdrwtool";
+
 	memset(&disc, 0x00, sizeof(disc));
 	cdrw_init_disc(&disc);
 	udf_init_disc(&disc.udf_disc);
