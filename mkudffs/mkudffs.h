@@ -32,6 +32,7 @@
 #define UDF_ID_APPLICATION		"*Linux mkudffs"
 
 #define DEFAULT_HD	0
+#define DEFAULT_CD	0
 #define DEFAULT_DVD	0
 #define DEFAULT_DVDRAM	0
 #define DEFAULT_WORM	1
@@ -49,6 +50,7 @@ enum media_type {
 	MEDIA_TYPE_MO,
 	MEDIA_TYPE_CDRW,
 	MEDIA_TYPE_CDR,
+	MEDIA_TYPE_CD,
 };
 
 extern char *udf_space_type_str[UDF_SPACE_TYPE_SIZE];

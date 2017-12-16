@@ -38,12 +38,13 @@ int default_media[] = {
 	[MEDIA_TYPE_MO] = DEFAULT_MO,
 	[MEDIA_TYPE_CDRW] = DEFAULT_CDRW,
 	[MEDIA_TYPE_CDR] = DEFAULT_CDR,
+	[MEDIA_TYPE_CD] = DEFAULT_CD,
 };
 
 struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 {
 //			align,	numSize,denomSize,minSize
-	{ // Media 0 = HD, DVDROM, DVDRAM
+	{ // Media 0 = HD, CDROM, DVDROM, DVDRAM
 		{	1,	0,	1,	16	}, // VDS_SIZE		Volume Descriptor Set
 		{	1,	0,	1,	1	}, // LVID_SIZE		Logical Volume Integrity Descriptor
 		{	1,	0,	1,	0	}, // STABLE_SIZE	Sparing Table
