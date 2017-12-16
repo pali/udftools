@@ -151,7 +151,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				disc->blocksize = strtoul_safe(optarg, 0, &failed);
 				if (failed || disc->blocksize < 512 || disc->blocksize > 32768 || (disc->blocksize & (disc->blocksize - 1)))
 				{
-					fprintf(stderr, "mkudffs: invalid blocksize\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --blocksize\n", appname);
 					exit(1);
 				}
 				disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);
@@ -177,22 +177,22 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				}
 				if (!rev || udf_set_version(disc, rev))
 				{
-					fprintf(stderr, "mkudffs: invalid udf revision\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --udfrev\n", appname);
 					exit(1);
 				}
 				if (rev < 0x0150 && (media == MEDIA_TYPE_DVDRW || media == MEDIA_TYPE_DVDR || media == MEDIA_TYPE_CDRW || media == MEDIA_TYPE_CDR))
 				{
-					fprintf(stderr, "mkudffs: At least UDF revision 1.50 is needed for CD-R/CD-RW/DVD-R/DVD-RW discs\n");
+					fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for CD-R/CD-RW/DVD-R/DVD-RW discs\n", appname);
 					exit(1);
 				}
 				if (rev < 0x0250 && media == MEDIA_TYPE_BDR)
 				{
-					fprintf(stderr, "mkudffs: At least UDF revision 2.50 is needed for BD-R discs\n");
+					fprintf(stderr, "%s: Error: At least UDF revision 2.50 is needed for BD-R discs\n", appname);
 					exit(1);
 				}
 				if (rev < 0x0150 && use_sparable)
 				{
-					fprintf(stderr, "mkudffs: At least UDF revision 1.50 is needed for Sparing Table\n");
+					fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for Sparing Table\n", appname);
 					exit(1);
 				}
 				break;
@@ -208,7 +208,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				disc->flags |= FLAG_UNICODE8;
 				if (strcmp(argv[1], "--u8") != 0)
 				{
-					fprintf(stderr, "mkudffs: Option --u8 must be specified as first argument\n");
+					fprintf(stderr, "%s: Error: Option --u8 must be specified as first argument\n", appname);
 					exit(1);
 				}
 				break;
@@ -219,7 +219,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				disc->flags |= FLAG_UNICODE16;
 				if (strcmp(argv[1], "--u16") != 0)
 				{
-					fprintf(stderr, "mkudffs: Option --u16 must be specified as first argument\n");
+					fprintf(stderr, "%s: Error: Option --u16 must be specified as first argument\n", appname);
 					exit(1);
 				}
 				break;
@@ -230,7 +230,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				disc->flags |= FLAG_UTF8;
 				if (strcmp(argv[1], "--utf8") != 0)
 				{
-					fprintf(stderr, "mkudffs: Option --utf8 must be specified as first argument\n");
+					fprintf(stderr, "%s: Error: Option --utf8 must be specified as first argument\n", appname);
 					exit(1);
 				}
 				break;
@@ -241,7 +241,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				disc->flags |= FLAG_LOCALE;
 				if (strcmp(argv[1], "--locale") != 0)
 				{
-					fprintf(stderr, "mkudffs: Option --locale must be specified as first argument\n");
+					fprintf(stderr, "%s: Error: Option --locale must be specified as first argument\n", appname);
 					exit(1);
 				}
 				break;
@@ -250,7 +250,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			{
 				if (!(disc->flags & FLAG_VAT))
 				{
-					fprintf(stderr, "mkudffs: Option --vat must be specified before option --closed\n");
+					fprintf(stderr, "%s: Error: Option --vat must be specified before option --closed\n", appname);
 					exit(1);
 				}
 				disc->flags |= FLAG_CLOSED;
@@ -272,7 +272,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					struct impUseVolDescImpUse *iuvdiu;
 					if (encode_string(disc, disc->udf_lvd[0]->logicalVolIdent, optarg, 128) == (size_t)-1)
 					{
-						fprintf(stderr, "mkudffs: Error: lvid option is too long\n");
+						fprintf(stderr, "%s: Error: Option %s is too long\n", appname, (retval == OPT_LVID) ? "--lvid" : "--label");
 						exit(1);
 					}
 					iuvdiu = (struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse;
@@ -285,7 +285,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					{
 						if (retval == OPT_VID)
 						{
-							fprintf(stderr, "mkudffs: Error: vid option is too long\n");
+							fprintf(stderr, "%s: Error: Option --vid option is too long\n", appname);
 							exit(1);
 						}
 						/* This code was not triggered by --vid option, do not throw error but rather store truncated --lvid */
@@ -301,7 +301,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				size_t len = encode_string(disc, ts, optarg, 128);
 				if (len == (size_t)-1 || len > 127-16 || (ts[0] == 16 && len > 127-16*2) || (ts[0] == 8 && disc->udf_pvd[0]->volSetIdent[0] == 16 && 2*(len-1)+1 > 127-16*2))
 				{
-					fprintf(stderr, "mkudffs: Error: vsid option is too long\n");
+					fprintf(stderr, "%s: Error: Option --vsid is too long\n", appname);
 					exit(1);
 				}
 				if (ts[0] == disc->udf_pvd[0]->volSetIdent[0])
@@ -353,14 +353,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			{
 				if (strlen(optarg) != 16)
 				{
-					fprintf(stderr, "mkudffs: Error: uuid is not 16 bytes length\n");
+					fprintf(stderr, "%s: Error: Option --uuid is not 16 bytes long\n", appname);
 					exit(1);
 				}
 				for (i = 0; i < 16; ++i)
 				{
 					if (!isxdigit(optarg[i]) || (!isdigit(optarg[i]) && !islower(optarg[i])))
 					{
-						fprintf(stderr, "mkudffs: Error: uuid is not in lowercase hexadecimal digit format\n");
+						fprintf(stderr, "%s: Error: Option --uuid is not in lowercase hexadecimal digit format\n", appname);
 						exit(1);
 					}
 				}
@@ -393,7 +393,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			{
 				if (encode_string(disc, disc->udf_pvd[0]->volSetIdent, optarg, 128) == (size_t)-1)
 				{
-					fprintf(stderr, "mkudffs: Error: fullvsid option is too long\n");
+					fprintf(stderr, "%s: Error: Option --fullvsid is too long\n", appname);
 					exit(1);
 				}
 				break;
@@ -402,7 +402,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			{
 				if (encode_string(disc, disc->udf_fsd->fileSetIdent, optarg, 32) == (size_t)-1)
 				{
-					fprintf(stderr, "mkudffs: Error: fsid option is too long\n");
+					fprintf(stderr, "%s: Error: Option --fsid is too long\n", appname);
 					exit(1);
 				}
 				break;
@@ -412,7 +412,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				disc->uid = strtol_safe(optarg, 0, &failed);
 				if (failed)
 				{
-					fprintf(stderr, "mkudffs: invalid uid\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --uid\n", appname);
 					exit(1);
 				}
 				break;
@@ -422,7 +422,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				disc->gid = strtol_safe(optarg, 0, &failed);
 				if (failed)
 				{
-					fprintf(stderr, "mkudffs: invalid gid\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --gid\n", appname);
 					exit(1);
 				}
 				break;
@@ -438,7 +438,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					disc->flags |= FLAG_BOOTAREA_MBR;
 				else
 				{
-					fprintf(stderr, "mkudffs: invalid bootarea option\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --bootarea\n", appname);
 					exit(1);
 				}
 				break;
@@ -448,7 +448,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				unsigned long int strategy = strtoul_safe(optarg, 0, &failed);
 				if (failed || (strategy != 4 && strategy != 4096))
 				{
-					fprintf(stderr, "mkudffs: invalid strategy type\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --strategy\n", appname);
 					exit(1);
 				}
 				if (strategy == 4096)
@@ -465,13 +465,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					spartable = strtoul_safe(optarg, 0, &failed);
 					if (failed || spartable > 4)
 					{
-						fprintf(stderr, "mkudffs: invalid spartable count\n");
+						fprintf(stderr, "%s: Error: Invalid value for option --spartable\n", appname);
 						exit(1);
 					}
 				}
 				if (disc->flags & FLAG_VAT)
 				{
-					fprintf(stderr, "mkudffs: Cannot use Sparing Table when VAT is enabled\n");
+					fprintf(stderr, "%s: Error: Cannot use Sparing Table when VAT is enabled\n", appname);
 					exit(1);
 				}
 				add_type2_sparable_partition(disc, 0, spartable, packetlen);
@@ -482,13 +482,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			{
 				if (!use_sparable)
 				{
-					fprintf(stderr, "mkudffs: Option --spartable must be specified before option --sparspace\n");
+					fprintf(stderr, "%s: Error: Option --spartable must be specified before option --sparspace\n", appname);
 					exit(1);
 				}
 				sparspace = strtoul_safe(optarg, 0, &failed);
 				if (failed || sparspace > UINT32_MAX)
 				{
-					fprintf(stderr, "mkudffs: invalid sparspace\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --sparspace\n", appname);
 					exit(1);
 				}
 				break;
@@ -499,7 +499,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				unsigned long int packetlen_opt = strtoul_safe(optarg, 0, &failed);
 				if (failed || packetlen_opt > UINT16_MAX)
 				{
-					fprintf(stderr, "mkudffs: invalid packetlen\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --packetlen\n", appname);
 					exit(1);
 				}
 				packetlen = packetlen_opt;
@@ -512,17 +512,17 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			{
 				if (rev)
 				{
-					fprintf(stderr, "mkudffs: Option --media-type must be specified before option --udfrev\n");
+					fprintf(stderr, "%s: Error: Option --media-type must be specified before option --udfrev\n", appname);
 					exit(1);
 				}
 				if (packetlen)
 				{
-					fprintf(stderr, "mkudffs: Option --media-type must be specified before option --packetlen\n");
+					fprintf(stderr, "%s: Error: Option --media-type must be specified before option --packetlen\n", appname);
 					exit(1);
 				}
 				if (media != MEDIA_TYPE_NONE)
 				{
-					fprintf(stderr, "mkudffs: Option --media-type was specified more times\n");
+					fprintf(stderr, "%s: Error: Option --media-type was specified more times\n", appname);
 					exit(1);
 				}
 				if (!strcmp(optarg, "hd"))
@@ -597,7 +597,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				}
 				else
 				{
-					fprintf(stderr, "mkudffs: invalid media type\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --media-type\n", appname);
 					exit(1);
 				}
 				break;
@@ -614,7 +614,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					disc->flags |= FLAG_UNALLOC_TABLE;
 				else
 				{
-					fprintf(stderr, "mkudffs: invalid space type\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --space\n", appname);
 					exit(1);
 				}
 				break;
@@ -638,7 +638,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				}
 				else
 				{
-					fprintf(stderr, "mkudffs: invalid allocation descriptor\n");
+					fprintf(stderr, "%s: Error: Invalid value for option --ad\n", appname);
 					exit(1);
 				}
 				break;
@@ -656,7 +656,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		blocks = strtoul_safe(argv[optind++], 0, &failed);
 		if (failed || blocks > UINT32_MAX)
 		{
-			fprintf(stderr, "mkudffs: invalid block-count\n");
+			fprintf(stderr, "%s: Error: Invalid value for block-count\n", appname);
 			exit(1);
 		}
 		disc->blocks = blocks;
@@ -666,7 +666,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 	if (packetlen && !use_sparable)
 	{
-		fprintf(stderr, "mkudffs: Option --packetlen cannot be used without Sparing Table\n");
+		fprintf(stderr, "%s: Error: Option --packetlen cannot be used without Sparing Table\n", appname);
 		exit(1);
 	}
 
@@ -676,7 +676,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		{
 			if (disc->udf_rev < 0x0150)
 			{
-				fprintf(stderr, "mkudffs: At least UDF revision 1.50 is needed for VAT\n");
+				fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for VAT\n", appname);
 				exit(1);
 			}
 			add_type1_partition(disc, 0);
@@ -686,7 +686,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		{
 			if (disc->udf_rev < 0x0150)
 			{
-				fprintf(stderr, "mkudffs: At least UDF revision 1.50 is needed for Sparing Table\n");
+				fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for Sparing Table\n", appname);
 				exit(1);
 			}
 			add_type2_sparable_partition(disc, 0, 2, packetlen);
@@ -698,13 +698,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	/* TODO: UDF 2.50+ require for non-VAT disks Metadata partition which mkudffs cannot create yet */
 	if (rev > 0x0201 && !(disc->flags & FLAG_VAT))
 	{
-		fprintf(stderr, "mkudffs: UDF revision above 2.01 is not currently supported for specified media type\n");
+		fprintf(stderr, "%s: Error: UDF revision above 2.01 is not currently supported for specified media type\n", appname);
 		exit(1);
 	}
 
 	if ((disc->flags & FLAG_VAT) && (disc->flags & FLAG_SPACE))
 	{
-		fprintf(stderr, "mkudffs: Option --space cannot be used for VAT\n");
+		fprintf(stderr, "%s: Error: Option --space cannot be used for VAT\n", appname);
 		exit(1);
 	}
 
@@ -713,7 +713,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 	if ((disc->flags & FLAG_STRATEGY4096) && (disc->flags & FLAG_VAT))
 	{
-		fprintf(stderr, "mkudffs: Cannot use strategy type 4096 for VAT\n");
+		fprintf(stderr, "%s: Error: Cannot use strategy type 4096 for VAT\n", appname);
 		exit(1);
 	}
 

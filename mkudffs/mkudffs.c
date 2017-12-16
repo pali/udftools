@@ -253,7 +253,7 @@ void split_space(struct udf_disc *disc)
 		}
 		else if (disc->flags & FLAG_VAT)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 	}
@@ -285,7 +285,7 @@ void split_space(struct udf_disc *disc)
 	start = find_next_extent_size(disc, start, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 	if (!start)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	set_extent(disc, MVDS, start, sizes[VDS_SIZE]);
@@ -295,7 +295,7 @@ void split_space(struct udf_disc *disc)
 		start = find_next_extent_size(disc, (256-sizes[VDS_SIZE])/offsets[VDS_SIZE]*offsets[VDS_SIZE], USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 		if (!start)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		set_extent(disc, RVDS, start, sizes[VDS_SIZE]);
@@ -305,7 +305,7 @@ void split_space(struct udf_disc *disc)
 		start = prev_extent_size(disc->tail, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 		if (!start)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		set_extent(disc, RVDS, start, sizes[VDS_SIZE]);
@@ -321,7 +321,7 @@ void split_space(struct udf_disc *disc)
 		start = find_next_extent_size(disc, start, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
 		if (!start)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		set_extent(disc, LVID, start, sizes[LVID_SIZE]);
@@ -341,7 +341,7 @@ void split_space(struct udf_disc *disc)
 				start = find_next_extent_size(disc, prev_extent(disc->tail->prev, ANCHOR)->start, USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
 			if (!start)
 			{
-				fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+				fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 				exit(1);
 			}
 			set_extent(disc, STABLE, start, sizes[STABLE_SIZE]);
@@ -349,7 +349,7 @@ void split_space(struct udf_disc *disc)
 		start = find_next_extent_size(disc, next_extent(disc->head, MVDS)->start, USPACE, sizes[SSPACE_SIZE], offsets[SSPACE_SIZE]);
 		if (!start)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		set_extent(disc, SSPACE, start, sizes[SSPACE_SIZE]);
@@ -402,7 +402,7 @@ void split_space(struct udf_disc *disc)
 
 	if (size == 0)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find USPACE extent\n");
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 
@@ -428,7 +428,7 @@ void split_space(struct udf_disc *disc)
 		start = find_next_extent_size(disc, 0, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
 		if (!start)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		set_extent(disc, LVID, start, sizes[LVID_SIZE]);
@@ -597,7 +597,7 @@ void setup_anchor(struct udf_disc *disc)
 	ext = next_extent(disc->head, MVDS);
 	if (!ext)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find MVDS extent\n");
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	mloc = ext->start;
@@ -606,7 +606,7 @@ void setup_anchor(struct udf_disc *disc)
 	ext = next_extent(disc->head, RVDS);
 	if (!ext)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find RVDS extent\n");
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	rloc = ext->start;
@@ -615,7 +615,7 @@ void setup_anchor(struct udf_disc *disc)
 	ext = next_extent(disc->head, ANCHOR);
 	if (!ext)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find ANCHOR extent\n");
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	do
@@ -645,7 +645,7 @@ void setup_partition(struct udf_disc *disc)
 	pspace = next_extent(disc->head, PSPACE);
 	if (!pspace)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find PSPACE extent\n");
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	setup_space(disc, pspace, 0);
@@ -738,7 +738,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		rem = (long long)pspace->blocks * disc->blocksize - length;
 		if (disc->blocksize - sizeof(struct unallocSpaceEntry) < (rem / max) * sizeof(short_ad))
 		{
-			fprintf(stderr, "Creation of so large filesystems with unalloc table not supported.\n");
+			fprintf(stderr, "%s: Error: Creation of so large filesystems with unalloc table not supported.\n", appname);
 			exit(1);
 		}
 		pos = offset + (length/disc->blocksize);
@@ -962,25 +962,16 @@ void setup_vds(struct udf_disc *disc)
 	struct udf_extent *mvds, *rvds, *lvid, *stable[4], *sspace;
 
 	mvds = next_extent(disc->head, MVDS);
-	if (!mvds)
-	{
-		fprintf(stderr, "mkudffs: Error: Cannot find MVDS extent\n");
-		exit(1);
-	}
 	rvds = next_extent(disc->head, RVDS);
-	if (!rvds)
-	{
-		fprintf(stderr, "mkudffs: Error: Cannot find RVDS extent\n");
-		exit(1);
-	}
 	lvid = next_extent(disc->head, LVID);
-	if (!lvid)
-	{
-		fprintf(stderr, "mkudffs: Error: Cannot find LVID extent\n");
-		exit(1);
-	}
 	stable[0] = next_extent(disc->head, STABLE);
 	sspace = next_extent(disc->head, SSPACE);
+
+	if (!mvds || !rvds || !lvid)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+		exit(1);
+	}
 
 	setup_pvd(disc, mvds, rvds, 0);
 	setup_lvid(disc, lvid);
@@ -1045,7 +1036,7 @@ void setup_pd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent 
 	ext = next_extent(disc->head, PSPACE);
 	if (!ext)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find PSPACE extent\n");
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	disc->udf_pd[0]->partitionStartingLocation = cpu_to_le32(ext->start);
@@ -1159,6 +1150,12 @@ void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct ud
 	struct sparablePartitionMap *spm;
 
 	spm = find_type2_sparable_partition(disc, 0);
+	if (!spm)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+		exit(1);
+	}
+
 	packetlen = le16_to_cpu(spm->packetLength);
 	num = sspace->blocks / packetlen;
 	if (num > UINT16_MAX)
@@ -1170,7 +1167,7 @@ void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct ud
 		length = stable[0]->blocks * disc->blocksize;
 		if (length < sizeof(struct sparingTable))
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot find STABLE extent\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		num = (length - sizeof(struct sparingTable)) / sizeof(struct sparingEntry);
@@ -1178,7 +1175,7 @@ void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct ud
 			num = UINT16_MAX;
 		if (num == 0)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot find STABLE extent\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		length = sizeof(struct sparingTable) + num * sizeof(struct sparingEntry);
@@ -1224,7 +1221,7 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 		anchor = prev_extent(disc->tail, ANCHOR);
 		if (pspace->start - anchor->start > 256)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot find AVDP extent\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		offset = 256 - (pspace->start - anchor->start);

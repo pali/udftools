@@ -119,7 +119,7 @@ static uint32_t get_blocks(int fd, int blocksize, uint32_t opt_blocks)
 
 	if (blocks > UINT32_MAX)
 	{
-		fprintf(stderr, "mkudffs: Warning: Disk is too big, using only %lu blocks\n", (unsigned long int)UINT32_MAX);
+		fprintf(stderr, "%s: Warning: Disk is too big, using only %lu blocks\n", appname, (unsigned long int)UINT32_MAX);
 		return UINT32_MAX;
 	}
 
@@ -141,7 +141,7 @@ static void detect_blocksize(int fd, struct udf_disc *disc, int *blocksize)
 
 	if (size < 512 || size > 32768 || (size & (size - 1)))
 	{
-		fprintf(stderr, "mkudffs: Warning: Disk logical sector size (%d) is not suitable for UDF\n", size);
+		fprintf(stderr, "%s: Warning: Disk logical sector size (%d) is not suitable for UDF\n", appname, size);
 		return;
 	}
 
@@ -322,6 +322,7 @@ int main(int argc, char *argv[])
 	size_t len;
 
 	setlocale(LC_CTYPE, "");
+	appname = "mkudffs";
 
 	udf_init_disc(&disc);
 	parse_args(argc, argv, &disc, &filename, &blocksize, &media);
@@ -330,13 +331,13 @@ int main(int argc, char *argv[])
 	{
 		if (errno != ENOENT)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, strerror(errno));
+			fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(errno));
 			exit(1);
 		}
 
 		if (!disc.blocks)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot create new file '%s': block-count was not specified\n", filename);
+			fprintf(stderr, "%s: Error: Cannot create new file '%s': block-count was not specified\n", appname, filename);
 			exit(1);
 		}
 	}
@@ -349,12 +350,16 @@ int main(int argc, char *argv[])
 
 		if (fstat(fd, &stat) != 0)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot stat device '%s': %s\n", filename, strerror(errno));
+			fprintf(stderr, "%s: Error: Cannot stat device '%s': %s\n", appname, filename, strerror(errno));
 			exit(1);
 		}
 
 		flags2 = O_RDWR;
-		snprintf(filename2, sizeof(filename2), "/proc/self/fd/%d", fd);
+		if (snprintf(filename2, sizeof(filename2), "/proc/self/fd/%d", fd) >= (int)sizeof(filename2))
+		{
+			fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(ENAMETOOLONG));
+			exit(1);
+		}
 
 		// Re-open block device with O_EXCL mode which fails when device is already mounted
 		if (S_ISBLK(stat.st_mode))
@@ -366,7 +371,7 @@ int main(int argc, char *argv[])
 			if (errno != ENOENT)
 			{
 				error = (errno != EBUSY) ? strerror(errno) : "Device is mounted or mkudffs is already running";
-				fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, error);
+				fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, error);
 				exit(1);
 			}
 
@@ -375,7 +380,7 @@ int main(int argc, char *argv[])
 			if (fd2 < 0)
 			{
 				error = (errno != EBUSY) ? strerror(errno) : "Device is mounted or mkudffs is already running";
-				fprintf(stderr, "mkudffs: Error: Cannot open device '%s': %s\n", filename, error);
+				fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, error);
 				exit(1);
 			}
 		}
@@ -422,12 +427,6 @@ int main(int argc, char *argv[])
 	printf("blocks=%lu\n", (unsigned long int)disc.blocks);
 	printf("udfrev=%x.%02x\n", (unsigned int)(disc.udf_rev >> 8), (unsigned int)(disc.udf_rev & 0xFF));
 
-	if (disc.blocks < 281)
-	{
-		fprintf(stderr, "mkudffs: Error: Not enough blocks on device '%s'\n", filename);
-		exit(1);
-	}
-
 	split_space(&disc);
 
 	setup_mbr(&disc);
@@ -442,12 +441,12 @@ int main(int argc, char *argv[])
 	dump_space(&disc);
 
 	if (len == (size_t)-1)
-		fprintf(stderr, "mkudffs: Warning: Volume Set Identifier must be at least 8 characters long\n");
+		fprintf(stderr, "%s: Warning: Volume Set Identifier must be at least 8 characters long\n", appname);
 	else if (len < 16)
-		fprintf(stderr, "mkudffs: Warning: First 16 characters of Volume Set Identifier are not hexadecimal lowercase digits\nmkudffs: Warning: This would cause problems for UDF uuid\n");
+		fprintf(stderr, "%s: Warning: First 16 characters of Volume Set Identifier are not hexadecimal lowercase digits\n%s: Warning: This would cause problems for UDF uuid\n", appname, appname);
 
 	if (fd >= 0 && is_whole_disk(fd) == 0)
-		fprintf(stderr, "mkudffs: Warning: Creating new UDF filesystem on partition, and not on whole disk device\nmkudffs: Warning: UDF filesystem on partition cannot be read on Apple systems\n");
+		fprintf(stderr, "%s: Warning: Creating new UDF filesystem on partition, and not on whole disk device\n%s: Warning: UDF filesystem on partition cannot be read on Apple systems\n", appname, appname);
 
 	if (fd < 0)
 	{
@@ -455,14 +454,14 @@ int main(int argc, char *argv[])
 		fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0660);
 		if (fd < 0)
 		{
-			fprintf(stderr, "mkudffs: Error: Cannot create new file '%s': %s\n", filename, strerror(errno));
+			fprintf(stderr, "%s: Error: Cannot create new file '%s': %s\n", appname, filename, strerror(errno));
 			exit(1);
 		}
 	}
 
 	if (write_disc(&disc) < 0)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot write to device '%s': %s\n", filename, strerror(errno));
+		fprintf(stderr, "%s: Error: Cannot write to device '%s': %s\n", appname, filename, strerror(errno));
 		return 1;
 	}
 

@@ -346,7 +346,7 @@ void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_de
 		}
 		else
 		{
-			fprintf(stderr, "Error: Cannot insert data when inicb is not used\n");
+			fprintf(stderr, "%s: Error: Cannot insert data when inicb is not used\n", appname);
 			exit(1);
 		}
 	}
@@ -362,7 +362,7 @@ void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_de
 		}
 		else
 		{
-			fprintf(stderr, "Error: Cannot insert data when inicb is not used\n");
+			fprintf(stderr, "%s: Error: Cannot insert data when inicb is not used\n", appname);
 			exit(1);
 		}
 	}
@@ -767,7 +767,7 @@ int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_desc *bitmap, uint
 		start = ((start + alignment - 1) / alignment) * alignment;
 		if (start + blocks >= sbd->numOfBits)
 		{
-			fprintf(stderr, "Error: Cannot find free block\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		if (sbd->bitmap[start/8] & (1 << (start%8)))
@@ -801,7 +801,7 @@ int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_desc *table, uint32
 	{
 		if (offset >= use->lengthAllocDescs)
 		{
-			fprintf(stderr, "Error: Cannot find free block\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		sad = (short_ad *)&use->allocDescs[offset];
@@ -893,7 +893,7 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 			start = offset + length;
 		if (start >= pspace->blocks)
 		{
-			fprintf(stderr, "Error: Cannot find free block\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		for (i = 0; i < blocks; ++i)
