@@ -229,9 +229,9 @@ void split_space(struct udf_disc *disc)
 
 	// Volume Recognition Sequence
 	if (disc->blocksize >= 2048)
-		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, 3);
+		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, 4); // 3 sectors for VSD + one empty sector
 	else
-		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize - 1) / disc->blocksize);
+		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize) / disc->blocksize); // 3 VSD in more sectors + one empty sector
 
 	// First Anchor Point at sector 256
 	set_extent(disc, ANCHOR, 256, 1);
