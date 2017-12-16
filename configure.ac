@@ -10,7 +10,7 @@ AC_DISABLE_SHARED
 AM_PROG_LIBTOOL
 
 dnl Checks for libraries.
-AC_CHECK_LIB(readline, readline, , AC_MSG_ERROR([cannot find -lreadline.]))
+AC_CHECK_LIB(readline, readline, [ ], AC_MSG_ERROR([cannot find -lreadline.]))
 
 dnl Checks for header files.
 AC_HEADER_STDC
