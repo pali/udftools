@@ -138,7 +138,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	unsigned long int sparspace = 0;
 	int failed;
 
-	while ((retval = getopt_long(argc, argv, "l:u:b:r:h", long_options, NULL)) != EOF)
+	while ((retval = getopt_long(argc, argv, "l:u:b:m:r:h", long_options, NULL)) != EOF)
 	{
 		switch (retval)
 		{
