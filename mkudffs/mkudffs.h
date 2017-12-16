@@ -39,6 +39,7 @@
 #define DEFAULT_MO	1
 #define DEFAULT_CDRW	2
 #define DEFAULT_CDR	3
+#define DEFAULT_BDR	3
 #define DEFAULT_DVDRW	4
 #define DEFAULT_DVDR	5
 
@@ -53,6 +54,7 @@ enum media_type {
 	MEDIA_TYPE_CDRW,
 	MEDIA_TYPE_CDR,
 	MEDIA_TYPE_CD,
+	MEDIA_TYPE_BDR,
 };
 
 extern char *udf_space_type_str[UDF_SPACE_TYPE_SIZE];

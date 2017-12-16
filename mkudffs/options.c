@@ -81,7 +81,7 @@ void usage(void)
 		"\t--label=, -l       UDF label, synonym for both --lvid and --vid (default: LinuxUDF)\n"
 		"\t--uuid=, -u        UDF uuid, first 16 characters of Volume set identifier (default: random)\n"
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
-		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, dvdr, worm, mo, cdrw, cdr, cd; default: hd)\n"
+		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, dvdr, worm, mo, cdrw, cdr, cd, bdr; default: hd)\n"
 		"\t--udfrev=, -r      UDF revision (1.02, 1.50, 2.00, 2.01, 2.50, 2.60; default: 2.01)\n"
 		"\t--lvid=            Logical volume identifier (default: LinuxUDF)\n"
 		"\t--vid=             Volume identifier (default: LinuxUDF)\n"
@@ -561,6 +561,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
 					media = MEDIA_TYPE_CD;
+				}
+				else if (!strcmp(optarg, "bdr"))
+				{
+					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
+					media = MEDIA_TYPE_BDR;
+					disc->flags |= FLAG_VAT;
+					disc->flags &= ~FLAG_CLOSED;
+					udf_set_version(disc, 0x0250);
 				}
 				else
 				{

@@ -40,6 +40,7 @@ int default_media[] = {
 	[MEDIA_TYPE_CDRW] = DEFAULT_CDRW,
 	[MEDIA_TYPE_CDR] = DEFAULT_CDR,
 	[MEDIA_TYPE_CD] = DEFAULT_CD,
+	[MEDIA_TYPE_BDR] = DEFAULT_BDR,
 };
 
 struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
@@ -66,7 +67,7 @@ struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 		{	32,	0,	1,	1024	},
 		{	32,	0,	1,	0	},
 	},
-	{ // Media 3 = CDR
+	{ // Media 3 = CDR, BD-R
 		{	32,	0,	1,	16	},
 		{	32,	0,	1,	1	},
 		{	32,	0,	1,	0	},
