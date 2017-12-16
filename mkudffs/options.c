@@ -61,6 +61,7 @@ static struct option long_options[] = {
 	{ "media-type", required_argument, NULL, OPT_MEDIA_TYPE },
 	{ "space", required_argument, NULL, OPT_SPACE },
 	{ "ad", required_argument, NULL, OPT_AD },
+	{ "vat", no_argument, NULL, OPT_VAT },
 	{ "noefe", no_argument, NULL, OPT_NO_EFE },
 	{ "locale", no_argument, NULL, OPT_LOCALE },
 	{ "u8", no_argument, NULL, OPT_UNICODE8 },
@@ -132,6 +133,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	int media = MEDIA_TYPE_HD;
 	uint16_t packetlen = 0;
 	unsigned long int blocks = 0;
+	int rev = 0;
 	int use_sparable = 0;
 	unsigned long int sparspace = 0;
 	int failed;
@@ -158,7 +160,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			case OPT_UDF_REV:
 			case 'r':
 			{
-				int rev = 0;
 				unsigned char maj = 0;
 				unsigned char min = 0;
 				int len = 0;
@@ -171,6 +172,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					unsigned long int rev_opt = strtoul_safe(optarg, 16, &failed);
 					if (!failed && rev_opt < INT_MAX)
 						rev = rev_opt;
+					else
+						rev = 0;
 				}
 				if (!rev || udf_set_version(disc, rev))
 				{
@@ -235,7 +238,18 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_CLOSED:
 			{
+				if (!(disc->flags & FLAG_VAT))
+				{
+					fprintf(stderr, "mkudffs: Option --vat must be specified before option --closed\n");
+					exit(1);
+				}
 				disc->flags |= FLAG_CLOSED;
+				break;
+			}
+			case OPT_VAT:
+			{
+				disc->flags |= FLAG_VAT;
+				disc->flags &= ~FLAG_CLOSED;
 				break;
 			}
 			case OPT_LVID:
@@ -613,8 +627,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 	if (le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) == 0)
 	{
-		if ((media == MEDIA_TYPE_CDR) && (disc->udf_rev != 0x0102))
+		if (disc->flags & FLAG_VAT)
 		{
+			if (disc->udf_rev < 0x0150)
+			{
+				fprintf(stderr, "mkudffs: At least UDF revision 1.50 is needed for VAT\n");
+				exit(1);
+			}
 			add_type1_partition(disc, 0);
 			add_type2_virtual_partition(disc, 0);
 		}
@@ -631,11 +650,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			add_type1_partition(disc, 0);
 	}
 
-	if (!(disc->flags & FLAG_SPACE))
-		disc->flags |= FLAG_UNALLOC_BITMAP;
+	if ((disc->flags & FLAG_VAT) && (disc->flags & FLAG_SPACE))
+	{
+		fprintf(stderr, "mkudffs: Option --space cannot be used for VAT\n");
+		exit(1);
+	}
 
-	if (media == MEDIA_TYPE_CDR)
-		disc->flags &= ~FLAG_SPACE;
+	if (!(disc->flags & FLAG_VAT) && !(disc->flags & FLAG_SPACE))
+		disc->flags |= FLAG_UNALLOC_BITMAP;
 
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{

@@ -41,6 +41,7 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, int *);
 #define OPT_UTF8	0x1005
 #define OPT_MEDIA_TYPE	0x1006
 #define OPT_CLOSED	0x1007
+#define OPT_VAT		0x1008
 
 #define OPT_BLK_SIZE	0x2000
 #define OPT_UDF_REV	0x2001
