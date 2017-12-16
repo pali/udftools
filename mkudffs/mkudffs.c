@@ -1140,13 +1140,36 @@ void setup_lvid(struct udf_disc *disc, struct udf_extent *lvid)
 void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct udf_extent *sspace)
 {
 	struct udf_desc *desc;
-	int i, length = 0, num, packetlen;
+	uint32_t i, num, length;
+	uint16_t packetlen;
 	struct sparablePartitionMap *spm;
 
 	spm = find_type2_sparable_partition(disc, 0);
 	packetlen = le16_to_cpu(spm->packetLength);
 	num = sspace->blocks / packetlen;
+	if (num > UINT16_MAX)
+		num = UINT16_MAX;
 	length = sizeof(struct sparingTable) + num * sizeof(struct sparingEntry);
+
+	if (length > stable[0]->blocks * disc->blocksize)
+	{
+		length = stable[0]->blocks * disc->blocksize;
+		if (length < sizeof(struct sparingTable))
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot find STABLE extent\n");
+			exit(1);
+		}
+		num = (length - sizeof(struct sparingTable)) / sizeof(struct sparingEntry);
+		if (num > UINT16_MAX)
+			num = UINT16_MAX;
+		if (num == 0)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot find STABLE extent\n");
+			exit(1);
+		}
+		length = sizeof(struct sparingTable) + num * sizeof(struct sparingEntry);
+	}
+
 	spm->sizeSparingTable = cpu_to_le32(length);
 	for (i=0; i<spm->numSparingTables; i++)
 		spm->locSparingTable[i] = cpu_to_le32(stable[i]->start);
