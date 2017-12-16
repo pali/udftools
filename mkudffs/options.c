@@ -79,6 +79,7 @@ void usage(void)
 		"\t--label=, -l       UDF label, synonym for both --lvid and --vid (default: LinuxUDF)\n"
 		"\t--uuid=, -u        UDF uuid, first 16 characters of Volume set identifier (default: random)\n"
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
+		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, worm, mo, cdrw, cdr; default: hd)\n"
 		"\t--udfrev=, -r      UDF revision (2.01, 2.00, 1.50, 1.02; default: 2.01)\n"
 		"\t--lvid=            Logical volume identifier (default: LinuxUDF)\n"
 		"\t--vid=             Volume identifier (default: LinuxUDF)\n"
@@ -91,7 +92,6 @@ void usage(void)
 		"\t--strategy=        Allocation strategy to use (4, 4096; default: based on media type)\n"
 		"\t--spartable=       Number of sparing tables for cdrw (1 - 4)\n"
 		"\t--packetlen=       Packet length in number of blocks for cdrw and dvdrw (default: based on media type)\n"
-		"\t--media-type=      Media type (hd, dvd, dvdram, dvdrw, worm, mo, cdrw, cdr; default: hd)\n"
 		"\t--space=           Space (freedbitmap, freedtable, unallocbitmap, unalloctable)\n"
 		"\t--ad=              Allocation descriptor (inicb, short, long)\n"
 		"\t--noefe            Don't Use Extended File Entries\n"
@@ -452,6 +452,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				break;
 			}
 			case OPT_MEDIA_TYPE:
+			case 'm':
 			{
 				if (!strcmp(optarg, "hd"))
 				{

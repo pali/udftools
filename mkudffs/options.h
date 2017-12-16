@@ -39,6 +39,7 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, int *);
 #define OPT_UNICODE8	0x1003
 #define OPT_UNICODE16	0x1004
 #define OPT_UTF8	0x1005
+#define OPT_MEDIA_TYPE	0x1006
 #define OPT_CLOSED	0x1007
 
 #define OPT_BLK_SIZE	0x2000
@@ -50,7 +51,6 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, int *);
 #define OPT_STRATEGY	0x2006
 #define OPT_SPARTABLE	0x2007
 #define OPT_PACKETLEN	0x2008
-#define OPT_MEDIA_TYPE	0x2009
 #define OPT_SPACE	0x200A
 #define OPT_AD		0x200B
 #define OPT_LABEL	0x200C
