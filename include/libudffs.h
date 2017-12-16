@@ -203,7 +203,8 @@ extern uint16_t udf_crc(uint8_t *, uint32_t, uint16_t);
 
 /* extent.c */
 struct udf_extent *next_extent(struct udf_extent *, enum udf_space_type);
-uint32_t next_extent_size(struct udf_extent *, enum udf_space_type, uint32_t, uint32_t);
+uint32_t next_extent_size(struct udf_disc *, struct udf_extent *, enum udf_space_type, uint32_t, uint32_t);
+uint32_t find_next_extent_size(struct udf_disc *, uint32_t, enum udf_space_type, uint32_t, uint32_t);
 struct udf_extent *prev_extent(struct udf_extent *, enum udf_space_type);
 uint32_t prev_extent_size(struct udf_extent *, enum udf_space_type, uint32_t, uint32_t);
 struct udf_extent *find_extent(struct udf_disc *, uint32_t);

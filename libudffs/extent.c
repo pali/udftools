@@ -120,24 +120,44 @@ struct udf_extent *next_extent(struct udf_extent *start_ext, enum udf_space_type
 /**
  * @brief find the next udf_extent of a given space_type on a udf_extent list
  *        that satisfies the necessary size and alignment
+ * @param disc the udf_disc containing the blocks
  * @param start_ext the starting udf_extent for the search
  * @param type the space_type of the udf_extent to search for
  * @param blocks the minimum size of the udf_extent in blocks
  * @param offset the required alignment for the start block
  * @return the start block of the aligned udf_extent or zero
  */
-uint32_t next_extent_size(struct udf_extent *start_ext, enum udf_space_type type, uint32_t blocks, uint32_t offset)
+uint32_t next_extent_size(struct udf_disc *disc, struct udf_extent *start_ext, enum udf_space_type type, uint32_t blocks, uint32_t offset)
+{
+	return find_next_extent_size(disc, start_ext->start, type, blocks, offset);
+}
+
+/**
+ * @brief find the next udf_extent of a given space_type on a udf_extent list
+ *        that satisfies the necessary size and alignment
+ * @param disc the udf_disc containing the blocks
+ * @param start the block to search for
+ * @param type the space_type of the udf_extent to search for
+ * @param blocks the minimum size of the udf_extent in blocks
+ * @param offset the required alignment for the start block
+ * @return the start block of the aligned udf_extent or zero
+ */
+uint32_t find_next_extent_size(struct udf_disc *disc, uint32_t start, enum udf_space_type type, uint32_t blocks, uint32_t offset)
 {
 	uint32_t inc;
+	struct udf_extent *start_ext;
 
-	start_ext = next_extent(start_ext, type);
+	start_ext = next_extent(find_extent(disc, start), type);
 cont:
 	while (start_ext != NULL && start_ext->blocks < blocks)
 		start_ext = next_extent(start_ext->next, type);
 
-	if (start_ext != NULL && start_ext->start % offset)
+	if (start_ext != NULL && (start_ext->start % offset || start_ext->start < start))
 	{
-		inc = offset - (start_ext->start % offset);
+		if (start_ext->start < start)
+			inc = start - start_ext->start;
+		else
+			inc = offset - (start_ext->start % offset);
 		if (start_ext->blocks - inc < blocks)
 		{
 			start_ext = next_extent(start_ext->next, type);

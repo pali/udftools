@@ -215,7 +215,7 @@ void split_space(struct udf_disc *disc)
 	uint32_t sizes[UDF_ALLOC_TYPE_SIZE];
 	uint32_t offsets[UDF_ALLOC_TYPE_SIZE];
 	uint32_t blocks = disc->blocks;
-	uint32_t start, size;
+	uint32_t start, size, start2, size2;
 	struct sparablePartitionMap *spm;
 	struct udf_extent *ext;
 	uint32_t accessType;
@@ -234,15 +234,29 @@ void split_space(struct udf_disc *disc)
 		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize) / disc->blocksize); // 3 VSD in more sectors + one empty sector
 
 	// First Anchor Point at sector 256
-	set_extent(disc, ANCHOR, 256, 1);
+	if (blocks > 257)
+		set_extent(disc, ANCHOR, 256, 1);
 
-	if (disc->flags & FLAG_CLOSED && blocks-257 > 256) // Second anchor point at sector (End-Of-Volume - 256)
-		set_extent(disc, ANCHOR, blocks-257, 1);
+	// Second anchor point at sector (End-Of-Volume - 256)
+	if (disc->flags & FLAG_CLOSED)
+	{
+		if (blocks > 257 && blocks-257 > 256)
+		{
+			if (disc->flags & FLAG_VAT)
+				set_extent(disc, ANCHOR, 257, 1);
+			else
+				set_extent(disc, ANCHOR, blocks-257, 1);
+		}
+		else if (disc->flags & FLAG_VAT)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+			exit(1);
+		}
+	}
 
-	if (!(disc->flags & FLAG_VAT)) // Final anchor point at sector End-Of-Volume/Session for sequentially writable media
+	// Final anchor point at sector End-Of-Volume/Session for sequentially writable media
+	if (!(disc->flags & FLAG_VAT))
 		set_extent(disc, ANCHOR, blocks-1, 1);
-	else
-		set_extent(disc, PSPACE, blocks-1, 1);
 
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
@@ -256,23 +270,21 @@ void split_space(struct udf_disc *disc)
 	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && sizes[LVID_SIZE] * disc->blocksize < 8192)
 		sizes[LVID_SIZE] = (8192 + disc->blocksize-1) / disc->blocksize;
 
-	start = next_extent_size(find_extent(disc, 256), USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+	if (blocks < 770)
+		start = 0;
+	else
+		start = 96;
+	start = find_next_extent_size(disc, start, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 	if (!start)
 	{
 		fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
 		exit(1);
 	}
 	set_extent(disc, MVDS, start, sizes[VDS_SIZE]);
-	start = next_extent_size(find_extent(disc, 256), USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
-	if (!start)
-	{
-		fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
-		exit(1);
-	}
-	set_extent(disc, LVID, start, sizes[LVID_SIZE]);
+
 	if (disc->flags & FLAG_VAT)
 	{
-		start = next_extent_size(find_extent(disc, 256), USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+		start = find_next_extent_size(disc, (256-sizes[VDS_SIZE])/offsets[VDS_SIZE]*offsets[VDS_SIZE], USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 		if (!start)
 		{
 			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
@@ -291,14 +303,34 @@ void split_space(struct udf_disc *disc)
 		set_extent(disc, RVDS, start, sizes[VDS_SIZE]);
 	}
 
+	start = prev_extent_size(disc->tail, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
+	if (start < 256 || blocks >= 770)
+	{
+		if (blocks < 770)
+			start = 0;
+		else
+			start = 128;
+		start = find_next_extent_size(disc, start, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
+		if (!start)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+			exit(1);
+		}
+		set_extent(disc, LVID, start, sizes[LVID_SIZE]);
+	}
+
 	if ((spm = find_type2_sparable_partition(disc, 0)))
 	{
 		for (i=0; i<spm->numSparingTables; i++)
 		{
-			if (i & 0x1)
+			if (i == 0)
+				start = find_next_extent_size(disc, next_extent(disc->head, MVDS)->start, USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
+			else if (i == 1)
 				start = prev_extent_size(disc->tail, USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
+			else if (i == 2)
+				start = prev_extent_size(next_extent(disc->head, ANCHOR), USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
 			else
-				start = next_extent_size(find_extent(disc, 256), USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
+				start = find_next_extent_size(disc, prev_extent(disc->tail->prev, ANCHOR)->start, USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
 			if (!start)
 			{
 				fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
@@ -306,7 +338,7 @@ void split_space(struct udf_disc *disc)
 			}
 			set_extent(disc, STABLE, start, sizes[STABLE_SIZE]);
 		}
-		start = next_extent_size(find_extent(disc, 256), USPACE, sizes[SSPACE_SIZE], offsets[SSPACE_SIZE]);
+		start = find_next_extent_size(disc, next_extent(disc->head, MVDS)->start, USPACE, sizes[SSPACE_SIZE], offsets[SSPACE_SIZE]);
 		if (!start)
 		{
 			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
@@ -315,31 +347,59 @@ void split_space(struct udf_disc *disc)
 		set_extent(disc, SSPACE, start, sizes[SSPACE_SIZE]);
 	}
 
-	start = next_extent(disc->head, LVID)->start;
-	if (!start)
+	start2 = 0;
+	size2 = 0;
+	for (i = 0; i < 3; ++i)
 	{
-		fprintf(stderr, "mkudffs: Error: Cannot find LVID extent\n");
-		exit(1);
+		if (i != 0 && blocks >= 770)
+			break;
+		if (i == 0)
+			ext = next_extent(find_extent(disc, 256), USPACE);
+		else if (i == 1)
+			ext = prev_extent(disc->tail, USPACE);
+		else
+			ext = next_extent(disc->head, USPACE);
+		for (; ext; ext = next_extent(ext->next, USPACE))
+		{
+			// round start up to a multiple of alignment/packet_size
+			if (ext->start % offsets[PSPACE_SIZE])
+			{
+				if (offsets[PSPACE_SIZE] >= ext->blocks + (ext->start % offsets[PSPACE_SIZE]))
+					continue;
+				start = ext->start + offsets[PSPACE_SIZE] - (ext->start % offsets[PSPACE_SIZE]);
+				size = ext->blocks - offsets[PSPACE_SIZE] + (ext->start % offsets[PSPACE_SIZE]);
+			}
+			else
+			{
+				start = ext->start;
+				size = ext->blocks;
+			}
+
+			// round size down to a multiple of alignment/packet_size
+			if (size % offsets[PSPACE_SIZE])
+				size -= (size % offsets[PSPACE_SIZE]);
+
+			if (size == 0)
+				continue;
+
+			if (size2 < size)
+			{
+				start2 = start;
+				size2 = size;
+			}
+		}
 	}
-	ext = next_extent(find_extent(disc, start), USPACE);
-	if (!ext)
+	start = start2;
+	size = size2;
+
+	if (size == 0)
 	{
 		fprintf(stderr, "mkudffs: Error: Cannot find USPACE extent\n");
 		exit(1);
 	}
-	if (ext->start % offsets[PSPACE_SIZE]) // round start up to a multiple of alignment/packet_size
-	{
-		start = ext->start + offsets[PSPACE_SIZE] - (ext->start % offsets[PSPACE_SIZE]);
-		size = ext->blocks - offsets[PSPACE_SIZE] + (ext->start % offsets[PSPACE_SIZE]);
-	}
-	else
-	{
-		start = ext->start;
-		size = ext->blocks;
-	}
-	if (size % offsets[PSPACE_SIZE]) // round size down to a multiple of alignment/packet_size
-		size -= (size % offsets[PSPACE_SIZE]);
+
 	set_extent(disc, PSPACE, start, size);
+
 	for (i=0; i<le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps); i++)
 	{
 		if (i == 1)
@@ -353,6 +413,17 @@ void split_space(struct udf_disc *disc)
 			disc->udf_lvid->sizeTable[i+j] = cpu_to_le32(0xFFFFFFFF);
 		else
 			disc->udf_lvid->sizeTable[i+j] = cpu_to_le32(size);
+	}
+
+	if (!next_extent(disc->head, LVID))
+	{
+		start = find_next_extent_size(disc, 0, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
+		if (!start)
+		{
+			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+			exit(1);
+		}
+		set_extent(disc, LVID, start, sizes[LVID_SIZE]);
 	}
 }
 
