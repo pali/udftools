@@ -55,7 +55,7 @@ static struct option long_options[] = {
 	{ "gid", required_argument, NULL, OPT_GID },
 	{ "bootarea", required_argument, NULL, OPT_BOOTAREA },
 	{ "strategy", required_argument, NULL, OPT_STRATEGY },
-	{ "spartable", required_argument, NULL, OPT_SPARTABLE },
+	{ "spartable", optional_argument, NULL, OPT_SPARTABLE },
 	{ "packetlen", required_argument, NULL, OPT_PACKETLEN },
 	{ "media-type", required_argument, NULL, OPT_MEDIA_TYPE },
 	{ "space", required_argument, NULL, OPT_SPACE },
@@ -131,6 +131,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	int media = MEDIA_TYPE_HD;
 	uint16_t packetlen = 0;
 	unsigned long int blocks = 0;
+	int use_sparable = 0;
 	int failed;
 
 	while ((retval = getopt_long(argc, argv, "l:u:b:r:h", long_options, NULL)) != EOF)
@@ -172,6 +173,11 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				if (!rev || udf_set_version(disc, rev))
 				{
 					fprintf(stderr, "mkudffs: invalid udf revision\n");
+					exit(1);
+				}
+				if (rev < 0x0150 && use_sparable)
+				{
+					fprintf(stderr, "mkudffs: At least UDF revision 1.50 is needed for Sparing Table\n");
 					exit(1);
 				}
 				break;
@@ -427,14 +433,23 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_SPARTABLE:
 			{
-				unsigned long int spartable = strtoul_safe(optarg, 0, &failed);
-				if (failed || spartable > 4)
+				unsigned long int spartable = 2;
+				if (optarg)
 				{
-					fprintf(stderr, "mkudffs: invalid spartable count\n");
+					spartable = strtoul_safe(optarg, 0, &failed);
+					if (failed || spartable > 4)
+					{
+						fprintf(stderr, "mkudffs: invalid spartable count\n");
+						exit(1);
+					}
+				}
+				if (disc->flags & FLAG_VAT)
+				{
+					fprintf(stderr, "mkudffs: Cannot use Sparing Table when VAT is enabled\n");
 					exit(1);
 				}
 				add_type2_sparable_partition(disc, 0, spartable, packetlen);
-				media = MEDIA_TYPE_CDRW;
+				use_sparable = 1;
 				break;
 			}
 			case OPT_PACKETLEN:
@@ -474,6 +489,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					struct sparablePartitionMap *spm;
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 					media = MEDIA_TYPE_DVDRW;
+					use_sparable = 1;
 					packetlen = 16;
 					if ((spm = find_type2_sparable_partition(disc, 0)))
 						spm->packetLength = cpu_to_le16(packetlen);
@@ -494,6 +510,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 					media = MEDIA_TYPE_CDRW;
+					use_sparable = 1;
 				}
 				else if (!strcmp(optarg, "cdr"))
 				{
@@ -571,14 +588,27 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	if (optind < argc)
 		usage();
 
+	if (packetlen && !use_sparable)
+	{
+		fprintf(stderr, "mkudffs: Option --packetlen cannot be used without Sparing Table\n");
+		exit(1);
+	}
+
 	if (le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) == 0)
 	{
-		if ((media == MEDIA_TYPE_CDRW || media == MEDIA_TYPE_DVDRW) && (disc->udf_rev != 0x0102))
-			add_type2_sparable_partition(disc, 0, 2, packetlen);
-		else if ((media == MEDIA_TYPE_CDR) && (disc->udf_rev != 0x0102))
+		if ((media == MEDIA_TYPE_CDR) && (disc->udf_rev != 0x0102))
 		{
 			add_type1_partition(disc, 0);
 			add_type2_virtual_partition(disc, 0);
+		}
+		else if (use_sparable)
+		{
+			if (disc->udf_rev < 0x0150)
+			{
+				fprintf(stderr, "mkudffs: At least UDF revision 1.50 is needed for Sparing Table\n");
+				exit(1);
+			}
+			add_type2_sparable_partition(disc, 0, 2, packetlen);
 		}
 		else
 			add_type1_partition(disc, 0);
@@ -594,6 +624,17 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	{
 		if (disc->sizing[i].denomSize == 0)
 			disc->sizing[i] = default_sizing[default_media[media]][i];
+	}
+
+	if (use_sparable)
+	{
+		if (!packetlen)
+			packetlen = le16_to_cpu(default_sparmap.packetLength);
+		disc->sizing[PSPACE_SIZE].align = packetlen;
+		disc->sizing[SSPACE_SIZE].align = packetlen;
+		disc->sizing[STABLE_SIZE].align = packetlen;
+		if (disc->sizing[SSPACE_SIZE].minSize == 0)
+			disc->sizing[SSPACE_SIZE].minSize = 1024;
 	}
 
 	*media_ptr = media;

@@ -258,6 +258,10 @@ void split_space(struct udf_disc *disc)
 	if (!(disc->flags & FLAG_VAT))
 		set_extent(disc, ANCHOR, blocks-1, 1);
 
+	// Calculate minimal size for Sparing Table needed for Sparing Space
+	if ((spm = find_type2_sparable_partition(disc, 0)) && disc->sizing[STABLE_SIZE].minSize == 0)
+		disc->sizing[STABLE_SIZE].minSize = (sizeof(struct sparingTable) + disc->sizing[SSPACE_SIZE].minSize / le16_to_cpu(spm->packetLength) * sizeof(struct sparingEntry) + disc->blocksize-1) / disc->blocksize;
+
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
 		sizes[i] = disc->sizing[i].numSize * blocks / disc->sizing[i].denomSize;
