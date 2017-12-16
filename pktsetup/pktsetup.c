@@ -71,12 +71,12 @@ struct pkt_ctrl_command {
 static int init_cdrom(int fd)
 {
 	if (ioctl(fd, CDROM_DRIVE_STATUS, CDSL_CURRENT) < 0) {
-		perror("drive not ready\n");
+		fprintf(stderr, "pktsetup: Error: Drive is not ready\n");
 		return 1;
 	}
 
 	if (ioctl(fd, CDROM_DISC_STATUS, CDSL_CURRENT) < 0) {
-		perror("no disc inserted?\n");
+		fprintf(stderr, "pktsetup: Error: No disc inserted\n");
 		return 1;
 	}
 
@@ -93,14 +93,14 @@ static int setup_dev(char *pkt_device, char *device, int rem)
 	int pkt_fd, dev_fd, cmd, arg, ret;
 
 	if ((pkt_fd = open(pkt_device, O_RDONLY)) == -1) {
-		perror("open packet device");
+		fprintf(stderr, "pktsetup: Error: Can't open packet device '%s': %s\n", pkt_device, strerror(errno));
 		return 1;
 	}
 
 	if (!rem) {
 		cmd = PACKET_SETUP_DEV;
 		if ((dev_fd = open(device, O_RDONLY | O_NONBLOCK)) == -1) {
-			perror("open cd-rom");
+			fprintf(stderr, "pktsetup: Error: Can't open cd-rom device '%s': %s\n", device, strerror(errno));
 			close(pkt_fd);
 			return 1;
 		}
@@ -117,8 +117,12 @@ static int setup_dev(char *pkt_device, char *device, int rem)
 	}
 		
 	ret = ioctl(pkt_fd, cmd, arg);
-	if (ret == -1)
-		perror("ioctl");
+	if (ret == -1) {
+		if (rem)
+			fprintf(stderr, "pktsetup: Error: Can't tear down packet device '%s': %s\n", pkt_device, strerror(errno));
+		else
+			fprintf(stderr, "pktsetup: Error: Can't setup packet device '%s' for cd-rom device '%s': %s\n", pkt_device, device, strerror(errno));
+	}
 
 	if (dev_fd >= 0)
 		close(dev_fd);
@@ -171,8 +175,11 @@ static int get_misc_minor(void)
 
 static const char *pkt_dev_name(const char *dev)
 {
-	static char buf[128];
-	snprintf(buf, sizeof(buf), "%s/%s", CTL_DIR, dev);
+	static char buf[512];
+	if (snprintf(buf, sizeof(buf), "%s/%s", CTL_DIR, dev) >= (int)sizeof(buf)) {
+		fprintf(stderr, "pktsetup: Error: Can't process device '%s': %s\n", dev, strerror(ENAMETOOLONG));
+		exit(1);
+	}
 	return buf;
 }
 
@@ -184,12 +191,12 @@ static int create_ctl_dev(void)
 
 	if ((misc_minor = get_misc_minor()) < 0) {
 		if (system("/sbin/modprobe pktcdvd") != 0) {
-			fprintf(stderr, "Can't load pktcdvd kernel module\n");
+			fprintf(stderr, "pktsetup: Error: Can't load pktcdvd kernel module\n");
 		}
 		misc_minor = get_misc_minor();
 	}
 	if (misc_minor < 0) {
-		fprintf(stderr, "Can't find pktcdvd character device\n");
+		fprintf(stderr, "pktsetup: Error: Can't find pktcdvd character device number\n");
 		return -1;
 	}
 	dev = MKDEV(MISC_MAJOR, misc_minor);
@@ -202,7 +209,7 @@ static int create_ctl_dev(void)
 	unlink(pkt_dev_name(CTL_DEV));
 
 	if (mknod(pkt_dev_name(CTL_DEV), S_IFCHR | 0644, dev) < 0) {
-		fprintf(stderr, "Can't create device %s: %s\n", pkt_dev_name(CTL_DEV), strerror(errno));
+		perror("pktsetup: Error: Can't create pktcdvd control device");
 		return -1;
 	}
 
@@ -226,7 +233,7 @@ static int remove_stale_dev_node(int ctl_fd, char *devname)
 		c.command = PKT_CTRL_CMD_STATUS;
 		c.dev_index = i;
 		if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
-			perror("ioctl");
+			perror("pktsetup: Error: Can't check status of device");
 			return 1;
 		}
 		if (i >= c.num_devices)
@@ -251,13 +258,23 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 		return 1;
 
 	if ((ctl_fd = open(pkt_dev_name(CTL_DEV), O_RDONLY)) < 0) {
-		perror("ctl open");
+		perror("pktsetup: Error: Can't open pktcdvd control device");
 		return 1;
 	}
 
 	if (!rem) {
 		if ((dev_fd = open(device, O_RDONLY | O_NONBLOCK)) == -1) {
-			perror("open cd-rom");
+			fprintf(stderr, "pktsetup: Error: Can't open cd-rom device '%s': %s\n", device, strerror(errno));
+			goto out_close;
+		}
+		if (fstat(dev_fd, &stat_buf) < 0) {
+			fprintf(stderr, "pktsetup: Error: Can't stat cd-rom device '%s': %s\n", device, strerror(errno));
+			close(dev_fd);
+			goto out_close;
+		}
+		if (!S_ISBLK(stat_buf.st_mode)) {
+			fprintf(stderr, "pktsetup: Error: Node '%s' is not a block device\n", device);
+			close(dev_fd);
 			goto out_close;
 		}
 		if (init_cdrom(dev_fd)) {
@@ -266,27 +283,19 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 		}
 		close(dev_fd);
 
-		if (stat(device, &stat_buf) < 0) {
-			perror("stat cd-rom");
-			goto out_close;
-		}
-		if (!S_ISBLK(stat_buf.st_mode)) {
-			fprintf(stderr, "Not a block device\n");
-			goto out_close;
-		}
 		c.command = PKT_CTRL_CMD_SETUP;
 		c.dev = stat_buf.st_rdev;
 
 		if (pkt_device && remove_stale_dev_node(ctl_fd, pkt_device) != 0) {
-			fprintf(stderr, "Device node '%s' already in use\n", pkt_device);
+			fprintf(stderr, "pktsetup: Error: Device node '%s' already in use\n", pkt_device);
 			goto out_close;
 		}
 		if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
-			perror("ioctl");
+			fprintf(stderr, "pktsetup: Error: Can't setup packet device for cd-rom device '%s': %s\n", device, strerror(errno));
 			goto out_close;
 		}
 		if (pkt_device && mknod(pkt_dev_name(pkt_device), S_IFBLK | 0640, c.pkt_dev) < 0 && errno != EEXIST) {
-			fprintf(stderr, "Can't create device node '%s': %s\n", pkt_dev_name(pkt_device), strerror(errno));
+			fprintf(stderr, "pktsetup: Error: Can't create device node '%s': %s\n", pkt_device, strerror(errno));
 			goto out_close;
 		}
 		ret = 0;
@@ -304,18 +313,20 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 		} else if (sscanf(pkt_device, "%d:%d", &major, &minor) == 2) {
 			remove_node = 0;
 		} else {
-			fprintf(stderr, "Can't find major/minor numbers\n");
+			fprintf(stderr, "pktsetup: Error: Can't find major/minor numbers for packet device '%s'\n", pkt_device);
 			goto out_close;
 		}
 
 		c.command = PKT_CTRL_CMD_TEARDOWN;
 		c.pkt_dev = MKDEV(major, minor);
 		if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
-			perror("ioctl");
+			fprintf(stderr, "pktsetup: Error: Can't tear down packet device '%s': %s\n", pkt_device, strerror(errno));
 			goto out_close;
 		}
 		if (remove_node) {
-			if (unlink(pkt_dev_name(pkt_device)) == 0)
+			if (unlink(pkt_dev_name(pkt_device)) != 0)
+				fprintf(stderr, "pktsetup: Error: Can't unlink device node '%s': %s\n", pkt_device, strerror(errno));
+			else
 				ret = 0;
 		} else {
 			ret = 0;
@@ -339,7 +350,7 @@ static void show_mappings(void)
 		return;
 
 	if ((ctl_fd = open(pkt_dev_name(CTL_DEV), O_RDONLY)) < 0) {
-		perror("ctl open");
+		perror("pktsetup: Error: Can't open pktcdvd control device");
 		return;
 	}
 
@@ -347,7 +358,7 @@ static void show_mappings(void)
 		c.command = PKT_CTRL_CMD_STATUS;
 		c.dev_index = i;
 		if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
-			perror("ioctl");
+			perror("pktsetup: Error: Can't show device mapping");
 			goto out_close;
 		}
 		if (i >= c.num_devices)
