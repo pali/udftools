@@ -641,7 +641,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					lvd = (struct logicalVolDesc *)gd_ptr;
 
 					gd_length = sizeof(*lvd) + le32_to_cpu(lvd->mapTableLength);
-					if (i*disc->blocksize + gd_length > length)
+					if (i*disc->blocksize + gd_length > length || gd_length > 256*disc->blocksize)
 					{
 						fprintf(stderr, "%s: Warning: Logical Volume Descriptor is too big (%llu)\n", appname, (unsigned long long int)(i*disc->blocksize + gd_length));
 						i = count-1;
@@ -694,7 +694,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					usd = (struct unallocSpaceDesc *)&buffer;
 
 					gd_length = sizeof(*usd) + le32_to_cpu(usd->numAllocDescs) * sizeof(*usd->allocDescs);
-					if (i*disc->blocksize + gd_length > length)
+					if (i*disc->blocksize + gd_length > length || gd_length > 256*disc->blocksize)
 					{
 						fprintf(stderr, "%s: Warning: Unallocated Space Descriptor is too big (%llu)\n", appname, (unsigned long long int)(i*disc->blocksize + gd_length));
 						i = count-1;
