@@ -619,10 +619,18 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 						vdp = (struct volDescPtr *)gd_ptr;
 						if (next_vdp_num < le32_to_cpu(vdp->volDescSeqNum))
 						{
-							next_vdp_num = le32_to_cpu(vdp->volDescSeqNum);
 							next_location = le32_to_cpu(vdp->nextVolDescSeqExt.extLocation);
-							next_length = le32_to_cpu(vdp->nextVolDescSeqExt.extLength) & EXT_LENGTH_MASK;
-							next_count = next_length / disc->blocksize;
+							if (next_location <= location)
+							{
+								fprintf(stderr, "%s: Warning: Next descriptor in Volume Descriptor Sequence is not on higher block number, ignoring it\n", appname);
+								next_location = 0;
+							}
+							else
+							{
+								next_vdp_num = le32_to_cpu(vdp->volDescSeqNum);
+								next_length = le32_to_cpu(vdp->nextVolDescSeqExt.extLength) & EXT_LENGTH_MASK;
+								next_count = next_length / disc->blocksize;
+							}
 						}
 					}
 					else
