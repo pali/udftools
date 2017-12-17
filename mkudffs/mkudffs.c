@@ -304,7 +304,10 @@ void split_space(struct udf_disc *disc)
 	}
 	else
 	{
-		start = prev_extent_size(disc->tail, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+		if (blocks >= 3072)
+			start = find_next_extent_size(disc, (blocks-257+97)/32*32, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+		else
+			start = prev_extent_size(disc->tail, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 		if (!start)
 		{
 			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
