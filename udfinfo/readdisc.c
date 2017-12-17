@@ -812,6 +812,17 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 		}
 
 		lvid = (struct logicalVolIntegrityDesc *)buffer;
+		if (le32_to_cpu(lvid->numOfPartitions) > 32)
+		{
+			fprintf(stderr, "%s: Warning: Too many partitions (%lu) in Logical Volume Integrity Descriptor, stopping scanning\n", appname, (unsigned long int)le32_to_cpu(lvid->numOfPartitions));
+			break;
+		}
+		if (le32_to_cpu(lvid->lengthOfImpUse) > 32*disc->blocksize)
+		{
+			fprintf(stderr, "%s: Warning: Logical Volume Integrity Descriptor Implementation Use is too big (%lu), stopping scanning\n", appname, (unsigned long int)le32_to_cpu(lvid->lengthOfImpUse));
+			break;
+		}
+
 		lvid_length = sizeof(*lvid) + le32_to_cpu(lvid->numOfPartitions) * 2 * sizeof(uint32_t) + le32_to_cpu(lvid->lengthOfImpUse);
 		if (lvid_length > length)
 		{
