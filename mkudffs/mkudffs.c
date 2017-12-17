@@ -661,7 +661,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 {
 	struct udf_desc *desc;
 	struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)disc->udf_pd[0]->partitionContentsUse;
-	uint32_t length = (((sizeof(struct spaceBitmapDesc) + pspace->blocks) / (disc->blocksize*8)) + 1) * disc->blocksize;
+	uint32_t length = (sizeof(struct spaceBitmapDesc) + (pspace->blocks+7)/8 + disc->blocksize-1) / disc->blocksize * disc->blocksize;
 
 	if (disc->flags & FLAG_FREED_BITMAP)
 	{
