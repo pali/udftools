@@ -1137,7 +1137,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 
 		if (location + le32_to_cpu(fe->descTag.tagLocation) != i)
 		{
-			fprintf(stderr, "%s: Warning: Found Virtual Allocation Table at location %u (block %u), but with expected at location %u\n", appname, (unsigned int)(i-location), (unsigned int)i, (unsigned int)(le32_to_cpu(fe->descTag.tagLocation)));
+			fprintf(stderr, "%s: Warning: Found Virtual Allocation Table at partition offset %u (block %u), but expected at offset %u, ignoring it\n", appname, (unsigned int)(i-location), (unsigned int)i, (unsigned int)(le32_to_cpu(fe->descTag.tagLocation)));
 			continue;
 		}
 
