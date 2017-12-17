@@ -1580,14 +1580,26 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, uint32_t locat
 			sad = (short_ad *)&use->allocDescs[0];
 			count = (use_len-sizeof(*use)) / sizeof(*sad);
 			for (i = 0; i < count; ++i)
-				space += le32_to_cpu(sad[i].extLength) & EXT_LENGTH_MASK;
+			{
+				blocks = le32_to_cpu(sad[i].extLength) & EXT_LENGTH_MASK;
+				if (blocks <= UINT64_MAX - space)
+					space += blocks;
+				else
+					space = UINT64_MAX;
+			}
 			break;
 
 		case ICBTAG_FLAG_AD_LONG:
 			lad = (long_ad *)&use->allocDescs[0];
 			count = (use_len-sizeof(*use)) / sizeof(*lad);
 			for (i = 0; i < count; ++i)
-				space += le32_to_cpu(lad[i].extLength) & EXT_LENGTH_MASK;
+			{
+				blocks = le32_to_cpu(lad[i].extLength) & EXT_LENGTH_MASK;
+				if (blocks <= UINT64_MAX - space)
+					space += blocks;
+				else
+					space = UINT64_MAX;
+			}
 			break;
 
 		default:
@@ -1597,11 +1609,14 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, uint32_t locat
 
 	free(use);
 
-	blocks = (space + disc->blocksize-1) / disc->blocksize;
-	if (space > UINT64_MAX - (disc->blocksize-1) || blocks > UINT32_MAX)
+	if (space > UINT64_MAX - (disc->blocksize-1))
 		return UINT32_MAX;
-	else
-		return blocks;
+
+	blocks = (space + disc->blocksize-1) / disc->blocksize;
+	if (blocks > UINT32_MAX)
+		return UINT32_MAX;
+
+	return blocks;
 }
 
 static void scan_free_space_blocks(int fd, struct udf_disc *disc)
