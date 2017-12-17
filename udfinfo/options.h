@@ -31,10 +31,10 @@ void parse_args(int, char *[], struct udf_disc *, char **);
  */
 
 #define OPT_HELP	0x1000
-#define OPT_LOCALE	0x1002
-#define OPT_UNICODE8	0x1003
-#define OPT_UNICODE16	0x1004
-#define OPT_UTF8	0x1005
+#define OPT_LOCALE	0x1001
+#define OPT_UNICODE8	0x1002
+#define OPT_UNICODE16	0x1003
+#define OPT_UTF8	0x1004
 
 #define OPT_BLK_SIZE	0x2000
 #define OPT_VAT_BLOCK	0x2001
