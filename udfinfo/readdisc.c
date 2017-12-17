@@ -758,7 +758,9 @@ static void scan_rvds(int fd, struct udf_disc *disc)
 static void scan_lvis(int fd, struct udf_disc *disc)
 {
 	uint32_t location, length;
+	uint32_t next_location, next_length;
 	uint16_t type;
+	size_t lvid_length;
 	unsigned char buffer[512];
 	struct udf_extent *ext;
 	struct logicalVolIntegrityDesc *lvid;
@@ -782,7 +784,7 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 	{
 		if (length > 256*disc->blocksize)
 		{
-			fprintf(stderr, "%s: Warning: Logical Volume Integrity Descriptor is too big (%lu)\n", appname, (unsigned long int)length);
+			fprintf(stderr, "%s: Warning: Logical Volume Integrity Descriptor Sequence is too big (%lu)\n", appname, (unsigned long int)length);
 			break;
 		}
 
@@ -810,26 +812,27 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 		}
 
 		lvid = (struct logicalVolIntegrityDesc *)buffer;
-		if (sizeof(*lvid) + le32_to_cpu(lvid->numOfPartitions) * 2 * sizeof(uint32_t) + le32_to_cpu(lvid->lengthOfImpUse) > length)
+		lvid_length = sizeof(*lvid) + le32_to_cpu(lvid->numOfPartitions) * 2 * sizeof(uint32_t) + le32_to_cpu(lvid->lengthOfImpUse);
+		if (lvid_length > length)
 		{
 			fprintf(stderr, "%s: Warning: Incorrect Logical Volume Integrity Descriptor\n", appname);
 			break;
 		}
 
-		lvid = malloc(length);
+		lvid = malloc(lvid_length);
 		if (!lvid)
 		{
 			fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
 			break;
 		}
 
-		if (length <= sizeof(buffer))
-			memcpy(lvid, &buffer, length);
+		if (lvid_length <= sizeof(buffer))
+			memcpy(lvid, &buffer, lvid_length);
 		else
 		{
 			memcpy(lvid, &buffer, sizeof(buffer));
 			errno = 0;
-			if (read(fd, (void *)lvid + sizeof(buffer), length - sizeof(buffer)) != (ssize_t)(length - sizeof(buffer)))
+			if (read(fd, (void *)lvid + sizeof(buffer), lvid_length - sizeof(buffer)) != (ssize_t)(lvid_length - sizeof(buffer)))
 			{
 				fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 				free(lvid);
@@ -837,15 +840,36 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 			}
 		}
 
-		ext = set_extent(disc, LVID, location, (length + disc->blocksize-1) / disc->blocksize);
-		set_desc(ext, TAG_IDENT_LVID, location, length, alloc_data(lvid, length));
+		ext = set_extent(disc, LVID, location, (lvid_length + disc->blocksize-1) / disc->blocksize);
+		set_desc(ext, TAG_IDENT_LVID, location, lvid_length, alloc_data(lvid, lvid_length));
 
 		disc->udf_lvid = lvid;
 
-		location = le32_to_cpu(lvid->nextIntegrityExt.extLocation);
-		length = le32_to_cpu(lvid->nextIntegrityExt.extLength) & EXT_LENGTH_MASK;
+		next_location = le32_to_cpu(lvid->nextIntegrityExt.extLocation);
+		next_length = le32_to_cpu(lvid->nextIntegrityExt.extLength) & EXT_LENGTH_MASK;
 
-		if (++scanned >= 1000)
+		if (next_length && next_location <= location)
+		{
+			fprintf(stderr, "%s: Warning: Next Logical Volume Integrity is not on higher block number, ignoring it\n", appname);
+			next_length = 0;
+		}
+
+		if (next_location && next_length)
+		{
+			location = next_location;
+			length = next_length;
+		}
+		else if (length > disc->blocksize)
+		{
+			++location;
+			length -= disc->blocksize;
+		}
+		else
+		{
+			length = 0;
+		}
+
+		if (length > 0 && ++scanned >= 1000)
 		{
 			fprintf(stderr, "%s: Warning: Too many Logical Volume Integrity Descriptors, stopping scanning\n", appname);
 			break;
