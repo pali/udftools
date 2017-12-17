@@ -245,17 +245,18 @@ void split_space(struct udf_disc *disc)
 	// Second anchor point at sector (End-Of-Volume - 256)
 	if (disc->flags & FLAG_CLOSED)
 	{
-		if (blocks > 257 && blocks-257 > 256)
+		if (disc->flags & FLAG_VAT)
 		{
-			if (disc->flags & FLAG_VAT)
-				set_extent(disc, ANCHOR, 257, 1);
-			else
-				set_extent(disc, ANCHOR, blocks-257, 1);
+			if (blocks <= 257 || blocks-257 <= 256)
+			{
+				fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+				exit(1);
+			}
+			set_extent(disc, ANCHOR, 257, 1);
 		}
-		else if (disc->flags & FLAG_VAT)
+		else if (blocks >= 3072)
 		{
-			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
-			exit(1);
+			set_extent(disc, ANCHOR, blocks-257, 1);
 		}
 	}
 
