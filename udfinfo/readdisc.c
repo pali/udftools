@@ -860,7 +860,7 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 		}
 
 		ext = set_extent(disc, LVID, location, (lvid_length + disc->blocksize-1) / disc->blocksize);
-		set_desc(ext, TAG_IDENT_LVID, location, lvid_length, alloc_data(lvid, lvid_length));
+		set_desc(ext, TAG_IDENT_LVID, 0, lvid_length, alloc_data(lvid, lvid_length));
 
 		disc->udf_lvid = lvid;
 
@@ -1444,7 +1444,7 @@ static void read_fsd(int fd, struct udf_disc *disc)
 
 	ext = next_extent(disc->head, PSPACE);
 	if (ext)
-		set_desc(ext, TAG_IDENT_FSD, location, length, alloc_data(disc->udf_fsd, length));
+		set_desc(ext, TAG_IDENT_FSD, location - ext->start, length, alloc_data(disc->udf_fsd, length));
 }
 
 static void setup_total_space_blocks(struct udf_disc *disc)
