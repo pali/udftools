@@ -202,6 +202,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	close(fd);
+
 	if (disc.udf_lvd[0])
 		lvd = disc.udf_lvd[0];
 	else if (disc.udf_lvd[1])
