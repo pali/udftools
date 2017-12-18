@@ -376,7 +376,7 @@ out_close:
 
 int main(int argc, char **argv)
 {
-	int rem = 0, c;
+	int rem = 0, c, old_api;
 	char *pkt_device;
 	char *device;
 
@@ -402,12 +402,14 @@ int main(int argc, char **argv)
 	if (!rem && optind+1 == argc) {
 		device = argv[optind];
 		pkt_device = NULL;
+		old_api = 0;
 	} else {
 		pkt_device = argv[optind];
 		device = rem ? NULL : argv[optind + 1];
+		old_api = (strchr(pkt_device, '/') != NULL);
 	}
 
-	if (pkt_device && strchr(pkt_device, '/'))
+	if (old_api)
 		return setup_dev(pkt_device, device, rem);
 	else
 		return setup_dev_chardev(pkt_device, device, rem);
