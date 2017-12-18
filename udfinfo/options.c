@@ -77,7 +77,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename)
 				value = strtoul_safe(optarg, 0, &failed);
 				if (failed || value < 512 || value > 32768 || (value & (value - 1)))
 				{
-					fprintf(stderr, "%s: Error: Invalid blocksize\n", appname);
+					fprintf(stderr, "%s: Error: Invalid value for option --blocksize\n", appname);
 					exit(1);
 				}
 				disc->blocksize = value;
@@ -86,7 +86,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename)
 				value = strtoul_safe(optarg, 0, &failed);
 				if (failed || value > UINT32_MAX)
 				{
-					fprintf(stderr, "%s: Error: Invalid vatblock\n", appname);
+					fprintf(stderr, "%s: Error: Invalid value for option --vatblock\n", appname);
 					exit(1);
 				}
 				disc->vat_block = value;
