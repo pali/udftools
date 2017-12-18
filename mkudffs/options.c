@@ -280,7 +280,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					{
 						if (retval == OPT_VID)
 						{
-							fprintf(stderr, "%s: Error: Option --vid option is too long\n", appname);
+							fprintf(stderr, "%s: Error: Option --vid is too long\n", appname);
 							exit(1);
 						}
 						/* This code was not triggered by --vid option, do not throw error but rather store truncated --lvid */
