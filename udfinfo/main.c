@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
 
 	if (pd)
 	{
-		switch (pd->accessType)
+		switch (le32_to_cpu(pd->accessType))
 		{
 			case PD_ACCESS_TYPE_OVERWRITABLE:
 				printf("accesstype=overwritable\n");
