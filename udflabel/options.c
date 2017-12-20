@@ -1,0 +1,300 @@
+/*
+ * Copyright (C) 2017  Pali Rohár <pali.rohar@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
+#include "config.h"
+
+#include <ctype.h>
+#include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <getopt.h>
+
+#include "libudffs.h"
+#include "options.h"
+
+static struct option long_options[] = {
+	{ "help", no_argument, NULL, OPT_HELP },
+	{ "blocksize", required_argument, NULL, OPT_BLK_SIZE },
+	{ "vatblock", required_argument, NULL, OPT_VAT_BLOCK },
+	{ "force", no_argument, NULL, OPT_FORCE },
+	{ "uuid", required_argument, NULL, OPT_UUID },
+	{ "lvid", required_argument, NULL, OPT_LVID },
+	{ "vid", required_argument, NULL, OPT_VID },
+	{ "vsid", required_argument, NULL, OPT_VSID },
+	{ "fsid", required_argument, NULL, OPT_FSID },
+	{ "fullvsid", required_argument, NULL, OPT_FULLVSID },
+	{ "locale", no_argument, NULL, OPT_LOCALE },
+	{ "u8", no_argument, NULL, OPT_UNICODE8 },
+	{ "u16", no_argument, NULL, OPT_UNICODE16 },
+	{ "utf8", no_argument, NULL, OPT_UTF8 },
+	{ 0, 0, NULL, 0 },
+};
+
+static void usage(void)
+{
+	fprintf(stderr, "udflabel from " PACKAGE_NAME " " PACKAGE_VERSION "\n"
+		"Usage:\n"
+		"\tudflabel [encoding-options] [block-options] [identifier-options] device [new-label]\n"
+		"\n"
+		"When all Identifier Options and new UDF Label are omitted then show current UDF Label.\n"
+		"Otherwise set new Identifier Options. New UDF Label is synonym for both --lvid and --vid.\n"
+		"\n"
+		"Options:\n"
+		"\t--help, -h         Display this help\n"
+		"\n"
+		"Block Options:\n"
+		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
+		"\t--vatblock=        Block location of the Virtual Allocation Table (default: detect)\n"
+		"\t--force            Force updating UDF disks without write support (useful only for disk images)\n"
+		"\n"
+		"Identifier Options:\n"
+		"\t--uuid=, -u        New UDF UUID, first 16 characters of Volume Set Identifier\n"
+		"\t--lvid=            New Logical Volume Identifier\n"
+		"\t--vid=             New Volume Identifier\n"
+		"\t--vsid=            New 17.-127. character of Volume Set Identifier\n"
+		"\t--fsid=            New File Set Identifier\n"
+		"\t--fullvsid=        New Full Volume Set Identifier, overwrite --uuid and --vsid\n"
+		"\n"
+		"Encoding Options:\n"
+		"\t--locale           Identifier options are encoded according to current locale (default)\n"
+		"\t--u8               Identifier options are encoded in 8-bit OSTA Compressed Unicode format\n"
+		"\t--u16              Identifier options are encoded in 16-bit OSTA Compressed Unicode format\n"
+		"\t--utf8             Identifier options are encoded in UTF-8\n"
+	);
+	exit(1);
+}
+
+static unsigned long int strtoul_safe(const char *str, int base, int *failed)
+{
+	char *endptr = NULL;
+	unsigned long int ret;
+	errno = 0;
+	ret = strtoul(str, &endptr, base);
+	*failed = (!*str || *endptr || errno) ? 1 : 0;
+	return ret;
+}
+
+static void get_random_bytes(void *buffer, size_t count)
+{
+	int fd;
+	size_t i;
+
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd >= 0)
+	{
+		if (read(fd, buffer, count) == (ssize_t)count)
+		{
+			close(fd);
+			return;
+		}
+		close(fd);
+	}
+
+	for (i = 0; i < count; ++i)
+		((uint8_t *)buffer)[i] = rand() % 0xFF;
+}
+
+static void process_uuid_arg(const char *arg, char *new_uuid)
+{
+	unsigned long int rnd;
+	int i;
+
+	if (strcmp(arg, "random") == 0)
+	{
+		get_random_bytes(&rnd, sizeof(rnd));
+		snprintf(new_uuid, 17, "%08lx%08lx", ((unsigned long int)time(NULL)) % 0xFFFFFFFF, rnd % 0xFFFFFFFF);
+		return;
+	}
+
+	if (strlen(arg) != 16)
+	{
+		fprintf(stderr, "%s: Error: Option --uuid is not 16 bytes long\n", appname);
+		exit(1);
+	}
+
+	for (i = 0; i < 16; ++i)
+	{
+		if (!isxdigit(arg[i]) || (!isdigit(arg[i]) && !islower(arg[i])))
+		{
+			fprintf(stderr, "%s: Error: Option --uuid is not in lowercase hexadecimal digit format\n", appname);
+			exit(1);
+		}
+	}
+
+	memcpy(new_uuid, arg, 17);
+}
+
+static void process_vid_lvid_arg(struct udf_disc *disc, int option, const char *arg, dstring *new_lvid, dstring *new_vid)
+{
+	if (option != OPT_VID)
+	{
+		if (encode_string(disc, new_lvid, arg, 128) == (size_t)-1)
+		{
+			if (option == OPT_LVID)
+				fprintf(stderr, "%s: Error: Option --lvid is too long\n", appname);
+			else
+				fprintf(stderr, "%s: Error: Label is too long\n", appname);
+			exit(1);
+		}
+	}
+
+	if (option != OPT_LVID)
+	{
+		if (encode_string(disc, new_vid, arg, 32) == (size_t)-1)
+		{
+			if (option == OPT_VID)
+			{
+				fprintf(stderr, "%s: Error: Option --vid is too long\n", appname);
+				exit(1);
+			}
+			/* This code was not triggered by --vid option, do not throw error but rather store truncated --lvid */
+			memcpy(new_vid, new_lvid, 32);
+			new_vid[31] = 31;
+		}
+	}
+}
+
+void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, int *force, dstring *new_lvid, dstring *new_vid, dstring *new_fsid, dstring *new_fullvsid, char *new_uuid, dstring *new_vsid)
+{
+	unsigned long int value;
+	int failed;
+	int ret;
+	size_t len;
+
+	while ((ret = getopt_long(argc, argv, "b:u:h", long_options, NULL)) != EOF)
+	{
+		switch (ret)
+		{
+			case OPT_HELP:
+			case 'h':
+				usage();
+				break;
+			case OPT_BLK_SIZE:
+			case 'b':
+				value = strtoul_safe(optarg, 0, &failed);
+				if (failed || value < 512 || value > 32768 || (value & (value - 1)))
+				{
+					fprintf(stderr, "%s: Error: Invalid value for option --blocksize\n", appname);
+					exit(1);
+				}
+				disc->blocksize = value;
+				break;
+			case OPT_VAT_BLOCK:
+				value = strtoul_safe(optarg, 0, &failed);
+				if (failed || value > UINT32_MAX)
+				{
+					fprintf(stderr, "%s: Error: Invalid value for option --vatblock\n", appname);
+					exit(1);
+				}
+				disc->vat_block = value;
+				break;
+			case OPT_FORCE:
+				*force = 1;
+				break;
+			case OPT_UUID:
+			case 'u':
+				process_uuid_arg(optarg, new_uuid);
+				new_fullvsid[0] = 0xFF;
+				break;
+			case OPT_VID:
+			case OPT_LVID:
+				process_vid_lvid_arg(disc, ret, optarg, new_lvid, new_vid);
+				break;
+			case OPT_VSID:
+				len = encode_string(disc, new_vsid, optarg, 128);
+				if (len == (size_t)-1 || len > 127-16 || (new_vsid[0] == 16 && len > 127-16*2))
+				{
+					fprintf(stderr, "%s: Error: Option --vsid is too long\n", appname);
+					exit(1);
+				}
+				new_fullvsid[0] = 0xFF;
+				break;
+			case OPT_FULLVSID:
+				if (encode_string(disc, new_fullvsid, optarg, 128) == (size_t)-1)
+				{
+					fprintf(stderr, "%s: Error: Option --fullvsid is too long\n", appname);
+					exit(1);
+				}
+				new_uuid[0] = 0;
+				new_vsid[0] = 0xFF;
+				break;
+			case OPT_FSID:
+				if (encode_string(disc, new_fsid, optarg, 32) == (size_t)-1)
+				{
+					fprintf(stderr, "%s: Error: Option --fsid is too long\n", appname);
+					exit(1);
+				}
+				break;
+			case OPT_UNICODE8:
+				disc->flags &= ~FLAG_CHARSET;
+				disc->flags |= FLAG_UNICODE8;
+				if (strcmp(argv[1], "--u8") != 0)
+				{
+					fprintf(stderr, "%s: Error: Option --u8 must be specified as first argument\n", appname);
+					exit(1);
+				}
+				break;
+			case OPT_UNICODE16:
+				disc->flags &= ~FLAG_CHARSET;
+				disc->flags |= FLAG_UNICODE16;
+				if (strcmp(argv[1], "--u16") != 0)
+				{
+					fprintf(stderr, "%s: Error: Option --u16 must be specified as first argument\n", appname);
+					exit(1);
+				}
+				break;
+			case OPT_UTF8:
+				disc->flags &= ~FLAG_CHARSET;
+				disc->flags |= FLAG_UTF8;
+				if (strcmp(argv[1], "--utf8") != 0)
+				{
+					fprintf(stderr, "%s: Error: Option --utf8 must be specified as first argument\n", appname);
+					exit(1);
+				}
+				break;
+			case OPT_LOCALE:
+				disc->flags &= ~FLAG_CHARSET;
+				disc->flags |= FLAG_LOCALE;
+				if (strcmp(argv[1], "--locale") != 0)
+				{
+					fprintf(stderr, "%s: Error: Option --locale must be specified as first argument\n", appname);
+					exit(1);
+				}
+				break;
+			default:
+				usage();
+				break;
+		}
+	}
+
+	if (optind+1 != argc && optind+2 != argc)
+		usage();
+
+	*filename = argv[optind];
+
+	if (optind+2 == argc)
+		process_vid_lvid_arg(disc, -1, argv[optind+1], new_lvid, new_vid);
+}
