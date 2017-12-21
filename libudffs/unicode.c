@@ -109,7 +109,7 @@ try_again:
 		if (utf_cnt)
 		{
 			if ((c & 0xC0) != 0x80)
-				goto error_out;
+				goto error_invalid;
 			utf_char = (utf_char << 6) | (c & 0x3F);
 			if (--utf_cnt)
 				continue;
@@ -146,7 +146,7 @@ try_again:
 					utf_cnt = 5;
 				}
 				else
-					goto error_out;
+					goto error_invalid;
 				continue;
 			}
 			else
@@ -166,7 +166,7 @@ try_again:
 				out[0] = 0x10;
 				goto try_again;
 			}
-			goto error_out;
+			return (size_t)-1;
 		}
 
 		if (max_val == 0xFFFF)
@@ -181,13 +181,16 @@ try_again:
 			out[len++] = utf_char >> 8;
 		}
 		if (len + 1 > outlen)
-			goto error_out;
+			return (size_t)-1;
 		out[len++] = utf_char & 0xFF;
 	}
 
 	if (utf_cnt)
-error_out:
-		return (size_t)-1;
+	{
+error_invalid:
+		fprintf(stderr, "%s: Error: Cannot convert input string from UTF-8 encoding: Invalid or incomplete UTF-8 sequence\n", appname);
+		exit(1);
+	}
 
 	return len;
 }
