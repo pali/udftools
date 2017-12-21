@@ -31,6 +31,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 #include <wchar.h>
 #include <errno.h>
@@ -239,7 +240,7 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 			}
 			else
 			{
-				perror("Error");
+				fprintf(stderr, "%s: Error: Cannot convert output string to current locale encoding: %s\n", appname, strerror(errno));
 				free(wcs);
 				exit(1);
 			}
@@ -269,7 +270,7 @@ size_t encode_locale(dchars *out, const char *in, size_t outlen)
 	mbslen = mbstowcs(NULL, in, 0);
 	if (mbslen == (size_t)-1)
 	{
-		perror("Error");
+		fprintf(stderr, "%s: Error: Cannot convert input string from current locale encoding: %s\n", appname, strerror(errno));
 		exit(1);
 	}
 
