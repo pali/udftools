@@ -289,6 +289,12 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (disc.udf_write_rev > 0x0260)
+	{
+		fprintf(stderr, "%s: Error: Minimal UDF Write Revision is %x.%02x, but udflabel suports only 2.60\n", appname, (unsigned int)(disc.udf_write_rev >> 8), (unsigned int)(disc.udf_write_rev & 0xFF));
+		exit(1);
+	}
+
 	if (disc.udf_pd[0])
 		pd = disc.udf_pd[0];
 	else if (disc.udf_pd[1])
