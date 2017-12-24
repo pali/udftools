@@ -345,20 +345,22 @@ out_close:
 	return ret;
 }
 
-static void show_mappings(void)
+static int show_mappings(void)
 {
 	struct pkt_ctrl_command c;
 	unsigned int i;
 	int ctl_fd;
+	int ret;
 
+	ret = 0;
 	memset(&c, 0, sizeof(struct pkt_ctrl_command));
 
 	if (create_ctl_dev() < 0)
-		return;
+		return 1;
 
 	if ((ctl_fd = open(pkt_dev_name(CTL_DEV), O_RDONLY)) < 0) {
 		perror("pktsetup: Error: Can't open pktcdvd control device");
-		return;
+		return 1;
 	}
 
 	for (i = 0; ; i++) {
@@ -366,6 +368,7 @@ static void show_mappings(void)
 		c.dev_index = i;
 		if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
 			perror("pktsetup: Error: Can't show device mapping");
+			ret = 1;
 			goto out_close;
 		}
 		if (i >= c.num_devices)
@@ -379,6 +382,8 @@ static void show_mappings(void)
 
 out_close:
 	close(ctl_fd);
+
+	return ret;
 }
 
 int main(int argc, char **argv)
@@ -396,8 +401,7 @@ int main(int argc, char **argv)
 				rem = 1;
 				break;
 			case 's':
-				show_mappings();
-				return 0;
+				return show_mappings();
 			default:
 				return usage();
 		}
