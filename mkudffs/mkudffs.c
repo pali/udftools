@@ -280,7 +280,7 @@ void split_space(struct udf_disc *disc)
 	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && sizes[LVID_SIZE] * (size_t)disc->blocksize < 8192)
 		sizes[LVID_SIZE] = (8192 + disc->blocksize-1) / disc->blocksize;
 
-	if (blocks < 770)
+	if (!(disc->flags & FLAG_VAT) && blocks < 770)
 		start = 0;
 	else
 		start = 96;
@@ -319,7 +319,7 @@ void split_space(struct udf_disc *disc)
 	start = prev_extent_size(disc->tail, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
 	if (start < 256 || blocks >= 770)
 	{
-		if (blocks < 770)
+		if (!(disc->flags & FLAG_VAT) && blocks < 770)
 			start = 0;
 		else
 			start = 128;
@@ -364,7 +364,7 @@ void split_space(struct udf_disc *disc)
 	size2 = 0;
 	for (i = 0; i < 3; ++i)
 	{
-		if (i != 0 && blocks >= 770)
+		if (i != 0 && ((disc->flags & FLAG_VAT) || blocks >= 770))
 			break;
 		if (i == 0)
 			ext = next_extent(find_extent(disc, 256), USPACE);
