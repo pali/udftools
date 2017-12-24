@@ -246,6 +246,28 @@ static int remove_stale_dev_node(int ctl_fd, char *devname)
 	return 0;
 }
 
+static dev_t find_pkdev_for_dev(int ctl_fd, dev_t blk_dev)
+{
+	struct pkt_ctrl_command c;
+	unsigned int i;
+
+	memset(&c, 0, sizeof(struct pkt_ctrl_command));
+
+	for (i = 0; ; i++) {
+		c.command = PKT_CTRL_CMD_STATUS;
+		c.dev_index = i;
+		if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
+			perror("pktsetup: Error: Can't get device mapping");
+			return 0;
+		}
+		if (i >= c.num_devices)
+			return 0;
+		if (c.dev == blk_dev)
+			return c.pkt_dev;
+	}
+	return 0;
+}
+
 static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 {
 	struct pkt_ctrl_command c;
@@ -327,8 +349,19 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 		c.command = PKT_CTRL_CMD_TEARDOWN;
 		c.pkt_dev = MKDEV(major, minor);
 		if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
-			fprintf(stderr, "pktsetup: Error: Can't tear down packet device '%s': %s\n", pkt_device, strerror(errno));
-			goto out_close;
+			int cur_errno = errno;
+			if (cur_errno != ENXIO)
+				goto out_error;
+			remove_node = 0;
+			c.pkt_dev = find_pkdev_for_dev(ctl_fd, MKDEV(major, minor));
+			if (!c.pkt_dev)
+				goto out_error;
+			if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
+				cur_errno = errno;
+out_error:
+				fprintf(stderr, "pktsetup: Error: Can't tear down packet device '%s': %s\n", pkt_device, strerror(cur_errno));
+				goto out_close;
+			}
 		}
 		if (remove_node) {
 			if (unlink(pkt_dev_name(pkt_device)) != 0)
