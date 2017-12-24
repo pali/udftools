@@ -146,6 +146,7 @@ static int usage(void)
 	printf("For pktcdvd >= 0.2.0:\n");
 #endif
 	printf("  pktsetup [dev_name] /dev/cdrom     setup device\n");
+	printf("  pktsetup [dev_name] major:minor    setup device\n");
 	printf("  pktsetup -d dev_name               tear down device\n");
 	printf("  pktsetup -d major:minor            tear down device\n");
 	printf("  pktsetup -s                        show device mappings\n");
@@ -264,27 +265,33 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 
 	if (!rem) {
 		if ((dev_fd = open(device, O_RDONLY | O_NONBLOCK)) == -1) {
-			fprintf(stderr, "pktsetup: Error: Can't open cd-rom device '%s': %s\n", device, strerror(errno));
-			goto out_close;
-		}
-		if (fstat(dev_fd, &stat_buf) < 0) {
-			fprintf(stderr, "pktsetup: Error: Can't stat cd-rom device '%s': %s\n", device, strerror(errno));
+			int major, minor, old_errno;
+			old_errno = errno;
+			if (sscanf(device, "%d:%d", &major, &minor) != 2) {
+				fprintf(stderr, "pktsetup: Error: Can't open cd-rom device '%s': %s\n", device, strerror(old_errno));
+				goto out_close;
+			}
+			c.dev = MKDEV(major, minor);
+		} else {
+			if (fstat(dev_fd, &stat_buf) < 0) {
+				fprintf(stderr, "pktsetup: Error: Can't stat cd-rom device '%s': %s\n", device, strerror(errno));
+				close(dev_fd);
+				goto out_close;
+			}
+			if (!S_ISBLK(stat_buf.st_mode)) {
+				fprintf(stderr, "pktsetup: Error: Node '%s' is not a block device\n", device);
+				close(dev_fd);
+				goto out_close;
+			}
+			if (init_cdrom(dev_fd)) {
+				close(dev_fd);
+				goto out_close;
+			}
 			close(dev_fd);
-			goto out_close;
+			c.dev = stat_buf.st_rdev;
 		}
-		if (!S_ISBLK(stat_buf.st_mode)) {
-			fprintf(stderr, "pktsetup: Error: Node '%s' is not a block device\n", device);
-			close(dev_fd);
-			goto out_close;
-		}
-		if (init_cdrom(dev_fd)) {
-			close(dev_fd);
-			goto out_close;
-		}
-		close(dev_fd);
 
 		c.command = PKT_CTRL_CMD_SETUP;
-		c.dev = stat_buf.st_rdev;
 
 		if (pkt_device && remove_stale_dev_node(ctl_fd, pkt_device) != 0) {
 			fprintf(stderr, "pktsetup: Error: Device node '%s' already in use\n", pkt_device);
