@@ -1221,6 +1221,14 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	struct virtualAllocationTable20 *vat20;
 	uint16_t udf_rev_le16;
 
+	if (disc->flags & FLAG_MIN_300_BLOCKS)
+	{
+		// On optical discs one track has minimal size of 300 sectors, so put VAT to the last sector
+		offset = pspace->tail->offset + (pspace->tail->length + disc->blocksize-1) / disc->blocksize;
+		if (pspace->start + offset < 299)
+			offset = 299 - pspace->start;
+	}
+
 	if (disc->flags & FLAG_CLOSED)
 	{
 		anchor = prev_extent(disc->tail, ANCHOR);
