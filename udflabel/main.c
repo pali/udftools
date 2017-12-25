@@ -559,6 +559,13 @@ int main(int argc, char *argv[])
 		write_desc(fd, &disc, MVDS, TAG_IDENT_IUVD, disc.udf_iuvd[0]);
 	}
 
+	printf("Synchronizing...\n");
+	if (fdatasync(fd) != 0)
+	{
+		fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
+
 	if (update_fsd)
 	{
 		printf("Updating File Set Descriptor...\n");
@@ -585,6 +592,13 @@ int main(int argc, char *argv[])
 		printf("Updating Reserve Implementation Use Volume Descriptor...\n");
 		update_desc(disc.udf_iuvd[1], sizeof(*disc.udf_iuvd[1]));
 		write_desc(fd, &disc, RVDS, TAG_IDENT_IUVD, disc.udf_iuvd[1]);
+	}
+
+	printf("Synchronizing...\n");
+	if (fdatasync(fd) != 0)
+	{
+		fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
+		exit(1);
 	}
 
 	printf("Done\n");
