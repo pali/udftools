@@ -160,6 +160,8 @@ int quick_setup(int fd, struct cdrw_disc *disc, const char *device)
 	else
 		disc->udf_disc.head->blocks = disc->offset;
 
+	disc->udf_disc.blocks = disc->udf_disc.head->blocks;
+
 	if (disc->fpacket)
 	{
 		if (!disc->offset)
@@ -208,6 +210,7 @@ int mkudf_session(int fd, struct cdrw_disc *disc)
 	int i;
 
 	disc->udf_disc.head->blocks = disc->offset;
+	disc->udf_disc.blocks = disc->udf_disc.head->blocks;
 	add_type2_sparable_partition(&disc->udf_disc, 0, 2, 0);
 	disc->udf_disc.udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 
@@ -247,6 +250,7 @@ int main(int argc, char *argv[])
 	cdrw_init_disc(&disc);
 	udf_init_disc(&disc.udf_disc);
 	udf_set_version(&disc.udf_disc, 0x150);
+	disc.udf_disc.flags |= FLAG_BOOTAREA_PRESERVE;
 	filename = CDROM_DEVICE;
 	parse_args(argc, argv, &disc, &filename);
 	if (((fd = open(filename, O_RDWR | O_NONBLOCK)) < 0) &&
