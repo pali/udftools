@@ -1165,7 +1165,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 	else
 		vat_block = disc->blocks - 1;
 
-	for (i = vat_block; i > 0 && i > vat_block - 32; --i)
+	for (i = vat_block + 3; i > 0 && i > vat_block - 32; --i)
 	{
 		if (read_offset(fd, disc, &buffer, (size_t)i * disc->blocksize, sizeof(buffer), 0) < 0)
 			continue;
