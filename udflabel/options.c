@@ -76,7 +76,7 @@ static void usage(void)
 		"\t--vid=             New Volume Identifier\n"
 		"\t--vsid=            New 17.-127. character of Volume Set Identifier\n"
 		"\t--fsid=            New File Set Identifier\n"
-		"\t--fullvsid=        New Full Volume Set Identifier, overwrite --uuid and --vsid\n"
+		"\t--fullvsid=        New full Volume Set Identifier, overwrite --uuid and --vsid\n"
 		"\n"
 		"Encoding Options:\n"
 		"\t--locale           Identifier options are encoded according to current locale (default)\n"

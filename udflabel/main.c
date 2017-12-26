@@ -532,7 +532,7 @@ int main(int argc, char *argv[])
 
 		memset(buf, 0, sizeof(buf));
 		decode_string(&disc, new_fullvsid, buf, sizeof(new_fullvsid), sizeof(buf));
-		printf("Using new Full Volume Set Identifier: %s\n", buf);
+		printf("Using new full Volume Set Identifier: %s\n", buf);
 
 		memcpy(disc.udf_pvd[0]->volSetIdent, new_fullvsid, sizeof(new_fullvsid));
 		memcpy(disc.udf_pvd[1]->volSetIdent, new_fullvsid, sizeof(new_fullvsid));
