@@ -2029,7 +2029,8 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                     blank = malloc(stats->blocksize);
                     memcpy(fe, blank, stats->blocksize);
                     free(blank);
-                    unmap_chunk(dev, chunk, st_size); 
+                    //unmap_chunk(dev, chunk, st_size); 
+                    sync_chunk(dev, chunk, st_size);
                     return 32; 
                 }
             }
