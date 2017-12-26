@@ -2848,7 +2848,6 @@ static const unsigned char BitsSetTable256[256] =
  * \return -1 -- no SBD found even if declared
  */
 int fix_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
-#if 1
     int vds = -1;
     uint32_t chunksize = CHUNK_SIZE;
     uint32_t chunk = 0;
@@ -2893,10 +2892,6 @@ int fix_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t 
         dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
         dbg("[SBD] Chunk: %d, Offset: %d\n", chunk, offset);
 
-    //    uint8_t *ptr = NULL;
-    //    map_raw(fd, &ptr, (uint64_t)(chunk)*CHUNK_SIZE, sbd->numOfBytes, st_size); //map_raw(int fd, uint8_t **ptr, uint64_t offset, size_t size, size_t st_size)
-    //    sbd = (struct spaceBitmapDesc *)(ptr+offset);
-    
 #ifdef MEMTRACE    
         dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
 #else
@@ -2909,16 +2904,11 @@ int fix_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t 
         sbd->descTag.descCRC = calculate_crc(sbd, sbd->descTag.descCRCLength + sizeof(tag));
         sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
         
-     //   unmap_raw(&ptr, (uint64_t)(chunk)*CHUNK_SIZE, sbd->numOfBytes);
-
         imp("PD SBD recovery was successful.\n");
         return 0;
     }
     err("PD SBD recovery failed.\n");
     return 1;
-#else
-    return 1;
-#endif 
 }
 
 /**
