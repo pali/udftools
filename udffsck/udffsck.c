@@ -26,6 +26,8 @@
 #include <time.h>
 #include <limits.h>
 #include <sys/mman.h>
+#include <stdio.h>
+#include <inttypes.h>
 
 #include "udffsck.h"
 #include "utils.h"
@@ -336,7 +338,11 @@ void sync_chunk(uint8_t **dev, uint32_t chunk, size_t st_size) {
     uint32_t chunksize = CHUNK_SIZE;
     uint64_t rest = st_size%chunksize;
     if(dev[chunk] != NULL) {
+#ifndef MEMTRACE
+        dbg("Going to sync chunk #%d\n", chunk);
+#else
         dbg("Going to sync chunk #%d, ptr: %p\n", chunk, dev[chunk]);
+#endif
         if(rest > 0 && chunk==st_size/chunksize) {
             dbg("\tRest used\n");
             msync(dev[chunk], chunksize, MS_SYNC);
@@ -354,7 +360,12 @@ void unmap_chunk(uint8_t **dev, uint32_t chunk, size_t st_size) {
     uint32_t chunksize = CHUNK_SIZE;
     uint64_t rest = st_size%chunksize;
     if(dev[chunk] != NULL) {
+        sync_chunk(dev, chunk, st_size);
+#ifndef MEMTRACE
+        dbg("Going to unmap chunk #%d\n", chunk);
+#else
         dbg("Going to unmap chunk #%d, ptr: %p\n", chunk, dev[chunk]);
+#endif
         if(rest > 0 && chunk==st_size/chunksize) {
             dbg("\tRest used\n");
             munmap(dev[chunk], rest);
@@ -366,7 +377,9 @@ void unmap_chunk(uint8_t **dev, uint32_t chunk, size_t st_size) {
         dbg("\tChunk #%d unmapped\n", chunk);
     } else {
         dbg("\tChunk #%d is already unmapped\n", chunk);
+#ifdef MEMTRACE
         dbg("[MEMTRACE] Chunk #%d is already unmapped\n", chunk);
+#endif
     }
 }
 
@@ -377,9 +390,10 @@ void map_chunk(int fd, uint8_t **dev, uint32_t chunk, size_t st_size, char * fil
         dbg("\tChunk #%d is already mapped.\n", chunk);
         return;
     }
-
+#ifdef MEMTRACE
     dbg("[MEMTRACE] map_chunk source call: %s:%d\n", file, line);
-    dbg("\tSize: 0x%llx, chunk size 0x%llx, rest: 0x%llx\n", st_size, chunksize, rest);
+#endif
+    dbg("\tSize: 0x%x, chunk size 0x%x, rest: 0x%x\n", st_size, chunksize, rest);
 
     int prot = PROT_READ;
     // If is there some request for corrections, we need read/write access to medium
@@ -414,12 +428,18 @@ void map_chunk(int fd, uint8_t **dev, uint32_t chunk, size_t st_size, char * fil
         fatal("\tError maping: %s.\n", strerror(errno));
         exit(8);
     }
-    dbg("\tChunk #%d allocated, pointer: %p, offset 0x%llx\n", chunk, dev[chunk], (uint64_t)(chunk)*chunksize);
+#ifdef MEMTRACE
+    dbg("\tChunk #%d allocated, pointer: %p, offset 0x%x\n", chunk, dev[chunk], (uint64_t)(chunk)*chunksize);
+#else
+    dbg("\tChunk #%d allocated\n", chunk);
+#endif
 }
 
 void unmap_raw(uint8_t **ptr, uint32_t offset, size_t size) {
     if(*ptr != NULL) {
+#ifdef MEMTRACE
         dbg("Going to unmap area, ptr: %p\n", ptr);
+#endif
         munmap(*ptr, size);
         ptr = NULL;
         dbg("\tArea unmapped\n");
@@ -434,7 +454,7 @@ void map_raw(int fd, uint8_t **ptr, uint64_t offset, size_t size, size_t st_size
         return;
     }
 
-    dbg("\tSize: 0x%llx, Alloc size 0x%llx\n", st_size, size);
+    dbg("\tSize: 0x%x, Alloc size 0x%x\n", st_size, size);
 
     int prot = PROT_READ;
     // If is there some request for corrections, we need read/write access to medium
@@ -460,9 +480,13 @@ void map_raw(int fd, uint8_t **ptr, uint64_t offset, size_t size, size_t st_size
         }
 
         fatal("\tError maping: %s.\n", strerror(errno));
-        exit(16); //FIXME wrong return value
+        exit(8); 
     }
-    dbg("\tArea allocated, pointer: %p, offset 0x%llx\n", ptr, offset);
+#ifdef MEMTRACE
+    dbg("\tArea allocated, pointer: %p, offset 0x%x\n", ptr, offset);
+#else
+    dbg("\tArea allocated\n");
+#endif
 }
 
 /**
@@ -505,7 +529,9 @@ int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sec
             chunk = (16*BLOCK_SIZE+i*ssize)/chunksize; 
             map_chunk(fd, dev, chunk, st_size, __FILE__, __LINE__);
             dbg("try #%d at address 0x%x, chunk %d, chunk address: 0x%x\n", i, 16*BLOCK_SIZE+i*ssize, chunk, (16*BLOCK_SIZE+i*ssize)%chunksize);
+#ifdef MEMTRACE
             dbg("Chunk pointer: %p\n", dev[chunk]);
+#endif
             memcpy(&vsd, dev[chunk]+(16*BLOCK_SIZE+i*ssize)%chunksize, sizeof(vsd));
             dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
 
@@ -657,7 +683,9 @@ int get_avdp(int fd, uint8_t **dev, struct udf_disc *disc, int *sectorsize, size
             disc->udf_anchor[type] = malloc(sizeof(struct anchorVolDescPtr)); // Prepare memory for AVDP
         }
 
+#ifdef MEMTRACE
         dbg("AVDP chunk ptr: %p\n", dev[chunk]+offset);
+#endif
         desc_tag = *(tag *)(dev[chunk]+offset);
         dbg("Tag allocated\n");
 
@@ -763,10 +791,10 @@ int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t
             break;
     }
     chunk = location/chunksize;
-    offset = location%chunksize;
+    offset = (uint32_t)(location % (uint64_t)chunksize);
     map_chunk(fd, dev, chunk, st_size, __FILE__, __LINE__); 
     position = dev[chunk]+offset;
-    dbg("VDS Location: 0x%x, chunk: %d, offset: 0x%x\n", location, chunk, offset);
+    dbg("VDS Location: 0x%llx, chunk: %d, offset: 0x%lx\n", location, chunk, offset);
 
     // Go thru descriptors until TagIdent is 0 or amout is too big to be real
     while(counter < VDS_STRUCT_AMOUNT) {
@@ -810,7 +838,9 @@ int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t
                 }
                 dbg("Store IUVD\n");
                 disc->udf_iuvd[vds] = malloc(sizeof(struct impUseVolDesc)); // Prepare memory
+#ifdef MEMTRACE
                 dbg("Malloc ptr: %p\n", disc->udf_iuvd[vds]);
+#endif
                 memcpy(disc->udf_iuvd[vds], position, sizeof(struct impUseVolDesc));
                 dbg("Stored\n"); 
                 break;
@@ -886,7 +916,7 @@ int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t
         location = location + sectorsize;
         chunk = location/chunksize;
         offset = location%chunksize;
-        dbg("New VDS Location: 0x%x, chunk: %d, offset: 0x%x\n", location, chunk, offset);
+        dbg("New VDS Location: 0x%llx, chunk: %d, offset: 0x%lx\n", location, chunk, offset);
         map_chunk(fd, dev, chunk, st_size, __FILE__, __LINE__); 
         position = dev[chunk]+offset;
     }
@@ -1277,7 +1307,9 @@ uint8_t inspect_aed(int fd, uint8_t **dev, size_t st_size, uint32_t lsnBase, uin
             note("\n");
         }
 #endif
+#ifdef MEMTRACE
         dbg("ADArray ptr: %p\n", *ADArray);
+#endif
         dbg("lengthADArray: %d\n", *lengthADArray);
         increment_used_space(stats, lad%lbSize == 0 ? lad/lbSize : lad/lbSize + 1, aedlbn);
         return 0;
@@ -1391,7 +1423,9 @@ defualt:
 #if 1
             uint32_t line = 0;
             dbg("FID Alloc Array after AED\n");
+#ifdef MEMTRACE
             dbg("ADArray ptr: %p\n", ADArray);
+#endif
             dbg("lengthADArray: %d\n", lengthADArray);
 #endif
 #if 0       //For debug purposes only
@@ -1654,9 +1688,11 @@ uint8_t inspect_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t s
                 if(efe->descTag.tagIdent == TAG_IDENT_EFE) {
                     efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
                     efe->descTag.tagChecksum = calculate_checksum(efe->descTag);
+                    dbg("[CHECKSUM] %"PRIx16"\n", efe->descTag.tagChecksum);
                 } else if(efe->descTag.tagIdent == TAG_IDENT_FE) {
                     fe->descTag.descCRC = calculate_crc(fe, sizeof(struct fileEntry) + le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs));
                     fe->descTag.tagChecksum = calculate_checksum(fe->descTag);
+                    dbg("[CHECKSUM] %"PRIx16"\n", fe->descTag.tagChecksum);
                 } else {
                     err("(%s) FID parent FE not found.\n", info.filename);
                 }
@@ -1879,7 +1915,6 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
     uint64_t position = 0;
 
     dwarn("\n(%d) ---------------------------------------------------\n", lsn);
-
     position = lbSize*lsn; 
     chunk = position/chunksize;
     offset = position%chunksize;
@@ -1947,6 +1982,8 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                     }
                 }
                 if(fixsernum) {
+                    if(lsn==1704005)
+                        dbg("[1704005] fixsernum");
                     descTag.tagSerialNum = stats->AVDPSerialNum;
                     if(ext) {
                         efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
@@ -2076,7 +2113,7 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
 
 
             uint64_t feUUID = (ext ? efe->uniqueID : fe->uniqueID);
-            dbg("Unique ID: FE: %d FID: %d\n", (feUUID), uuid);
+            dbg("Unique ID: FE: %"PRIu64" FID: %"PRIu32"\n", (feUUID), uuid); //PRIu32 is fixing uint32_t printing
             int fixuuid = 0;
             if(uuid != feUUID) {
                 err("(%s) FE Unique ID differs from FID Unique ID.\n", info.filename);
@@ -2092,6 +2129,8 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                 }
             }
             if(fixuuid) {
+                    if(lsn==1704005)
+                        dbg("[1704005] fixuuid");
                 if(ext) {
                     efe->uniqueID = uuid;
                     efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
@@ -2169,11 +2208,15 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                 if(ext) {
                     eahd = *(struct extendedAttrHeaderDesc *)(efe + sizeof(struct extendedFileEntry) + efe->lengthExtendedAttr);
                     descTag = (tag *)((uint8_t *)(efe) + sizeof(struct extendedFileEntry) + efe->lengthExtendedAttr); 
+#ifdef MEMTRACE
                     dbg("efe: %p, POS: %d, descTag: %p\n",efe,  sizeof(struct extendedFileEntry) + efe->lengthExtendedAttr, descTag);
+#endif
                 } else {    
                     eahd = *(struct extendedAttrHeaderDesc *)(fe + sizeof(struct fileEntry) + fe->lengthExtendedAttr);
                     descTag = (tag *)((uint8_t *)(fe) + sizeof(struct fileEntry) + fe->lengthExtendedAttr); 
+#ifdef MEMTRACE
                     dbg("fe: %p, POS: %d, descTag: %p\n", fe, sizeof(struct fileEntry) + fe->lengthExtendedAttr, descTag);
+#endif
                 }
                 array = (uint8_t *)descTag;
 
@@ -2286,8 +2329,10 @@ uint8_t get_file_structure(int fd, uint8_t **dev, const struct udf_disc *disc, s
         return 4;
     }
     dbg("VDS used: %d\n", vds);
+#ifdef MEMTRACE
     dbg("Disc ptr: %p, LVD ptr: %p\n", disc, disc->udf_lvd[vds]);
     dbg("Disc ptr: %p, FSD ptr: %p\n", disc, disc->udf_fsd);
+#endif
 
     uint32_t lbSize = le32_to_cpu(disc->udf_lvd[vds]->logicalBlockSize); 
     // Go to ROOT ICB 
@@ -2803,6 +2848,7 @@ static const unsigned char BitsSetTable256[256] =
  * \return -1 -- no SBD found even if declared
  */
 int fix_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t sectorsize, struct filesystemStats *stats, vds_sequence_t *seq) {
+#if 1
     int vds = -1;
     uint32_t chunksize = CHUNK_SIZE;
     uint32_t chunk = 0;
@@ -2845,12 +2891,17 @@ int fix_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t 
         }
         dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
         dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
-        
-        uint8_t *ptr = NULL;
-        map_raw(fd, &ptr, (uint64_t)(chunk)*CHUNK_SIZE, sbd->numOfBytes, st_size); 
-        sbd = (struct spaceBitmapDesc *)(ptr+offset);
-        
+        dbg("[SBD] Chunk: %d, Offset: %d\n", chunk, offset);
+
+    //    uint8_t *ptr = NULL;
+    //    map_raw(fd, &ptr, (uint64_t)(chunk)*CHUNK_SIZE, sbd->numOfBytes, st_size); //map_raw(int fd, uint8_t **ptr, uint64_t offset, size_t size, size_t st_size)
+    //    sbd = (struct spaceBitmapDesc *)(ptr+offset);
+    
+#ifdef MEMTRACE    
         dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
+#else
+        dbg("Bitmap: %d\n", (lsnBase + phd->unallocSpaceBitmap.extPosition));
+#endif
         memcpy(sbd->bitmap, stats->actPartitionBitmap, sbd->numOfBytes);
         dbg("MEMCPY DONE\n");
 
@@ -2858,13 +2909,16 @@ int fix_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t 
         sbd->descTag.descCRC = calculate_crc(sbd, sbd->descTag.descCRCLength + sizeof(tag));
         sbd->descTag.tagChecksum = calculate_checksum(sbd->descTag);
         
-        unmap_raw(&ptr, (uint64_t)(chunk)*CHUNK_SIZE, sbd->numOfBytes);
+     //   unmap_raw(&ptr, (uint64_t)(chunk)*CHUNK_SIZE, sbd->numOfBytes);
 
         imp("PD SBD recovery was successful.\n");
         return 0;
     }
     err("PD SBD recovery failed.\n");
-    return 1; 
+    return 1;
+#else
+    return 1;
+#endif 
 }
 
 /**
@@ -2938,7 +2992,11 @@ int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size
         dbg("SBD is ok\n");
         dbg("[SBD] NumOfBits: %d\n", sbd->numOfBits);
         dbg("[SBD] NumOfBytes: %d\n", sbd->numOfBytes);
+#ifdef MEMTRACE
         dbg("Bitmap: %d, %p\n", (lsnBase + phd->unallocSpaceBitmap.extPosition), sbd->bitmap);
+#else
+        dbg("Bitmap: %d\n", (lsnBase + phd->unallocSpaceBitmap.extPosition));
+#endif
 
         //Create array for used/unused blocks counting
         stats->actPartitionBitmap = calloc(sbd->numOfBytes, 1);
@@ -2951,7 +3009,9 @@ int get_pd(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, size
         uint8_t *ptr = NULL;
         dbg("Chunk: %d\n", chunk);
         map_raw(fd, &ptr, (uint64_t)(chunk)*CHUNK_SIZE, (sbd->numOfBytes + offset), st_size);
+#ifdef MEMTRACE
         dbg("Ptr: %p\n", ptr); 
+#endif
         sbd = (struct spaceBitmapDesc *)(ptr+offset);
        
         dbg("Get bitmap statistics\n"); 

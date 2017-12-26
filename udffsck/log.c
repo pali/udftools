@@ -22,6 +22,8 @@
 #include "config.h"
 
 #include <stdarg.h>
+#include <stdio.h>
+#include <inttypes.h>
 
 #include "log.h"
 #include "options.h"
