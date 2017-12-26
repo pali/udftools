@@ -455,10 +455,12 @@ int main(void) {
         cmocka_unit_test(bs2048_defect_avdp1),
         cmocka_unit_test(bs512_crossplatform_6),
 #endif
-#if EXTRA_TESTS
+#if EXTRA_TESTS==1
         cmocka_unit_test(bs512_crossplatform_1),
         cmocka_unit_test(bs512_crossplatform_2),
         cmocka_unit_test(bs512_crossplatform_3),
+#endif
+#if EXTRA_TESTS==2
         cmocka_unit_test(bs512_crossplatform_4),
         cmocka_unit_test(bs512_crossplatform_5),
         cmocka_unit_test(bs512_crossplatform_7),

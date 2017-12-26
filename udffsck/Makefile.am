@@ -12,10 +12,15 @@ test_LDFLAGS = -lcmocka -lm
 test_CFLAGS = -DBASIC_TESTS -DDEBUG 
 noinst_PROGRAMS = test
 
-testextra_SOURCES = test.c
-testextra_LDFLAGS = -lcmocka -lm
-testextra_CFLAGS = -DEXTRA_TESTS -DDEBUG 
-noinst_PROGRAMS += testextra
+testextra1_SOURCES = test.c
+testextra1_LDFLAGS = -lcmocka -lm
+testextra1_CFLAGS = -DEXTRA_TESTS=1 -DDEBUG 
+noinst_PROGRAMS += testextra1
+
+testextra2_SOURCES = test.c
+testextra2_LDFLAGS = -lcmocka -lm
+testextra2_CFLAGS = -DEXTRA_TESTS=2 -DDEBUG 
+noinst_PROGRAMS += testextra2
 endif
 
 if DEBUG

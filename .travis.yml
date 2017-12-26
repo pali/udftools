@@ -9,8 +9,9 @@ env:
   - PLATFORM=x86_64 TESTS=
   - PLATFORM=x86    TESTS=--enable-tests TESTLEVEL=basic
   - PLATFORM=x86_64 TESTS=--enable-tests TESTLEVEL=basic
-  - PLATFORM=x86    TESTS=--enable-tests TESTLEVEL=extra
-  - PLATFORM=x86_64 TESTS=--enable-tests TESTLEVEL=extra
+# No space test machine
+#  - PLATFORM=x86    TESTS=--enable-tests TESTLEVEL=extra
+# - PLATFORM=x86_64 TESTS=--enable-tests TESTLEVEL=extra
 
 addons: &addons
   apt:
