@@ -24,7 +24,7 @@
 #define _OPTIONS_H 1
 
 void usage(void);
-void parse_args(int, char *[], struct udf_disc *, char **, int *, int *);
+void parse_args(int, char *[], struct udf_disc *, char **, int *, int *, int *);
 
 /*
  * Command line option token values.
@@ -42,6 +42,7 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, int *);
 #define OPT_MEDIA_TYPE	0x1006
 #define OPT_CLOSED	0x1007
 #define OPT_VAT		0x1008
+#define OPT_NEW_FILE	0x1009
 
 #define OPT_BLK_SIZE	0x2000
 #define OPT_UDF_REV	0x2001

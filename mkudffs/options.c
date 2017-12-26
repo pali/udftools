@@ -70,6 +70,7 @@ static struct option long_options[] = {
 	{ "u16", no_argument, NULL, OPT_UNICODE16 },
 	{ "utf8", no_argument, NULL, OPT_UTF8 },
 	{ "closed", no_argument, NULL, OPT_CLOSED },
+	{ "new-file", no_argument, NULL, OPT_NEW_FILE },
 	{ 0, 0, NULL, 0 },
 };
 
@@ -85,6 +86,7 @@ void usage(void)
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
 		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, dvdr, worm, mo, cdrw, cdr, cd, bdr; default: hd)\n"
 		"\t--udfrev=, -r      UDF revision (1.02, 1.50, 2.00, 2.01, 2.50, 2.60; default: 2.01)\n"
+		"\t--new-file         Create new image file, fail if already exists\n"
 		"\t--lvid=            Logical Volume Identifier (default: LinuxUDF)\n"
 		"\t--vid=             Volume Identifier (default: LinuxUDF)\n"
 		"\t--vsid=            17.-127. character of Volume Set Identifier (default: LinuxUDF)\n"
@@ -121,7 +123,7 @@ static unsigned long int strtoul_safe(const char *str, int base, int *failed)
 	return ret;
 }
 
-void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, int *blocksize, int *media_ptr)
+void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, int *create_new_file, int *blocksize, int *media_ptr)
 {
 	int retval;
 	int i;
@@ -195,6 +197,11 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			case OPT_NO_EFE:
 			{
 				disc->flags &= ~FLAG_EFE;
+				break;
+			}
+			case OPT_NEW_FILE:
+			{
+				*create_new_file = 1;
 				break;
 			}
 			case OPT_UNICODE8:

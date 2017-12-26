@@ -317,6 +317,7 @@ int main(int argc, char *argv[])
 	char *filename;
 	char buf[128*3];
 	int fd;
+	int create_new_file = 0;
 	int blocksize = -1;
 	int media;
 	size_t len;
@@ -325,7 +326,7 @@ int main(int argc, char *argv[])
 	appname = "mkudffs";
 
 	udf_init_disc(&disc);
-	parse_args(argc, argv, &disc, &filename, &blocksize, &media);
+	parse_args(argc, argv, &disc, &filename, &create_new_file, &blocksize, &media);
 	fd = open(filename, O_RDONLY);
 	if (fd < 0)
 	{
@@ -337,7 +338,7 @@ int main(int argc, char *argv[])
 
 		if (!disc.blocks)
 		{
-			fprintf(stderr, "%s: Error: Cannot create new file '%s': block-count was not specified\n", appname, filename);
+			fprintf(stderr, "%s: Error: Cannot create new image file '%s': block-count was not specified\n", appname, filename);
 			exit(1);
 		}
 	}
@@ -347,6 +348,12 @@ int main(int argc, char *argv[])
 		int flags2;
 		char filename2[64];
 		const char *error;
+
+		if (create_new_file)
+		{
+			fprintf(stderr, "%s: Error: Cannot create new image file '%s': %s\n", appname, filename, strerror(EEXIST));
+			exit(1);
+		}
 
 		if (fstat(fd, &stat) != 0)
 		{
@@ -454,7 +461,7 @@ int main(int argc, char *argv[])
 		fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0660);
 		if (fd < 0)
 		{
-			fprintf(stderr, "%s: Error: Cannot create new file '%s': %s\n", appname, filename, strerror(errno));
+			fprintf(stderr, "%s: Error: Cannot create new image file '%s': %s\n", appname, filename, strerror(errno));
 			exit(1);
 		}
 	}
