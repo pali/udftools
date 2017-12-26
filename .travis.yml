@@ -3,6 +3,11 @@ language: c
 compiler:
   - gcc
   - clang
+  - tcc
+
+dist:
+  - trusty
+  - precise
 
 env:
   - PLATFORM=x86    TESTS=
