@@ -129,6 +129,7 @@ int main(int argc, char *argv[]) {
     int status = 0;
     int blocksize = -1;
     struct udf_disc disc = {0};
+    struct stat stat;
     uint8_t **dev;
     off_t st_size;
     vds_sequence_t *seq; 
@@ -164,21 +165,23 @@ int main(int argc, char *argv[]) {
     }
 
     msg("Medium to analyze: %s\n", path);
-    
+
+    /* TODO remove. Replaced by check during opening
     //Check if medium is mounted or not
     FILE* mtab = setmntent("/proc/mounts", "r");
     struct mntent* m;
     struct mntent mnt;
     char strings[4096];
     while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
-        dbg("%s\n", mnt.mnt_fsname);
-        if(strcmp(mnt.mnt_fsname, path) == 0) { //Match
-            err("Medium is mounted, therefore cannot be checked. Exiting.\n");
-            exit(16);
-        }
+    dbg("%s\n", mnt.mnt_fsname);
+    if(strcmp(mnt.mnt_fsname, path) == 0) { //Match
+    err("Medium is mounted, therefore cannot be checked. Exiting.\n");
+    exit(16);
+    }
     }
 
     endmntent(mtab);
+    */
 
     int flags = O_RDONLY;
     // If is there some request for corrections, we need read/write access to medium
@@ -190,7 +193,53 @@ int main(int argc, char *argv[]) {
     if((fd = open(path, flags, 0660)) == -1) {
         fatal("Error opening %s: %s.", path, strerror(errno));
         exit(16);
-    } 
+    } else {
+        int fd2;
+        int flags2;
+        char filename2[64];
+        const char *error;
+
+        if (fstat(fd, &stat) != 0) {
+            fatal("Cannot stat device '%s': %s\n", path, strerror(errno));
+            exit(16);
+        }
+
+        flags2 = flags; 
+        if (snprintf(filename2, sizeof(filename2), "/proc/self/fd/%d", fd) >= (int)sizeof(filename2))
+        {
+            fatal("Cannot open device '%s': %s\n", path, strerror(ENAMETOOLONG));
+            exit(16);
+        }
+
+        // Re-open block device with O_EXCL mode which fails when device is already mounted
+        if (S_ISBLK(stat.st_mode))
+            flags2 |= O_EXCL;
+
+        fd2 = open(filename2, flags2);
+        if (fd2 < 0)
+        {
+            if (errno != ENOENT)
+            {
+                error = (errno != EBUSY) ? strerror(errno) : "Device is mounted or mkudffs is already running";
+                fatal("Cannot open device '%s': %s\n", path, error);
+                exit(16);
+            }
+
+            // Fallback to orignal filename when /proc is not available, but this introduce race condition between stat and open
+            fd2 = open(path, flags2);
+            if (fd2 < 0)
+            {
+                error = (errno != EBUSY) ? strerror(errno) : "Device is mounted or mkudffs is already running";
+                fatal("Cannot open device '%s': %s\n", path, error);
+                exit(16);
+            }
+        }
+
+        close(fd);
+        fd = fd2;
+
+    }
+
     if((fp = fopen(path, "r")) == NULL) {
         fatal("Error opening %s: %s.", path, strerror(errno));
         exit(16);
@@ -214,7 +263,7 @@ int main(int argc, char *argv[]) {
     } 
     st_size = ftello(fp);
     dbg("Size: 0x%lx\n", (long)st_size);
- 
+
     uint32_t chunksize = CHUNK_SIZE;
     uint64_t rest = st_size%chunksize;
     dbg("Chunk size %ld, rest: %ld\n", chunksize, rest);
@@ -249,14 +298,14 @@ int main(int argc, char *argv[]) {
         } else {
             force_sectorsize = 1;
         }
-        
+
         seq->anchor[1].error = get_avdp(fd, dev, &disc, &blocksize, st_size, SECOND_AVDP, force_sectorsize, &stats); //load AVDP
         if(seq->anchor[1].error) {
             err("AVDP[1] is broken.\n");
         } else {
             force_sectorsize = 1;
         }
-        
+
         seq->anchor[2].error = get_avdp(fd, dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
         if(seq->anchor[2].error) {
             if(seq->anchor[2].error < 255) { //Third AVDP is not necessarily present.
@@ -331,7 +380,7 @@ int main(int argc, char *argv[]) {
     if(any_error(seq) || disc.udf_lvid->integrityType != LVID_INTEGRITY_TYPE_CLOSE || fast_mode == 0) {
         status |= get_file_structure(fd, dev, &disc, st_size, lbnlsn, &stats, seq);
     }
-    
+
     dbg("PD PartitionsContentsUse\n");
     for(int i=0; i<128; ) {
         for(int j=0; j<8; j++, i++) {
@@ -350,7 +399,7 @@ int main(int argc, char *argv[]) {
     msg("Partition identifier: %s\n", stats.partitionIdent);
     msg("Next UniqueID: %d\n", stats.actUUID);
     if(fast_mode == 0) {
-    msg("Max found UniqueID: %d\n", stats.maxUUID);
+        msg("Max found UniqueID: %d\n", stats.maxUUID);
     }
     msg("Last LVID recoreded change: %s\n", print_timestamp(stats.LVIDtimestamp));
     msg("expected number of files: %d\n", stats.expNumOfFiles);
@@ -468,7 +517,7 @@ int main(int argc, char *argv[]) {
 
 
     print_metadata_sequence(seq);
-    
+
     status |= fix_vds(fd, dev, &disc, st_size, blocksize, source, seq); 
 
     int fixlvid = 0;
