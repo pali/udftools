@@ -71,7 +71,18 @@ void user_interrupt(int dummy) {
  * It instructs user to report it, because this behavior is bug.
  */
 void segv_interrupt(int dummy) {
-    fatal("Unexpected error, please report it. More info at man page. Exiting.\n");
+    fatal("Unexpected error (SEGV), please report it. More info at man page. Exiting.\n");
+    exit(8);
+}
+
+/**
+ * \brief Bus error handler
+ *
+ * If program dies because of SIGBUS, this handler catches it and die properly.
+ * It instructs user to report it, because this behavior is bug.
+ */
+void sigbus_interrupt(int dummy) {
+    fatal("Unexpected error (SIGBUS), please report it. More info at man page. Exiting.\n");
     exit(8);
 }
 
@@ -138,12 +149,21 @@ int main(int argc, char *argv[]) {
     uint16_t fix_status = 0;
     int force_sectorsize = 0;
     int third_avdp_missing = 0;
-
+    struct sigaction new_action, old_action;
     int source = -1;
 
-    signal(SIGINT, user_interrupt);
+    sigemptyset (&new_action.sa_mask);
+    new_action.sa_flags = 0;
+
+    new_action.sa_handler = user_interrupt;
+    sigaction (SIGINT, &new_action, NULL);
+
+    new_action.sa_handler = sigbus_interrupt;
+    sigaction (SIGBUS, &new_action, NULL);
+
 #ifndef DEBUG //if debugging, we want Address Sanitizer to catch those
-    signal(SIGSEGV, segv_interrupt);
+    new_action.sa_handler = segv_interrupt;
+    sigaction (SIGSEGV, &new_action, NULL);
 #endif
 
     parse_args(argc, argv, &path, &blocksize);
