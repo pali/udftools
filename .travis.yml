@@ -27,6 +27,7 @@ addons: &addons
       - gcc-multilib
       - cmake
       - tcc
+      - i386-tcc
 
 #matrix:
 #  include:
