@@ -40,6 +40,7 @@ static struct option long_options[] = {
 	{ "blocksize", required_argument, NULL, OPT_BLK_SIZE },
 	{ "vatblock", required_argument, NULL, OPT_VAT_BLOCK },
 	{ "force", no_argument, NULL, OPT_FORCE },
+	{ "no-write", no_argument, NULL, OPT_NO_WRITE },
 	{ "uuid", required_argument, NULL, OPT_UUID },
 	{ "lvid", required_argument, NULL, OPT_LVID },
 	{ "vid", required_argument, NULL, OPT_VID },
@@ -69,6 +70,7 @@ static void usage(void)
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
 		"\t--vatblock=        Block location of the Virtual Allocation Table (default: detect)\n"
 		"\t--force            Force updating UDF disks without write support (useful only for disk images)\n"
+		"\t--no-write, -n     Not really, do not write to device, just simulate\n"
 		"\n"
 		"Identifier Options:\n"
 		"\t--uuid=, -u        New UDF UUID, first 16 characters of Volume Set Identifier\n"
@@ -184,7 +186,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, 
 	int ret;
 	size_t len;
 
-	while ((ret = getopt_long(argc, argv, "b:u:h", long_options, NULL)) != EOF)
+	while ((ret = getopt_long(argc, argv, "b:nu:h", long_options, NULL)) != EOF)
 	{
 		switch (ret)
 		{
@@ -213,6 +215,10 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, 
 				break;
 			case OPT_FORCE:
 				*force = 1;
+				break;
+			case OPT_NO_WRITE:
+			case 'n':
+				disc->flags |= FLAG_NO_WRITE;
 				break;
 			case OPT_UUID:
 			case 'u':

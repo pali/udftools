@@ -154,16 +154,19 @@ static void write_desc(int fd, struct udf_disc *disc, enum udf_space_type type, 
 				return;
 			}
 
-			ret = write(fd, desc->data->buffer, desc->data->length);
-			if (ret >= 0 && (size_t)ret != desc->data->length)
+			if (!(disc->flags & FLAG_NO_WRITE))
 			{
-				errno = EIO;
-				ret = -1;
-			}
-			if (ret < 0)
-			{
-				fprintf(stderr, "%s: Error: write failed: %s\n", appname, strerror(errno));
-				return;
+				ret = write(fd, desc->data->buffer, desc->data->length);
+				if (ret >= 0 && (size_t)ret != desc->data->length)
+				{
+					errno = EIO;
+					ret = -1;
+				}
+				if (ret < 0)
+				{
+					fprintf(stderr, "%s: Error: write failed: %s\n", appname, strerror(errno));
+					return;
+				}
 			}
 
 			return;
@@ -191,6 +194,7 @@ int main(int argc, char *argv[])
 	dstring new_fullvsid[128];
 	char new_uuid[17];
 	dstring new_vsid[128];
+	int flags;
 	int force = 0;
 	int update = 0;
 	int update_pvd = 0;
@@ -241,7 +245,14 @@ int main(int argc, char *argv[])
 	if (update_pvd || update_lvd || update_iuvd || update_fsd)
 		update = 1;
 
-	fd = open(filename, update ? O_RDWR : O_RDONLY);
+	if (disc.flags & FLAG_NO_WRITE)
+		flags = O_RDONLY;
+	else if (update)
+		flags = O_RDWR;
+	else
+		flags = O_RDONLY;
+
+	fd = open(filename, flags);
 	if (fd < 0)
 	{
 		fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(errno));
@@ -560,10 +571,13 @@ int main(int argc, char *argv[])
 	}
 
 	printf("Synchronizing...\n");
-	if (fdatasync(fd) != 0)
+	if (!(disc.flags & FLAG_NO_WRITE))
 	{
-		fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
-		exit(1);
+		if (fdatasync(fd) != 0)
+		{
+			fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
 	}
 
 	if (update_fsd)
@@ -595,10 +609,13 @@ int main(int argc, char *argv[])
 	}
 
 	printf("Synchronizing...\n");
-	if (fdatasync(fd) != 0)
+	if (!(disc.flags & FLAG_NO_WRITE))
 	{
-		fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
-		exit(1);
+		if (fdatasync(fd) != 0)
+		{
+			fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
 	}
 
 	printf("Done\n");
