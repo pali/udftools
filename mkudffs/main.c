@@ -271,8 +271,11 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 		desc = ext->head;
 		while (desc != NULL)
 		{
-			if (lseek(fd, (off_t)(ext->start + desc->offset) * disc->blocksize, SEEK_SET) < 0)
-				return -1;
+			if (!(disc->flags & FLAG_NO_WRITE) || fd >= 0)
+			{
+				if (lseek(fd, (off_t)(ext->start + desc->offset) * disc->blocksize, SEEK_SET) < 0)
+					return -1;
+			}
 			data = desc->data;
 			offset = 0;
 			while (data != NULL)
@@ -289,8 +292,11 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 			length = (offset + disc->blocksize - 1) & ~(disc->blocksize - 1);
 			if (offset != length)
 				memset(buffer + offset, 0x00, length - offset);
-			if (write(fd, buffer, length) != length)
-				return -1;
+			if (!(disc->flags & FLAG_NO_WRITE))
+			{
+				if (write(fd, buffer, length) != length)
+					return -1;
+			}
 			desc = desc->next;
 		}
 	}
@@ -299,12 +305,18 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 		length = disc->blocksize;
 		blocks = ext->blocks;
 		memset(buffer, 0, length);
-		if (lseek(fd, (off_t)(ext->start) * disc->blocksize, SEEK_SET) < 0)
-			return -1;
+		if (!(disc->flags & FLAG_NO_WRITE) || fd >= 0)
+		{
+			if (lseek(fd, (off_t)(ext->start) * disc->blocksize, SEEK_SET) < 0)
+				return -1;
+		}
 		while (blocks-- > 0)
 		{
-			if (write(fd, buffer, length) != length)
-				return -1;
+			if (!(disc->flags & FLAG_NO_WRITE))
+			{
+				if (write(fd, buffer, length) != length)
+					return -1;
+			}
 		}
 	}
 	return 0;
@@ -327,6 +339,10 @@ int main(int argc, char *argv[])
 
 	udf_init_disc(&disc);
 	parse_args(argc, argv, &disc, &filename, &create_new_file, &blocksize, &media);
+
+	if (disc.flags & FLAG_NO_WRITE)
+		printf("Note: Not writing to device, just simulating\n");
+
 	fd = open(filename, O_RDONLY);
 	if (fd < 0)
 	{
@@ -361,7 +377,11 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
-		flags2 = O_RDWR;
+		if (!(disc.flags & FLAG_NO_WRITE))
+			flags2 = O_RDWR;
+		else
+			flags2 = O_RDONLY;
+
 		if (snprintf(filename2, sizeof(filename2), "/proc/self/fd/%d", fd) >= (int)sizeof(filename2))
 		{
 			fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(ENAMETOOLONG));
@@ -455,7 +475,7 @@ int main(int argc, char *argv[])
 	if (fd >= 0 && is_whole_disk(fd) == 0)
 		fprintf(stderr, "%s: Warning: Creating new UDF filesystem on partition, and not on whole disk device\n%s: Warning: UDF filesystem on partition cannot be read on Apple systems\n", appname, appname);
 
-	if (fd < 0)
+	if (fd < 0 && !(disc.flags & FLAG_NO_WRITE))
 	{
 		// Create new file disk image
 		fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0660);

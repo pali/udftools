@@ -71,6 +71,7 @@ static struct option long_options[] = {
 	{ "utf8", no_argument, NULL, OPT_UTF8 },
 	{ "closed", no_argument, NULL, OPT_CLOSED },
 	{ "new-file", no_argument, NULL, OPT_NEW_FILE },
+	{ "no-write", no_argument, NULL, OPT_NO_WRITE },
 	{ 0, 0, NULL, 0 },
 };
 
@@ -86,6 +87,7 @@ void usage(void)
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
 		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, dvdr, worm, mo, cdrw, cdr, cd, bdr; default: hd)\n"
 		"\t--udfrev=, -r      UDF revision (1.02, 1.50, 2.00, 2.01, 2.50, 2.60; default: 2.01)\n"
+		"\t--no-write, -n     Not really, do not write to device, just simulate\n"
 		"\t--new-file         Create new image file, fail if already exists\n"
 		"\t--lvid=            Logical Volume Identifier (default: LinuxUDF)\n"
 		"\t--vid=             Volume Identifier (default: LinuxUDF)\n"
@@ -135,7 +137,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	unsigned long int sparspace = 0;
 	int failed;
 
-	while ((retval = getopt_long(argc, argv, "l:u:b:m:r:h", long_options, NULL)) != EOF)
+	while ((retval = getopt_long(argc, argv, "l:u:b:m:r:nh", long_options, NULL)) != EOF)
 	{
 		switch (retval)
 		{
@@ -192,6 +194,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for Sparing Table\n", appname);
 					exit(1);
 				}
+				break;
+			}
+			case OPT_NO_WRITE:
+			case 'n':
+			{
+				disc->flags |= FLAG_NO_WRITE;
 				break;
 			}
 			case OPT_NO_EFE:
