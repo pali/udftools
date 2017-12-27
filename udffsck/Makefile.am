@@ -10,17 +10,17 @@ AM_LDFLAGS = -lm -ldl
 if TESTS
 test_SOURCES = test.c
 test_LDFLAGS = -lcmocka -lm
-test_CFLAGS = -DBASIC_TESTS -DDEBUG 
+test_CFLAGS = -DBASIC_TESTS 
 noinst_PROGRAMS = test
 
 testextra1_SOURCES = test.c
 testextra1_LDFLAGS = -lcmocka -lm
-testextra1_CFLAGS = -DEXTRA_TESTS=1 -DDEBUG 
+testextra1_CFLAGS = -DEXTRA_TESTS=1 
 noinst_PROGRAMS += testextra1
 
 testextra2_SOURCES = test.c
 testextra2_LDFLAGS = -lcmocka -lm
-testextra2_CFLAGS = -DEXTRA_TESTS=2 -DDEBUG 
+testextra2_CFLAGS = -DEXTRA_TESTS=2 
 noinst_PROGRAMS += testextra2
 endif
 

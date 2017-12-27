@@ -429,6 +429,150 @@ static void bs512_crossplatform_7(void **state) {
     assert_int_equal(fsck_wrapper(medium, "-vvp", ""), 1); //Fix it
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
 }
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+
+static void bs2048_wrong_blocksize_1(void **state) {
+    (void) state;
+    char *medium = "bs2048-r0201-dirty-file-tree";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 512"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+static void bs2048_wrong_blocksize_2(void **state) {
+    (void) state;
+    char *medium = "bs2048-r0201-dirty-file-tree-deleted-peregrine";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 1024"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 2048
+ * \note Revision: 2.01
+ */
+static void bs2048_wrong_blocksize_3(void **state) {
+    (void) state;
+    char *medium = "bs2048-r0201-broken-UUIDs";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 4096"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 512
+ * \note Revision: 2.01
+ */
+static void bs512_wrong_blocksize_1(void **state) {
+    (void) state;
+    char *medium = "udf-hdd-win7";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 1024"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 512
+ * \note Revision: 1.50
+ */
+static void bs512_wrong_blocksize_2(void **state) {
+    (void) state;
+    char *medium = "bs512-r0150";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 512
+ * \note Revision: 1.50
+ */
+static void bs512_wrong_blocksize_3(void **state) {
+    (void) state;
+    char *medium = "bs512-r0150";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 4096"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 1024
+ * \note Revision: 1.50
+ */
+static void bs1024_wrong_blocksize_1(void **state) {
+    (void) state;
+    char *medium = "bs1024-r0150";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 512"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 1024
+ * \note Revision: 1.50
+ */
+static void bs1024_wrong_blocksize_2(void **state) {
+    (void) state;
+    char *medium = "bs1024-r0150";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 1024
+ * \note Revision: 1.50
+ */
+static void bs1024_wrong_blocksize_3(void **state) {
+    (void) state;
+    char *medium = "bs1024-r0150";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 4096"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 4096
+ * \note Revision: 2.01
+ */
+static void bs4096_wrong_blocksize_1(void **state) {
+    (void) state;
+    char *medium = "bs4096";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 512"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 4096
+ * \note Revision: 2.01
+ */
+static void bs4096_wrong_blocksize_2(void **state) {
+    (void) state;
+    char *medium = "bs4096";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 1024"), 8); //Check it
+}
+
+/**
+ * \brief Test forced blocksize
+ *
+ * \note Blocksize: 4096
+ * \note Revision: 2.01
+ */
+static void bs4096_wrong_blocksize_3(void **state) {
+    (void) state;
+    char *medium = "bs4096";
+    assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-B 2048"), 8); //Check it
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -454,6 +598,18 @@ int main(void) {
         cmocka_unit_test(bs512_defect_primary_vds),
         cmocka_unit_test(bs2048_defect_avdp1),
         cmocka_unit_test(bs512_crossplatform_6),
+        cmocka_unit_test(bs512_wrong_blocksize_1),
+        cmocka_unit_test(bs512_wrong_blocksize_2),
+        cmocka_unit_test(bs512_wrong_blocksize_3),
+        cmocka_unit_test(bs1024_wrong_blocksize_1),
+        cmocka_unit_test(bs1024_wrong_blocksize_2),
+        cmocka_unit_test(bs1024_wrong_blocksize_3),
+        cmocka_unit_test(bs2048_wrong_blocksize_1),
+        cmocka_unit_test(bs2048_wrong_blocksize_2),
+        cmocka_unit_test(bs2048_wrong_blocksize_3),
+        cmocka_unit_test(bs4096_wrong_blocksize_1),
+        cmocka_unit_test(bs4096_wrong_blocksize_2),
+        cmocka_unit_test(bs4096_wrong_blocksize_3),
 #endif
 #if EXTRA_TESTS==1
         cmocka_unit_test(bs512_crossplatform_1),
