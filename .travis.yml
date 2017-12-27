@@ -7,7 +7,7 @@ compiler:
 
 dist:
   - trusty
-  - precise
+    #  - precise
 
 env:
   - PLATFORM=x86    TESTS=
