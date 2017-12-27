@@ -29,6 +29,7 @@
 #include <sys/mman.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <sys/param.h>
 
 #include "udffsck.h"
 #include "utils.h"
@@ -524,20 +525,16 @@ int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sec
             dbg("Forced sectorsize\n");
         }
 
-        if(ssize > BLOCK_SIZE) {
-            ssize = BLOCK_SIZE;
-        }
-
-        dbg("Try sectorsize %d\n", ssize);
+        dbg("Try sectorsize %d\n", MIN(ssize, BLOCK_SIZE));
 
         for(int i = 0; i<6; i++) {
-            chunk = (16 * BLOCK_SIZE + i*ssize) / chunksize; 
+            chunk = (16 * BLOCK_SIZE + i*MIN(ssize, BLOCK_SIZE)) / chunksize; 
             map_chunk(fd, dev, chunk, st_size, __FILE__, __LINE__);
-            dbg("try #%d at address 0x%x, chunk %d, chunk address: 0x%x\n", i, 16*BLOCK_SIZE+i*ssize, chunk, (16*BLOCK_SIZE+i*ssize)%chunksize);
+            dbg("try #%d at address 0x%x, chunk %d, chunk address: 0x%x\n", i, 16*BLOCK_SIZE+i*MIN(ssize, BLOCK_SIZE), chunk, (16*BLOCK_SIZE+i*MIN(ssize, BLOCK_SIZE))%chunksize);
 #ifdef MEMTRACE
             dbg("Chunk pointer: %p\n", dev[chunk]);
 #endif
-            memcpy(&vsd, dev[chunk]+(16*BLOCK_SIZE+i*ssize)%chunksize, sizeof(vsd));
+            memcpy(&vsd, dev[chunk]+(16*BLOCK_SIZE+i*MIN(ssize, BLOCK_SIZE))%chunksize, sizeof(vsd));
             dbg("vsd: type:%d, id:%s, v:%d\n", vsd.structType, vsd.stdIdent, vsd.structVersion);
 
             if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_BEA01, 5)) {
