@@ -26,6 +26,7 @@ addons: &addons
       - libreadline-dev:i386
       - gcc-multilib
       - cmake
+      - tcc
 
 #matrix:
 #  include:
