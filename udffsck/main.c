@@ -329,6 +329,7 @@ int main(int argc, char *argv[]) {
 
         seq->anchor[2].error = get_avdp(fd, dev, &disc, &blocksize, st_size, THIRD_AVDP, force_sectorsize, &stats); //load AVDP
         if(seq->anchor[2].error) {
+            dbg("AVDP[2] somehow errored, not necessarily bad thing.\n");
             if(seq->anchor[2].error < 255) { //Third AVDP is not necessarily present.
                 err("AVDP[2] is broken.\n");
             } else {
@@ -337,13 +338,19 @@ int main(int argc, char *argv[]) {
         }
 
         if((seq->anchor[0].error & ~E_EXTLEN) == 0) {
+            dbg("FIRST AVDP as source\n");
             source = FIRST_AVDP;
         } else if((seq->anchor[1].error & ~E_EXTLEN) == 0) {
+            dbg("SECOND AVDP as source\n");
             source = SECOND_AVDP;
-        } else if((seq->anchor[2].error & ~E_EXTLEN && third_avdp_missing == 0) == 0) {
+        } else if((seq->anchor[2].error & ~E_EXTLEN) == 0 && third_avdp_missing == 0) {
+            dbg("THIRD AVDP as source\n");
             source = THIRD_AVDP;
         } else {
-            err("All AVDP are broken. Aborting.\n");
+            if(force_sectorsize)
+                err("All AVDP are broken or wrong block size was entered. Try running without -B option. Aborting.\n");
+            else
+                err("All AVDP are broken. Aborting.\n");
             exit(4);
         }
     }
@@ -370,6 +377,12 @@ int main(int argc, char *argv[]) {
     verify_vds(&disc, MAIN_VDS, seq);
     dbg("Second VDS verification\n");
     verify_vds(&disc, RESERVE_VDS, seq);
+
+    //Check if blocksizes matches. If not, exit.
+    int blocksize_status = check_blocksize(fd, dev, &disc, blocksize, force_sectorsize, seq);
+    if(blocksize_status != 0)
+        exit(status | blocksize_status);
+
 
     status |= get_lvid(fd, dev, &disc, blocksize, st_size, &stats, seq); //load LVID
     if(stats.minUDFReadRev > MAX_VERSION){

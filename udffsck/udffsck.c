@@ -1043,6 +1043,48 @@ int get_lvid(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_
 }
 
 /**
+ * \brief Checks Logical Block Size stored in LVD with autodetected or declared size.
+ *
+ * Compare LVD->LogicalBlockSize with detected or declared block size. If they matches, fsck can continue.
+ * Otherwise it stops with fatal error, because medium is badly created and therefore unfixable.
+ *
+ * Return can be sum of its parts.
+ *
+ * \param[in] fd device file descriptor
+ * \param[in] *dev pointer to device array
+ * \param[out] *disc udf_disc structure
+ * \param[in] blocksize device logical sector size
+ * \param[in] force_blocksize 1 represent user defined sector size
+ * \param[in] *seq descriptor sequence
+ * \return 0 blocksize matches
+ * \return 4 blocksize differs from detected one
+ * \return 16 blocksize differs from declared one
+ */
+int check_blocksize(int fd, uint8_t **dev, struct udf_disc *disc, int blocksize, int force_sectorsize, vds_sequence_t *seq) {
+
+    int vds = -1;
+    if((vds=get_correct(seq, TAG_IDENT_LVD)) < 0) {
+        err("No correct LVD found. Aborting.\n");
+        return 4;
+    }
+
+    uint32_t lvd_blocksize = disc->udf_lvd[vds]->logicalBlockSize;
+    
+
+    if(lvd_blocksize != blocksize) {
+        if(force_sectorsize) {
+            err("User defined block size is not corresponding to detected. Aborting.\n");
+            return 16 | 4;
+        }
+
+        err("Detected block size is not corresponding to stored in medium. Probably badly created UDF. Aborting.\n");
+        return 4;
+    }
+   
+    dbg("Blocksize matches.\n"); 
+    return 0; 
+}
+/**
  * \brief Select various volume identifiers and store them at stats structure
  * 
  * At this moment it selects PVD->volSetIdent and FSD->logicalVolIdent
