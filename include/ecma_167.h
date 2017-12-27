@@ -108,7 +108,6 @@ struct volStructDesc
 
 /* Standard Identifier (EMCA 167r2 2/9.1.2) */
 #define VSD_STD_ID_NSR02		"NSR02"	/* (3/9.1) */
-#define VSD_STD_ID_NSR01        "NSR01" /* (3/9.1) */
 
 /* Standard Identifier (ECMA 167r3 2/9.1.2) */
 #define VSD_STD_ID_BEA01		"BEA01"	/* (2/9.2) */

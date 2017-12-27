@@ -549,8 +549,6 @@ int is_udf(int fd, uint8_t **dev, int *sectorsize, size_t st_size, int force_sec
                 err("CDW02 found, unsuported for now.\n");
                 unmap_chunk(dev, chunk, st_size);
                 return -1;
-            } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR01, 5)) {
-                memcpy(&nsr, &vsd, sizeof(nsr));
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR02, 5)) {
                 memcpy(&nsr, &vsd, sizeof(nsr));
             } else if(!strncmp((char *)vsd.stdIdent, VSD_STD_ID_NSR03, 5)) {
