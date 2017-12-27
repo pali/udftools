@@ -202,6 +202,13 @@ int main(int argc, char *argv[])
 	int update_iuvd = 0;
 	int update_fsd = 0;
 
+	if (fcntl(0, F_GETFL) < 0 && open("/dev/null", O_RDONLY) < 0)
+		_exit(1);
+	if (fcntl(1, F_GETFL) < 0 && open("/dev/null", O_WRONLY) < 0)
+		_exit(1);
+	if (fcntl(2, F_GETFL) < 0 && open("/dev/null", O_WRONLY) < 0)
+		_exit(1);
+
 	setlocale(LC_CTYPE, "");
 	appname = "udflabel";
 
