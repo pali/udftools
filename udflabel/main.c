@@ -180,6 +180,7 @@ static void write_desc(int fd, struct udf_disc *disc, enum udf_space_type type, 
 int main(int argc, char *argv[])
 {
 	struct udf_disc disc;
+	struct stat stat;
 	char *filename;
 	struct partitionDesc *pd;
 	struct logicalVolDesc *lvd;
@@ -194,7 +195,6 @@ int main(int argc, char *argv[])
 	dstring new_fullvsid[128];
 	char new_uuid[17];
 	dstring new_vsid[128];
-	int flags;
 	int force = 0;
 	int update = 0;
 	int update_pvd = 0;
@@ -226,6 +226,9 @@ int main(int argc, char *argv[])
 
 	parse_args(argc, argv, &disc, &filename, &force, new_lvid, new_vid, new_fsid, new_fullvsid, new_uuid, new_vsid);
 
+	if (disc.flags & FLAG_NO_WRITE)
+		printf("Note: Not writing to device, just simulating\n");
+
 	if (new_lvid[0] != 0xFF)
 	{
 		update_lvd = 1;
@@ -245,18 +248,63 @@ int main(int argc, char *argv[])
 	if (update_pvd || update_lvd || update_iuvd || update_fsd)
 		update = 1;
 
-	if (disc.flags & FLAG_NO_WRITE)
-		flags = O_RDONLY;
-	else if (update)
-		flags = O_RDWR;
-	else
-		flags = O_RDONLY;
-
-	fd = open(filename, flags);
+	fd = open(filename, O_RDONLY);
 	if (fd < 0)
 	{
 		fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(errno));
 		exit(1);
+	}
+
+	if (update)
+	{
+		int fd2;
+		int flags2;
+		char filename2[64];
+		const char *error;
+
+		if (fstat(fd, &stat) != 0)
+		{
+			fprintf(stderr, "%s: Error: Cannot stat device '%s': %s\n", appname, filename, strerror(errno));
+			exit(1);
+		}
+
+		if (!(disc.flags & FLAG_NO_WRITE))
+			flags2 = O_RDWR;
+		else
+			flags2 = O_RDONLY;
+
+		if (snprintf(filename2, sizeof(filename2), "/proc/self/fd/%d", fd) >= (int)sizeof(filename2))
+		{
+			fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(ENAMETOOLONG));
+			exit(1);
+		}
+
+		// Re-open block device with O_EXCL mode which fails when device is already mounted
+		if (S_ISBLK(stat.st_mode))
+			flags2 |= O_EXCL;
+
+		fd2 = open(filename2, flags2);
+		if (fd2 < 0)
+		{
+			if (errno != ENOENT)
+			{
+				error = (errno != EBUSY) ? strerror(errno) : "Device is busy, maybe mounted?";
+				fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, error);
+				exit(1);
+			}
+
+			// Fallback to orignal filename when /proc is not available, but this introduce race condition between stat and open
+			fd2 = open(filename, flags2);
+			if (fd2 < 0)
+			{
+				error = (errno != EBUSY) ? strerror(errno) : "Device is busy, maybe mounted?";
+				fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, error);
+				exit(1);
+			}
+		}
+
+		close(fd);
+		fd = fd2;
 	}
 
 	disc.blksize = get_size(fd);
@@ -293,6 +341,8 @@ int main(int argc, char *argv[])
 		putchar('\n');
 		return 0;
 	}
+
+	printf("Updating device: %s\n", filename);
 
 	if (!disc.udf_lvid || le32_to_cpu(disc.udf_lvid->integrityType) != LVID_INTEGRITY_TYPE_CLOSE)
 	{
