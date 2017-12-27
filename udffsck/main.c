@@ -83,7 +83,7 @@ void segv_interrupt(int dummy) {
  * It instructs user to report it, because this behavior is bug.
  */
 void sigbus_interrupt(int dummy) {
-    fatal("Unexpected error (SIGBUS), please report it. More info at man page. Exiting.\n");
+    fatal("Medium changed its size during fsck run. Is somebody manipulating with it? Exiting.\n");
     exit(8);
 }
 
