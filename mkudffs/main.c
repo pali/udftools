@@ -145,6 +145,7 @@ static void detect_blocksize(int fd, struct udf_disc *disc, int *blocksize)
 		return;
 	}
 
+	disc->blocksize = size;
 	*blocksize = disc->blocksize;
 	disc->udf_lvd[0]->logicalBlockSize = cpu_to_le32(disc->blocksize);
 #endif
