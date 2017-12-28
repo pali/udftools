@@ -14,7 +14,7 @@ AC_CHECK_LIB(readline, readline, [ ], AC_MSG_ERROR([cannot find -lreadline.]))
 
 dnl Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS(fcntl.h malloc.h sys/time.h unistd.h endian.h getopt.h sys/isa_defs.h string.h strings.h)
+AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h getopt.h string.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
