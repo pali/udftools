@@ -27,9 +27,9 @@ udflabel \- show or change UDF filesystem label
 When \fBudflabel\fP is invoked without \fBidentifier-options\fP and without
 specifying \fInew-label\fP then it show current label of UDF filesystem on
 \fIdevice\fP to standard output terminated by new line. Otherwise it update
-UDF filesystem on \fIdevice\fP with new specified identifiers from
-\fBidentifier-options\fP. Specifying \fInew-label\fP is synonym for both
-\fI\-\-lvid\fP and \fI\-\-vid\fP, see section \fBUDF LABEL AND UUID\fP.
+UDF filesystem (up to the revision 2.60) on \fIdevice\fP with new specified
+identifiers from \fBidentifier-options\fP. Specifying \fInew-label\fP is synonym
+for both \fI\-\-lvid\fP and \fI\-\-vid\fP, see section \fBUDF LABEL AND UUID\fP.
 
 .SH OPTIONS
 
@@ -41,7 +41,7 @@ Display the usage and the list of options.
 .SS "BLOCK OPTIONS"
 .TP
 .BI \-b,\-\-blocksize= " block\-size "
-Specify the size of blocks in bytes. Valid block size for a UDF file system is
+Specify the size of blocks in bytes. Valid block size for a UDF filesystem is
 power of two in range from 512 to 32768 and must match a device logical (sector)
 size. If omitted, \fBudflabel\fP tries to autodetect block size. It tries logical
 (sector) size and then all valid block sizes.
@@ -83,7 +83,8 @@ overwritten.
 .BI \-u,\-\-uuid= " uuid "
 Specify the UDF uuid. Must be exactly 16 hexadecimal lowercase digits and is
 used for first 16 characters of \fB\-\-fullvsid\fP option. Special value
-\fBrandom\fP generates new random uuid. See section \fBUDF LABEL AND UUID\fP.
+\fBrandom\fP generates new uuid from local time and random number. See section
+\fBUDF LABEL AND UUID\fP.
 
 .TP
 .BI \-\-lvid= " new\-logical\-volume\-identifier "
@@ -142,12 +143,13 @@ Volume Identifier as a UDF disk label.
 UDF specification does not have concept of disk UUID like other filesystems. But
 mandates that the first 16 characters of UDF Volume Set Identifier are unique,
 a non-fixed and a non-trivial value. Plus first eight characters are hexadecimal
-digits. Windows application format.exe is known to violates this requirement and
-set only the first 8 characters as unique (others are fixed). Because more UDF
-implementations use in the first 16 characters only hexadecimal digits and all
-compliant UDF implementations have hexadecimal digits in the first 8 characters,
-the following algorithm for generating stable UUID was informally chosen and now
-is used by udftools, util-linux, grub2 and other projects:
+digits. Windows application format.exe and Mac OS X application newfs_udf are
+known to violates this requirement and set only the first 8 characters as unique
+(others are fixed). Because there are still lot of UDF implementations which use
+in the first 16 characters only hexadecimal digits and all compliant UDF
+implementations have hexadecimal digits in the first 8 characters, the following
+algorithm for generating stable UUID was informally chosen and now is used by
+udftools, util-linux, grub2 and other projects:
 
 .RS
 0. If Volume Set Identifier has less then 8 characters then stop with empty UUID
@@ -181,9 +183,10 @@ device does not contain UDF filesystem or updating failed.
 
 .SH LIMITATIONS
 \fBudflabel\fP is not able to set new Label, Logical Volume Identifier and File
-Set Identifier for disks with Virtual Allocation Table. Also is not able to read
-Label correctly if disk has Virtual Allocation Table stored outside of
-Information Control Block.
+Set Identifier for disks with Metadata Partition (used by UDF revisions higher
+then 2.01) or Virtual Allocation Table (used by Write Once media). Also is not
+able to read Label correctly if disk has Virtual Allocation Table stored outside
+of Information Control Block.
 
 .SH AUTHOR
 .nf
