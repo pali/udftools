@@ -2,7 +2,7 @@
  * libudffs.h
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
- * Copyright (c) 2016       Pali Rohár <pali.rohar@gmail.com>
+ * Copyright (c) 2016-2017  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 1999,2000	Jens Axboe <axboe@suse.de>
  * Copyright (c) 2004		Peter Osterlund <petero2@telia.com>
+ * Copyright (c) 2014-2017	Pali Rohár <pali.rohar@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
