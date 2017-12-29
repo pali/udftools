@@ -627,13 +627,16 @@ int main(int argc, char *argv[])
 		write_desc(fd, &disc, MVDS, TAG_IDENT_IUVD, disc.udf_iuvd[0]);
 	}
 
-	printf("Synchronizing...\n");
-	if (!(disc.flags & FLAG_NO_WRITE))
+	if (update_pvd || update_lvd || update_iuvd)
 	{
-		if (fdatasync(fd) != 0)
+		printf("Synchronizing...\n");
+		if (!(disc.flags & FLAG_NO_WRITE))
 		{
-			fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
-			exit(1);
+			if (fdatasync(fd) != 0)
+			{
+				fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
+				exit(1);
+			}
 		}
 	}
 
