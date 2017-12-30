@@ -71,6 +71,7 @@ static struct option long_options[] = {
 	{ "closed", no_argument, NULL, OPT_CLOSED },
 	{ "new-file", no_argument, NULL, OPT_NEW_FILE },
 	{ "no-write", no_argument, NULL, OPT_NO_WRITE },
+	{ "badblocks", required_argument, NULL, OPT_BADBLOCKS },
 	{ 0, 0, NULL, 0 },
 };
 
@@ -110,18 +111,24 @@ void usage(void)
 		"\t--u8               String options are encoded in 8-bit OSTA Compressed Unicode format\n"
 		"\t--u16              String options are encoded in 16-bit OSTA Compressed Unicode format\n"
 		"\t--utf8             String options are encoded in UTF-8\n"
+		"\t--badblocks=       Comma separated list of badblocks, e.g., 1-2,3-4,5-6\n"
 	);
 	exit(1);
 }
 
-static unsigned long int strtoul_safe(const char *str, int base, int *failed)
+static unsigned long int strtoul_safe_c(const char *str, int base, char c, int *failed)
 {
 	char *endptr = NULL;
 	unsigned long int ret;
 	errno = 0;
 	ret = strtoul(str, &endptr, base);
-	*failed = (!*str || *endptr || errno) ? 1 : 0;
+	*failed = (!*str || *endptr != c || errno) ? 1 : 0;
 	return ret;
+}
+
+static unsigned long int strtoul_safe(const char *str, int base, int *failed)
+{
+	return strtoul_safe_c(str, base, '\0', failed);
 }
 
 void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, int *create_new_file, int *blocksize, int *media_ptr)
@@ -673,6 +680,36 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					fprintf(stderr, "%s: Error: Invalid value for option --ad\n", appname);
 					exit(1);
 				}
+				break;
+			}
+			case OPT_BADBLOCKS:
+			{
+				char *n = optarg, *end = optarg + strlen(optarg);
+				while(n != end) {
+					unsigned long int bad_i = 0, bad_j = 0;
+					char *d, *p = strchr(n, ',');
+					if (!p)
+						p = end;
+					d = (char*)memchr(n, '-', p - n);
+					failed = !d;
+					if (!failed)
+					{
+						bad_i = strtoul_safe_c(n, 0, '-', &failed);
+						failed = bad_i > UINT32_MAX;
+					}
+					if (!failed)
+					{
+						bad_j = strtoul_safe_c(d + 1, 0, p == end ? '\0' : ',', &failed);
+						failed = bad_j > UINT32_MAX || bad_j < bad_i;
+					}
+					if (failed)
+					{
+						fputs("Error: Invalid format for bad block list\n", stderr);
+						exit(1);
+					}
+					add_badblocks(disc, bad_i, bad_j - bad_i + 1);
+					n = p == end ? end : p + 1;
+				};
 				break;
 			}
 			default:

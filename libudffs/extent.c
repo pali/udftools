@@ -493,3 +493,17 @@ struct udf_data *alloc_data(void *buffer, int length)
 
 	return data;
 }
+
+/**
+ * @brief add a range of bad blocks to disc
+ */
+
+void add_badblocks(struct udf_disc *disc, uint32_t start, uint32_t blocks)
+{
+	struct udf_badblock_frag *frag = malloc(sizeof(*frag));
+	frag->start = start;
+	frag->blocks = blocks;
+	frag->next = NULL;
+	*disc->badblocks_tail = frag;
+	disc->badblocks_tail = &frag->next;
+}
