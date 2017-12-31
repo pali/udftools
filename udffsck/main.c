@@ -370,9 +370,9 @@ int main(int argc, char *argv[]) {
     status |= get_vds(fd, dev, &disc, blocksize, st_size, source, RESERVE_VDS, seq); //load reserve VDS
 
     dbg("First VDS verification\n");
-    verify_vds(&disc, MAIN_VDS, seq);
+    verify_vds(&disc, MAIN_VDS, seq, &stats);
     dbg("Second VDS verification\n");
-    verify_vds(&disc, RESERVE_VDS, seq);
+    verify_vds(&disc, RESERVE_VDS, seq, &stats);
 
     //Check if blocksizes matches. If not, exit.
     int blocksize_status = check_blocksize(fd, dev, &disc, blocksize, force_sectorsize, seq);

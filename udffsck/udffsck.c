@@ -38,6 +38,7 @@ uint8_t inspect_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t s
 void print_file_chunks(struct filesystemStats *stats);
 int copy_descriptor(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t sectorsize, uint32_t sourcePosition, uint32_t destinationPosition, size_t size);
 int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t error);
+uint8_t get_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds);
 
 // Local defines
 #define MARK_BLOCK 1    ///< Mark switch for markUsedBlock() function
@@ -2533,6 +2534,30 @@ int append_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds, uint8_t
 }
 
 /**
+ * \brief Support function for getting error from seq structure
+ *
+ * \param[in,out] *seq VDS sequence
+ * \param[in] tagIdent identifier of descriptor to find
+ * \param[in] vds VDS to search
+ *
+ * \return requested error if found or UINT8_MAX if not 
+ */
+uint8_t get_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds) {
+    for(int i=0; i<VDS_STRUCT_AMOUNT; ++i) {
+        if(vds == MAIN_VDS) {
+            if(seq->main[i].tagIdent == tagIdent) {
+                return seq->main[i].error;
+            }
+        } else {
+            if(seq->reserve[i].tagIdent == tagIdent) {
+                return seq->reserve[i].error;
+            }
+        }
+    }
+    return -1;
+}
+
+/**
  * \brief Support function for getting tag location from seq structure
  *
  * \param[in,out] *seq VDS sequence
@@ -2556,6 +2581,7 @@ uint32_t get_tag_location(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds
     return -1;
 }
 
+
 /**
  * \brief VDS verification structure
  *
@@ -2567,7 +2593,7 @@ uint32_t get_tag_location(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds
  *
  * \return 0
  */
-int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq) {
+int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq, struct filesystemStats *stats) {
     uint8_t *data;
     uint16_t offset = sizeof(tag);
 
@@ -2644,6 +2670,25 @@ int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq) {
     if(crc(disc->udf_td[vds], sizeof(struct terminatingDesc))) {
         err("CRC error at TD[%d]\n", vds);
         append_error(seq, TAG_IDENT_TD, vds, E_CRC);
+    }
+
+
+    if(get_error(seq, TAG_IDENT_LVD, vds) == 0) {
+        stats->dstringLVDLogicalVolIdentErr[vds] = check_dstring(disc->udf_lvd[vds]->logicalVolIdent, 128);
+    }
+
+    if(get_error(seq, TAG_IDENT_PVD, vds) == 0) {
+        stats->dstringPVDVolIdentErr[vds] = check_dstring(disc->udf_pvd[vds]->volIdent, 32);
+        stats->dstringPVDVolSetIdentErr[vds] = check_dstring(disc->udf_pvd[vds]->volSetIdent, 128);
+    }
+
+    if(get_error(seq, TAG_IDENT_IUVD, vds) == 0) {
+        struct impUseVolDescImpUse * impUse = (struct impUseVolDescImpUse *)disc->udf_iuvd[vds]->impUse;
+
+        stats->dstringIUVDLVInfo1Err[vds] = check_dstring(impUse->LVInfo1, 36);
+        stats->dstringIUVDLVInfo2Err[vds] = check_dstring(impUse->LVInfo2, 36);
+        stats->dstringIUVDLVInfo3Err[vds] = check_dstring(impUse->LVInfo3, 36);
+        stats->dstringIUVDLogicalVolIdentErr[vds] = check_dstring(impUse->logicalVolIdent, 128);
     }
 
     dbg("Verify VDS done\n");

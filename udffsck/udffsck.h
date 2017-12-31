@@ -95,6 +95,15 @@ struct filesystemStats {
     uint8_t dstringFSDFileSetIdentErr;
     uint8_t dstringFSDCopyrightFileIdentErr;
     uint8_t dstringFSDAbstractFileIdentErr;
+    uint8_t dstringPVDVolIdentErr[VDS_STRUCT_AMOUNT];
+    uint8_t dstringPVDVolSetIdentErr[VDS_STRUCT_AMOUNT];
+    uint8_t dstringLVDLogicalVolIdentErr[VDS_STRUCT_AMOUNT];
+    uint8_t dstringIUVDLVInfo1Err[VDS_STRUCT_AMOUNT];
+    uint8_t dstringIUVDLVInfo2Err[VDS_STRUCT_AMOUNT];
+    uint8_t dstringIUVDLVInfo3Err[VDS_STRUCT_AMOUNT];
+    uint8_t dstringIUVDLogicalVolIdentErr[VDS_STRUCT_AMOUNT];
+
+
 };
 
 struct fileInfo {
@@ -149,7 +158,7 @@ int fix_avdp(int fd, uint8_t **dev, struct udf_disc *disc, size_t sectorsize, si
 
 // VDS functions
 int get_vds(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t st_size, avdp_type_e avdp, vds_type_e vds, vds_sequence_t *seq);
-int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq);
+int verify_vds(struct udf_disc *disc, vds_type_e vds, vds_sequence_t *seq, struct filesystemStats *stats);
 int fix_vds(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t sectorsize, avdp_type_e source, vds_sequence_t *seq); 
 
 // LVID functions
