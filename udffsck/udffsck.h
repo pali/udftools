@@ -57,7 +57,8 @@ typedef struct {
     metadata_t main[VDS_STRUCT_AMOUNT];
     metadata_t reserve[VDS_STRUCT_AMOUNT];   
     metadata_t lvid;
-    metadata_t pd; 
+    metadata_t pd;
+    metadata_t fsd; 
 } vds_sequence_t;
 
 typedef struct {

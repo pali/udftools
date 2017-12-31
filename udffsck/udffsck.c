@@ -562,9 +562,7 @@ int check_dstring(dstring *in, size_t field_size) {
         }
 
         // eol_flag contains first NULL position. 
-        // Position is counted from 1 (we need subtract that)
-        // Stepping multiplication is for respecting 8 or 16 bits
-        if(((length * stepping) != (eol_flag - 1)) && eol_flag != 0xFF ) {
+        if(((length) != (eol_flag)) && eol_flag != 0xFF ) {
             err("Dstring has mismatch between actual and declared length\n");
             dbg("eol_flag: %d\n", eol_flag);
             e_code |= DSTRING_E_WRONG_LENGTH;
@@ -1300,6 +1298,8 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
 /**
  * \brief Loads File Set Descriptor and stores it at struct udf_disc
  *
+ *  After storing also do check for dstring defects.
+ *
  * \param[in] *dev pointer to device array
  * \param[out] *disc FSD is stored in udf_disc structure
  * \param[in] sectorsize device logical sector size
@@ -1309,6 +1309,8 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
  *
  * \return 0 everything ok
  * \return 4 no correct PD or LVD found
+ * \return 8 error during FSD identification
+ * \return 9 error in dstrings found
  */
 uint8_t get_fsd(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t st_size, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq) {
     long_ad *lap;
@@ -1368,7 +1370,17 @@ uint8_t get_fsd(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, si
     *lbnlsn = lsnBase;
 
     unmap_chunk(dev, chunk, st_size);
-    return 0;
+
+    uint8_t dstring_ret = 0;
+
+    dstring_ret |= check_dstring(disc->udf_fsd->logicalVolIdent, 128);
+    dstring_ret |= check_dstring(disc->udf_fsd->fileSetIdent, 32);
+    dstring_ret |= check_dstring(disc->udf_fsd->copyrightFileIdent, 32);
+    dstring_ret |= check_dstring(disc->udf_fsd->abstractFileIdent, 32);
+
+    seq->fsd.error = dstring_ret;
+
+    return 0 | (dstring_ret ? 9 : 0);
 }
 
 /**
