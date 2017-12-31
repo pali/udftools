@@ -36,3 +36,8 @@ if [ "$1" == 'extra2' ]; then
     rm udf-samples-extra.tar.xz
     cd udftools/udffsck
 fi
+
+if [ "$1" == 'unit' ]; then
+    cd udffsck
+    ./unittest
+fi

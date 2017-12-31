@@ -124,6 +124,12 @@ struct impUseLVID {
 #define E_FILES         0b10000000
 #define E_EXTLEN        0b10000000 //AVDP specific
 
+#define DSTRING_E_NONZERO_PADDING       0x01
+#define DSTRING_E_WRONG_LENGTH          0x02
+#define DSTRING_E_INVALID_CHARACTERS    0x04
+#define DSTRING_E_NOT_EMPTY             0x08
+#define DSTRING_E_UNKNOWN_COMP_ID       0x10
+
 // Support functions
 char * print_timestamp(timestamp ts);
 uint64_t count_used_bits(struct filesystemStats *stats);
@@ -156,5 +162,8 @@ uint8_t get_file_structure(int fd, uint8_t **dev, const struct udf_disc *disc, s
 
 // Check for match on blocksize
 int check_blocksize(int fd, uint8_t **dev, struct udf_disc *disc, int blocksize, int force_sectorsize, vds_sequence_t *seq);
+
+// Check and correct d-string
+int check_dstring(dstring *in, size_t field_size);
 
 #endif //__UDFFSCK_H__

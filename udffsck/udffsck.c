@@ -487,6 +487,104 @@ void map_raw(int fd, uint8_t **ptr, uint64_t offset, size_t size, size_t st_size
 }
 
 /**
+ * \brief Function for detection of errors in dstrings
+ *
+ * This function detects violation against UDF 2.1.1 in dstrings
+ * Theese violations are:
+ *  1. Non-zero padding
+ *  2. Not allowed characters for 16 bit dchars (0xFFFE and 0xFEFF)
+ *  3. Unknown compression ID
+ *  4. Emptyness of string if ID is 0 or length is 0
+ *  5. String legth mismatch
+ *
+ * \param[in] in dstring for check
+ * \param[in] field_size size of dstring field
+ * \return sum of DSTRING_E codes 
+ */
+int check_dstring(dstring *in, size_t field_size) {
+    uint8_t compID = in[0];
+    uint8_t length = in[field_size-1];
+    uint8_t stepping = 0xFF;
+    uint8_t empty_flag = 0;
+    uint8_t e_code = 0;
+
+    dbg("compID: %d, length: %d\n", compID, length);
+    switch(compID) {
+        case 8: 
+            stepping = 1;
+            break;
+        case 16: 
+            stepping = 2;
+            break;
+        case 0:
+            stepping = 1;
+            empty_flag = 1;
+            break;
+        default:
+            err("Unknown dstring compression ID.\n");
+            return DSTRING_E_UNKNOWN_COMP_ID;
+    }
+
+    if(empty_flag || length == 0) {
+        // Check for emptyness
+        for(int i = 0; i < field_size; i += stepping) {
+            if(in[i] != 0) {
+                err("Dstring is not empty.\n");
+                e_code |= DSTRING_E_NOT_EMPTY;
+            }
+        }
+    } else {
+        // Leave first and last bytes, they are special.
+        // Stepping +1 if 8bit or +2 if 16bit character length
+        
+        // Check for length and zero padding.
+        uint8_t char_count = 0;
+        uint8_t eol_flag = 0xFF;
+        for(int i = 1; i < field_size-1; i += stepping) {
+            // We need to check if character is 0.
+            // For 8bit: we check character twice to keep code simplicity.
+            // For 16bit: we check character i and i+1
+            // 
+            // If hole (NULL character) detected, eol_flag is set.
+            // If eol is set and characted is detected, it is violation of UDF 2.1.1
+            if(in[i] != 0 || in[i+stepping-1] != 0) {
+                if(eol_flag < 0xFF) {
+                    err("Dstring has non-zero padding\n");
+                    e_code |= DSTRING_E_NONZERO_PADDING;
+                } else {
+                    ++char_count;
+                }
+            } else {
+                if(eol_flag == 0xFF) {
+                    eol_flag = i;
+                }
+            }
+        }
+
+        // eol_flag contains first NULL position. 
+        // Position is counted from 1 (we need subtract that)
+        // Stepping multiplication is for respecting 8 or 16 bits
+        if(((length * stepping) != (eol_flag - 1)) && eol_flag != 0xFF ) {
+            err("Dstring has mismatch between actual and declared length\n");
+            dbg("eol_flag: %d\n", eol_flag);
+            e_code |= DSTRING_E_WRONG_LENGTH;
+        }
+
+        // Check for valid characters. Only for 16 bit makes sense.
+        // All uincode 1.1 characters are valid. Only endinness codes are invalid (0xFFFE and 0xFEFF)
+        if(stepping == 2) {
+            for(int i = 1; i < field_size-1; i += stepping) {
+                if((in[i] == 0xFF && in[i+1] == 0xFE) || (in[i] == 0xFE && in[i+1] == 0xFF)) {
+                    err("Dstring contains invalid characters\n");
+                    e_code |= DSTRING_E_INVALID_CHARACTERS;
+                }
+            } 
+        }
+    }
+    return e_code;
+}
+
+/**
  * \brief UDF VRS detection function
  *
  * This function is trying to find VRS at sector 16.

@@ -10,8 +10,10 @@ dist:
     #  - precise
 
 env:
-  - PLATFORM=x86    TESTS=
-  - PLATFORM=x86_64 TESTS=
+  - platform=x86    tests=
+  - platform=x86_64 tests=
+  - platform=x86    tests=--enable-tests TESTLEVEL=unit
+  - platform=x86_64 tests=--enable-tests TESTLEVEL=unit
   - PLATFORM=x86    TESTS=--enable-tests TESTLEVEL=basic
   - PLATFORM=x86_64 TESTS=--enable-tests TESTLEVEL=basic
   - PLATFORM=x86    TESTS=--enable-tests TESTLEVEL=extra1
