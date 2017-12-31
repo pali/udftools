@@ -404,6 +404,9 @@ int main(int argc, char *argv[]) {
     if(status >= 8) {
         err("Unable to continue without FSD. Consider submitting bug report. Exiting.\n");
         exit(status);
+    } else if(status >= 4) {
+        err("Unable to continue without FSD. Medium seems unrecoverable. Exiting.\n");
+        exit(status);
     }
 
     note("LBNLSN: %d\n", lbnlsn);

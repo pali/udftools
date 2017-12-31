@@ -58,7 +58,6 @@ typedef struct {
     metadata_t reserve[VDS_STRUCT_AMOUNT];   
     metadata_t lvid;
     metadata_t pd;
-    metadata_t fsd; 
 } vds_sequence_t;
 
 typedef struct {
@@ -92,6 +91,10 @@ struct filesystemStats {
     timestamp LVIDtimestamp;
     dstring * partitionIdent;
     char * volumeSetIdent;
+    uint8_t dstringFSDLogVolIdentErr;
+    uint8_t dstringFSDFileSetIdentErr;
+    uint8_t dstringFSDCopyrightFileIdentErr;
+    uint8_t dstringFSDAbstractFileIdentErr;
 };
 
 struct fileInfo {

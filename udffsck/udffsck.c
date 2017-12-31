@@ -1310,7 +1310,6 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
  * \return 0 everything ok
  * \return 4 no correct PD or LVD found
  * \return 8 error during FSD identification
- * \return 9 error in dstrings found
  */
 uint8_t get_fsd(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_t st_size, uint32_t *lbnlsn, struct filesystemStats * stats, vds_sequence_t *seq) {
     long_ad *lap;
@@ -1371,16 +1370,12 @@ uint8_t get_fsd(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, si
 
     unmap_chunk(dev, chunk, st_size);
 
-    uint8_t dstring_ret = 0;
+    stats->dstringFSDLogVolIdentErr = check_dstring(disc->udf_fsd->logicalVolIdent, 128);
+    stats->dstringFSDFileSetIdentErr = check_dstring(disc->udf_fsd->fileSetIdent, 32);
+    stats->dstringFSDCopyrightFileIdentErr = check_dstring(disc->udf_fsd->copyrightFileIdent, 32);
+    stats->dstringFSDAbstractFileIdentErr = check_dstring(disc->udf_fsd->abstractFileIdent, 32);
 
-    dstring_ret |= check_dstring(disc->udf_fsd->logicalVolIdent, 128);
-    dstring_ret |= check_dstring(disc->udf_fsd->fileSetIdent, 32);
-    dstring_ret |= check_dstring(disc->udf_fsd->copyrightFileIdent, 32);
-    dstring_ret |= check_dstring(disc->udf_fsd->abstractFileIdent, 32);
-
-    seq->fsd.error = dstring_ret;
-
-    return 0 | (dstring_ret ? 9 : 0);
+    return 0;
 }
 
 /**
