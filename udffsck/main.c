@@ -472,6 +472,27 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    status |= dstring_error("FSD, Logical Volume Identifier", stats.dstringFSDLogVolIdentErr);
+    status |= dstring_error("FSD, File Set Identifier", stats.dstringFSDFileSetIdentErr);
+    status |= dstring_error("FSD, Copyright File Identifier", stats.dstringFSDCopyrightFileIdentErr);
+    status |= dstring_error("FSD, Abstract File Identifier", stats.dstringFSDAbstractFileIdentErr);
+
+    status |= dstring_error("PVD, Main VDS, Volume Identifier", stats.dstringPVDVolIdentErr[MAIN_VDS]);
+    status |= dstring_error("PVD, Main VDS, Volume Set Identifier", stats.dstringPVDVolSetIdentErr[MAIN_VDS]);
+    status |= dstring_error("LVD, Main VDS, Logical Volume Identifier", stats.dstringLVDLogicalVolIdentErr[MAIN_VDS]);
+    status |= dstring_error("IUVD, Main VDS, Logical Volume Info 1", stats.dstringIUVDLVInfo1Err[MAIN_VDS]);
+    status |= dstring_error("IUVD, Main VDS, Logical Volume Info 2", stats.dstringIUVDLVInfo2Err[MAIN_VDS]);
+    status |= dstring_error("IUVD, Main VDS, Logical Volume Info 3", stats.dstringIUVDLVInfo3Err[MAIN_VDS]);
+    status |= dstring_error("IUVD, Main VDS, Logical Volume Identifier", stats.dstringIUVDLogicalVolIdentErr[MAIN_VDS]);
+     
+    status |= dstring_error("PVD, Main VDS, Volume Identifier", stats.dstringPVDVolIdentErr[RESERVE_VDS]);
+    status |= dstring_error("PVD, Main VDS, Volume Set Identifier", stats.dstringPVDVolSetIdentErr[RESERVE_VDS]);
+    status |= dstring_error("LVD, Main VDS, Logical Volume Identifier", stats.dstringLVDLogicalVolIdentErr[RESERVE_VDS]);
+    status |= dstring_error("IUVD, Main VDS, Logical Volume Info 1", stats.dstringIUVDLVInfo1Err[RESERVE_VDS]);
+    status |= dstring_error("IUVD, Main VDS, Logical Volume Info 2", stats.dstringIUVDLVInfo2Err[RESERVE_VDS]);
+    status |= dstring_error("IUVD, Main VDS, Logical Volume Info 3", stats.dstringIUVDLVInfo3Err[RESERVE_VDS]);
+    status |= dstring_error("IUVD, Main VDS, Logical Volume Identifier", stats.dstringIUVDLogicalVolIdentErr[RESERVE_VDS]);
+
     if(seq->anchor[0].error + seq->anchor[1].error + seq->anchor[2].error != 0) { //Something went wrong with AVDPs
         int target1 = -1;
         int target2 = -1;

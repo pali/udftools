@@ -177,6 +177,7 @@ uint8_t get_file_structure(int fd, uint8_t **dev, const struct udf_disc *disc, s
 int check_blocksize(int fd, uint8_t **dev, struct udf_disc *disc, int blocksize, int force_sectorsize, vds_sequence_t *seq);
 
 // Check and correct d-string
-int check_dstring(dstring *in, size_t field_size);
+uint8_t check_dstring(dstring *in, size_t field_size);
+uint8_t dstring_error(char * string_name, uint8_t e_code);
 
 #endif //__UDFFSCK_H__

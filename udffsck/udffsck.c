@@ -487,6 +487,40 @@ void map_raw(int fd, uint8_t **ptr, uint64_t offset, size_t size, size_t st_size
 #endif
 }
 
+char * dstring_suberror(uint8_t e_code) {
+   switch(e_code) {
+        case 0:
+            return NULL;
+        case DSTRING_E_NONZERO_PADDING:
+            return "non-zero padding";
+        case DSTRING_E_WRONG_LENGTH:
+            return "wrong length";
+        case DSTRING_E_INVALID_CHARACTERS:
+            return "invalid characters present";
+        case DSTRING_E_NOT_EMPTY:
+            return "string is not empty";
+        case DSTRING_E_UNKNOWN_COMP_ID:
+            return "unknown Compression ID";
+        default: 
+            return "unknown dstring error";
+   } 
+}
+
+uint8_t dstring_error(char * string_name, uint8_t e_code) {
+    char * buffer[600];
+    if(e_code > 0) {
+        msg("Dstring %s has following errors:\n", string_name);
+        for(int i=0; i<8; ++i) {
+            if(e_code & 1<<i) {
+                msg("\t- %s\n", dstring_suberror(e_code & 1<<i));
+            }
+        }
+
+        return 4; 
+    }
+    return 0;
+}
+
 /**
  * \brief Function for detection of errors in dstrings
  *
@@ -502,7 +536,7 @@ void map_raw(int fd, uint8_t **ptr, uint64_t offset, size_t size, size_t st_size
  * \param[in] field_size size of dstring field
  * \return sum of DSTRING_E codes 
  */
-int check_dstring(dstring *in, size_t field_size) {
+uint8_t check_dstring(dstring *in, size_t field_size) {
     uint8_t compID = in[0];
     uint8_t length = in[field_size-1];
     uint8_t stepping = 0xFF;
@@ -3001,7 +3035,7 @@ int fix_vds(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_t
             }
             fix = 0;
         } else {
-            msg("[%d] %s is fine. No fixing needed.\n", i, descriptor_name(seq->main[i].tagIdent));
+            msg("[%d] %s is fine. No functional fixing needed.\n", i, descriptor_name(seq->main[i].tagIdent));
         }
         if(seq->main[i].tagIdent == TAG_IDENT_TD)
             break;
