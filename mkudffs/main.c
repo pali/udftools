@@ -43,6 +43,7 @@
 #include <sys/ioctl.h>
 #include <linux/fs.h>
 #include <linux/fd.h>
+#include <sys/sysmacros.h>
 
 #include "mkudffs.h"
 #include "defaults.h"
