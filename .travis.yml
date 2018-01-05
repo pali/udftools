@@ -334,6 +334,46 @@ matrix:
         apt:
           packages:
             - libreadline-dev
+    - compiler: gcc
+      dist: precise
+      env: PLATFORM=x86
+           DIST=precise
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: precise
+      env: PLATFORM=x86_64
+           DIST=precise
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: gcc
+      dist: trusty
+      env: PLATFORM=x86
+           DIST=trusty
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: trusty
+      env: PLATFORM=x86_64
+           DIST=trusty
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
     - compiler: tcc
       dist: precise
       env: PLATFORM=x86_64
@@ -370,7 +410,8 @@ matrix:
 
 before_script:
   - if ! which "$CC" &>/dev/null; then export CC=${CC%%-*}; fi
-  - CFLAGS="-W -Wall -Werror -O2 -g"
+  - CFLAGS="-W -Wall -Werror -g"
+  - if [ -z "$NOOPT" ]; then CFLAGS="$CFLAGS -O2"; fi
   - if [ "${CC%%-*}" = "clang" ]; then CFLAGS="$CFLAGS -Wno-error=unused-function"; fi
   - if [ "$PLATFORM" = "x86" ]; then CFLAGS="-m32 $CFLAGS"; fi
   - export CFLAGS
