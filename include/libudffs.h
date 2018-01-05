@@ -229,7 +229,7 @@ extern size_t decode_string(struct udf_disc *, const dstring *, char *, size_t, 
 extern size_t encode_string(struct udf_disc *, dstring *, const char *, size_t);
 
 /* misc.c */
-extern const char *appname;
+const char *appname;
 size_t gen_uuid_from_vol_set_ident(char[17], const dstring *, size_t);
 
 #endif /* __LIBUDFFS_H */
