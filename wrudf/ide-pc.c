@@ -27,7 +27,12 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>		/* for u_char etc. */
+#if defined(__linux__)
 #include <linux/cdrom.h>
+#else
+#include "bswap.h"
+#include "darwin/cdrom.h"
+#endif
 #include <unistd.h>		/* sleep() */
 #include <stdlib.h>
 

@@ -28,6 +28,9 @@
 #include <inttypes.h>
 #include <sys/types.h>
 
+#if defined(HAVE_MACHINE_ENDIAN_H)
+#include <machine/endian.h>
+#endif
 #ifdef HAVE_SYS_ISA_DEFS_H
 #define __LITTLE_ENDIAN 1234
 #define __BIG_ENDIAN 4321
@@ -41,6 +44,18 @@
 #define __BYTE_ORDER __BIG_ENDIAN
 #endif
 #endif
+
+/* macOS */
+#ifdef __APPLE__
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+#define __BYTE_ORDER BYTE_ORDER
+#if __BYTE_ORDER == BIG_ENDIAN
+#define __BIG_ENDIAN_BITFIELD
+#elif __BYTE_ORDER == LITTLE_ENDIAN
+#define __LITTLE_ENDIAN_BITFIELD
+#endif
+#endif /* __APPLE__ */
 
 #define constant_swab16(x) \
 	((uint16_t)((((uint16_t)(x) & 0x00FFU) << 8) | \

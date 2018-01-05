@@ -27,14 +27,22 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <getopt.h>
+#if defined(__linux__)
 #include <bits/types.h>
+#else
+#include <mach/mach_types.h>
+#include "../include/darwin/types.h"
+#endif
 #include <sys/types.h>
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <errno.h>
-
+#if defined(__linux__)
 #include <linux/cdrom.h>
+#else
+#include "darwin/cdrom.h"
+#endif
 
 /*
  * if we don't have one, we probably have neither

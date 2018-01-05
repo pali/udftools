@@ -11,7 +11,11 @@
 #define _CDRWTOOL_H 1
 
 #include <inttypes.h>
+#if defined(__linux__)
 #include <linux/cdrom.h>
+#else
+#include "darwin/cdrom.h"
+#endif
 #include "../include/libudffs.h"
 
 /*

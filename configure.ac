@@ -25,6 +25,12 @@ AC_SYS_LARGEFILE
 dnl Checks for library functions.
 AC_SUBST(LTLIBOBJS)
 
+dnl Enable Darwin extensions
+AC_CANONICAL_HOST
+AS_CASE([$host_os],
+       [darwin*], [CPPFLAGS="${CPPFLAGS} -D_DARWIN_C_SOURCE"])
+AM_CONDITIONAL(HAVE_DARWIN, test "${SYS}" = "darwin")
+
 AC_CONFIG_FILES(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile udfinfo/Makefile udflabel/Makefile wrudf/Makefile doc/Makefile)
 
 AC_OUTPUT

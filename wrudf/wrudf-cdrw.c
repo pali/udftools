@@ -30,8 +30,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#if defined(__linux__)
 #include <linux/cdrom.h>		/* for CDROM_DRIVE_STATUS  */
-
+#else
+#include "darwin/cdrom.h"
+#endif
 #include "wrudf.h"
 #include "ide-pc.h"
 #include "bswap.h"

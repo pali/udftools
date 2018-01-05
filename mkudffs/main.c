@@ -41,8 +41,12 @@
 #include <limits.h>
 #include <dirent.h>
 #include <sys/ioctl.h>
+#if defined(__linux__)
 #include <linux/fs.h>
 #include <linux/fd.h>
+#elif defined(__APPLE__)
+#include <sys/disk.h>
+#endif
 #include <sys/sysmacros.h>
 
 #include "mkudffs.h"

@@ -32,9 +32,13 @@
 #include <limits.h>
 
 #include <sys/ioctl.h>
+#if defined(__linux__)
 #include <asm/param.h>
-
 #include <linux/cdrom.h>
+#else
+#include "bswap.h"
+#include "darwin/cdrom.h"
+#endif
 
 #include "cdrwtool.h"
 #include "../mkudffs/mkudffs.h"
