@@ -28,7 +28,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#if defined(__linux__)
 #include <linux/cdrom.h>
+#else
+#include "darwin/cdrom.h"
+#endif
 #include <sys/ioctl.h>
 
 #include "libudffs.h"

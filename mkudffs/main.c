@@ -47,7 +47,9 @@
 #elif defined(__APPLE__)
 #include <sys/disk.h>
 #endif
+#if defined(__linux__)
 #include <sys/sysmacros.h>
+#endif
 
 #include "mkudffs.h"
 #include "defaults.h"

@@ -30,7 +30,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#if defined(__linux__)
 #include <linux/fs.h>
+#elif defined(__APPLE__)
+#include <sys/disk.h>
+#include "darwin/mount.h"
+#endif
 #include <sys/ioctl.h>
 
 #include "libudffs.h"

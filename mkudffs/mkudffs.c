@@ -38,7 +38,11 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#if defined(__linux__)
 #include <linux/hdreg.h>
+#elif defined(__APPLE__)
+#include "darwin/hdreg.h"
+#endif
 
 #include "mkudffs.h"
 #include "file.h"
