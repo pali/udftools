@@ -13,6 +13,10 @@
 #include <locale.h>
 #include <sys/resource.h>
 
+#ifdef USE_READLINE
+#include <readline/readline.h>
+#endif
+
 #include "wrudf.h"
 
 char	*devicename;			/* "/dev/cdrom" or disk image filename */
@@ -21,7 +25,7 @@ int	devicetype;
 enum MEDIUM medium;
 int	ignoreReadError;		/* used while reading VRS which may be absent on open CDR */
 
-#ifdef _GNU_SOURCE
+#ifdef USE_READLINE
 char	*line;
 #define	GETLINE(prompt) readLine(prompt);
 #else
@@ -74,12 +78,14 @@ struct sparingTable		*st;
 int	spaceMapDirty, usdDirty, sparingTableDirty;
 
 
+#ifdef USE_READLINE
 char* readLine(char* prompt) {
     if( line ) {
 	free(line);
     }
     return line = readline(prompt);
 }
+#endif
 
 
 void 
@@ -310,7 +316,7 @@ initialise(char *devicename)
         fsdOut[0] = 0;
 
     printf("You are going to update fileset '%s'\nProceed (y/N) : ", fsdOut);
-    readLine(NULL);
+    GETLINE("");
 
     if( !line || line[0] != 'y' )
 	fail("wrudf terminated\n");

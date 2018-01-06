@@ -1097,7 +1097,7 @@ int
 questionOverwrite(Directory *dir, struct fileIdentDesc *fid, char* name)
 {
     printf("File %s already exists. Overwrite ? (y/N) : ", name);
-#ifdef _GNU_SOURCE
+#ifdef USE_READLINE
     readLine(NULL);
 #else
     fgets(line, 256, stdin);
