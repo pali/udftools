@@ -30,7 +30,7 @@ char	*line;
 #define	GETLINE(prompt) readLine(prompt);
 #else
 char	line[256];
-#define GETLINE(prompt) printf(prompt);	fgets(line, 256, stdin); *strchr(line, '\n') = 0;
+#define GETLINE(prompt) printf("%s", prompt);	fgets(line, 256, stdin); *strchr(line, '\n') = 0;
 #endif
 
 
@@ -318,7 +318,12 @@ initialise(char *devicename)
     printf("You are going to update fileset '%s'\nProceed (y/N) : ", fsdOut);
     GETLINE("");
 
-    if( !line || line[0] != 'y' )
+#ifdef USE_READLINE
+    if( !line )
+	fail("wrudf terminated\n");
+#endif
+
+    if( line[0] != 'y' )
 	fail("wrudf terminated\n");
 
     /* Read Logical Volume Integrity sequence */

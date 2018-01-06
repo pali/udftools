@@ -1102,7 +1102,11 @@ questionOverwrite(Directory *dir, struct fileIdentDesc *fid, char* name)
 #else
     fgets(line, 256, stdin);
 #endif
-    if( !line || line[0] != 'y' )
+#ifdef USE_READLINE
+    if( !line )
+	return 1;
+#endif
+    if( line[0] != 'y' )
 	return 1;
     deleteFID(dir, fid);
     return 0;
