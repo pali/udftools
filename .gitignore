@@ -27,6 +27,7 @@ libtool
 udffsck/udffsck
 udffsck/test
 udffsck/testextra
+udffsck/unittest
 mkudffs/mkudffs
 pktsetup/pktsetup
 cdrwtool/cdrwtool
