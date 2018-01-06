@@ -2159,8 +2159,6 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                     }
                 }
                 if(fixsernum) {
-                    if(lsn==1704005)
-                        dbg("[1704005] fixsernum");
                     descTag.tagSerialNum = stats->AVDPSerialNum;
                     if(ext) {
                         efe->descTag.descCRC = calculate_crc(efe, sizeof(struct extendedFileEntry) + le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs));
