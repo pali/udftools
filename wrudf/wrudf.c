@@ -30,7 +30,7 @@ char	*line;
 #define	GETLINE(prompt) readLine(prompt);
 #else
 char	line[256];
-#define GETLINE(prompt) printf("%s", prompt);	fgets(line, 256, stdin); *strchr(line, '\n') = 0;
+#define GETLINE(prompt) do { printf("%s", prompt); if (fgets(line, 256, stdin)) *strchr(line, '\n') = 0; else line[0] = 0; } while (0)
 #endif
 
 

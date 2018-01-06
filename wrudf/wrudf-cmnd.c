@@ -1100,7 +1100,8 @@ questionOverwrite(Directory *dir, struct fileIdentDesc *fid, char* name)
 #ifdef USE_READLINE
     readLine(NULL);
 #else
-    fgets(line, 256, stdin);
+    if (!fgets(line, 256, stdin))
+	line[0] = 0;
 #endif
 #ifdef USE_READLINE
     if( !line )
