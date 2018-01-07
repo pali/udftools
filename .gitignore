@@ -26,7 +26,8 @@ wrudf/wrudf
 libtool
 udffsck/udffsck
 udffsck/test
-udffsck/testextra
+udffsck/testextra1
+udffsck/testextra2
 udffsck/unittest
 mkudffs/mkudffs
 pktsetup/pktsetup
