@@ -2,10 +2,10 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(udftools, 1.3, , , [https://github.com/pali/udftools/])
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(include/config.h:include/config.in)
-AM_INIT_AUTOMAKE([subdir-objects])
+AM_INIT_AUTOMAKE
 
 dnl Checks for programs.
-AC_PROG_CC([clang gcc])
+AC_PROG_CC
 AC_DISABLE_SHARED
 AM_PROG_LIBTOOL
 
@@ -55,6 +55,6 @@ AC_C_BIGENDIAN
 AM_CONDITIONAL(WORDS_LITTLEENDIAN, test "x$ac_cv_c_bigendian" = "xno")
 AM_CONDITIONAL(WORDS_BIGENDIAN, test "x$ac_cv_c_bigendian" = "xyes")
 
-AC_PROG_CC_C99
+#AC_PROG_CC_C99
 
 AC_OUTPUT
