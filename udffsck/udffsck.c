@@ -542,6 +542,7 @@ uint8_t check_dstring(dstring *in, size_t field_size) {
     uint8_t stepping = 0xFF;
     uint8_t empty_flag = 0;
     uint8_t e_code = 0;
+    uint8_t no_length = 0;
 
     dbg("compID: %d, length: %d\n", compID, length);
     switch(compID) {
@@ -555,13 +556,22 @@ uint8_t check_dstring(dstring *in, size_t field_size) {
             stepping = 1;
             empty_flag = 1;
             break;
+        case 254:
+            stepping = 1;
+            no_length = 1;
+            break;
+        case 255:
+            stepping = 2;
+            no_length = 1;
+            break;
         default:
             err("Unknown dstring compression ID.\n");
             return DSTRING_E_UNKNOWN_COMP_ID;
     }
 
-    if(empty_flag || length == 0) {
+    if(empty_flag || (length == 0 && no_length == 0)) {
         // Check for emptyness
+        dbg("Empty check\n");
         for(int i = 0; i < field_size; i += stepping) {
             if(in[i] != 0) {
                 err("Dstring is not empty.\n");
@@ -569,43 +579,49 @@ uint8_t check_dstring(dstring *in, size_t field_size) {
             }
         }
     } else {
-        // Leave first and last bytes, they are special.
+        // Leave first byte, it contains compression code.
+        // Last bit contains length OR characters if compID is 254 or 255.
         // Stepping +1 if 8bit or +2 if 16bit character length
         
-        // Check for length and zero padding.
-        uint8_t char_count = 0;
-        uint8_t eol_flag = 0xFF;
-        for(int i = 1; i < field_size-1; i += stepping) {
-            // We need to check if character is 0.
-            // For 8bit: we check character twice to keep code simplicity.
-            // For 16bit: we check character i and i+1
-            // 
-            // If hole (NULL character) detected, eol_flag is set.
-            // If eol is set and characted is detected, it is violation of UDF 2.1.1
-            if(in[i] != 0 || in[i+stepping-1] != 0) {
-                if(eol_flag < 0xFF) {
-                    err("Dstring has non-zero padding\n");
-                    e_code |= DSTRING_E_NONZERO_PADDING;
+        if(no_length == 0) {
+            dbg("Length and padding check\n");
+            // Check for length and zero padding.
+            uint8_t char_count = 0;
+            uint8_t eol_flag = 0xFF;
+            for(int i = 1; i < field_size-1; i += stepping) {
+                // We need to check if character is 0.
+                // For 8bit: we check character twice to keep code simplicity.
+                // For 16bit: we check character i and i+1
+                // 
+                // If hole (NULL character) detected, eol_flag is set.
+                // If eol is set and characted is detected, it is violation of UDF 2.1.1
+                if(in[i] != 0 || in[i+stepping-1] != 0) {
+                    if(eol_flag < 0xFF) {
+                        err("Dstring has non-zero padding\n");
+                        e_code |= DSTRING_E_NONZERO_PADDING;
+                    } else {
+                        ++char_count;
+                    }
                 } else {
-                    ++char_count;
-                }
-            } else {
-                if(eol_flag == 0xFF) {
-                    eol_flag = i;
+                    if(eol_flag == 0xFF) {
+                        eol_flag = i;
+                    }
                 }
             }
-        }
 
-        // eol_flag contains first NULL position. 
-        if(((length) != (eol_flag)) && eol_flag != 0xFF ) {
-            err("Dstring has mismatch between actual and declared length\n");
-            dbg("eol_flag: %d\n", eol_flag);
-            e_code |= DSTRING_E_WRONG_LENGTH;
+            dbg("EOL check\n");
+            // eol_flag contains first NULL position. 
+            if(((length) != (eol_flag)) && eol_flag != 0xFF ) {
+                err("Dstring has mismatch between actual and declared length\n");
+                dbg("eol_flag: %d\n", eol_flag);
+                e_code |= DSTRING_E_WRONG_LENGTH;
+            }
         }
 
         // Check for valid characters. Only for 16 bit makes sense.
         // All uincode 1.1 characters are valid. Only endinness codes are invalid (0xFFFE and 0xFEFF)
         if(stepping == 2) {
+            dbg("Invalid chars check\n");
             for(int i = 1; i < field_size-1; i += stepping) {
                 if((in[i] == 0xFF && in[i+1] == 0xFE) || (in[i] == 0xFE && in[i+1] == 0xFF)) {
                     err("Dstring contains invalid characters\n");

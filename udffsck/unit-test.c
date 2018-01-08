@@ -469,6 +469,72 @@ static void dstring_check_u8_old_mkudffs_1(void **state) {
     assert_int_equal(check_dstring(array, 32), DSTRING_E_NOT_EMPTY); //Check it 
 }
 
+static void dstring_check_u8_dchars_1(void **state) {
+    (void) state;
+    dstring array[32];
+    generate_valid_dstring_u8(array, 32, 254, 10, 0x24);
+    array[31] = 0;
+    print_dstring(array, 32);
+    assert_int_equal(check_dstring(array, 32), 0); //Check it 
+}
+
+static void dstring_check_u8_dchars_2(void **state) {
+    (void) state;
+    dstring array[32];
+    generate_valid_dstring_u8(array, 32, 254, 31, 0x24);
+    array[31] = 0x24;
+    print_dstring(array, 32);
+    assert_int_equal(check_dstring(array, 32), 0); //Check it 
+}
+
+static void dstring_check_u16_dchars_1(void **state) {
+    (void) state;
+    dstring array[32];
+    generate_valid_dstring_u8(array, 32, 255, 20, 0x24);
+    array[31] = 0;
+    print_dstring(array, 32);
+    assert_int_equal(check_dstring(array, 32), 0); //Check it 
+}
+
+static void dstring_check_u16_dchars_2(void **state) {
+    (void) state;
+    dstring array[32];
+    generate_valid_dstring_u8(array, 32, 255, 31, 0x24);
+    array[31] = 0x24;
+    print_dstring(array, 32);
+    assert_int_equal(check_dstring(array, 32), 0); //Check it 
+}
+
+static void dstring_check_u16_dchars_3(void **state) {
+    (void) state;
+    dstring array[32];
+    generate_valid_dstring_u8(array, 32, 255, 31, 0x24);
+    array[31] = 0xFF;
+    array[30] = 0xFE;
+    print_dstring(array, 32);
+    assert_int_equal(check_dstring(array, 32), 0); //Check it 
+}
+
+static void dstring_check_u16_dchars_4(void **state) {
+    (void) state;
+    dstring array[32];
+    generate_valid_dstring_u8(array, 32, 255, 31, 0x24);
+    array[3] = 0xFE;
+    array[4] = 0xFF;
+    print_dstring(array, 32);
+    assert_int_equal(check_dstring(array, 32), DSTRING_E_INVALID_CHARACTERS); //Check it 
+}
+
+static void dstring_check_u16_dchars_5(void **state) {
+    (void) state;
+    dstring array[32];
+    generate_valid_dstring_u8(array, 32, 255, 31, 0x24);
+    array[29] = 0xFF;
+    array[30] = 0xFE;
+    print_dstring(array, 32);
+    assert_int_equal(check_dstring(array, 32), DSTRING_E_INVALID_CHARACTERS); //Check it 
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(dstring_check_u8_ok_1),
@@ -514,6 +580,13 @@ int main(void) {
         cmocka_unit_test(dstring_check_u8_compID_1),
         cmocka_unit_test(dstring_check_u16_compID_1),
         cmocka_unit_test(dstring_check_u8_old_mkudffs_1),
+        cmocka_unit_test(dstring_check_u8_dchars_1),
+        cmocka_unit_test(dstring_check_u8_dchars_2),
+        cmocka_unit_test(dstring_check_u16_dchars_1),
+        cmocka_unit_test(dstring_check_u16_dchars_2),
+        cmocka_unit_test(dstring_check_u16_dchars_3),
+        cmocka_unit_test(dstring_check_u16_dchars_4),
+        cmocka_unit_test(dstring_check_u16_dchars_5),
     };
 
 
