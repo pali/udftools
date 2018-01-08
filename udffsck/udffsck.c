@@ -1999,6 +1999,7 @@ uint8_t inspect_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t s
             }
         } else {
             dbg("DELETED FID\n");
+            *status |= check_dstring(fid->fileIdent, fid->lengthFileIdent) ? 4 : 0; //FIXME expand for fixing later.
             print_file_info(info, depth);
         }
         dbg("Len: %d, padding: %d\n", flen, padding);
