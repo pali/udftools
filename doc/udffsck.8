@@ -29,7 +29,7 @@ udffsck \- check and correction for UDF filesystem
 .SH SYNOPSIS
 .B udffsck
 [\fB\-vvvcipCh\fR]
-[\fB\-B\fR \fIBLOCKSIZE\fR]
+[\fB\-b\fR \fIBLOCKSIZE\fR]
 .IR medium
 .SH DESCRIPTION
 .B udffsck
@@ -50,7 +50,7 @@ asks to do so, only valid answer is ,,no'', otherwise you can break your filesys
 .PP
 .SH OPTIONS
 .TP
-.BR \-B " " \fIBLOCKSIZE\fR
+.BR \-b " " \fIBLOCKSIZE\fR
 Force udffsck to use this blocksize instead of autodetection.
 This value is in bytes.
 Default is autodetected value by finding VRS and AVDP positions.

@@ -290,9 +290,6 @@ int main(int argc, char *argv[]) {
         dev[i] = NULL;
     }
 
-    // Unalloc path
-    free(path);
-
     //------------- Detections -----------------------
 
     seq = calloc(1, sizeof(vds_sequence_t));

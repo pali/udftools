@@ -39,7 +39,7 @@ static struct option long_options[] =
 {
     /* These options set a flag. */
     {"verbose", no_argument,  0, 'v'},
-    {"blocksize",  required_argument, 0, 'B'},
+    {"blocksize",  required_argument, 0, 'b'},
     {"interactive",  no_argument, 0, 'i'},
     {"autofix",    no_argument, 0, 'p'},
     {"check", no_argument, 0, 'c'},
@@ -72,7 +72,7 @@ void usage(void)
     int i;
 
     printf("udffsck " UDFFSCK_VERSION  " from " PACKAGE_NAME " " PACKAGE_VERSION ".");
-    printf("\nUsage:\n\tudffsck [-icpvvvCh] [-B blocksize] medium\n");
+    printf("\nUsage:\n\tudffsck [-icpvvvCh] [-b blocksize] medium\n");
     printf("Options:\n");
     for (i = 0; long_options[i].name != NULL; i++) {
         if (long_options[i].flag != 0)
@@ -108,7 +108,7 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "vB:ipcCfh", long_options, &option_index);
+        c = getopt_long (argc, argv, "vb:ipcCfh", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1)
@@ -126,7 +126,7 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
                 printf ("\n");
                 break;
 
-            case 'B':
+            case 'b':
                 *blocksize = strtol(optarg, NULL, 10);
                 printf("Device block size: %d\n", *blocksize);
                 break;
@@ -178,8 +178,7 @@ void parse_args(int argc, char *argv[], char **path, int *blocksize)
         dbg("Optind: %d\n", optind);
         dbg("non-option ARGV-elements: ");
         while (optind < argc) { 
-            *path = (char*)malloc(strlen(argv[optind])+1);
-            strcpy(*path, argv[optind]);
+            *path = argv[optind];
             dbg("%s ", *path);
             optind++;
             if(optind > 2) //We accept one medium at a time. 
