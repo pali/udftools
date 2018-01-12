@@ -3,7 +3,7 @@ language: c
 compiler:
   - gcc
   - clang
-    # - tcc
+  - tcc
 
 dist:
   - trusty
@@ -28,8 +28,8 @@ addons: &addons
       - libreadline-dev:i386
       - gcc-multilib
       - cmake
-        #      - tcc
-        # - tcc:i386
+      - tcc
+      - tcc:i386
 
 #matrix:
 #  include:
