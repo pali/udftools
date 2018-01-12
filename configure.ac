@@ -18,6 +18,7 @@ AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h getopt.h string.h readline/readline
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
+AC_C_BIGENDIAN
 AC_HEADER_TIME
 AC_STRUCT_TM
 AC_SYS_LARGEFILE

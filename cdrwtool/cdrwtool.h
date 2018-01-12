@@ -109,29 +109,27 @@ struct cdrw_disc
 
 typedef struct disc_info {
 	uint16_t length;
-#if __BYTE_ORDER == __BIG_ENDIAN
+#ifdef WORDS_BIGENDIAN
 	unsigned char reserved1	: 3;
 	unsigned char erasable	: 1;
 	unsigned char border	: 2;
 	unsigned char status	: 2;
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
-	unsigned char status	: 2;
-	unsigned char border	: 2;
-	unsigned char erasable	: 1;
-	unsigned char reserved1	: 3;
 #else
-#error "<bits/endian.h> is wack"
+	unsigned char status	: 2;
+	unsigned char border	: 2;
+	unsigned char erasable	: 1;
+	unsigned char reserved1	: 3;
 #endif
 	uint8_t n_first_track;
 	uint8_t n_sessions_l;
 	uint8_t first_track_l;
 	uint8_t last_track_l;
-#if __BYTE_ORDER == __BIG_ENDIAN
+#ifdef WORDS_BIGENDIAN
 	unsigned char did_v	: 1;
 	unsigned char dbc_v	: 1;
 	unsigned char uru	: 1;
 	unsigned char reserved2	: 5;
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
+#else
 	unsigned char reserved2	: 5;
 	unsigned char uru	: 1;
 	unsigned char dbc_v	: 1;
@@ -160,7 +158,7 @@ typedef struct track_info {
 	uint8_t track_number_l;
 	uint8_t session_number_l;
 	uint8_t reserved1;
-#if __BYTE_ORDER == __BIG_ENDIAN
+#ifdef WORDS_BIGENDIAN
 	uint8_t reserved2		: 2;
 	uint8_t damage		: 1;
 	uint8_t copy		: 1;
@@ -173,7 +171,7 @@ typedef struct track_info {
 	uint8_t reserved3		: 6;
 	uint8_t lra_v		: 1;
 	uint8_t nwa_v		: 1;
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
+#else
 	uint8_t track_mode		: 4;
 	uint8_t copy		: 1;
 	uint8_t damage		: 1;

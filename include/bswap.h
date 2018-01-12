@@ -28,20 +28,6 @@
 #include <inttypes.h>
 #include <sys/types.h>
 
-#ifdef HAVE_SYS_ISA_DEFS_H
-#define __LITTLE_ENDIAN 1234
-#define __BIG_ENDIAN 4321
-#define __PDP_ENDIAN 3412
-
-#ifdef _LITTLE_ENDIAN
-#define __BYTE_ORDER __LITTLE_ENDIAN
-#endif
-
-#ifdef _BIG_ENDIAN
-#define __BYTE_ORDER __BIG_ENDIAN
-#endif
-#endif
-
 #define constant_swab16(x) \
 	((uint16_t)((((uint16_t)(x) & 0x00FFU) << 8) | \
 		  (((uint16_t)(x) & 0xFF00U) >> 8)))
@@ -135,11 +121,7 @@ static inline uint64_t swab64p(uint64_t *x)
 			   ((*(uint64_t *)(x) & 0xFF00000000000000ULL) >> 56)));
 }
 
-#if __BYTE_ORDER == 0
-
-#error "__BYTE_ORDER must be defined"
-
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#ifdef WORDS_BIGENDIAN
 
 #define le16_to_cpu(x) (__builtin_constant_p(x) ? \
 			constant_swab16(x) : \
@@ -190,7 +172,7 @@ static inline uint64_t swab64p(uint64_t *x)
 #define constant_be32_to_cpup(x) (*(uint32_t *)(x))
 #define constant_be64_to_cpup(x) (*(uint64_t *)(x))
 
-#else /* __BYTE_ORDER == __LITTLE_ENDIAN */
+#else /* WORDS_BIGENDIAN */
 
 #define le16_to_cpu(x) ((uint16_t)(x))
 #define le32_to_cpu(x) ((uint32_t)(x))
@@ -241,7 +223,7 @@ static inline uint64_t swab64p(uint64_t *x)
 #define constant_be32_to_cpup(x) constant_swab32p((x))
 #define constant_be64_to_cpup(x) constant_swab64p((x))
 
-#endif /* __BYTE_ORDER == 0 */
+#endif /* WORDS_BIGENDIAN */
 
 #define cpu_to_le16(x) le16_to_cpu((x))
 #define cpu_to_le32(x) le32_to_cpu((x))
