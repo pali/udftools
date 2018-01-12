@@ -374,6 +374,82 @@ matrix:
         apt:
           packages:
             - libreadline-dev
+    - compiler: clang
+      dist: precise
+      env: PLATFORM=x86
+           DIST=precise
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: precise
+      env: PLATFORM=x86_64
+           DIST=precise
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: clang
+      dist: trusty
+      env: PLATFORM=x86
+           DIST=trusty
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: trusty
+      env: PLATFORM=x86_64
+           DIST=trusty
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: clang
+      dist: precise
+      env: PLATFORM=x86
+           DIST=precise
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: precise
+      env: PLATFORM=x86_64
+           DIST=precise
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: clang
+      dist: trusty
+      env: PLATFORM=x86
+           DIST=trusty
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: trusty
+      env: PLATFORM=x86_64
+           DIST=trusty
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
     - compiler: tcc
       dist: precise
       env: PLATFORM=x86_64
