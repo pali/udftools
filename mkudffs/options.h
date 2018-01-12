@@ -2,6 +2,7 @@
  * options.h
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2014-2017  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,7 +25,7 @@
 #define _OPTIONS_H 1
 
 void usage(void);
-void parse_args(int, char *[], struct udf_disc *, char *, int *);
+void parse_args(int, char *[], struct udf_disc *, char **, int *, int *, int *);
 
 /*
  * Command line option token values.
@@ -35,11 +36,15 @@ void parse_args(int, char *[], struct udf_disc *, char *, int *);
 
 #define OPT_HELP	0x1000
 #define OPT_NO_EFE	0x1001
-#define OPT_UNICODE8	0x1002
-#define OPT_UNICODE16	0x1003
-#define OPT_UTF8	0x1004
-#define OPT_BRIDGE	0x1005
-#define OPT_CLOSED	0x1006
+#define OPT_LOCALE	0x1002
+#define OPT_UNICODE8	0x1003
+#define OPT_UNICODE16	0x1004
+#define OPT_UTF8	0x1005
+#define OPT_MEDIA_TYPE	0x1006
+#define OPT_CLOSED	0x1007
+#define OPT_VAT		0x1008
+#define OPT_NEW_FILE	0x1009
+#define OPT_NO_WRITE	0x1010
 
 #define OPT_BLK_SIZE	0x2000
 #define OPT_UDF_REV	0x2001
@@ -50,7 +55,7 @@ void parse_args(int, char *[], struct udf_disc *, char *, int *);
 #define OPT_STRATEGY	0x2006
 #define OPT_SPARTABLE	0x2007
 #define OPT_PACKETLEN	0x2008
-#define OPT_MEDIA_TYPE	0x2009
+#define OPT_SPARSPACE	0x2009
 #define OPT_SPACE	0x200A
 #define OPT_AD		0x200B
 #define OPT_LABEL	0x200C
@@ -58,5 +63,7 @@ void parse_args(int, char *[], struct udf_disc *, char *, int *);
 #define OPT_FULLVSID	0x200E
 #define OPT_UID		0x200F
 #define OPT_GID		0x2010
+#define OPT_MODE	0x2011
+#define OPT_BOOTAREA	0x2012
 
 #endif /* _OPTIONS_H */

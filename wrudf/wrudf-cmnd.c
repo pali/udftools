@@ -50,6 +50,8 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
     uint32_t	maxVarPktSize;		// in bytes
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
+    struct allocDescImpUse *adiu;
+    struct logicalVolIntegrityDescImpUse *lvidiu;
     uint8_t	p[2048];
 
     fd = open(inName, O_RDONLY);
@@ -130,13 +132,15 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	    }
 	    ad->extLocation.logicalBlockNum = loc;
 	    ad->extLocation.partitionReferenceNum = pd->partitionNumber;
-	    *(uint32_t*)&((struct allocDescImpUse*)(ad->impUse))->impUse = (uint32_t) fe->uniqueID;
+	    adiu = (struct allocDescImpUse*)(ad->impUse);
+	    memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
 	    loc += ((ad->extLength + 2047) >> 11) + 7;
 	}
 
 	if( ((ad-1)->extLength & 2047) == 0 ) {
 	    memset(ad, 0, sizeof(long_ad));
-	    *(uint32_t*)&((struct allocDescImpUse*)(ad->impUse))->impUse = (uint32_t) fe->uniqueID;
+	    adiu = (struct allocDescImpUse*)(ad->impUse);
+	    memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
 	    ad++;
 	}
 
@@ -239,10 +243,13 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
     if( devicetype == DISK_IMAGE && medium == CDR )
 	writeHDlink();
 
-    *(uint32_t*)(&( (struct allocDescImpUse*)fid->icb.impUse)->impUse) = (uint32_t) fe->uniqueID;
+    adiu = (struct allocDescImpUse*)(fid->icb.impUse);
+    memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
     insertFileIdentDesc(dir, fid);
-    ((struct logicalVolIntegrityDescImpUse*)
-	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions))->numFiles++;
+
+    lvidiu = (struct logicalVolIntegrityDescImpUse*)
+	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+    lvidiu->numFiles++;
 
     close(fd);
     free(fe);
@@ -482,6 +489,7 @@ updateDirectory(Directory* dir)
 
 	if( medium == CDR ) {
 	    long_ad *ad;
+	    struct allocDescImpUse *adiu;
 	    uint32_t	blkno;
 
 	    dir->fe.icbTag.flags = (dir->fe.icbTag.flags & ~ ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_LONG;
@@ -489,7 +497,8 @@ updateDirectory(Directory* dir)
 	    ad->extLength = dir->fe.informationLength;
 	    ad->extLocation.logicalBlockNum  =  blkno = getNWA() + 1 - pd->partitionStartingLocation;
 	    ad->extLocation.partitionReferenceNum = pd->partitionNumber;
-	    *(uint32_t*)&((struct allocDescImpUse*)(ad->impUse))->impUse = (uint32_t) dir->fe.uniqueID;
+	    adiu = (struct allocDescImpUse*)(ad->impUse);
+	    memcpy(&adiu->impUse, &dir->fe.uniqueID, sizeof(uint32_t));
 	    memset(ad + 1, 0, sizeof(long_ad));			/* necessary only if infolength multiple of 2048 */
 	    dir->fe.lengthAllocDescs = 2 * sizeof(long_ad);
 
@@ -592,6 +601,8 @@ makeDir(Directory *dir, char* name )
     Directory		*newDir;
     struct fileEntry	*fe;
     struct fileIdentDesc *backFid, *forwFid;
+    struct allocDescImpUse *adiu;
+    struct logicalVolIntegrityDescImpUse *lvidiu;
     short_ad		allocDescs[2];
 
 
@@ -609,7 +620,8 @@ makeDir(Directory *dir, char* name )
     /* forward reference to new directory in parent directory */
     forwFid = makeFileIdentDesc(name);
     forwFid->fileCharacteristics = FID_FILE_CHAR_DIRECTORY;
-    *(uint32_t*)(&( (struct allocDescImpUse*)forwFid->icb.impUse)->impUse) = (uint32_t) fe->uniqueID;
+    adiu = (struct allocDescImpUse*)forwFid->icb.impUse;
+    memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
 
     if( medium == CDR ) {
 	fe->descTag.tagLocation = newVATentry();
@@ -655,8 +667,10 @@ makeDir(Directory *dir, char* name )
     memcpy(newDir->data, backFid, fe->informationLength);
     newDir->dirDirty = 1;
 
-    ((struct logicalVolIntegrityDescImpUse*)
-	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions))->numDirs++;
+    lvidiu = (struct logicalVolIntegrityDescImpUse*)
+	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+    lvidiu->numDirs++;
+
     free(backFid);
     free(forwFid);
     free(fe);
@@ -987,11 +1001,8 @@ int lscCommand(void) {
 
 	if( fid->fileCharacteristics & FID_FILE_CHAR_PARENT )
 	    strcpy(filename, "..");
-	else {
-	    memset(filename, 0, sizeof(filename));
-	    strncpy(filename, (char *)(fid->fileIdent + fid->lengthOfImpUse + 1), fid->lengthFileIdent - 1);
-	    /* Look at udf filesystem how to convert dstring to ordinary characters     */
-	}	    
+	else
+	    decode_locale((dchars *)(fid->fileIdent + fid->lengthOfImpUse), filename, fid->lengthFileIdent, sizeof(filename));
 
 	fe = readTaggedBlock( fid->icb.extLocation.logicalBlockNum, fid->icb.extLocation.partitionReferenceNum);
 
@@ -1086,12 +1097,17 @@ int
 questionOverwrite(Directory *dir, struct fileIdentDesc *fid, char* name)
 {
     printf("File %s already exists. Overwrite ? (y/N) : ", name);
-#ifdef _GNU_SOURCE
+#ifdef USE_READLINE
     readLine(NULL);
 #else
-    fgets(line, 256, stdin);
+    if (!fgets(line, 256, stdin))
+	line[0] = 0;
 #endif
-    if( !line || line[0] != 'y' )
+#ifdef USE_READLINE
+    if( !line )
+	return 1;
+#endif
+    if( line[0] != 'y' )
 	return 1;
     deleteFID(dir, fid);
     return 0;

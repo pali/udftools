@@ -22,7 +22,6 @@
 
 #include "config.h"
 
-#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -77,7 +76,7 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 				memset(buffer, 0x00, bufferlen);
 			}
 			data = desc->data;
-			offset = ((uint64_t)(ext->start + desc->offset) - (packet * 32)) << disc->blocksize_bits;
+			offset = ((uint64_t)(ext->start + desc->offset) - (packet * 32)) * disc->blocksize;
 			while (data != NULL)
 			{
 				if (data->length + offset > bufferlen)
@@ -115,7 +114,7 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 	return 0;
 }
 
-int quick_setup(int fd, struct cdrw_disc *disc, char *device)
+int quick_setup(int fd, struct cdrw_disc *disc, const char *device)
 {
 	disc_info_t di;
 	track_info_t ti;
@@ -159,6 +158,8 @@ int quick_setup(int fd, struct cdrw_disc *disc, char *device)
 		disc->udf_disc.head->blocks = blocks;
 	else
 		disc->udf_disc.head->blocks = disc->offset;
+
+	disc->udf_disc.blocks = disc->udf_disc.head->blocks;
 
 	if (disc->fpacket)
 	{
@@ -208,6 +209,7 @@ int mkudf_session(int fd, struct cdrw_disc *disc)
 	int i;
 
 	disc->udf_disc.head->blocks = disc->offset;
+	disc->udf_disc.blocks = disc->udf_disc.head->blocks;
 	add_type2_sparable_partition(&disc->udf_disc, 0, 2, 0);
 	disc->udf_disc.udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 
@@ -238,14 +240,18 @@ int main(int argc, char *argv[])
 {
 	struct cdrw_disc disc;
 	write_params_t w;
-	char filename[NAME_MAX];
+	const char *filename;
 	int fd, ret;
+
+	appname = "cdrwtool";
 
 	memset(&disc, 0x00, sizeof(disc));
 	cdrw_init_disc(&disc);
 	udf_init_disc(&disc.udf_disc);
-	strcpy(filename, CDROM_DEVICE);
-	parse_args(argc, argv, &disc, filename);
+	udf_set_version(&disc.udf_disc, 0x150);
+	disc.udf_disc.flags |= FLAG_BOOTAREA_PRESERVE;
+	filename = CDROM_DEVICE;
+	parse_args(argc, argv, &disc, &filename);
 	if (((fd = open(filename, O_RDWR | O_NONBLOCK)) < 0) &&
 		((errno != EROFS) ||
 		((fd = open(filename, O_RDONLY | O_NONBLOCK)) < 0)))
@@ -345,7 +351,7 @@ int main(int argc, char *argv[])
 		return ret;
 	}
 
-	if (disc.filename[0] != '\0')
+	if (disc.filename)
 	{
 		ret = write_file(fd, &disc);
 		cdrom_close(fd);

@@ -2,6 +2,7 @@
  * file.c
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2016-2017  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -27,7 +28,9 @@
 
 #include "config.h"
 
-#include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
 
 #include "libudffs.h"
 #include "file.h"
@@ -192,7 +195,7 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 			if (le32_to_cpu(efe->lengthAllocDescs) == 0)
 			{
 				block = udf_alloc_blocks(disc, pspace, desc->offset, 1);
-				fiddesc = set_desc(disc, pspace, TAG_IDENT_FID, block, data->length, data);
+				fiddesc = set_desc(pspace, TAG_IDENT_FID, block, data->length, data);
 				if ((le16_to_cpu(efe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT)
 				{
 					short_ad *sad;
@@ -264,7 +267,7 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 			if (le32_to_cpu(fe->lengthAllocDescs) == 0)
 			{
 				block = udf_alloc_blocks(disc, pspace, desc->offset, 1);
-				fiddesc = set_desc(disc, pspace, TAG_IDENT_FID, block, data->length, data);
+				fiddesc = set_desc(pspace, TAG_IDENT_FID, block, data->length, data);
 				if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT)
 				{
 					short_ad *sad;
@@ -343,6 +346,11 @@ void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_de
 			efe->informationLength = cpu_to_le64(le64_to_cpu(efe->informationLength) + data->length);
 			efe->objectSize = cpu_to_le64(le64_to_cpu(efe->objectSize) + data->length);
 		}
+		else
+		{
+			fprintf(stderr, "%s: Error: Cannot insert data when inicb is not used\n", appname);
+			exit(1);
+		}
 	}
 	else
 	{
@@ -353,6 +361,11 @@ void insert_data(struct udf_disc *disc, struct udf_extent *pspace, struct udf_de
 			append_data(desc, data);
 			fe->lengthAllocDescs = cpu_to_le32(le32_to_cpu(fe->lengthAllocDescs) + data->length);
 			fe->informationLength = cpu_to_le64(le64_to_cpu(fe->informationLength) + data->length);
+		}
+		else
+		{
+			fprintf(stderr, "%s: Error: Cannot insert data when inicb is not used\n", appname);
+			exit(1);
 		}
 	}
 
@@ -377,18 +390,20 @@ uint32_t compute_ident_length(uint32_t length)
  * @param pspace the type:PSPACE udf_extent for on-disc allocations
  * @param desc the file tag:FE/EFE udf_descriptor
  * @param parent the directory tag:FE/EFE udf_descriptor
- * @param name the file name - the first byte is the OSTA unicode compression type
+ * @param name the file name in OSTA Compressed Unicode format (d-characters)
  * @param length the length of the file name in bytes
  * @param filechar the file characteristics
  * @return void
  */
-void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_desc *parent, uint8_t *name, uint8_t length, uint8_t filechar)
+void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_desc *parent, const dchars *name, uint8_t length, uint8_t filechar)
 {
 	struct udf_data *data;
 	struct fileIdentDesc *fid;
+	struct allocDescImpUse *adiu;
 	int ilength = compute_ident_length(sizeof(struct fileIdentDesc) + length);
 	int offset;
 	uint64_t uniqueID;
+	uint32_t uniqueID_le32;
 
 	data = alloc_data(NULL, ilength);
 	fid = data->buffer;
@@ -410,8 +425,15 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 		else
 			fid->icb.extLength = cpu_to_le32(disc->blocksize);
 		fid->icb.extLocation.logicalBlockNum = cpu_to_le32(desc->offset);
-		fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
-		*(uint32_t *)((struct allocDescImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
+		if (disc->flags & FLAG_VAT)
+			fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(1);
+		else
+			fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
+
+		uniqueID_le32 = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
+		adiu = (struct allocDescImpUse *)fid->icb.impUse;
+		memcpy(adiu->impUse, &uniqueID_le32, sizeof(uniqueID_le32));
+
 		fid->fileVersionNum = cpu_to_le16(1);
 		fid->fileCharacteristics = filechar;
 		fid->lengthFileIdent = length;
@@ -436,8 +458,15 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 		else
 			fid->icb.extLength = cpu_to_le32(disc->blocksize);
 		fid->icb.extLocation.logicalBlockNum = cpu_to_le32(desc->offset);
-		fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
-		*(uint32_t *)((struct allocDescImpUse *)fid->icb.impUse)->impUse = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
+		if (disc->flags & FLAG_VAT)
+			fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(1);
+		else
+			fid->icb.extLocation.partitionReferenceNum = cpu_to_le16(0);
+
+		uniqueID_le32 = cpu_to_le32(uniqueID & 0x00000000FFFFFFFFUL);
+		adiu = (struct allocDescImpUse *)fid->icb.impUse;
+		memcpy(adiu->impUse, &uniqueID_le32, sizeof(uniqueID_le32));
+
 		fid->fileVersionNum = cpu_to_le16(1);
 		fid->fileCharacteristics = filechar;
 		fid->lengthFileIdent = length;
@@ -454,7 +483,7 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
  * @brief create a file tag:FE/EFE udf_descriptor and add the file to a directory
  * @param disc the udf_disc
  * @param pspace the type:PSPACE udf_extent for on-disc allocations
- * @param name the file name - the first byte is the OSTA unicode compression type
+ * @param name the file name in OSTA Compressed Unicode format (d-characters)
  * @param length the length of the file name in bytes
  * @param offset the starting block number to search for on-disc allocations
  * @param parent the directory tag:FE/EFE udf_descriptor
@@ -463,7 +492,7 @@ void insert_fid(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
  * @param flags the file flags
  * @return the in-memory address of file tag:FE/EFE udf_descriptor
  */
-struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, uint8_t *name, uint8_t length, uint32_t offset, struct udf_desc *parent, uint8_t filechar, uint8_t filetype, uint16_t flags)
+struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, const dchars *name, uint8_t length, uint32_t offset, struct udf_desc *parent, uint8_t filechar, uint8_t filetype, uint16_t flags)
 {
 	struct udf_desc *desc;
 
@@ -475,8 +504,9 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 	if (disc->flags & FLAG_EFE)
 	{
 		struct extendedFileEntry *efe;
+		uint64_t uniqueID_le64;
 
-		desc = set_desc(disc, pspace, TAG_IDENT_EFE, offset, sizeof(struct extendedFileEntry), NULL);
+		desc = set_desc(pspace, TAG_IDENT_EFE, offset, sizeof(struct extendedFileEntry), NULL);
 		efe = (struct extendedFileEntry *)desc->data->buffer;
 		memcpy(efe, &default_efe, sizeof(struct extendedFileEntry));
 		memcpy(&efe->accessTime, &disc->udf_pvd[0]->recordingDateAndTime, sizeof(timestamp));
@@ -488,11 +518,12 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 			efe->uniqueID = cpu_to_le64(0);
 		else
 		{
-			efe->uniqueID = cpu_to_le64(le64_to_cpu(((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0]));
+			memcpy(&efe->uniqueID, disc->udf_lvid->logicalVolContentsUse, sizeof(efe->uniqueID));
 			if (!(le64_to_cpu(efe->uniqueID) & 0x00000000FFFFFFFFUL))
-				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 16);
+				uniqueID_le64 = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 16);
 			else
-				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 1);
+				uniqueID_le64 = cpu_to_le64(le64_to_cpu(efe->uniqueID) + 1);
+			memcpy(disc->udf_lvid->logicalVolContentsUse, &uniqueID_le64, sizeof(uniqueID_le64));
 		}
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
@@ -502,8 +533,6 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 		}
 		efe->icbTag.fileType = filetype;
 		efe->icbTag.flags = cpu_to_le16(le16_to_cpu(efe->icbTag.flags) | flags);
-		efe->uid = cpu_to_le32(disc->uid);
-		efe->gid = cpu_to_le32(disc->gid);
 		if (parent)
 		{
 //			efe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(parent->offset); // for strategy type != 4
@@ -515,6 +544,20 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 		{
 			efe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(0);
 			efe->icbTag.parentICBLocation.partitionReferenceNum = cpu_to_le16(0);
+			if (filetype == ICBTAG_FILE_TYPE_DIRECTORY) // root directory
+			{
+				efe->uid = cpu_to_le32(disc->uid);
+				efe->gid = cpu_to_le32(disc->gid);
+				efe->permissions = cpu_to_le32(
+					((disc->mode & S_IRWXU) << 4) |
+					((disc->mode & S_IRWXG) << 2) |
+					((disc->mode & S_IRWXO) << 0) |
+					((disc->mode & S_IWUSR) ? FE_PERM_U_CHATTR : 0) |
+					((disc->mode & S_IWGRP) ? FE_PERM_G_CHATTR : 0) |
+					((disc->mode & S_IWOTH) ? FE_PERM_O_CHATTR : 0) |
+					0 // Do not allow deleting root directory
+				);
+			}
 		}
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
 			query_lvidiu(disc)->numDirs = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numDirs)+1);
@@ -524,8 +567,9 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 	else
 	{
 		struct fileEntry *fe;
+		uint64_t uniqueID_le64;
 
-		desc = set_desc(disc, pspace, TAG_IDENT_FE, offset, sizeof(struct fileEntry), NULL);
+		desc = set_desc(pspace, TAG_IDENT_FE, offset, sizeof(struct fileEntry), NULL);
 		fe = (struct fileEntry *)desc->data->buffer;
 		memcpy(fe, &default_fe, sizeof(struct fileEntry));
 		memcpy(&fe->accessTime, &disc->udf_pvd[0]->recordingDateAndTime, sizeof(timestamp));
@@ -536,11 +580,12 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 			fe->uniqueID = cpu_to_le64(0);
 		else
 		{
-			fe->uniqueID = cpu_to_le64(le64_to_cpu(((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0]));
+			memcpy(&fe->uniqueID, disc->udf_lvid->logicalVolContentsUse, sizeof(fe->uniqueID));
 			if (!(le64_to_cpu(fe->uniqueID) & 0x00000000FFFFFFFFUL))
-				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(fe->uniqueID) + 16);
+				uniqueID_le64 = cpu_to_le64(le64_to_cpu(fe->uniqueID) + 16);
 			else
-				((uint64_t *)disc->udf_lvid->logicalVolContentsUse)[0] = cpu_to_le64(le64_to_cpu(fe->uniqueID) + 1);
+				uniqueID_le64 = cpu_to_le64(le64_to_cpu(fe->uniqueID) + 1);
+			memcpy(disc->udf_lvid->logicalVolContentsUse, &uniqueID_le64, sizeof(uniqueID_le64));
 		}
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
@@ -550,8 +595,6 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 		}
 		fe->icbTag.fileType = filetype;
 		fe->icbTag.flags = cpu_to_le16(le16_to_cpu(fe->icbTag.flags) | flags);
-		fe->uid = cpu_to_le32(disc->uid);
-		fe->gid = cpu_to_le32(disc->gid);
 		if (parent)
 		{
 //			fe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(parent->offset); // for strategy type != 4
@@ -563,6 +606,20 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
 		{
 			fe->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(0);
 			fe->icbTag.parentICBLocation.partitionReferenceNum = cpu_to_le16(0);
+			if (filetype == ICBTAG_FILE_TYPE_DIRECTORY) // root directory
+			{
+				fe->uid = cpu_to_le32(disc->uid);
+				fe->gid = cpu_to_le32(disc->gid);
+				fe->permissions = cpu_to_le32(
+					((disc->mode & S_IRWXU) << 4) |
+					((disc->mode & S_IRWXG) << 2) |
+					((disc->mode & S_IRWXO) << 0) |
+					((disc->mode & S_IWUSR) ? FE_PERM_U_CHATTR : 0) |
+					((disc->mode & S_IWGRP) ? FE_PERM_G_CHATTR : 0) |
+					((disc->mode & S_IWOTH) ? FE_PERM_O_CHATTR : 0) |
+					0 // Do not allow deleting root directory
+				);
+			}
 		}
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
 			query_lvidiu(disc)->numDirs = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numDirs)+1);
@@ -578,13 +635,13 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, ui
  *        a parent directory
  * @param disc the udf_disc
  * @param pspace the type:PSPACE udf_extent for on-disc allocations
- * @param name the file name - the first byte is the OSTA unicode compression type
+ * @param name the file name in OSTA Compressed Unicode format (d-characters)
  * @param length the length of the file name in bytes
  * @param offset the starting block number to search for on-disc allocations
  * @param parent the parent directory tag:FE/EFE udf_descriptor
  * @return the in-memory address of the directory tag:FE/EFE udf_descriptor
  */
-struct udf_desc *udf_mkdir(struct udf_disc *disc, struct udf_extent *pspace, uint8_t *name, uint8_t length, uint32_t offset, struct udf_desc *parent)
+struct udf_desc *udf_mkdir(struct udf_disc *disc, struct udf_extent *pspace, const dchars *name, uint8_t length, uint32_t offset, struct udf_desc *parent)
 {
 	struct udf_desc *desc = udf_create(disc, pspace, name, length, offset, parent, FID_FILE_CHAR_DIRECTORY, ICBTAG_FILE_TYPE_DIRECTORY, 0);
 
@@ -660,7 +717,9 @@ static inline unsigned long udf_find_next_one_bit (void * addr, unsigned long si
 	}
 	if (!size)
 		return result;
-	tmp = leBPL_to_cpup(p);
+	tmp = 0;
+	memcpy(&tmp, p, (size+7)/8);
+	tmp = leBPL_to_cpup(&tmp);
 found_first:
 	tmp &= ~0UL >> (BITS_PER_LONG-size);
 found_middle:
@@ -704,7 +763,9 @@ static inline unsigned long udf_find_next_zero_bit(void * addr, unsigned long si
 	}
 	if (!size)
 		return result;
-	tmp = leBPL_to_cpup(p);
+	tmp = 0;
+	memcpy(&tmp, p, (size+7)/8);
+	tmp = leBPL_to_cpup(&tmp);
 found_first:
 	tmp |= (~0UL << size);
 	if (tmp == (uintBPL)~0UL)	/* Are any bits zero? */
@@ -716,13 +777,12 @@ found_middle:
 /**
  * @brief allocate an aligned space bitmap on-disc
  * @param disc the udf disc
- * @param pspace the type:PSPACE udf_extent for on-disc allocations
  * @param bitmap the space bitmap tag:USB/FSB udf_descriptor
  * @param start the starting block number to search for on-disc allocations
  * @param blocks the number of blocks in the space bitmap
  * @return the starting block number of the on-disc aligned space bitmap
  */
-int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *bitmap, uint32_t start, uint32_t blocks)
+int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_desc *bitmap, uint32_t start, uint32_t blocks)
 {
 	uint32_t alignment = disc->sizing[PSPACE_SIZE].align;
 	struct spaceBitmapDesc *sbd = (struct spaceBitmapDesc *)bitmap->data->buffer;
@@ -731,6 +791,11 @@ int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_extent *pspace, st
 	do
 	{
 		start = ((start + alignment - 1) / alignment) * alignment;
+		if (start + blocks >= sbd->numOfBits)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			exit(1);
+		}
 		if (sbd->bitmap[start/8] & (1 << (start%8)))
 		{
 			end = udf_find_next_zero_bit(sbd->bitmap, sbd->numOfBits, start);
@@ -746,13 +811,12 @@ int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_extent *pspace, st
 /**
  * @brief allocate a space table on-disc
  * @param disc the udf_disc
- * @param pspace the type:PSPACE udf_extent for on-disc allocations
  * @param table the space table tag:USE/FSE udf_descriptor
  * @param start the starting block offset for the allocation search
  * @param blocks the number of blocks in the space table
  * @return the starting block number of the on-disc space table
  */
-int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *table, uint32_t start, uint32_t blocks)
+int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_desc *table, uint32_t start, uint32_t blocks)
 {
 	uint32_t alignment = disc->sizing[PSPACE_SIZE].align;
 	struct unallocSpaceEntry *use = (struct unallocSpaceEntry *)table->data->buffer;
@@ -761,11 +825,16 @@ int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_extent *pspace, str
 
 	do
 	{
+		if (offset >= use->lengthAllocDescs)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			exit(1);
+		}
 		sad = (short_ad *)&use->allocDescs[offset];
 		if (start < le32_to_cpu(sad->extPosition))
 			start = le32_to_cpu(sad->extPosition);
 		start = ((start + alignment - 1) / alignment) * alignment;
-		end = le32_to_cpu(sad->extPosition) + ((le32_to_cpu(sad->extLength) & 0x3FFFFFFF) >> disc->blocksize_bits);
+		end = le32_to_cpu(sad->extPosition) + ((le32_to_cpu(sad->extLength) & EXT_LENGTH_MASK) / disc->blocksize);
 		if (start > end)
 			start = end;
 		offset += sizeof(short_ad);
@@ -821,35 +890,40 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 	if (disc->flags & FLAG_FREED_BITMAP)
 	{
 		desc = find_desc(pspace, le32_to_cpu(phd->freedSpaceBitmap.extPosition));
-		return udf_alloc_bitmap_blocks(disc, pspace, desc, start, blocks);
+		return udf_alloc_bitmap_blocks(disc, desc, start, blocks);
 	}
 	else if (disc->flags & FLAG_FREED_TABLE)
 	{
 		desc = find_desc(pspace, le32_to_cpu(phd->freedSpaceTable.extPosition));
-		return udf_alloc_table_blocks(disc, pspace, desc, start, blocks);
+		return udf_alloc_table_blocks(disc, desc, start, blocks);
 	}
 	else if (disc->flags & FLAG_UNALLOC_BITMAP)
 	{
 		desc = find_desc(pspace, le32_to_cpu(phd->unallocSpaceBitmap.extPosition));
-		return udf_alloc_bitmap_blocks(disc, pspace, desc, start, blocks);
+		return udf_alloc_bitmap_blocks(disc, desc, start, blocks);
 	}
 	else if (disc->flags & FLAG_UNALLOC_TABLE)
 	{
 		desc = find_desc(pspace, le32_to_cpu(phd->unallocSpaceTable.extPosition));
-		return udf_alloc_table_blocks(disc, pspace, desc, start, blocks);
+		return udf_alloc_table_blocks(disc, desc, start, blocks);
 	}
 	else if (disc->flags & FLAG_VAT)
 	{
-		uint32_t offset = 0, length = 0;
+		uint32_t offset = 0, length = 0, i = 0;
 		if (pspace->tail)
 		{
 			offset = pspace->tail->offset;
-			length = (pspace->tail->length + disc->blocksize - 1) >>
-				disc->blocksize_bits;
+			length = (pspace->tail->length + disc->blocksize - 1) / disc->blocksize;
 		}
 		if (offset + length > start)
 			start = offset + length;
-		disc->vat[disc->vat_entries++] = start;
+		if (start >= pspace->blocks)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			exit(1);
+		}
+		for (i = 0; i < blocks; ++i)
+			disc->vat[disc->vat_entries++] = start+i;
 		return start;
 	}
 	else

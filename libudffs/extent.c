@@ -2,6 +2,7 @@
  * extent.c
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2014-2017  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -27,7 +28,6 @@
 
 #include "config.h"
 
-#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -120,24 +120,44 @@ struct udf_extent *next_extent(struct udf_extent *start_ext, enum udf_space_type
 /**
  * @brief find the next udf_extent of a given space_type on a udf_extent list
  *        that satisfies the necessary size and alignment
+ * @param disc the udf_disc containing the blocks
  * @param start_ext the starting udf_extent for the search
  * @param type the space_type of the udf_extent to search for
  * @param blocks the minimum size of the udf_extent in blocks
  * @param offset the required alignment for the start block
  * @return the start block of the aligned udf_extent or zero
  */
-uint32_t next_extent_size(struct udf_extent *start_ext, enum udf_space_type type, uint32_t blocks, uint32_t offset)
+uint32_t next_extent_size(struct udf_disc *disc, struct udf_extent *start_ext, enum udf_space_type type, uint32_t blocks, uint32_t offset)
+{
+	return find_next_extent_size(disc, start_ext->start, type, blocks, offset);
+}
+
+/**
+ * @brief find the next udf_extent of a given space_type on a udf_extent list
+ *        that satisfies the necessary size and alignment
+ * @param disc the udf_disc containing the blocks
+ * @param start the block to search for
+ * @param type the space_type of the udf_extent to search for
+ * @param blocks the minimum size of the udf_extent in blocks
+ * @param offset the required alignment for the start block
+ * @return the start block of the aligned udf_extent or zero
+ */
+uint32_t find_next_extent_size(struct udf_disc *disc, uint32_t start, enum udf_space_type type, uint32_t blocks, uint32_t offset)
 {
 	uint32_t inc;
+	struct udf_extent *start_ext;
 
-	start_ext = next_extent(start_ext, type);
+	start_ext = next_extent(find_extent(disc, start), type);
 cont:
 	while (start_ext != NULL && start_ext->blocks < blocks)
 		start_ext = next_extent(start_ext->next, type);
 
-	if (start_ext != NULL && start_ext->start % offset)
+	if (start_ext != NULL && (start_ext->start % offset || start_ext->start < start))
 	{
-		inc = offset - (start_ext->start % offset);
+		if (start_ext->start < start)
+			inc = start - start_ext->start;
+		else
+			inc = offset - (start_ext->start % offset);
 		if (start_ext->blocks - inc < blocks)
 		{
 			start_ext = next_extent(start_ext->next, type);
@@ -175,26 +195,26 @@ struct udf_extent *prev_extent(struct udf_extent *start_ext, enum udf_space_type
  */
 uint32_t prev_extent_size(struct udf_extent *start_ext, enum udf_space_type type, uint32_t blocks, uint32_t offset)
 {
-	uint32_t dec;
+	uint32_t inc;
 
 	start_ext = prev_extent(start_ext, type);
 cont:
 	while (start_ext != NULL && start_ext->blocks < blocks)
 		start_ext = prev_extent(start_ext->prev, type);
 
-	if (start_ext != NULL && (start_ext->start + start_ext->blocks) % offset)
+	if (start_ext != NULL && (start_ext->start % offset))
 	{
-		dec = (start_ext->start + start_ext->blocks) % offset;
-		if (start_ext->blocks - dec < blocks)
+		inc = offset - (start_ext->start % offset);
+		if (start_ext->blocks - inc < blocks)
 		{
 			start_ext = prev_extent(start_ext->prev, type);
 			goto cont;
 		}
 	}
 	else
-		dec = 0;
+		inc = 0;
 
-	return start_ext ? start_ext->start + start_ext->blocks - dec - blocks : 0; // could this cause fragmentation?
+	return start_ext ? start_ext->start + inc + ((start_ext->blocks - inc - blocks)/offset)*offset : 0;
 }
 
 /**
@@ -231,6 +251,12 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 {
 	struct udf_extent *new_ext, *start_ext = find_extent(disc, start);
 
+	if (start < start_ext->start)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+		exit(1);
+	}
+
 	if (start == start_ext->start)
 	{
 		if (blocks == start_ext->blocks)
@@ -261,11 +287,8 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 		}
 		else /* blocks > start_ext->blocks */
 		{
-			printf("trying to change type of multiple extents\n");
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
-			start_ext->space_type = type;
-
-			return start_ext;
 		}
 	}
 	else /* start > start_ext->start */
@@ -319,7 +342,7 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 		{
 			if (start_ext->blocks < blocks)
 			{
-				printf("trying to change type of multiple extents\n");
+				fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 				exit(1);
 			}
 			new_ext = malloc(sizeof(struct udf_extent));
@@ -382,7 +405,6 @@ struct udf_desc *find_desc(struct udf_extent *ext, uint32_t offset)
 /**
  * @brief allocate a new udf_descriptor having a udf_data item and insert it
  *        into the udf_descriptor list of a udf_extent ordered by block number
- * @param disc the udf_disc - unused
  * @oaram ext the udf_extent containing the udf_descriptor list head
  * @param ident the tag ident of the new udf_descriptor
  * @param offset the first block the new descriptor describes
@@ -390,7 +412,7 @@ struct udf_desc *find_desc(struct udf_extent *ext, uint32_t offset)
  * @param data the udf_data item, if NULL allocate memory for the udf_data item
  * @return the in-memory address of the new udf_descriptor
  */
-struct udf_desc *set_desc(struct udf_disc *disc, struct udf_extent *ext, uint16_t ident, uint32_t offset, uint32_t length, struct udf_data *data)
+struct udf_desc *set_desc(struct udf_extent *ext, uint16_t ident, uint32_t offset, uint32_t length, struct udf_data *data)
 {
 	struct udf_desc *start_desc, *new_desc = calloc(1, sizeof(struct udf_desc));
 
@@ -466,7 +488,7 @@ struct udf_data *alloc_data(void *buffer, int length)
 	if (buffer)
 		data->buffer = buffer;
 	else if (length)
-		data->buffer = calloc(1, length+sizeof(unsigned long)); // why the sizeof?
+		data->buffer = calloc(1, length);
 	data->length = length;
 
 	return data;

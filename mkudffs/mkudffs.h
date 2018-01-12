@@ -2,6 +2,7 @@
  * mkudffs.h
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2016-2017  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -32,25 +33,41 @@
 #define UDF_ID_APPLICATION		"*Linux mkudffs"
 
 #define DEFAULT_HD	0
+#define DEFAULT_CD	0
 #define DEFAULT_DVD	0
 #define DEFAULT_DVDRAM	0
 #define DEFAULT_WORM	1
 #define DEFAULT_MO	1
 #define DEFAULT_CDRW	2
 #define DEFAULT_CDR	3
+#define DEFAULT_BDR	3
 #define DEFAULT_DVDRW	4
+#define DEFAULT_DVDR	5
 
-#ifndef NAME_MAX
-#define NAME_MAX	255
-#endif
+enum media_type {
+	MEDIA_TYPE_NONE,
+	MEDIA_TYPE_HD,
+	MEDIA_TYPE_DVD,
+	MEDIA_TYPE_DVDRAM,
+	MEDIA_TYPE_DVDRW,
+	MEDIA_TYPE_DVDR,
+	MEDIA_TYPE_WORM,
+	MEDIA_TYPE_MO,
+	MEDIA_TYPE_CDRW,
+	MEDIA_TYPE_CDR,
+	MEDIA_TYPE_CD,
+	MEDIA_TYPE_BDR,
+};
 
 extern char *udf_space_type_str[UDF_SPACE_TYPE_SIZE];
 
 void udf_init_disc(struct udf_disc *);
 int udf_set_version(struct udf_disc *, int);
+void get_random_bytes(void *, size_t);
 void split_space(struct udf_disc *);
 void dump_space(struct udf_disc *);
 int write_disc(struct udf_disc *);
+void setup_mbr(struct udf_disc *);
 void setup_vrs(struct udf_disc *);
 void setup_anchor(struct udf_disc *);
 void setup_partition(struct udf_disc *);

@@ -53,10 +53,6 @@
 #define PACKET_BLOCK	32
 #define PACKET_SIZE	CDROM_BLOCK*PACKET_BLOCK
 
-#ifndef NAME_MAX
-#define NAME_MAX	255
-#endif
-
 #define DEFAULT_SPEED	12
 
 typedef struct
@@ -73,7 +69,7 @@ typedef struct
 
 struct cdrw_disc
 {
-	char		filename[NAME_MAX];	/* file to write */
+	const char *	filename;		/* file to write */
 	unsigned long	offset;			/* write file / format */
 	unsigned char	get_settings;		/* just print settings */
 	unsigned char	set_settings;		/* save settings */

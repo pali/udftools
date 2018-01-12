@@ -50,6 +50,7 @@ deleteFID(Directory * dir, struct fileIdentDesc * fid)
 {
     int		rv;
     struct fileEntry *fe;
+    struct logicalVolIntegrityDescImpUse *lvidiu;
 
     rv = CMND_OK;
 
@@ -77,11 +78,13 @@ deleteFID(Directory * dir, struct fileIdentDesc * fid)
 	} else {
 	    if( fe->icbTag.fileType == ICBTAG_FILE_TYPE_DIRECTORY ) {
 		dir->fe.fileLinkCount--;
-		((struct logicalVolIntegrityDescImpUse*)
-		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions))->numDirs--;
+		lvidiu = (struct logicalVolIntegrityDescImpUse*)
+		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+		lvidiu->numDirs--;
 	    } else {
-		((struct logicalVolIntegrityDescImpUse*)
-		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions))->numFiles--;
+		lvidiu = (struct logicalVolIntegrityDescImpUse*)
+		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+		lvidiu->numFiles--;
 	    }
 
 	    /* free file data */
@@ -115,10 +118,12 @@ findFileIdentDesc(Directory *dir, char* name)
     uint64_t		i;
     char		*data;
     struct fileIdentDesc *fid;
-    dstring             uName[256];
+    dchars              uName[256];
     size_t              uLen;
 
-    uLen = encode_utf8(uName, "", name, 256);
+    uLen = encode_locale(uName, name, 256);
+    if (uLen == (size_t)-1)
+        return NULL;
 
     data = dir->data;
 
@@ -158,6 +163,7 @@ struct fileEntry*
 makeFileEntry() 
 {
     struct fileEntry *fe = (struct fileEntry*) calloc(2048, 1);
+    struct logicalVolHeaderDesc* lvhd = (struct logicalVolHeaderDesc*)lvid->logicalVolContentsUse;
 
     updateTimestamp(0,0);
     fe->descTag.tagIdent = TAG_IDENT_FE;
@@ -174,7 +180,7 @@ makeFileEntry()
     fe->modificationTime = timeStamp;
     fe->attrTime = timeStamp;
     fe->impIdent = entityWRUDF;
-    fe->uniqueID = ((struct logicalVolHeaderDesc*)lvid->logicalVolContentsUse)->uniqueID++;
+    fe->uniqueID = lvhd->uniqueID++;
     return fe;
 }
 
@@ -186,8 +192,8 @@ makeFileEntry()
 struct fileIdentDesc*
 makeFileIdentDesc(char* name) 
 {
-    dstring uName[256];
-    uint8_t uLen;
+    dchars uName[256];
+    size_t uLen;
     struct fileIdentDesc *fid;
 
     fid = (struct fileIdentDesc*) calloc(512,1);
@@ -198,8 +204,11 @@ makeFileIdentDesc(char* name)
     fid->icb.extLength = 2048;
 
     if( name[0] != 0 ) {				/* FID to parent directory has no name */
-	memset(&uName, 0, 256);
-        uLen = encode_utf8(uName, "", name, 256);
+	uLen = encode_locale(uName, name, 256);
+	if (uLen == (size_t)-1) {
+		uLen = 1;
+		uName[0] = 0x8;
+	}
 	fid->lengthFileIdent = uLen;
 	memcpy(fid->fileIdent + fid->lengthOfImpUse, uName, fid->lengthFileIdent);
     }

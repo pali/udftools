@@ -1,8 +1,5 @@
 /*
- * options.h
- *
- * Copyright (c) 2002       Ben Fennema <bfennema@falcon.csc.calpoly.edu>
- * All rights reserved.
+ * Copyright (C) 2017  Pali Rohár <pali.rohar@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,19 +11,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _OPTIONS_H
-#define _OPTIONS_H 1
+#ifndef OPTIONS_H
+#define OPTIONS_H
 
-#include <getopt.h>
+struct udf_disc;
 
-void usage(void);
-void parse_args(int, char *[], struct cdrw_disc *, const char **);
+void parse_args(int, char *[], struct udf_disc *, char **);
 
 /*
  * Command line option token values.
@@ -35,6 +30,13 @@ void parse_args(int, char *[], struct cdrw_disc *, const char **);
  *      0x2000-0x2fff   Long settings (arg required)
  */
 
-#define OPT_HELP        0x1000
+#define OPT_HELP	0x1000
+#define OPT_LOCALE	0x1001
+#define OPT_UNICODE8	0x1002
+#define OPT_UNICODE16	0x1003
+#define OPT_UTF8	0x1004
 
-#endif /* _OPTIONS_H */
+#define OPT_BLK_SIZE	0x2000
+#define OPT_VAT_BLOCK	0x2001
+
+#endif /* OPTIONS_H */

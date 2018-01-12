@@ -10,7 +10,12 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <locale.h>
 #include <sys/resource.h>
+
+#ifdef USE_READLINE
+#include <readline/readline.h>
+#endif
 
 #include "wrudf.h"
 
@@ -20,12 +25,12 @@ int	devicetype;
 enum MEDIUM medium;
 int	ignoreReadError;		/* used while reading VRS which may be absent on open CDR */
 
-#ifdef _GNU_SOURCE
+#ifdef USE_READLINE
 char	*line;
 #define	GETLINE(prompt) readLine(prompt);
 #else
 char	line[256];
-#define GETLINE(prompt) printf(prompt);	fgets(line, 256, stdin); *strchr(line, '\n') = 0;
+#define GETLINE(prompt) do { printf("%s", prompt); if (fgets(line, 256, stdin)) *strchr(line, '\n') = 0; else line[0] = 0; } while (0)
 #endif
 
 
@@ -62,9 +67,6 @@ extern	uint64_t  CDRuniqueID;				/* in wrudf-cdr.c ex VAT FE */
 struct partitionDesc		*pd;			/* for the writable partition */
 uint16_t			virtualPartitionNum  = 0xFFFF;
 uint32_t			*vat;
-uint32_t			newVATindex;
-uint32_t			maxVATindex;
-uint32_t			prevVATlbn;
 struct logicalVolDesc		*lvd;
 struct unallocSpaceDesc		*usd;
 struct spaceBitmapDesc		*spaceMap;
@@ -76,12 +78,14 @@ struct sparingTable		*st;
 int	spaceMapDirty, usdDirty, sparingTableDirty;
 
 
+#ifdef USE_READLINE
 char* readLine(char* prompt) {
     if( line ) {
 	free(line);
     }
     return line = readline(prompt);
 }
+#endif
 
 
 void 
@@ -93,9 +97,10 @@ initialise(char *devicename)
     struct sparablePartitionMap *spm;
     char			zeroes[5];
     char                        fsdOut[91];
-    int                         fsdLen;
     struct generic_desc 	*p;
     struct volStructDesc	*vsd;
+    struct partitionHeaderDesc	*phd;
+    struct logicalVolHeaderDesc	*lvhd;
 
     initIO(devicename);
     memset(zeroes, 0, 5);
@@ -289,7 +294,8 @@ initialise(char *devicename)
 	fail("No File Set Descriptor\n");
 
     /* load Spacemap extent */
-    adSpaceMap = (short_ad*) &((struct partitionHeaderDesc*)pd->partitionContentsUse)->unallocSpaceBitmap;
+    phd = (struct partitionHeaderDesc*)pd->partitionContentsUse;
+    adSpaceMap = &phd->unallocSpaceBitmap;
 
     if( adSpaceMap->extLength != 0 ) {
 	blkno = adSpaceMap->extPosition;
@@ -306,13 +312,18 @@ initialise(char *devicename)
 	    fail("SpaceBitmap not found\n");
     }
 
-    if ((fsdLen = decode_utf8(fsd->fileSetIdent, fsdOut, fsd->fileSetIdent[31]))>=0)
-        fsdOut[fsdLen] = '\0';
+    if (decode_string(NULL, fsd->fileSetIdent, fsdOut, sizeof(fsd->fileSetIdent), sizeof(fsdOut)) == (size_t)-1)
+        fsdOut[0] = 0;
 
     printf("You are going to update fileset '%s'\nProceed (y/N) : ", fsdOut);
-    readLine(NULL);
+    GETLINE("");
 
-    if( !line || line[0] != 'y' )
+#ifdef USE_READLINE
+    if( !line )
+	fail("wrudf terminated\n");
+#endif
+
+    if( line[0] != 'y' )
 	fail("wrudf terminated\n");
 
     /* Read Logical Volume Integrity sequence */
@@ -357,8 +368,11 @@ initialise(char *devicename)
 	fail("CDR volume has been closed\n");
 
     if( medium == CDR )
+    {
 	// take from VAT FileEntry
-	((struct logicalVolHeaderDesc*)lvid->logicalVolContentsUse)->uniqueID = CDRuniqueID;
+	lvhd = (struct logicalVolHeaderDesc*)lvid->logicalVolContentsUse;
+	lvhd->uniqueID = CDRuniqueID;
+    }
     
     curDir = rootDir = (Directory*)malloc(sizeof(Directory));
     memset(rootDir, 0, sizeof(Directory));
@@ -418,6 +432,7 @@ finalise(void)
     int		i, lbn, len, size, blkno ;
     struct generic_desc 	*p;
     short_ad	*adSpaceMap;
+    struct partitionHeaderDesc *phd;
 
     updateDirectory(rootDir);				/* and any dirty children */
 
@@ -426,7 +441,8 @@ finalise(void)
     } else {
 	/* rewrite Space Bitmap */
 	if( spaceMapDirty) {
-	    adSpaceMap = (short_ad*) &((struct partitionHeaderDesc*)pd->partitionContentsUse)->unallocSpaceBitmap;
+	    phd = (struct partitionHeaderDesc*)pd->partitionContentsUse;
+	    adSpaceMap = &phd->unallocSpaceBitmap;
 	    lbn = adSpaceMap->extPosition;
 	    len = adSpaceMap->extLength;
 
@@ -655,6 +671,8 @@ main(int argc, char** argv)
     char	*ptr;
     size_t	len;
     Directory	*d;
+
+    setlocale(LC_CTYPE, "");
 
     printf("wrudf from " PACKAGE_NAME " " PACKAGE_VERSION "\n");
     devicename= "/dev/cdrom";

@@ -2,6 +2,7 @@
  * defaults.c
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2014-2017  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -29,10 +30,24 @@
 
 #include "mkudffs.h"
 
+int default_media[] = {
+	[MEDIA_TYPE_HD] = DEFAULT_HD,
+	[MEDIA_TYPE_DVD] = DEFAULT_DVD,
+	[MEDIA_TYPE_DVDRAM] = DEFAULT_DVDRAM,
+	[MEDIA_TYPE_DVDRW] = DEFAULT_DVDRW,
+	[MEDIA_TYPE_DVDR] = DEFAULT_DVDR,
+	[MEDIA_TYPE_WORM] = DEFAULT_WORM,
+	[MEDIA_TYPE_MO] = DEFAULT_MO,
+	[MEDIA_TYPE_CDRW] = DEFAULT_CDRW,
+	[MEDIA_TYPE_CDR] = DEFAULT_CDR,
+	[MEDIA_TYPE_CD] = DEFAULT_CD,
+	[MEDIA_TYPE_BDR] = DEFAULT_BDR,
+};
+
 struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 {
 //			align,	numSize,denomSize,minSize
-	{ // Media 0 = HD, DVDROM, DVDRAM
+	{ // Media 0 = HD, CDROM, DVDROM, DVDRAM
 		{	1,	0,	1,	16	}, // VDS_SIZE		Volume Descriptor Set
 		{	1,	0,	1,	1	}, // LVID_SIZE		Logical Volume Integrity Descriptor
 		{	1,	0,	1,	0	}, // STABLE_SIZE	Sparing Table
@@ -49,23 +64,30 @@ struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 	{ // Media 2 = CDRW
 		{	32,	0,	1,	32	},
 		{	32,	0,	1,	32	},
-		{	32,	0,	1,	32	},
+		{	32,	0,	1,	5	}, // 56+8*1024 bytes ~~ 5 blocks
 		{	32,	0,	1,	1024	},
 		{	32,	0,	1,	0	},
 	},
-	{ // Media 3 = CDR
-		{	1,	0,	1,	16	},
-		{	1,	0,	1,	1	},
-		{	1,	0,	1,	0	},
-		{	1,	0,	1,	0	},
-		{	1,	0,	1,	0	},
+	{ // Media 3 = CDR, BD-R
+		{	32,	0,	1,	16	},
+		{	32,	0,	1,	1	},
+		{	32,	0,	1,	0	},
+		{	32,	0,	1,	0	},
+		{	32,	0,	1,	0	},
 	},
 	{ // Media 4 = DVDRW
 		{       16,     0,      1,      16      },
 		{       16,     0,      1,      16      },
-		{       16,     0,      1,      16      },
+		{       16,     0,      1,      5       }, // 56+8*1024 bytes ~~ 5 blocks
 		{       16,     0,      1,      1024    },
 		{       16,     0,      1,      0       },
+	},
+	{ // Media 5 = DVDR
+		{	16,	0,	1,	16	},
+		{	16,	0,	1,	1	},
+		{	16,	0,	1,	0	},
+		{	16,	0,	1,	0	},
+		{	16,	0,	1,	0	},
 	}
 };
 
@@ -87,7 +109,7 @@ struct primaryVolDesc default_pvd =
 	.maxInterchangeLvl = constant_cpu_to_le16(3),
 	.charSetList = constant_cpu_to_le32(CS0),
 	.maxCharSetList = constant_cpu_to_le32(CS0),
-	.volSetIdent = "\x08" "FFFFFFFFFFFFFFFFLinuxUDF",
+	.volSetIdent = "\x08" "0000000000000000LinuxUDF",
 	.descCharSet =
 	{
 		.charSetType = UDF_CHAR_SET_TYPE,
@@ -491,4 +513,23 @@ struct extendedFileEntry default_efe =
 			UDF_OS_ID_LINUX,
 		},
 	},
+};
+
+struct mbr default_mbr =
+{
+	.boot_code = "",
+	.disk_signature = constant_cpu_to_le32(0x0),
+	.unknown = 0x0,
+	.partitions =
+	{
+		{
+			.boot_indicator = MBR_PARTITION_NOT_BOOTABLE,
+			.starting_chs = { 0, 0, 0 },
+			.partition_type = MBR_PARTITION_TYPE_IFS,
+			.ending_chs = { 0, 0, 0 },
+			.starting_lba = constant_cpu_to_le32(0),
+			.size_in_lba = constant_cpu_to_le32(0),
+		},
+	},
+	.boot_signature = constant_cpu_to_le16(MBR_BOOT_SIGNATURE),
 };

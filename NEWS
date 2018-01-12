@@ -1,3 +1,34 @@
+Changes in 2.0
+* For UDF uuid is used same algorithm as in util-linux v2.30
+* Fixed Unicode encode/decode functions to correctly process OSTA Unicode d-string and d-characters
+* Corrections and updates in man pages, mkudffs now contains lot of compatibility information
+* New tool udfinfo which shows various information about UDF (incuding label, uuid, free space)
+* New tool udflabel which shows or changes UDF label or UDF uuid
+* cdrwtool:
+  * Set default UDF revision to 1.50
+* pktsetup:
+  * Make dev_name argument for setup optional
+  * Allow to setup and remove optical device by major:minor numbers
+  * Include udev rule file for automatic managing of packet writing devices
+* mkudffs:
+  * Fixed support for VAT and CD-R disks
+  * Fixed crashes and infinite loops on disks with small number of sectors
+  * Allow 128 (resp. 63) characters in --label option
+  * Allow to enable VAT via new --vat option for any disk type
+  * Allow to enable Sparing Table via --spartable option also for any disk type
+  * Allow to specify number of entries in Sparing Table via new --sparspace option
+  * Added support for UDF revision 2.50 and 2.60 for disc with VAT (e.g. Blu-Ray Disc Recordable)
+  * Added support for CD-ROM, DVD-R and BD-R discs
+  * Added new option --new-file for enforcing to create a new image file
+  * Added new option --mode for specifying permissions of root directory
+  * Added new option --bootarea=preserve|erase|mbr to specify what to do with first 32kB of disk
+    --bootarea=mbr put MBR with one partition which starts at sector 0 and spans whole disk device (compatibility for MS Windows)
+  * Added new option --locale for specifying that command line arguments are encoded according to current locale and make it default
+  * Added support for disks which have logical sector size 8192, 16384 or 32768 bytes
+  * For hard disk set fallback block size to 512 bytes (default is still logical sector size of block device)
+  * Check that block device is not mounted before format process starts
+  * Optimize splitting disk space to maximize available free space for data
+
 Changes in 1.3
 * Fixed Large File Support
 * Fixed pktsetup to work

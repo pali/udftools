@@ -1246,7 +1246,7 @@ int get_volume_identifier(struct udf_disc *disc, struct filesystemStats *stats, 
     }
     char *namebuf = calloc(1,128*2);
     memset(namebuf, 0, 128*2);
-    int size = decode_string(disc, disc->udf_pvd[vds]->volSetIdent, namebuf, 128);
+    int size = decode_string(disc, disc->udf_pvd[vds]->volSetIdent, namebuf, 128, 128*2);
 
     for(int i=0; i<16; i++) {
         if((namebuf[i] >= '0' && namebuf[i]<='9') || (namebuf[i] >= 'a' && namebuf[i] <= 'z')) {
@@ -1846,7 +1846,7 @@ uint8_t inspect_fid(int fd, uint8_t **dev, const struct udf_disc *disc, size_t s
         } else {
             char *namebuf = calloc(1,256*2);
             memset(namebuf, 0, 256*2);
-            int size = decode_utf8(fid->fileIdent, namebuf, fid->lengthFileIdent);
+            int size = decode_utf8(fid->fileIdent, namebuf, fid->lengthFileIdent, 256*2);
             if(size == (size_t) - 1) { //Decoding failed
                 warn("Filename decoding failed."); //TODO add tests
             } else {

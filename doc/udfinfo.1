@@ -1,0 +1,204 @@
+'\" t -*- coding: UTF-8 -*-
+.\" Copyright (C) 2017  Pali Rohár <pali.rohar@gmail.com>
+.\"
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License along
+.\" with this program; if not, write to the Free Software Foundation, Inc.,
+.\" 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+.TH UDFINFO 1 "udftools" "Commands"
+
+.SH NAME
+udfinfo \- show information about UDF filesystem
+
+.SH SYNOPSIS
+.BI "udfinfo [ options ] " device
+
+.SH DESCRIPTION
+\fBudfinfo\fP shows various information about a UDF filesystem stored either on
+the block device or in the disk file image. The output from the \fBudfinfo\fP is
+suitable for parsing by external applications or scripts.
+
+.SH OPTIONS
+.TP
+.B \-h,\-\-help
+Display the usage and the list of options.
+
+.TP
+.BI \-b,\-\-blocksize= " block\-size "
+Specify the size of blocks in bytes. Valid block size for a UDF filesystem is
+power of two in range from 512 to 32768 and must match a device logical (sector)
+size. If omitted, \fBudfinfo\fP tries to autodetect block size. It tries logical
+(sector) size and then all valid block sizes.
+
+.TP
+.BI \-\-vatblock= " vat\-block "
+Specify the block location of the Virtual Allocation Table. Virtual Allocation
+Table is present only on UDF disks with Virtual Partition Map and must be at the
+last written/recorded disk block.
+
+If omitted, \fBudfinfo\fP for optical disc tries to detect the last recorded
+block with fallback to the last block of block device or disk file image. In
+most cases this fallback does not have to work and for disk file images with
+Virtual Allocation Table is necessary to specify correct location.
+
+Virtual Allocation Table contains locations of UDF disk blocks needed to read
+data storage, determinate used and free space blocks, read File Set Identifier
+and calculate Windows specific Volume Serial Number. Also on disks with UDF
+revisions higher then 1.50 it contains Logical Volume Identifier and overwrite
+one stored in Logical Volume Descriptor.
+
+.TP
+.B \-\-locale
+Encode UDF string identifiers on output according to current locale settings
+(default).
+
+.TP
+.B \-\-u8
+Encode UDF string identifiers on output to 8 bit OSTA Compressed Unicode format,
+equivalent to Latin1 (ISO-8859-1). This will work only for strings which Unicode
+code points are below U+100.
+
+.TP
+.B \-\-u16
+Encode UDF string identifiers on output to 16 bit OSTA Compressed Unicode
+format, equivalent to UCS-2BE.
+
+.TP
+.B \-\-utf8
+Encode UDF string identifiers on output to UTF-8.
+
+.SH "EXIT STATUS"
+\fBudfinfo\fP returns 0 if successful, non-zero if there are problems like block
+device does not contain UDF filesystem.
+
+.SH "OUTPUT FORMAT"
+First part of the \fBudfinfo\fP standard output contains information in
+\fIkey\fP=\fIvalue\fP format. List of all keys with their meaning are in the
+following table:
+
+.RS
+.TP 1.6i
+filename
+File name of the selected block device or disk file image
+.TP
+label
+label is an alias for \fIlvid\fP, see \fBudflabel\fP(8) section \fBUDF LABEL AND
+UUID\fP
+.TP
+uuid
+UUID are first 16 hexadecimal lowercase digits of \fIfullvsid\fP, but see
+\fBudflabel\fP(8) section \fBUDF LABEL AND UUID\fP
+.TP
+lvid
+UDF Logical Volume Identifier stored in UDF Logical Volume Descriptor
+.TP
+vid
+UDF Volume Identifier stored in UDF Primary Volume Descriptor
+.TP
+vsid
+\fIfullvsid\fP after \fIuuid\fP part, typically 17.-127. character
+.TP
+fsid
+UDF File Set Identifier stored in UDF File Set Descriptor
+.TP
+fullvsid
+UDF Volume Set Identifier stored in UDF Primary Volume Descriptor
+.TP
+winserialnum
+Windows specific Volume Serial Number
+.TP
+blocksize
+UDF block size
+.TP
+blocks
+Number of all blocks on the selected block device or disk file image
+.TP
+usedblocks
+Number of used space blocks on UDF disk for data storage
+.TP
+freeblocks
+Number of free space blocks on UDF disk for data storage
+.TP
+behindblocks
+Number of blocks which are behind the last block used by UDF disk
+.TP
+numfiles
+Number of stored files on UDF disk
+.TP
+numdirs
+Number of stored directories on UDF disk
+.TP
+udfrev
+UDF revision needed for reading UDF disk
+.TP
+udfwriterev
+UDF revision needed for writing or modifying UDF disk
+.TP
+vatblock
+UDF block location of the Virtual Allocation Table (visible only when available)
+.TP
+integrity
+UDF integrity of Logical Volume, one of: \fIopened\fP, \fIclosed\fP,
+\fIunknown\fP
+.TP
+accesstype
+UDF Access Type, one of: \fIoverwritable\fP, \fIrewritable\fP, \fIwriteonce\fP,
+\fIreadonly\fP, \fIpseudo\-overwritable\fP, \fIunknown\fP
+.RE
+
+When UDF integrity is not \fIclosed\fP it means that the UDF disk was not
+properly unmounted, is in inconsistent state and needs repairing.
+
+All UDF string identifiers are stored on UDF disk in Unicode, therefore they are
+locale or code page agnostic. Options \fB\-\-locale\fP, \fB\-\-u8\fP,
+\fB\-\-u16\fP and \fB\-\-utf8\fP controls how are identifiers encoded on output.
+
+All newline characters from the UDF string identifiers are removed, so it is
+guaranteed that the newline character is present only as a separator.
+
+Second part of the \fBudfinfo\fP standard output contains list of UDF block
+types stored on device, one per line in the following format:
+
+.RS
+start=\fIblock\-num\fP, blocks=\fIblock\-count\fP, type=\fIblock\-type\fP
+.RE
+
+With meaning that \fIblock\-type\fP starts at UDF block \fIblock\-num\fP and
+span \fIblock\-count\fP blocks on device.
+
+Windows specific \fIVolume Serial Number\fP is a non-standard 32 bit checksum,
+calculated as four separate 8 bit XOR checksums of 512 bytes long UDF File Set
+Descriptor. Therefore it cannot be set or changed as opposite to UUID which is
+moreover 64 bit long. This non-standard checksum is used only by Windows systems
+(since Windows 98 era when it was introduced) and can be displayed on Windows
+systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil\fP.
+
+.SH LIMITATIONS
+\fBudfinfo\fP is not able to read Metadata Partition and Virtual Allocation
+Table stored outside of Information Control Block yet. Therefore determining
+used and free space blocks, reading File Set Identifier and calculating Windows
+specific Volume Serial Number may not be available for some Write Once media
+and disks with UDF revisions higher then 2.01 which have Metadata Partition.
+
+.SH AUTHOR
+.nf
+Pali Rohár <pali.rohar@gmail.com>
+.fi
+
+.SH AVAILABILITY
+\fBudfinfo\fP is part of the udftools package since version 2.0 and is available
+from https://github.com/pali/udftools/.
+
+.SH "SEE ALSO"
+\fBmkudffs\fP(8), \fBpktsetup\fP(8), \fBudflabel\fP(8), \fBcdrwtool\fP(1),
+\fBwrudf\fP(1)

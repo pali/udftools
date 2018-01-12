@@ -46,9 +46,7 @@ extern enum MEDIUM medium;
 
 extern uint32_t		trackSize;
 
-#ifdef _GNU_SOURCE
-/* I appear not to have readline.h */
-char*	readline(char* prompt);
+#ifdef USE_READLINE
 extern char	*line;
 #else
 extern char	line[256];
@@ -99,7 +97,9 @@ extern Directory		*rootDir, *curDir;
 
 
 /*wrudf.c */
+#ifdef USE_READLINE
 char* readLine(char *prompt);
+#endif
 
 /* wrudf-cmnd.c */
 int	updateDirectory(Directory* dir);

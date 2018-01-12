@@ -2,6 +2,7 @@
  * defaults.h
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2016-2017  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,6 +24,7 @@
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H 1
 
+extern int default_media[];
 extern struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE];
 
 extern struct primaryVolDesc default_pvd;
@@ -43,5 +45,7 @@ extern struct virtualPartitionMap default_virtmap;
 extern struct fileSetDesc default_fsd;
 extern struct fileEntry default_fe;
 extern struct extendedFileEntry default_efe;
+
+extern struct mbr default_mbr;
 
 #endif /* _DEFAULTS_H */

@@ -5,6 +5,7 @@
  * http://www.ecma.ch
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2017       Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,6 +43,9 @@
 #ifndef _ECMA_167_H
 #define _ECMA_167_H 1
 
+/* Character sets and coding - d-characters (ECMA 167r3 1/7.2) */
+typedef uint8_t		dchars;
+
 /* Character set specification (ECMA 167r3 1/7.2.1) */
 typedef struct
 {
@@ -60,6 +64,7 @@ typedef struct
 #define CHARSPEC_TYPE_CS7		0x07	/* (1/7.2.9) */
 #define CHARSPEC_TYPE_CS8		0x08	/* (1/7.2.10) */
 
+/* Fixed-length character fields - d-string (EMCA 167r3 1/7.2.12) */
 typedef uint8_t		dstring;
 
 /* Timestamp (ECMA 167r3 1/7.3) */
@@ -197,7 +202,15 @@ struct NSRDesc
 	uint8_t		reserved;
 	uint8_t		structData[2040];
 } __attribute__ ((packed));
-	
+
+/* Generic Descriptor */
+struct genericDesc
+{
+	tag		descTag;
+	uint32_t	volDescSeqNum;
+	uint8_t		reserved[492];
+} __attribute__ ((packed));
+
 /* Primary Volume Descriptor (ECMA 167r3 3/10.1) */
 struct primaryVolDesc
 {
@@ -319,7 +332,7 @@ struct genericPartitionMap
 
 /* Partition Map Type (ECMA 167r3 3/10.7.1.1) */
 #define GP_PARTITION_MAP_TYPE_UNDEF	0x00
-#define GP_PARTIITON_MAP_TYPE_1		0x01
+#define GP_PARTITION_MAP_TYPE_1		0x01
 #define GP_PARTITION_MAP_TYPE_2		0x02
 
 /* Type 1 Partition Map (ECMA 167r3 3/10.7.2) */
@@ -465,7 +478,7 @@ struct fileIdentDesc
 	long_ad		icb;
 	uint16_t	lengthOfImpUse;
 	uint8_t		impUse[0];
-	uint8_t		fileIdent[0];
+	dchars		fileIdent[0];
 	uint8_t		padding[0];
 } __attribute__ ((packed));
 
@@ -768,6 +781,7 @@ struct partitionIntegrityEntry
 /* Short Allocation Descriptor (ECMA 167r3 4/14.14.1) */
 
 /* Extent Length (ECMA 167r3 4/14.14.1.1) */
+#define EXT_LENGTH_MASK			0x3FFFFFFF
 #define EXT_RECORDED_ALLOCATED		0x00000000
 #define EXT_NOT_RECORDED_ALLOCATED	0x40000000
 #define EXT_NOT_RECORDED_NOT_ALLOCATED	0x80000000
@@ -790,7 +804,7 @@ struct pathComponent
 	uint8_t		componentType;
 	uint8_t		lengthComponentIdent;
 	uint16_t	componentFileVersionNum;
-	dstring		componentIdent[0];
+	dchars		componentIdent[0];
 } __attribute__ ((packed));
 
 /* File Entry (ECMA 167r3 4/14.17) */

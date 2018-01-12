@@ -55,8 +55,8 @@ u_char *cp_buffer;
 
 struct packetbuf pktbuf[MAXPKTBUFS+1];			/* last one special use */
 
-unsigned char	*verifyBuffer;					/* for verify only */
-unsigned char	*blockBuffer;
+static unsigned char *verifyBuffer;					/* for verify only */
+static unsigned char *blockBuffer;
 
 uint32_t	trackStart;
 uint32_t	trackSize;

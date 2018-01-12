@@ -1,0 +1,3 @@
+# Create and remove packet writing device for each optical block device
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_CDROM}=="1", RUN+="/usr/sbin/pktsetup %E{MAJOR}:%E{MINOR}"
+ACTION=="remove", SUBSYSTEM=="block", ENV{ID_CDROM}=="1", RUN+="/usr/sbin/pktsetup -d %E{MAJOR}:%E{MINOR}"

@@ -2,7 +2,7 @@
  * mkudffs.c
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
- * Copyright (c) 2014       Pali Rohár <pali.rohar@gmail.com>
+ * Copyright (c) 2014-2017  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -28,7 +28,6 @@
 
 #include "config.h"
 
-#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -38,6 +37,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include <errno.h>
+#include <sys/ioctl.h>
+#include <linux/hdreg.h>
 
 #include "mkudffs.h"
 #include "file.h"
@@ -49,15 +50,17 @@ void udf_init_disc(struct udf_disc *disc)
 	struct timeval	tv;
 	struct tm 	*tm;
 	int		altzone;
-	int		fd;
 	unsigned long int rnd;
+
+	srand(time(NULL));
 
 	memset(disc, 0x00, sizeof(*disc));
 
 	disc->blocksize = 2048;
-	disc->blocksize_bits = 11;
 	disc->udf_rev = le16_to_cpu(default_lvidiu.minUDFReadRev);
-	disc->flags = FLAG_UTF8 | FLAG_CLOSED;
+	disc->flags = FLAG_LOCALE | FLAG_CLOSED | FLAG_EFE;
+	disc->blkssz = 512;
+	disc->mode = 0755;
 
 	gettimeofday(&tv, NULL);
 	tm = localtime(&tv.tv_sec);
@@ -76,17 +79,7 @@ void udf_init_disc(struct udf_disc *disc)
 	ts.hundredsOfMicroseconds = (tv.tv_usec - ts.centiseconds * 10000) / 100;
 	ts.microseconds = tv.tv_usec - ts.centiseconds * 10000 - ts.hundredsOfMicroseconds * 100;
 
-	fd = open("/dev/urandom", O_RDONLY);
-	if (fd >= 0) {
-		if (read(fd, &rnd, sizeof(rnd)) != sizeof(rnd)) {
-			srand(time(NULL));
-			rnd = rand();
-		}
-		close(fd);
-	} else {
-		srand(time(NULL));
-		rnd = rand();
-	}
+	get_random_bytes(&rnd, sizeof(rnd));
 
 	/* Allocate/Initialize Descriptors */
 	disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc));
@@ -152,6 +145,7 @@ void udf_init_disc(struct udf_disc *disc)
 int udf_set_version(struct udf_disc *disc, int udf_rev)
 {
 	struct logicalVolIntegrityDescImpUse *lvidiu;
+	uint16_t udf_rev_le16;
 
 	if (disc->udf_rev == udf_rev)
 		return 0;
@@ -159,7 +153,8 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 		udf_rev != 0x0150 &&
 		udf_rev != 0x0200 &&
 		udf_rev != 0x0201 &&
-		udf_rev != 0x0250)
+		udf_rev != 0x0250 &&
+		udf_rev != 0x0260)
 	{
 		return 1;
 	}
@@ -184,49 +179,93 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
 	}
 
-	((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev);
-	((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(udf_rev);
-	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = le16_to_cpu(udf_rev);
+	udf_rev_le16 = cpu_to_le16(udf_rev);
+	memcpy(disc->udf_fsd->domainIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+	memcpy(disc->udf_lvd[0]->domainIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+	memcpy(disc->udf_iuvd[0]->impIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+	memcpy(disc->udf_stable[0]->sparingIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
 	lvidiu = query_lvidiu(disc);
-	lvidiu->minUDFReadRev = le16_to_cpu(udf_rev);
-	lvidiu->minUDFWriteRev = le16_to_cpu(udf_rev);
-	lvidiu->maxUDFWriteRev = le16_to_cpu(udf_rev);
-	((uint16_t *)disc->udf_stable[0]->sparingIdent.identSuffix)[0] = le16_to_cpu(udf_rev);
+	if (udf_rev == 0x0260)
+		lvidiu->minUDFReadRev = cpu_to_le16(0x0250);
+	else
+		lvidiu->minUDFReadRev = cpu_to_le16(udf_rev);
+	lvidiu->minUDFWriteRev = cpu_to_le16(udf_rev);
+	lvidiu->maxUDFWriteRev = cpu_to_le16(udf_rev);
 	return 0;
+}
+
+void get_random_bytes(void *buffer, size_t count)
+{
+	int fd;
+	size_t i;
+
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd >= 0)
+	{
+		if (read(fd, buffer, count) == (ssize_t)count)
+		{
+			close(fd);
+			return;
+		}
+		close(fd);
+	}
+
+	for (i = 0; i < count; ++i)
+		((uint8_t *)buffer)[i] = rand() % 0xFF;
 }
 
 void split_space(struct udf_disc *disc)
 {
 	uint32_t sizes[UDF_ALLOC_TYPE_SIZE];
 	uint32_t offsets[UDF_ALLOC_TYPE_SIZE];
-	uint32_t blocks = disc->head->blocks;
-	uint32_t start, size;
+	uint32_t blocks = disc->blocks;
+	uint32_t start, size, start2, size2;
 	struct sparablePartitionMap *spm;
 	struct udf_extent *ext;
+	uint32_t accessType;
 	uint32_t i, j;
 
-	if (disc->flags & FLAG_BRIDGE) // UDF-Bridge had both UDF and ISO-9660 filesystems mapping the same files
-	{
-		set_extent(disc, RESERVED, 0, 512);
-		set_extent(disc, ANCHOR, 512, 1);
-	}
+	// OS boot area
+	if (disc->flags & FLAG_BOOTAREA_MBR)
+		set_extent(disc, MBR, 0, 1);
 	else
+		set_extent(disc, RESERVED, 0, 32768 / disc->blocksize);
+
+	// Volume Recognition Sequence
+	if (disc->blocksize >= 2048)
+		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, 4); // 3 sectors for VSD + one empty sector
+	else
+		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize) / disc->blocksize); // 3 VSD in more sectors + one empty sector
+
+	// First Anchor Point at sector 256
+	if (blocks > 257)
+		set_extent(disc, ANCHOR, 256, 1);
+
+	// Second anchor point at sector (End-Of-Volume - 256)
+	if (disc->flags & FLAG_CLOSED)
 	{
-		set_extent(disc, RESERVED, 0, 32768 / disc->blocksize); // OS boot area
-		if (disc->blocksize >= 2048) // Volume Recognition Sequence
-			set_extent(disc, VRS, (2048 * 16) / disc->blocksize, 3);
-		else
-			set_extent(disc, VRS, (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize - 1) / disc->blocksize);
-		set_extent(disc, ANCHOR, 256, 1); // First Anchor Point at sector 256
+		if (disc->flags & FLAG_VAT)
+		{
+			if (blocks <= 257 || blocks-257 <= 256)
+			{
+				fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+				exit(1);
+			}
+			set_extent(disc, ANCHOR, 257, 1);
+		}
+		else if (blocks >= 3072)
+		{
+			set_extent(disc, ANCHOR, blocks-257, 1);
+		}
 	}
 
-	if (disc->flags & FLAG_CLOSED) // Second anchor point at sector (End-Of-Volume - 256)
-		set_extent(disc, ANCHOR, blocks-257, 1);
-
-	if (!(disc->flags & FLAG_VAT)) // Final anchor point at sector End-Of-Volume/Session for sequentially writable media
+	// Final anchor point at sector End-Of-Volume/Session for sequentially writable media
+	if (!(disc->flags & FLAG_VAT))
 		set_extent(disc, ANCHOR, blocks-1, 1);
-	else
-		set_extent(disc, PSPACE, blocks-1, 1);
+
+	// Calculate minimal size for Sparing Table needed for Sparing Space
+	if ((spm = find_type2_sparable_partition(disc, 0)) && disc->sizing[STABLE_SIZE].minSize == 0)
+		disc->sizing[STABLE_SIZE].minSize = (sizeof(struct sparingTable) + disc->sizing[SSPACE_SIZE].minSize / le16_to_cpu(spm->packetLength) * sizeof(struct sparingEntry) + disc->blocksize-1) / disc->blocksize;
 
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
@@ -236,82 +275,143 @@ void split_space(struct udf_disc *disc)
 		offsets[i] = disc->sizing[i].align;
 	}
 
-	start = next_extent_size(find_extent(disc, 256), USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
-	if (!start) {
-		fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+	accessType = le32_to_cpu(disc->udf_pd[0]->accessType);
+	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && sizes[LVID_SIZE] * (size_t)disc->blocksize < 8192)
+		sizes[LVID_SIZE] = (8192 + disc->blocksize-1) / disc->blocksize;
+
+	if (!(disc->flags & FLAG_VAT) && blocks < 770)
+		start = 0;
+	else
+		start = 96;
+	start = find_next_extent_size(disc, start, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+	if (!start)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
-	set_extent(disc, PVDS, start, sizes[VDS_SIZE]);
-	start = next_extent_size(find_extent(disc, 256), USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
-	if (!start) {
-		fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
-		exit(1);
-	}
-	set_extent(disc, LVID, start, sizes[LVID_SIZE]);
+	set_extent(disc, MVDS, start, sizes[VDS_SIZE]);
+
 	if (disc->flags & FLAG_VAT)
 	{
-		start = next_extent_size(find_extent(disc, 256), USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
-		if (!start) {
-			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+		start = find_next_extent_size(disc, (256-sizes[VDS_SIZE])/offsets[VDS_SIZE]*offsets[VDS_SIZE], USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+		if (!start)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		set_extent(disc, RVDS, start, sizes[VDS_SIZE]);
 	}
 	else
 	{
-		start = prev_extent_size(disc->tail, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
-		if (!start) {
-			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+		if (blocks >= 3072)
+			start = find_next_extent_size(disc, (blocks-257+97)/32*32, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+		else
+			start = prev_extent_size(disc->tail, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+		if (!start)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		set_extent(disc, RVDS, start, sizes[VDS_SIZE]);
+	}
+
+	start = prev_extent_size(disc->tail, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
+	if (start < 256 || blocks >= 770)
+	{
+		if (!(disc->flags & FLAG_VAT) && blocks < 770)
+			start = 0;
+		else
+			start = 128;
+		start = find_next_extent_size(disc, start, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
+		if (!start)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			exit(1);
+		}
+		set_extent(disc, LVID, start, sizes[LVID_SIZE]);
 	}
 
 	if ((spm = find_type2_sparable_partition(disc, 0)))
 	{
 		for (i=0; i<spm->numSparingTables; i++)
 		{
-			if (i & 0x1)
+			if (i == 0)
+				start = find_next_extent_size(disc, next_extent(disc->head, MVDS)->start, USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
+			else if (i == 1)
 				start = prev_extent_size(disc->tail, USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
+			else if (i == 2)
+				start = prev_extent_size(next_extent(disc->head, ANCHOR), USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
 			else
-				start = next_extent_size(find_extent(disc, 256), USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
-			if (!start) {
-				fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+				start = find_next_extent_size(disc, prev_extent(disc->tail->prev, ANCHOR)->start, USPACE, sizes[STABLE_SIZE], offsets[STABLE_SIZE]);
+			if (!start)
+			{
+				fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 				exit(1);
 			}
 			set_extent(disc, STABLE, start, sizes[STABLE_SIZE]);
 		}
-		start = next_extent_size(find_extent(disc, 256), USPACE, sizes[SSPACE_SIZE], offsets[SSPACE_SIZE]);
-		if (!start) {
-			fprintf(stderr, "mkudffs: Error: Cannot find free USPACE extent\n");
+		start = find_next_extent_size(disc, next_extent(disc->head, MVDS)->start, USPACE, sizes[SSPACE_SIZE], offsets[SSPACE_SIZE]);
+		if (!start)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		set_extent(disc, SSPACE, start, sizes[SSPACE_SIZE]);
 	}
 
-	start = next_extent(disc->head, LVID)->start;
-	if (!start) {
-		fprintf(stderr, "mkudffs: Error: Cannot find LVID extent\n");
+	start2 = 0;
+	size2 = 0;
+	for (i = 0; i < 3; ++i)
+	{
+		if (i != 0 && ((disc->flags & FLAG_VAT) || blocks >= 770))
+			break;
+		if (i == 0)
+			ext = next_extent(find_extent(disc, 256), USPACE);
+		else if (i == 1)
+			ext = prev_extent(disc->tail, USPACE);
+		else
+			ext = next_extent(disc->head, USPACE);
+		for (; ext; ext = next_extent(ext->next, USPACE))
+		{
+			// round start up to a multiple of alignment/packet_size
+			if (ext->start % offsets[PSPACE_SIZE])
+			{
+				if (offsets[PSPACE_SIZE] >= ext->blocks + (ext->start % offsets[PSPACE_SIZE]))
+					continue;
+				start = ext->start + offsets[PSPACE_SIZE] - (ext->start % offsets[PSPACE_SIZE]);
+				size = ext->blocks - offsets[PSPACE_SIZE] + (ext->start % offsets[PSPACE_SIZE]);
+			}
+			else
+			{
+				start = ext->start;
+				size = ext->blocks;
+			}
+
+			// round size down to a multiple of alignment/packet_size
+			if (size % offsets[PSPACE_SIZE])
+				size -= (size % offsets[PSPACE_SIZE]);
+
+			if (size == 0)
+				continue;
+
+			if (size2 < size)
+			{
+				start2 = start;
+				size2 = size;
+			}
+		}
+	}
+	start = start2;
+	size = size2;
+
+	if (size == 0)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
-	ext = next_extent(find_extent(disc, start), USPACE);
-	if (!ext) {
-		fprintf(stderr, "mkudffs: Error: Cannot find USPACE extent\n");
-		exit(1);
-	}
-	if (ext->start % offsets[PSPACE_SIZE]) // round start up to a multiple of alignment/packet_size
-	{
-		start = ext->start + offsets[PSPACE_SIZE] - (ext->start % offsets[PSPACE_SIZE]);
-		size = ext->blocks - offsets[PSPACE_SIZE] + (ext->start % offsets[PSPACE_SIZE]);
-	}
-	else
-	{
-		start = ext->start;
-		size = ext->blocks;
-	}
-	if (size % offsets[PSPACE_SIZE]) // round size down to a multiple of alignment/packet_size
-		size -= (size % offsets[PSPACE_SIZE]);
+
 	set_extent(disc, PSPACE, start, size);
+
 	for (i=0; i<le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps); i++)
 	{
 		if (i == 1)
@@ -325,6 +425,17 @@ void split_space(struct udf_disc *disc)
 			disc->udf_lvid->sizeTable[i+j] = cpu_to_le32(0xFFFFFFFF);
 		else
 			disc->udf_lvid->sizeTable[i+j] = cpu_to_le32(size);
+	}
+
+	if (!next_extent(disc->head, LVID))
+	{
+		start = find_next_extent_size(disc, 0, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
+		if (!start)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			exit(1);
+		}
+		set_extent(disc, LVID, start, sizes[LVID_SIZE]);
 	}
 }
 
@@ -340,7 +451,11 @@ void dump_space(struct udf_disc *disc)
 		printf("start=%lu, blocks=%lu, type=", (unsigned long int)start_ext->start, (unsigned long int)start_ext->blocks);
 		for (i=0; i<UDF_SPACE_TYPE_SIZE; i++)
 		{
-			if (start_ext->space_type & (1<<i))
+			if (!(start_ext->space_type & (1<<i)))
+				continue;
+			if ((start_ext->space_type & (USPACE|RESERVED)) && !(disc->flags & FLAG_BOOTAREA_PRESERVE))
+				printf("ERASE ");
+			else
 				printf("%s ", udf_space_type_str[i]);
 		}
 		printf("\n");
@@ -364,6 +479,84 @@ int write_disc(struct udf_disc *disc)
 	return ret;
 }
 
+static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
+{
+	struct mbr old_mbr;
+	uint64_t lba_blocks;
+	struct stat st;
+	struct hd_geometry geometry;
+	unsigned int heads, sectors;
+	struct mbr_partition *mbr_partition;
+	int fd = disc->write_data ? (*(int *)disc->write_data) : -1;
+
+	memcpy(mbr, &default_mbr, sizeof(struct mbr));
+	mbr_partition = &mbr->partitions[0];
+
+	if (fd >= 0 && lseek(fd, ((off_t)start) * disc->blocksize, SEEK_SET) >= 0)
+	{
+		if (read(fd, &old_mbr, sizeof(struct mbr)) == sizeof(struct mbr))
+		{
+			if (old_mbr.boot_signature == constant_cpu_to_le16(MBR_BOOT_SIGNATURE))
+				mbr->disk_signature = le32_to_cpu(old_mbr.disk_signature);
+		}
+	}
+
+	if (!mbr->disk_signature)
+		get_random_bytes(&mbr->disk_signature, sizeof(mbr->disk_signature));
+
+	lba_blocks = ((uint64_t)disc->blocks * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
+
+	if (fd >= 0 && fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, HDIO_GETGEO, &geometry) == 0)
+	{
+		heads = geometry.heads;
+		sectors = geometry.sectors;
+	}
+	else
+	{
+		/* Use LBA-Assist Translation for calculating CHS when disk geometry is not available */
+		sectors = 63;
+		if (lba_blocks < 16*63*1024)
+			heads = 16;
+		else if (lba_blocks < 32*63*1024)
+			heads = 32;
+		else if (lba_blocks < 64*63*1024)
+			heads = 64;
+		else if (lba_blocks < 128*63*1024)
+			heads = 128;
+		else
+			heads = 255;
+	}
+
+	if (heads > 255 || sectors > 63 || lba_blocks >= heads*sectors*1024)
+	{
+		/* If CHS address is too large use tuple (1023, 254, 63) */
+		mbr_partition->ending_chs[0] = 254;
+		mbr_partition->ending_chs[1] = 255;
+		mbr_partition->ending_chs[2] = 255;
+	}
+	else
+	{
+		mbr_partition->ending_chs[0] = (lba_blocks / sectors) % heads;
+		mbr_partition->ending_chs[1] = ((1 + lba_blocks % sectors) & 63) | (((lba_blocks / (heads*sectors)) >> 8) * 64);
+		mbr_partition->ending_chs[2] = (lba_blocks / (heads*sectors)) & 255;
+	}
+
+	mbr_partition->size_in_lba = cpu_to_le32(lba_blocks);
+}
+
+void setup_mbr(struct udf_disc *disc)
+{
+	struct udf_extent *ext;
+	struct udf_desc *desc;
+	struct mbr *mbr;
+
+	if (!(ext = next_extent(disc->head, MBR)))
+		return;
+	desc = set_desc(ext, 0x00, 0, ext->blocks * disc->blocksize, NULL);
+	mbr = (struct mbr *)desc->data->buffer;
+	fill_mbr(disc, mbr, ext->start);
+}
+
 void setup_vrs(struct udf_disc *disc)
 {
 	struct udf_extent *ext;
@@ -371,16 +564,16 @@ void setup_vrs(struct udf_disc *disc)
 
 	if (!(ext = next_extent(disc->head, VRS)))
 		return;
-	desc = set_desc(disc, ext, 0x00, 0, sizeof(struct volStructDesc), NULL);
+	desc = set_desc(ext, 0x00, 0, sizeof(struct volStructDesc), NULL);
 	disc->udf_vrs[0] = (struct volStructDesc *)desc->data->buffer;
 	disc->udf_vrs[0]->structType = 0x00;
 	disc->udf_vrs[0]->structVersion = 0x01;
 	memcpy(disc->udf_vrs[0]->stdIdent, VSD_STD_ID_BEA01, VSD_STD_ID_LEN);
 
 	if (disc->blocksize >= 2048)
-		desc = set_desc(disc, ext, 0x00, 1, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 1, sizeof(struct volStructDesc), NULL);
 	else
-		desc = set_desc(disc, ext, 0x00, 2048 / disc->blocksize, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 2048 / disc->blocksize, sizeof(struct volStructDesc), NULL);
 	disc->udf_vrs[1] = (struct volStructDesc *)desc->data->buffer;
 	disc->udf_vrs[1]->structType = 0x00;
 	disc->udf_vrs[1]->structVersion = 0x01;
@@ -390,9 +583,9 @@ void setup_vrs(struct udf_disc *disc)
 		memcpy(disc->udf_vrs[1]->stdIdent, VSD_STD_ID_NSR02, VSD_STD_ID_LEN);
 
 	if (disc->blocksize >= 2048)
-		desc = set_desc(disc, ext, 0x00, 2, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 2, sizeof(struct volStructDesc), NULL);
 	else
-		desc = set_desc(disc, ext, 0x00, 4096 / disc->blocksize, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 4096 / disc->blocksize, sizeof(struct volStructDesc), NULL);
 	disc->udf_vrs[2] = (struct volStructDesc *)desc->data->buffer;
 	disc->udf_vrs[2]->structType = 0x00;
 	disc->udf_vrs[2]->structVersion = 0x01;
@@ -405,25 +598,28 @@ void setup_anchor(struct udf_disc *disc)
 	uint32_t mloc, rloc, mlen, rlen;
 	int i = 0;
 
-	ext = next_extent(disc->head, PVDS);
-	if (!ext) {
-		fprintf(stderr, "mkudffs: Error: Cannot find PVDS extent\n");
+	ext = next_extent(disc->head, MVDS);
+	if (!ext)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	mloc = ext->start;
-	mlen = ext->blocks << disc->blocksize_bits;
+	mlen = ext->blocks * disc->blocksize;
 
 	ext = next_extent(disc->head, RVDS);
-	if (!ext) {
-		fprintf(stderr, "mkudffs: Error: Cannot find RVDS extent\n");
+	if (!ext)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	rloc = ext->start;
-	rlen = ext->blocks << disc->blocksize_bits;
+	rlen = ext->blocks * disc->blocksize;
 
 	ext = next_extent(disc->head, ANCHOR);
-	if (!ext) {
-		fprintf(stderr, "mkudffs: Error: Cannot find ANCHOR extent\n");
+	if (!ext)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	do
@@ -451,8 +647,9 @@ void setup_partition(struct udf_disc *disc)
 	struct udf_extent *pspace;
 
 	pspace = next_extent(disc->head, PSPACE);
-	if (!pspace) {
-		fprintf(stderr, "mkudffs: Error: Cannot find PSPACE extent\n");
+	if (!pspace)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	setup_space(disc, pspace, 0);
@@ -466,13 +663,13 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 {
 	struct udf_desc *desc;
 	struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)disc->udf_pd[0]->partitionContentsUse;
-	int length = (((sizeof(struct spaceBitmapDesc) + pspace->blocks) >> (disc->blocksize_bits + 3)) + 1) << disc->blocksize_bits;
+	uint32_t length = (sizeof(struct spaceBitmapDesc) + (pspace->blocks+7)/8 + disc->blocksize-1) / disc->blocksize * disc->blocksize;
 
 	if (disc->flags & FLAG_FREED_BITMAP)
 	{
 		phd->freedSpaceBitmap.extPosition = cpu_to_le32(offset);
 		phd->freedSpaceBitmap.extLength = cpu_to_le32(length);
-		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length >> disc->blocksize_bits));
+		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length / disc->blocksize));
 	}
 	else if (disc->flags & FLAG_FREED_TABLE)
 	{
@@ -492,7 +689,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 	{
 		phd->unallocSpaceBitmap.extPosition = cpu_to_le32(offset);
 		phd->unallocSpaceBitmap.extLength = cpu_to_le32(length);
-		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length >> disc->blocksize_bits));
+		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length / disc->blocksize));
 	}
 	else if (disc->flags & FLAG_UNALLOC_TABLE)
 	{
@@ -515,40 +712,41 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		int nBytes = (pspace->blocks+7)/8;
 
 		length = sizeof(struct spaceBitmapDesc) + nBytes;
-		desc = set_desc(disc, pspace, TAG_IDENT_SBD, offset, length, NULL);
+		desc = set_desc(pspace, TAG_IDENT_SBD, offset, length, NULL);
 		sbd = (struct spaceBitmapDesc *)desc->data->buffer;
 		sbd->numOfBits = cpu_to_le32(pspace->blocks);
 		sbd->numOfBytes = cpu_to_le32(nBytes);
 		memset(sbd->bitmap, 0xFF, sizeof(uint8_t) * nBytes);
 		if (pspace->blocks%8)
 			sbd->bitmap[nBytes-1] = 0xFF >> (8-(pspace->blocks%8));
-		clear_bits(sbd->bitmap, offset, (length + disc->blocksize - 1) >> disc->blocksize_bits);
-		sbd->descTag = udf_query_tag(disc, TAG_IDENT_SBD, 1, desc->offset, desc->data, sizeof(tag));
+		clear_bits(sbd->bitmap, offset, (length + disc->blocksize - 1) / disc->blocksize);
+		sbd->descTag = udf_query_tag(disc, TAG_IDENT_SBD, 1, desc->offset, desc->data, sizeof(struct spaceBitmapDesc));
 	}
 	else if (disc->flags & FLAG_SPACE_TABLE)
 	{
 		struct unallocSpaceEntry *use;
 		short_ad *sad;
-		int max = (0x3FFFFFFF / disc->blocksize) * disc->blocksize;
-		int pos=0;
-		long long rem;
+		uint32_t max_value = (UINT32_MAX & EXT_LENGTH_MASK);
+		uint32_t max = (max_value / disc->blocksize) * disc->blocksize;
+		uint32_t pos=0;
+		uint64_t rem;
 
 		if (disc->flags & FLAG_STRATEGY4096)
 			length = disc->blocksize * 2;
 		else
 			length = disc->blocksize;
-		desc = set_desc(disc, pspace, TAG_IDENT_USE, offset, disc->blocksize, NULL);
+		desc = set_desc(pspace, TAG_IDENT_USE, offset, disc->blocksize, NULL);
 		use = (struct unallocSpaceEntry *)desc->data->buffer;
 		use->lengthAllocDescs = cpu_to_le32(sizeof(short_ad));
 		sad = (short_ad *)&use->allocDescs[0];
-		rem = (long long)pspace->blocks * disc->blocksize - length;
-		if (disc->blocksize - sizeof(struct unallocSpaceEntry) < (rem / max) * sizeof(short_ad)) {
-			fprintf(stderr, "Creation of so large filesystems with unalloc table not supported.\n");
+		rem = (uint64_t)pspace->blocks * disc->blocksize - length;
+		if (disc->blocksize - sizeof(struct unallocSpaceEntry) < (rem / max) * sizeof(short_ad))
+		{
+			fprintf(stderr, "%s: Error: Creation of so large filesystems with unalloc table not supported.\n", appname);
 			exit(1);
 		}
 		pos = offset + (length/disc->blocksize);
-		printf("pos=%d, rem=%lld\n", pos, rem);
-		if (rem > 0x3FFFFFFF)
+		if (rem > max_value)
 		{
 			while (rem > max)
 			{
@@ -587,11 +785,11 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 
 			if (disc->flags & FLAG_BLANK_TERMINAL)
 			{
-//				tdesc = set_desc(disc, pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
+//				tdesc = set_desc(pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
 			}
 			else
 			{
-				tdesc = set_desc(disc, pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
+				tdesc = set_desc(pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
 				te = (struct terminalEntry *)tdesc->data->buffer;
 				te->icbTag.priorRecordedNumDirectEntries = cpu_to_le32(1);
 				te->icbTag.strategyType = cpu_to_le16(4096);
@@ -605,7 +803,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		}
 	}
 
-	return (length + disc->blocksize - 1) >> disc->blocksize_bits;
+	return (length + disc->blocksize - 1) / disc->blocksize;
 }
 
 int setup_fileset(struct udf_disc *disc, struct udf_extent *pspace)
@@ -613,15 +811,20 @@ int setup_fileset(struct udf_disc *disc, struct udf_extent *pspace)
 	uint32_t offset = 0;
 	struct udf_desc *desc;
 	int length = sizeof(struct fileSetDesc);
+	long_ad ad;
 
 	offset = udf_alloc_blocks(disc, pspace, offset, 1);
 
-	((long_ad *)disc->udf_lvd[0]->logicalVolContentsUse)->extLength = cpu_to_le32(disc->blocksize);
-	((long_ad *)disc->udf_lvd[0]->logicalVolContentsUse)->extLocation.logicalBlockNum = cpu_to_le32(offset);
-	((long_ad *)disc->udf_lvd[0]->logicalVolContentsUse)->extLocation.partitionReferenceNum = cpu_to_le16(0);
-//	((uint16_t *)disc->udf_fsd->domainIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
+	memset(&ad, 0, sizeof(ad));
+	ad.extLength = cpu_to_le32(disc->blocksize);
+	ad.extLocation.logicalBlockNum = cpu_to_le32(offset);
+	if (disc->flags & FLAG_VAT)
+		ad.extLocation.partitionReferenceNum = cpu_to_le16(1);
+	else
+		ad.extLocation.partitionReferenceNum = cpu_to_le16(0);
+	memcpy(disc->udf_lvd[0]->logicalVolContentsUse, &ad, sizeof(ad));
 
-	desc = set_desc(disc, pspace, TAG_IDENT_FSD, offset, 0, NULL);
+	desc = set_desc(pspace, TAG_IDENT_FSD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_fsd;
 
@@ -641,7 +844,7 @@ int setup_fileset(struct udf_disc *disc, struct udf_extent *pspace)
 
 	disc->udf_fsd->descTag = query_tag(disc, pspace, desc, 1);
 
-	return (length + disc->blocksize - 1) >> disc->blocksize_bits;
+	return (length + disc->blocksize - 1) / disc->blocksize;
 }
 
 int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
@@ -658,7 +861,10 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	else
 		disc->udf_fsd->rootDirectoryICB.extLength = cpu_to_le32(disc->blocksize);
 	disc->udf_fsd->rootDirectoryICB.extLocation.logicalBlockNum = cpu_to_le32(offset);
-	disc->udf_fsd->rootDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(0);
+	if (disc->flags & FLAG_VAT)
+		disc->udf_fsd->rootDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(1);
+	else
+		disc->udf_fsd->rootDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(0);
 	fsd_desc = next_desc(pspace->head, TAG_IDENT_FSD);
 	disc->udf_fsd->descTag = query_tag(disc, pspace, fsd_desc, 1);
 
@@ -666,12 +872,12 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	{
 		if (disc->flags & FLAG_BLANK_TERMINAL)
 		{
-//			tdesc = set_desc(disc, pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
+//			tdesc = set_desc(pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
 			offset ++;
 		}
 		else
 		{
-			tdesc = set_desc(disc, pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
+			tdesc = set_desc(pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
 			te = (struct terminalEntry *)tdesc->data->buffer;
 			te->icbTag.priorRecordedNumDirectEntries = cpu_to_le32(1);
 			te->icbTag.strategyType = cpu_to_le16(4096);
@@ -704,7 +910,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 			disc->udf_fsd->streamDirectoryICB.extLocation.logicalBlockNum = cpu_to_le32(offset);
 			disc->udf_fsd->streamDirectoryICB.extLocation.partitionReferenceNum = cpu_to_le16(0);
 #endif
-			nat = udf_create(disc, pspace, (uint8_t *)"\x08" "*UDF Non-Allocatable Space", 27, offset+1, ss, FID_FILE_CHAR_METADATA, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_STREAM | ICBTAG_FLAG_SYSTEM);
+			nat = udf_create(disc, pspace, (const dchars *)"\x08" "*UDF Non-Allocatable Space", 27, offset+1, ss, FID_FILE_CHAR_METADATA, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_STREAM | ICBTAG_FLAG_SYSTEM);
 
 			efe = (struct extendedFileEntry *)nat->data->buffer;
 			efe->icbTag.flags = cpu_to_le16((le16_to_cpu(efe->icbTag.flags) & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT);
@@ -714,7 +920,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 		else
 		{
 			struct fileEntry *fe;
-			nat = udf_create(disc, pspace, (uint8_t *)"\x08" "Non-Allocatable Space", 22, offset+1, desc, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_SYSTEM);
+			nat = udf_create(disc, pspace, (const dchars *)"\x08" "Non-Allocatable Space", 22, offset+1, desc, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_REGULAR, ICBTAG_FLAG_SYSTEM);
 			fe = (struct fileEntry *)nat->data->buffer;
 			fe->icbTag.flags = cpu_to_le16((le16_to_cpu(fe->icbTag.flags) & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT);
 			fe->descTag = query_tag(disc, pspace, nat, 1);
@@ -723,19 +929,19 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 	}
 
 #if 0 // this works fine if you really want a lost+find directory on disc
-	desc = udf_mkdir(disc, pspace, "\x08" "lost+found", 11, offset+1, desc); // x08 is the compression id for 8-bit OSTA compressed unicode
+	desc = udf_mkdir(disc, pspace, (const dchars *)"\x08" "lost+found", 11, offset+1, desc);
 	offset = desc->offset;
 
 	if (disc->flags & FLAG_STRATEGY4096)
 	{
 		if (disc->flags & FLAG_BLANK_TERMINAL)
 		{
-//			tdesc = set_desc(disc, pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
+//			tdesc = set_desc(pspace, TAG_IDENT_IE, offset+1, sizeof(struct indirectEntry), NULL);
 			offset ++;
 		}
 		else
 		{
-			tdesc = set_desc(disc, pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
+			tdesc = set_desc(pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
 			te = (struct terminalEntry *)tdesc->data->buffer;
 			te->icbTag.priorRecordedNumDirectEntries = cpu_to_le32(1);
 			te->icbTag.strategyType = cpu_to_le16(4096);
@@ -757,27 +963,21 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 
 void setup_vds(struct udf_disc *disc)
 {
-	struct udf_extent *pvds, *rvds, *lvid, *stable[4], *sspace;
+	struct udf_extent *mvds, *rvds, *lvid, *stable[4], *sspace;
 
-	pvds = next_extent(disc->head, PVDS);
-	if (!pvds) {
-		fprintf(stderr, "mkudffs: Error: Cannot find PVDS extent\n");
-		exit(1);
-	}
+	mvds = next_extent(disc->head, MVDS);
 	rvds = next_extent(disc->head, RVDS);
-	if (!rvds) {
-		fprintf(stderr, "mkudffs: Error: Cannot find RVDS extent\n");
-		exit(1);
-	}
 	lvid = next_extent(disc->head, LVID);
-	if (!lvid) {
-		fprintf(stderr, "mkudffs: Error: Cannot find LVID extent\n");
-		exit(1);
-	}
 	stable[0] = next_extent(disc->head, STABLE);
 	sspace = next_extent(disc->head, SSPACE);
 
-	setup_pvd(disc, pvds, rvds, 0);
+	if (!mvds || !rvds || !lvid)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+		exit(1);
+	}
+
+	setup_pvd(disc, mvds, rvds, 0);
 	setup_lvid(disc, lvid);
 	if (stable[0] && sspace)
 	{
@@ -789,30 +989,30 @@ void setup_vds(struct udf_disc *disc)
 		}
 		setup_stable(disc, stable, sspace);
 	}
-	setup_lvd(disc, pvds, rvds, lvid, 1);
-	setup_pd(disc, pvds, rvds, 2);
-	setup_usd(disc, pvds, rvds, 3);
-	setup_iuvd(disc, pvds, rvds, 4);
-	if (pvds->blocks > 5)
-		setup_td(disc, pvds, rvds, 5);
+	setup_lvd(disc, mvds, rvds, lvid, 1);
+	setup_pd(disc, mvds, rvds, 2);
+	setup_usd(disc, mvds, rvds, 3);
+	setup_iuvd(disc, mvds, rvds, 4);
+	if (mvds->blocks > 5)
+		setup_td(disc, mvds, rvds, 5);
 }
 
-void setup_pvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_pvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	int length = sizeof(struct primaryVolDesc);
 
-	desc = set_desc(disc, pvds, TAG_IDENT_PVD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_PVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_pvd[0];
-	disc->udf_pvd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_pvd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_PVD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_PVD, offset, length, NULL);
 	memcpy(disc->udf_pvd[1] = desc->data->buffer, disc->udf_pvd[0], length);
 	disc->udf_pvd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_lvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, struct udf_extent *lvid, uint32_t offset)
+void setup_lvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, struct udf_extent *lvid, uint32_t offset)
 {
 	struct udf_desc *desc;
 	int length = sizeof(struct logicalVolDesc) + le32_to_cpu(disc->udf_lvd[0]->mapTableLength);
@@ -821,25 +1021,26 @@ void setup_lvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent
 	disc->udf_lvd[0]->integritySeqExt.extLocation = cpu_to_le32(lvid->start);
 //	((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
 
-	desc = set_desc(disc, pvds, TAG_IDENT_LVD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_LVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_lvd[0];
-	disc->udf_lvd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_lvd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_LVD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_LVD, offset, length, NULL);
 	memcpy(disc->udf_lvd[1] = desc->data->buffer, disc->udf_lvd[0], length);
 	disc->udf_lvd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_pd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_pd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	struct udf_extent *ext;
 	int length = sizeof(struct partitionDesc);
 
 	ext = next_extent(disc->head, PSPACE);
-	if (!ext) {
-		fprintf(stderr, "mkudffs: Error: Cannot find PSPACE extent\n");
+	if (!ext)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
 	disc->udf_pd[0]->partitionStartingLocation = cpu_to_le32(ext->start);
@@ -851,17 +1052,17 @@ void setup_pd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent 
 		strcpy(disc->udf_pd[0]->partitionContents.ident, PARTITION_CONTENTS_NSR02);
 #endif
 
-	desc = set_desc(disc, pvds, TAG_IDENT_PD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_PD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_pd[0];
-	disc->udf_pd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_pd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_PD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_PD, offset, length, NULL);
 	memcpy(disc->udf_pd[1] = desc->data->buffer, disc->udf_pd[0], length);
 	disc->udf_pd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_usd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_usd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	struct udf_extent *ext;
@@ -880,44 +1081,44 @@ void setup_usd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent
 		ext = next_extent(ext->next, USPACE);
 	}
 
-	desc = set_desc(disc, pvds, TAG_IDENT_USD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_USD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_usd[0];
-	disc->udf_usd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_usd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_USD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_USD, offset, length, NULL);
 	memcpy(disc->udf_usd[1] = desc->data->buffer, disc->udf_usd[0], length);
 	disc->udf_usd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_iuvd(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_iuvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	int length = sizeof(struct impUseVolDesc);
 
 //	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
 
-	desc = set_desc(disc, pvds, TAG_IDENT_IUVD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_IUVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_iuvd[0];
-	disc->udf_iuvd[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_iuvd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_IUVD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_IUVD, offset, length, NULL);
 	memcpy(disc->udf_iuvd[1] = desc->data->buffer, disc->udf_iuvd[0], length);
 	disc->udf_iuvd[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
 
-void setup_td(struct udf_disc *disc, struct udf_extent *pvds, struct udf_extent *rvds, uint32_t offset)
+void setup_td(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
 {
 	struct udf_desc *desc;
 	int length = sizeof(struct terminatingDesc);
 
-	desc = set_desc(disc, pvds, TAG_IDENT_TD, offset, 0, NULL);
+	desc = set_desc(mvds, TAG_IDENT_TD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_td[0];
-	disc->udf_td[0]->descTag = query_tag(disc, pvds, desc, 1);
+	disc->udf_td[0]->descTag = query_tag(disc, mvds, desc, 1);
 
-	desc = set_desc(disc, rvds, TAG_IDENT_TD, offset, length, NULL);
+	desc = set_desc(rvds, TAG_IDENT_TD, offset, length, NULL);
 	memcpy(disc->udf_td[1] = desc->data->buffer, disc->udf_td[0], length);
 	disc->udf_td[1]->descTag = query_tag(disc, rvds, desc, 1);
 }
@@ -933,14 +1134,14 @@ void setup_lvid(struct udf_disc *disc, struct udf_extent *lvid)
 //	disc->udf_lvid->sizeTable[1] = cpu_to_le32(ext->blocks);
 	if (disc->flags & FLAG_VAT)
 		disc->udf_lvid->integrityType = cpu_to_le32(LVID_INTEGRITY_TYPE_OPEN);
-	desc = set_desc(disc, lvid, TAG_IDENT_LVID, 0, 0, NULL);
+	desc = set_desc(lvid, TAG_IDENT_LVID, 0, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_lvid;
 	disc->udf_lvid->descTag = query_tag(disc, lvid, desc, 1);
 
 	if (!(disc->flags & FLAG_BLANK_TERMINAL) && lvid->blocks > 1)
 	{
-		desc = set_desc(disc, lvid, TAG_IDENT_TD, 1, sizeof(struct terminatingDesc), NULL);
+		desc = set_desc(lvid, TAG_IDENT_TD, 1, sizeof(struct terminatingDesc), NULL);
 		((struct terminatingDesc *)desc->data->buffer)->descTag = query_tag(disc, lvid, desc, 1);
 	}
 }
@@ -948,13 +1149,42 @@ void setup_lvid(struct udf_disc *disc, struct udf_extent *lvid)
 void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct udf_extent *sspace)
 {
 	struct udf_desc *desc;
-	int i, length = 0, num, packetlen;
+	uint32_t i, num, length;
+	uint16_t packetlen;
 	struct sparablePartitionMap *spm;
 
 	spm = find_type2_sparable_partition(disc, 0);
+	if (!spm)
+	{
+		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+		exit(1);
+	}
+
 	packetlen = le16_to_cpu(spm->packetLength);
 	num = sspace->blocks / packetlen;
+	if (num > UINT16_MAX)
+		num = UINT16_MAX;
 	length = sizeof(struct sparingTable) + num * sizeof(struct sparingEntry);
+
+	if (length > stable[0]->blocks * disc->blocksize)
+	{
+		length = stable[0]->blocks * disc->blocksize;
+		if (length < sizeof(struct sparingTable))
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			exit(1);
+		}
+		num = (length - sizeof(struct sparingTable)) / sizeof(struct sparingEntry);
+		if (num > UINT16_MAX)
+			num = UINT16_MAX;
+		if (num == 0)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			exit(1);
+		}
+		length = sizeof(struct sparingTable) + num * sizeof(struct sparingEntry);
+	}
+
 	spm->sizeSparingTable = cpu_to_le32(length);
 	for (i=0; i<spm->numSparingTables; i++)
 		spm->locSparingTable[i] = cpu_to_le32(stable[i]->start);
@@ -966,54 +1196,81 @@ void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct ud
 		disc->udf_stable[0]->mapEntry[i].origLocation = cpu_to_le32(0xFFFFFFFF);
 		disc->udf_stable[0]->mapEntry[i].mappedLocation = cpu_to_le32(sspace->start + (i * packetlen));
 	}
-	desc = set_desc(disc, stable[0], 0, 0, 0, NULL);
+	desc = set_desc(stable[0], 0, 0, 0, NULL);
 	desc->length = desc->data->length = length;
 	desc->data->buffer = disc->udf_stable[0];
 	disc->udf_stable[0]->descTag = query_tag(disc, stable[0], desc, 1);
 
 	for (i=1; i<4 && stable[i]; i++)
 	{
-		desc = set_desc(disc, stable[i], 0, 0, length, NULL);
+		desc = set_desc(stable[i], 0, 0, length, NULL);
 		memcpy(disc->udf_stable[i] = desc->data->buffer, disc->udf_stable[0], length);
 		disc->udf_stable[i]->descTag = query_tag(disc, stable[i], desc, 1);
 	}
 }
 
-void setup_vat(struct udf_disc *disc, struct udf_extent *ext)
+void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 {
 	uint32_t offset = 0;
+	struct udf_extent *anchor;
 	struct udf_desc *vtable;
 	struct udf_data *data;
 	uint32_t len;
 	struct virtualAllocationTable15 *vat15;
 	struct virtualAllocationTable20 *vat20;
+	uint16_t udf_rev_le16;
 
-	ext = disc->tail;
+	if (disc->flags & FLAG_MIN_300_BLOCKS)
+	{
+		// On optical discs one track has minimal size of 300 sectors, so put VAT to the last sector
+		offset = pspace->tail->offset + (pspace->tail->length + disc->blocksize-1) / disc->blocksize;
+		if (pspace->start + offset < 299)
+			offset = 299 - pspace->start;
+	}
+
+	if (disc->flags & FLAG_CLOSED)
+	{
+		anchor = prev_extent(disc->tail, ANCHOR);
+		if (pspace->start - anchor->start > 256)
+		{
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			exit(1);
+		}
+		offset = 256 - (pspace->start - anchor->start);
+	}
 
 	if (disc->udf_rev >= 0x0200)
 	{
-		vtable = udf_create(disc, ext, (uint8_t *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_VAT20, 0);
+		vtable = udf_create(disc, pspace, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_VAT20, 0);
+		disc->vat_entries--; // Remove VAT file itself from VAT table
 		len = sizeof(struct virtualAllocationTable20);
 		data = alloc_data(&default_vat20, len);
 		vat20 = data->buffer;
 		vat20->numFiles = query_lvidiu(disc)->numFiles;
 		vat20->numDirs = query_lvidiu(disc)->numDirs;
-		vat20->logicalVolIdent[127] = strlen((char *)vat20->logicalVolIdent);
-		insert_data(disc, ext, vtable, data);
+		vat20->minUDFReadRev = query_lvidiu(disc)->minUDFReadRev;
+		vat20->minUDFWriteRev = query_lvidiu(disc)->minUDFWriteRev;
+		vat20->maxUDFWriteRev = query_lvidiu(disc)->maxUDFWriteRev;
+		memcpy(vat20->logicalVolIdent, disc->udf_lvd[0]->logicalVolIdent, 128);
+		insert_data(disc, pspace, vtable, data);
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
-		insert_data(disc, ext, vtable, data);
+		insert_data(disc, pspace, vtable, data);
 	}
 	else
 	{
-		vtable = udf_create(disc, ext, (uint8_t *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
+		vtable = udf_create(disc, pspace, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
+		disc->vat_entries--; // Remove VAT file itself from VAT table
 		len = sizeof(struct virtualAllocationTable15);
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
-		insert_data(disc, ext, vtable, data);
+		insert_data(disc, pspace, vtable, data);
 		data = alloc_data(&default_vat15, len);
 		vat15 = data->buffer;
-		((uint16_t *)vat15->vatIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
-		insert_data(disc, ext, vtable, data);
+		udf_rev_le16 = cpu_to_le16(disc->udf_rev);
+		memcpy(vat15->vatIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+		insert_data(disc, pspace, vtable, data);
 	}
+
+	disc->vat_block = pspace->start + vtable->offset;
 }
 
 void add_type1_partition(struct udf_disc *disc, uint16_t partitionNum)
@@ -1054,6 +1311,7 @@ void add_type2_sparable_partition(struct udf_disc *disc, uint16_t partitionNum, 
 	struct sparablePartitionMap *pm;
 	int mtl = le32_to_cpu(disc->udf_lvd[0]->mapTableLength);
 	int npm = le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps);
+	uint16_t udf_rev_le16 = cpu_to_le16(disc->udf_rev);
 
 	disc->udf_lvd[0] = realloc(disc->udf_lvd[0],
 		sizeof(struct logicalVolDesc) + mtl +
@@ -1066,7 +1324,7 @@ void add_type2_sparable_partition(struct udf_disc *disc, uint16_t partitionNum, 
 	disc->udf_lvd[0]->numPartitionMaps = cpu_to_le32(npm + 1);
 	memcpy(pm, &default_sparmap, sizeof(struct sparablePartitionMap));
 	pm->partitionNum = cpu_to_le16(partitionNum);
-	((uint16_t *)pm->partIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
+	memcpy(pm->partIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
 	if (packetlen)
 		pm->packetLength = cpu_to_le16(packetlen);
 	pm->numSparingTables = spartable;
@@ -1117,6 +1375,7 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 	struct virtualPartitionMap *pm;
 	int mtl = le32_to_cpu(disc->udf_lvd[0]->mapTableLength);
 	int npm = le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps);
+	uint16_t udf_rev_le16 = cpu_to_le16(disc->udf_rev);
 
 	disc->udf_lvd[0] = realloc(disc->udf_lvd[0],
 		sizeof(struct logicalVolDesc) + mtl +
@@ -1129,7 +1388,7 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 	disc->udf_lvd[0]->numPartitionMaps = cpu_to_le32(npm + 1);
 	memcpy(pm, &default_virtmap, sizeof(struct virtualPartitionMap));
 	pm->partitionNum = cpu_to_le16(partitionNum);
-	((uint16_t *)pm->partIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
+	memcpy(pm->partIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
 
 	disc->udf_lvid->numOfPartitions = cpu_to_le32(npm + 1);
 	disc->udf_lvid = realloc(disc->udf_lvid,
@@ -1145,4 +1404,4 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 }
 
 
-char *udf_space_type_str[UDF_SPACE_TYPE_SIZE] = { "RESERVED", "VRS", "ANCHOR", "PVDS", "RVDS", "LVID", "STABLE", "SSPACE", "PSPACE", "USPACE", "BAD" };
+char *udf_space_type_str[UDF_SPACE_TYPE_SIZE] = { "RESERVED", "VRS", "ANCHOR", "MVDS", "RVDS", "LVID", "STABLE", "SSPACE", "PSPACE", "USPACE", "BAD", "MBR" };

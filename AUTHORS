@@ -7,12 +7,19 @@ mkudffs
 	Pali Rohár <pali.rohar@gmail.com>
 	Steve Kenton <skenton@ou.edu>
 
+udfinfo
+	Pali Rohár <pali.rohar@gmail.com>
+
+udflabel
+	Pali Rohár <pali.rohar@gmail.com>
+
 cdrwtool
 	Jens Axboe <axboe@suse.de>
 	Ben Fennema <bfennema@falcon.csc.calpoly.edu>
 
 pktsetup
 	Jens Axboe <axboe@suse.de>
+	Pali Rohár <pali.rohar@gmail.com>
 
 wrudf
 	Enno Fennema <e.fennema@dataweb.nl>

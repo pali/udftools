@@ -24,7 +24,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 
 #include "cdrwtool.h"
 #include "libudffs.h"
@@ -66,7 +65,7 @@ void usage(void)
 	exit(1);
 }
 
-void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
+void parse_args(int argc, char *argv[], struct cdrw_disc *disc, const char **device)
 {
 	int retval;
 
@@ -137,9 +136,8 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			}
 			case 'd':
 			{
-				strncpy(device, optarg, NAME_MAX-1);
-				device[NAME_MAX-1] = '\0';
-				printf("using device %s\n", device);
+				*device = optarg;
+				printf("using device %s\n", *device);
 				break;
 			}
 			case 'g':
@@ -212,8 +210,7 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, char *device)
 			}
 			case 'f':
 			{
-				strncpy(disc->filename, optarg, NAME_MAX-1);
-				disc->filename[NAME_MAX-1] = '\0';
+				disc->filename = optarg;
 				printf("write file %s\n", disc->filename);
 				break;
 			}

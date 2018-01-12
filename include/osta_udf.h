@@ -5,6 +5,7 @@
  * http://www.osta.org
  *
  * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2017       Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -64,6 +65,7 @@
 #define UDF_ID_SPARABLE			"*UDF Sparable Partition"
 #define UDF_ID_ALLOC			"*UDF Virtual Alloc Tbl"
 #define UDF_ID_SPARING			"*UDF Sparing Table"
+#define UDF_ID_METADATA			"*UDF Metadata Partition"
 
 /* Identifier Suffix (UDF 2.01 2.1.5.3) */
 #define IS_DF_HARD_WRITE_PROTECT	0x01
