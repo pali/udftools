@@ -20,11 +20,6 @@ env:
   - PLATFORM=x86_64 TESTS=--enable-tests TESTLEVEL=extra1
   - PLATFORM=x86    TESTS=--enable-tests TESTLEVEL=extra2
   - PLATFORM=x86_64 TESTS=--enable-tests TESTLEVEL=extra2
-  - CC=tcc platform=x86    TESTS=
-  - CC=tcc platform=x86    TESTS=--enable-tests TESTLEVEL=unit
-  - CC=tcc PLATFORM=x86    TESTS=--enable-tests TESTLEVEL=basic
-  - CC=tcc PLATFORM=x86    TESTS=--enable-tests TESTLEVEL=extra1
-  - CC=tcc PLATFORM=x86    TESTS=--enable-tests TESTLEVEL=extra2
 
 addons: &addons
   apt:
@@ -34,7 +29,7 @@ addons: &addons
       - gcc-multilib
       - cmake
         #      - tcc
-      - tcc:i386
+        #      - tcc:i386
 
 #matrix:
 #  include:
