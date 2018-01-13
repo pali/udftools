@@ -825,7 +825,7 @@ int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_desc *table, uint32
 
 	do
 	{
-		if (offset >= use->lengthAllocDescs)
+		if (offset >= le32_to_cpu(use->lengthAllocDescs))
 		{
 			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
