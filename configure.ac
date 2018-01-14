@@ -7,9 +7,9 @@ AM_INIT_AUTOMAKE
 dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_CC_C99
-#if test "x$ac_cv_prog_cc_c99" = "xno"; then
-#        AC_MSG_ERROR([Your C compiler does not support C99 standard.])
-#fi
+if test "x$ac_cv_prog_cc_c99" = "xno"; then
+        AC_MSG_ERROR([Your C compiler does not support C99 standard.])
+fi
 
 AC_DISABLE_SHARED
 AM_PROG_LIBTOOL
