@@ -472,6 +472,7 @@ before_script:
   - export CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-tests"
 
 script:
+  - set -e
   - if [ -n "$COVERITY_SCAN_TOKEN" ]; then exit 0; fi
   - ./autogen.sh
   - ./configure $CONFIGURE_FLAGS
