@@ -445,10 +445,6 @@ matrix:
 before_script:
   - if ! which "$CC" &>/dev/null; then export CC=${CC%%-*}; fi
   - cd ..; mkdir cmocka; cd cmocka; PTH=$(pwd); cd ..;
-  - export PATH="$PTH:$PATH"
-  - export LD_LIBRARY_PATH="$PTH/lib:$LD_LIBRARY_PATH"
-  - export CFLAGS="$CFLAGS -I$PTH/include/"
-  - export LDFLAGS="$LDFLAGS -L$PTH/lib/"
   - wget --no-check-certificate https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
   - tar xf cmocka-1.1.0.tar.xz
   - cd cmocka-1.1.0
@@ -469,6 +465,10 @@ before_script:
       "arm")       export CONFIGURE_FLAGS="--host=arm-linux-gnueabi"; export LDFLAGS="--static" ;;
       *)           echo "Unsupported platform '$PLATFORM'"; exit 1 ;;
     esac
+  - export PATH="$PTH:$PATH"
+  - export LD_LIBRARY_PATH="$PTH/lib:$LD_LIBRARY_PATH"
+  - export CFLAGS="$CFLAGS -I$PTH/include/"
+  - export LDFLAGS="$LDFLAGS -L$PTH/lib/"
   - export CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-tests"
 
 script:
