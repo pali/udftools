@@ -122,18 +122,6 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
     return 0;
 }
 
-static void blank_pass(void **state) {
-    (void) state;
-
-    assert_int_equal(2, 2);
-}
-
-static void blank_fail(void **state) {
-    (void) state;
-
-    assert_int_equal(2, -3);
-}
-
 /**
  * \brief Test against unfinished write operation. Medium was not more used.
  *
@@ -142,7 +130,7 @@ static void blank_fail(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
-static void bs2048_dirty_file_tree_1(void **state) {
+void bs2048_dirty_file_tree_1(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-dirty-file-tree";
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-b 2048"), 4); //Check it
@@ -158,7 +146,7 @@ static void bs2048_dirty_file_tree_1(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
-static void bs2048_dirty_file_tree_2(void **state) {
+void bs2048_dirty_file_tree_2(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-dirty-file-tree-deleted-peregrine";
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-b 2048"), 4); //Check it
@@ -175,7 +163,7 @@ static void bs2048_dirty_file_tree_2(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
-static void bs2048_dirty_file_tree_3(void **state) {
+void bs2048_dirty_file_tree_3(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-broken-UUIDs";
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-b 2048"), 4); //Check it
@@ -188,7 +176,7 @@ static void bs2048_dirty_file_tree_3(void **state) {
  * \note Blocksize: 2048
  * \note Revisiob: 2.01
  */
-static void bs2048_clean(void **state) {
+void bs2048_clean(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-clean";
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-b 2048"), 0); //Check it
@@ -199,7 +187,7 @@ static void bs2048_clean(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.60
  */
-static void bs2048_apple_r0260(void **state) {
+void bs2048_apple_r0260(void **state) {
     (void) state;
     char *medium = "bs2048-r0260-apple";
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-b 2048"), 8); //Check it
@@ -211,7 +199,7 @@ static void bs2048_apple_r0260(void **state) {
  * \note Revision: 1.50
  * \note Apple UDF
  */
-static void bs2048_apple_r0150(void **state) {
+void bs2048_apple_r0150(void **state) {
     (void) state;
     char *medium = "bs2048-r0150-apple";
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-b 2048"), 0); //Check it
@@ -223,7 +211,7 @@ static void bs2048_apple_r0150(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_windows7(void **state) {
+ void bs512_windows7(void **state) {
     (void) state;
     char *medium = "udf-hdd-win7";
     assert_int_equal(fsck_wrapper(medium, "-vvc", "-b 512"), 0); //Check it
@@ -235,7 +223,7 @@ static void bs512_windows7(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
-static void bs2048_udfclient_075(void **state) {
+ void bs2048_udfclient_075(void **state) {
     (void) state;
     char *medium = "udf-hdd-udfclient-0.7.5";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
@@ -247,7 +235,7 @@ static void bs2048_udfclient_075(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
-static void bs2048_udfclient_077(void **state) {
+ void bs2048_udfclient_077(void **state) {
     (void) state;
     char *medium = "udf-hdd-udfclient-0.7.7";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
@@ -259,7 +247,7 @@ static void bs2048_udfclient_077(void **state) {
  * \note Blocksize: 512
  * \note Revision: 1.50
  */
-static void bs512_blocksize_detection_test(void **state) {
+ void bs512_blocksize_detection_test(void **state) {
     (void) state;
     char *medium = "bs512-r0150";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
@@ -271,7 +259,7 @@ static void bs512_blocksize_detection_test(void **state) {
  * \note Blocksize: 1024
  * \note Revision: 1.50
  */
-static void bs1024_blocksize_detection_test(void **state) {
+ void bs1024_blocksize_detection_test(void **state) {
     (void) state;
     char *medium = "bs1024-r0150";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
@@ -283,7 +271,7 @@ static void bs1024_blocksize_detection_test(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
-static void bs2048_blocksize_detection_test(void **state) {
+ void bs2048_blocksize_detection_test(void **state) {
     (void) state;
     char *medium = "bs2048-r0201";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
@@ -295,7 +283,7 @@ static void bs2048_blocksize_detection_test(void **state) {
  * \note Blocksize: 4096
  * \note Revision: 2.01
  */
-static void bs4096_blocksize_detection_test(void **state) {
+ void bs4096_blocksize_detection_test(void **state) {
     (void) state;
     char *medium = "bs4096";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
@@ -307,7 +295,7 @@ static void bs4096_blocksize_detection_test(void **state) {
  * \note Blocksize: 1024
  * \note Revision: 1.50
  */
-static void bs1024_unclosed_medium(void **state) {
+ void bs1024_unclosed_medium(void **state) {
     (void) state;
     char *medium = "bs1024-r0150-unclosed";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
@@ -320,7 +308,7 @@ static void bs1024_unclosed_medium(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_defect_primary_vds(void **state) {
+ void bs512_defect_primary_vds(void **state) {
     (void) state;
     char *medium = "bs512-defect-primary-vds";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
@@ -334,7 +322,7 @@ static void bs512_defect_primary_vds(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
-static void bs2048_defect_avdp1(void **state) {
+ void bs2048_defect_avdp1(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-brokenAVDP1";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
@@ -350,7 +338,7 @@ static void bs2048_defect_avdp1(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_crossplatform_1(void **state) {
+ void bs512_crossplatform_1(void **state) {
     (void) state;
     char *medium = "bs512_windows7_udf0201";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
@@ -364,7 +352,7 @@ static void bs512_crossplatform_1(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_crossplatform_2(void **state) {
+ void bs512_crossplatform_2(void **state) {
     (void) state;
     char *medium = "bs512_windows7_udf0201_broken_file_tree";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
@@ -380,7 +368,7 @@ static void bs512_crossplatform_2(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_crossplatform_3(void **state) {
+ void bs512_crossplatform_3(void **state) {
     (void) state;
     char *medium = "bs512_windows7_udf0201_chkdsk";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
@@ -396,7 +384,7 @@ static void bs512_crossplatform_3(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_crossplatform_4(void **state) {
+ void bs512_crossplatform_4(void **state) {
     (void) state;
     char *medium = "bs512_windows7_udf0201-serial-broken-linux-written";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
@@ -412,7 +400,7 @@ static void bs512_crossplatform_4(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_crossplatform_5(void **state) {
+ void bs512_crossplatform_5(void **state) {
     (void) state;
     char *medium = "bs512_windows7_udf0201-serial-broken-linux-written-afterfix-win-write";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 0); //Check it
@@ -426,7 +414,7 @@ static void bs512_crossplatform_5(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_crossplatform_6(void **state) {
+ void bs512_crossplatform_6(void **state) {
     (void) state;
     char *medium = "bs512_windows7_udf0201-aed-test-lot-of-files-open-integrity";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
@@ -442,7 +430,7 @@ static void bs512_crossplatform_6(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_crossplatform_7(void **state) {
+ void bs512_crossplatform_7(void **state) {
     (void) state;
     char *medium = "bs512_windows7_udf0201-linux-before-fix";
     assert_int_equal(fsck_wrapper(medium, "-vvc", ""), 4); //Check it
@@ -456,7 +444,7 @@ static void bs512_crossplatform_7(void **state) {
  * \note Revision: 2.01
  */
 
-static void bs2048_wrong_blocksize_1(void **state) {
+ void bs2048_wrong_blocksize_1(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-dirty-file-tree";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 512"), 8); //Check it
@@ -468,7 +456,7 @@ static void bs2048_wrong_blocksize_1(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
-static void bs2048_wrong_blocksize_2(void **state) {
+ void bs2048_wrong_blocksize_2(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-dirty-file-tree-deleted-peregrine";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 1024"), 8); //Check it
@@ -480,7 +468,7 @@ static void bs2048_wrong_blocksize_2(void **state) {
  * \note Blocksize: 2048
  * \note Revision: 2.01
  */
-static void bs2048_wrong_blocksize_3(void **state) {
+ void bs2048_wrong_blocksize_3(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-broken-UUIDs";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 4096"), 8); //Check it
@@ -492,7 +480,7 @@ static void bs2048_wrong_blocksize_3(void **state) {
  * \note Blocksize: 512
  * \note Revision: 2.01
  */
-static void bs512_wrong_blocksize_1(void **state) {
+ void bs512_wrong_blocksize_1(void **state) {
     (void) state;
     char *medium = "udf-hdd-win7";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 1024"), 8); //Check it
@@ -504,7 +492,7 @@ static void bs512_wrong_blocksize_1(void **state) {
  * \note Blocksize: 512
  * \note Revision: 1.50
  */
-static void bs512_wrong_blocksize_2(void **state) {
+ void bs512_wrong_blocksize_2(void **state) {
     (void) state;
     char *medium = "bs512-r0150";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 2048"), 8); //Check it
@@ -516,7 +504,7 @@ static void bs512_wrong_blocksize_2(void **state) {
  * \note Blocksize: 512
  * \note Revision: 1.50
  */
-static void bs512_wrong_blocksize_3(void **state) {
+ void bs512_wrong_blocksize_3(void **state) {
     (void) state;
     char *medium = "bs512-r0150";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 4096"), 8); //Check it
@@ -528,7 +516,7 @@ static void bs512_wrong_blocksize_3(void **state) {
  * \note Blocksize: 1024
  * \note Revision: 1.50
  */
-static void bs1024_wrong_blocksize_1(void **state) {
+ void bs1024_wrong_blocksize_1(void **state) {
     (void) state;
     char *medium = "bs1024-r0150";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 512"), 8); //Check it
@@ -540,7 +528,7 @@ static void bs1024_wrong_blocksize_1(void **state) {
  * \note Blocksize: 1024
  * \note Revision: 1.50
  */
-static void bs1024_wrong_blocksize_2(void **state) {
+ void bs1024_wrong_blocksize_2(void **state) {
     (void) state;
     char *medium = "bs1024-r0150";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 2048"), 8); //Check it
@@ -552,7 +540,7 @@ static void bs1024_wrong_blocksize_2(void **state) {
  * \note Blocksize: 1024
  * \note Revision: 1.50
  */
-static void bs1024_wrong_blocksize_3(void **state) {
+ void bs1024_wrong_blocksize_3(void **state) {
     (void) state;
     char *medium = "bs1024-r0150";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 4096"), 8); //Check it
@@ -564,7 +552,7 @@ static void bs1024_wrong_blocksize_3(void **state) {
  * \note Blocksize: 4096
  * \note Revision: 2.01
  */
-static void bs4096_wrong_blocksize_1(void **state) {
+ void bs4096_wrong_blocksize_1(void **state) {
     (void) state;
     char *medium = "bs4096";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 512"), 8); //Check it
@@ -576,7 +564,7 @@ static void bs4096_wrong_blocksize_1(void **state) {
  * \note Blocksize: 4096
  * \note Revision: 2.01
  */
-static void bs4096_wrong_blocksize_2(void **state) {
+ void bs4096_wrong_blocksize_2(void **state) {
     (void) state;
     char *medium = "bs4096";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 1024"), 8); //Check it
@@ -588,7 +576,7 @@ static void bs4096_wrong_blocksize_2(void **state) {
  * \note Blocksize: 4096
  * \note Revision: 2.01
  */
-static void bs4096_wrong_blocksize_3(void **state) {
+ void bs4096_wrong_blocksize_3(void **state) {
     (void) state;
     char *medium = "bs4096";
     assert_int_not_equal(fsck_wrapper(medium, "-vvc", "-b 2048"), 8); //Check it
