@@ -450,6 +450,7 @@ before_script:
   - cd cmocka-1.1.0
   - mkdir build
   - cd build
+  - if [ "$PLATFORM" = "x86" ]; then CFLAGS="-m32 $CFLAGS"; fi
   - cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release ..
   - make
   - make install

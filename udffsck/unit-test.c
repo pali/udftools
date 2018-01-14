@@ -82,7 +82,7 @@ void print_dstring(dstring *string, size_t field_length) {
 
 //int check_dstring(dstring *in, size_t field_size);
 
-static void dstring_check_u8_ok_1(void **state) {
+ void dstring_check_u8_ok_1(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 8, 16, 0xDA);
@@ -90,7 +90,7 @@ static void dstring_check_u8_ok_1(void **state) {
     assert_int_equal(check_dstring(array, 32), 0); //Check it 
 }
 
-static void dstring_check_u8_ok_2(void **state) {
+ void dstring_check_u8_ok_2(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 8, 30, 0xDA);
@@ -98,7 +98,7 @@ static void dstring_check_u8_ok_2(void **state) {
     assert_int_equal(check_dstring(array, 32), 0); //Check it 
 }
 
-static void dstring_check_u8_ok_3(void **state) {
+ void dstring_check_u8_ok_3(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u8(array, 128, 8, 30, 0x02);
@@ -106,7 +106,7 @@ static void dstring_check_u8_ok_3(void **state) {
     assert_int_equal(check_dstring(array, 128), 0); //Check it 
 }
 
-static void dstring_check_u8_ok_4(void **state) {
+ void dstring_check_u8_ok_4(void **state) {
     (void) state;
     dstring array[256];
     generate_valid_dstring_u8(array, 256, 8, 254, 0x02);
@@ -114,7 +114,7 @@ static void dstring_check_u8_ok_4(void **state) {
     assert_int_equal(check_dstring(array, 256), 0); //Check it 
 }
 
-static void dstring_check_u8_empty(void **state) {
+ void dstring_check_u8_empty(void **state) {
     (void) state;
     dstring array[256];
     generate_valid_dstring_u8(array, 256, 0, 0, 0);
@@ -122,7 +122,7 @@ static void dstring_check_u8_empty(void **state) {
     assert_int_equal(check_dstring(array, 256), 0); //Check it 
 }
 
-static void dstring_check_u16_ok_1(void **state) {
+ void dstring_check_u16_ok_1(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u16(array, 32, 16, 4*2, 0xDEAD);
@@ -130,7 +130,7 @@ static void dstring_check_u16_ok_1(void **state) {
     assert_int_equal(check_dstring(array, 32), 0); //Check it 
 }
 
-static void dstring_check_u16_ok_2(void **state) {
+ void dstring_check_u16_ok_2(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u16(array, 32, 16, 14*2, 0xBEEF);
@@ -138,7 +138,7 @@ static void dstring_check_u16_ok_2(void **state) {
     assert_int_equal(check_dstring(array, 32), 0); //Check it 
 }
 
-static void dstring_check_u16_ok_3(void **state) {
+ void dstring_check_u16_ok_3(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u16(array, 128, 16, 30*2, 0xDEAD);
@@ -146,7 +146,7 @@ static void dstring_check_u16_ok_3(void **state) {
     assert_int_equal(check_dstring(array, 128), 0); //Check it 
 }
 
-static void dstring_check_u16_ok_4(void **state) {
+ void dstring_check_u16_ok_4(void **state) {
     (void) state;
     dstring array[256];
     generate_valid_dstring_u16(array, 256, 16, 127*2, 0xBEEF);
@@ -154,7 +154,7 @@ static void dstring_check_u16_ok_4(void **state) {
     assert_int_equal(check_dstring(array, 256), 0); //Check it 
 }
 
-static void dstring_check_u16_empty(void **state) {
+ void dstring_check_u16_empty(void **state) {
     (void) state;
     dstring array[256];
     generate_valid_dstring_u16(array, 256, 0, 0, 0);
@@ -162,7 +162,7 @@ static void dstring_check_u16_empty(void **state) {
     assert_int_equal(check_dstring(array, 256), 0); //Check it 
 }
 
-static void dstring_check_u8_non_empty_1(void **state) {
+ void dstring_check_u8_non_empty_1(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u8(array, 128, 8, 0, 0x0);
@@ -170,7 +170,7 @@ static void dstring_check_u8_non_empty_1(void **state) {
     assert_int_equal(check_dstring(array, 128), DSTRING_E_NOT_EMPTY); //Check it 
 }
 
-static void dstring_check_u8_non_empty_2(void **state) {
+ void dstring_check_u8_non_empty_2(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u8(array, 128, 0, 30, 0x10);
@@ -179,7 +179,7 @@ static void dstring_check_u8_non_empty_2(void **state) {
     assert_int_equal(check_dstring(array, 128), DSTRING_E_NOT_EMPTY); //Check it 
 }
 
-static void dstring_check_u8_non_empty_3(void **state) {
+ void dstring_check_u8_non_empty_3(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u16(array, 128, 0, 30, 0x10);
@@ -187,7 +187,7 @@ static void dstring_check_u8_non_empty_3(void **state) {
     assert_int_equal(check_dstring(array, 128), DSTRING_E_NOT_EMPTY); //Check it 
 }
 
-static void dstring_check_u16_non_empty_1(void **state) {
+ void dstring_check_u16_non_empty_1(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u16(array, 128, 16, 0, 0x0);
@@ -195,7 +195,7 @@ static void dstring_check_u16_non_empty_1(void **state) {
     assert_int_equal(check_dstring(array, 128), DSTRING_E_NOT_EMPTY); //Check it 
 }
 
-static void dstring_check_u16_non_empty_2(void **state) {
+ void dstring_check_u16_non_empty_2(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u16(array, 128, 0, 30*2, 0x10);
@@ -204,7 +204,7 @@ static void dstring_check_u16_non_empty_2(void **state) {
     assert_int_equal(check_dstring(array, 128), DSTRING_E_NOT_EMPTY); //Check it 
 }
 
-static void dstring_check_u16_non_empty_3(void **state) {
+ void dstring_check_u16_non_empty_3(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u16(array, 128, 0, 30*2, 0x10);
@@ -212,7 +212,7 @@ static void dstring_check_u16_non_empty_3(void **state) {
     assert_int_equal(check_dstring(array, 128), DSTRING_E_NOT_EMPTY); //Check it 
 }
 
-static void dstring_check_u8_padding_1(void **state) {
+ void dstring_check_u8_padding_1(void **state) {
     (void) state;
     dstring array[36];
     generate_valid_dstring_u8(array, 36, 8, 10, 0x10);
@@ -224,7 +224,7 @@ static void dstring_check_u8_padding_1(void **state) {
     assert_int_equal(check_dstring(array, 36), DSTRING_E_NONZERO_PADDING); //Check it 
 }
 
-static void dstring_check_u8_padding_2(void **state) {
+ void dstring_check_u8_padding_2(void **state) {
     (void) state;
     dstring array[36];
     generate_valid_dstring_u8(array, 36, 8, 10, 0x10);
@@ -236,7 +236,7 @@ static void dstring_check_u8_padding_2(void **state) {
     assert_int_equal(check_dstring(array, 36), DSTRING_E_NONZERO_PADDING); //Check it 
 }
 
-static void dstring_check_u8_padding_3(void **state) {
+ void dstring_check_u8_padding_3(void **state) {
     (void) state;
     dstring array[36];
     generate_valid_dstring_u8(array, 36, 8, 10, 0x10);
@@ -245,7 +245,7 @@ static void dstring_check_u8_padding_3(void **state) {
     assert_int_equal(check_dstring(array, 36), DSTRING_E_NONZERO_PADDING); //Check it 
 }
 
-static void dstring_check_u8_padding_4(void **state) {
+ void dstring_check_u8_padding_4(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u8(array, 16, 8, 10, 0x10);
@@ -256,7 +256,7 @@ static void dstring_check_u8_padding_4(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_NONZERO_PADDING); //Check it 
 }
 
-static void dstring_check_u16_padding_1(void **state) {
+ void dstring_check_u16_padding_1(void **state) {
     (void) state;
     dstring array[36];
     generate_valid_dstring_u16(array, 36, 16, 5*2, 0x10);
@@ -268,7 +268,7 @@ static void dstring_check_u16_padding_1(void **state) {
     assert_int_equal(check_dstring(array, 36), DSTRING_E_NONZERO_PADDING); //Check it 
 }
 
-static void dstring_check_u16_padding_2(void **state) {
+ void dstring_check_u16_padding_2(void **state) {
     (void) state;
     dstring array[36];
     generate_valid_dstring_u16(array, 36, 16, 5*2, 0x10);
@@ -280,7 +280,7 @@ static void dstring_check_u16_padding_2(void **state) {
     assert_int_equal(check_dstring(array, 36), DSTRING_E_NONZERO_PADDING); //Check it 
 }
 
-static void dstring_check_u16_padding_3(void **state) {
+ void dstring_check_u16_padding_3(void **state) {
     (void) state;
     dstring array[36];
     generate_valid_dstring_u16(array, 36, 16, 5*2, 0x10);
@@ -289,7 +289,7 @@ static void dstring_check_u16_padding_3(void **state) {
     assert_int_equal(check_dstring(array, 36), DSTRING_E_NONZERO_PADDING); //Check it 
 }
 
-static void dstring_check_u16_padding_4(void **state) {
+ void dstring_check_u16_padding_4(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0x10);
@@ -299,7 +299,7 @@ static void dstring_check_u16_padding_4(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_NONZERO_PADDING); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_1(void **state) {
+ void dstring_check_u16_invalid_chars_1(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xFFFE);
@@ -307,7 +307,7 @@ static void dstring_check_u16_invalid_chars_1(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_INVALID_CHARACTERS); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_2(void **state) {
+ void dstring_check_u16_invalid_chars_2(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xFEFF);
@@ -315,7 +315,7 @@ static void dstring_check_u16_invalid_chars_2(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_INVALID_CHARACTERS); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_3(void **state) {
+ void dstring_check_u16_invalid_chars_3(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xFEFE);
@@ -323,7 +323,7 @@ static void dstring_check_u16_invalid_chars_3(void **state) {
     assert_int_equal(check_dstring(array, 16), 0); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_4(void **state) {
+ void dstring_check_u16_invalid_chars_4(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xFFFF);
@@ -331,7 +331,7 @@ static void dstring_check_u16_invalid_chars_4(void **state) {
     assert_int_equal(check_dstring(array, 16), 0); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_5(void **state) {
+ void dstring_check_u16_invalid_chars_5(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xabcd);
@@ -341,7 +341,7 @@ static void dstring_check_u16_invalid_chars_5(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_INVALID_CHARACTERS); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_6(void **state) {
+ void dstring_check_u16_invalid_chars_6(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xabcd);
@@ -351,7 +351,7 @@ static void dstring_check_u16_invalid_chars_6(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_INVALID_CHARACTERS); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_7(void **state) {
+ void dstring_check_u16_invalid_chars_7(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xabcd);
@@ -361,7 +361,7 @@ static void dstring_check_u16_invalid_chars_7(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_INVALID_CHARACTERS); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_8(void **state) {
+ void dstring_check_u16_invalid_chars_8(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xabcd);
@@ -371,7 +371,7 @@ static void dstring_check_u16_invalid_chars_8(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_INVALID_CHARACTERS); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_9(void **state) {
+ void dstring_check_u16_invalid_chars_9(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xabcd);
@@ -381,7 +381,7 @@ static void dstring_check_u16_invalid_chars_9(void **state) {
     assert_int_equal(check_dstring(array, 16), 0); //Check it 
 }
 
-static void dstring_check_u16_invalid_chars_10(void **state) {
+ void dstring_check_u16_invalid_chars_10(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xabcd);
@@ -391,7 +391,7 @@ static void dstring_check_u16_invalid_chars_10(void **state) {
     assert_int_equal(check_dstring(array, 16), 0); //Check it 
 }
 
-static void dstring_check_u8_wrong_length_1(void **state) {
+ void dstring_check_u8_wrong_length_1(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u8(array, 16, 8, 5, 0xab);
@@ -400,7 +400,7 @@ static void dstring_check_u8_wrong_length_1(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_WRONG_LENGTH); //Check it 
 }
 
-static void dstring_check_u8_wrong_length_2(void **state) {
+ void dstring_check_u8_wrong_length_2(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u8(array, 16, 8, 5, 0xab);
@@ -409,7 +409,7 @@ static void dstring_check_u8_wrong_length_2(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_WRONG_LENGTH); //Check it 
 }
 
-static void dstring_check_u8_wrong_length_3(void **state) {
+ void dstring_check_u8_wrong_length_3(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u8(array, 128, 8, 30, 0x0);
@@ -417,7 +417,7 @@ static void dstring_check_u8_wrong_length_3(void **state) {
     assert_int_equal(check_dstring(array, 128), DSTRING_E_WRONG_LENGTH); //Check it 
 }
 
-static void dstring_check_u16_wrong_length_1(void **state) {
+ void dstring_check_u16_wrong_length_1(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xab);
@@ -426,7 +426,7 @@ static void dstring_check_u16_wrong_length_1(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_WRONG_LENGTH); //Check it 
 }
 
-static void dstring_check_u16_wrong_length_2(void **state) {
+ void dstring_check_u16_wrong_length_2(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 16, 5*2, 0xab);
@@ -435,7 +435,7 @@ static void dstring_check_u16_wrong_length_2(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_WRONG_LENGTH); //Check it 
 }
 
-static void dstring_check_u16_wrong_length_3(void **state) {
+ void dstring_check_u16_wrong_length_3(void **state) {
     (void) state;
     dstring array[128];
     generate_valid_dstring_u16(array, 128, 16, 30*2, 0x0);
@@ -443,7 +443,7 @@ static void dstring_check_u16_wrong_length_3(void **state) {
     assert_int_equal(check_dstring(array, 128), DSTRING_E_WRONG_LENGTH); //Check it 
 }
 
-static void dstring_check_u8_compID_1(void **state) {
+ void dstring_check_u8_compID_1(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u8(array, 16, 42, 5, 0xab);
@@ -451,7 +451,7 @@ static void dstring_check_u8_compID_1(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_UNKNOWN_COMP_ID); //Check it 
 }
 
-static void dstring_check_u16_compID_1(void **state) {
+ void dstring_check_u16_compID_1(void **state) {
     (void) state;
     dstring array[16];
     generate_valid_dstring_u16(array, 16, 42, 5*2, 0xab);
@@ -459,7 +459,7 @@ static void dstring_check_u16_compID_1(void **state) {
     assert_int_equal(check_dstring(array, 16), DSTRING_E_UNKNOWN_COMP_ID); //Check it 
 }
 
-static void dstring_check_u8_old_mkudffs_1(void **state) {
+ void dstring_check_u8_old_mkudffs_1(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 8, 10, 0x24);
@@ -469,7 +469,7 @@ static void dstring_check_u8_old_mkudffs_1(void **state) {
     assert_int_equal(check_dstring(array, 32), DSTRING_E_NOT_EMPTY); //Check it 
 }
 
-static void dstring_check_u8_dchars_1(void **state) {
+ void dstring_check_u8_dchars_1(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 254, 10, 0x24);
@@ -478,7 +478,7 @@ static void dstring_check_u8_dchars_1(void **state) {
     assert_int_equal(check_dstring(array, 32), 0); //Check it 
 }
 
-static void dstring_check_u8_dchars_2(void **state) {
+ void dstring_check_u8_dchars_2(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 254, 31, 0x24);
@@ -487,7 +487,7 @@ static void dstring_check_u8_dchars_2(void **state) {
     assert_int_equal(check_dstring(array, 32), 0); //Check it 
 }
 
-static void dstring_check_u16_dchars_1(void **state) {
+ void dstring_check_u16_dchars_1(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 255, 20, 0x24);
@@ -496,7 +496,7 @@ static void dstring_check_u16_dchars_1(void **state) {
     assert_int_equal(check_dstring(array, 32), 0); //Check it 
 }
 
-static void dstring_check_u16_dchars_2(void **state) {
+ void dstring_check_u16_dchars_2(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 255, 31, 0x24);
@@ -505,7 +505,7 @@ static void dstring_check_u16_dchars_2(void **state) {
     assert_int_equal(check_dstring(array, 32), 0); //Check it 
 }
 
-static void dstring_check_u16_dchars_3(void **state) {
+ void dstring_check_u16_dchars_3(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 255, 31, 0x24);
@@ -515,7 +515,7 @@ static void dstring_check_u16_dchars_3(void **state) {
     assert_int_equal(check_dstring(array, 32), 0); //Check it 
 }
 
-static void dstring_check_u16_dchars_4(void **state) {
+ void dstring_check_u16_dchars_4(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 255, 31, 0x24);
@@ -525,7 +525,7 @@ static void dstring_check_u16_dchars_4(void **state) {
     assert_int_equal(check_dstring(array, 32), DSTRING_E_INVALID_CHARACTERS); //Check it 
 }
 
-static void dstring_check_u16_dchars_5(void **state) {
+ void dstring_check_u16_dchars_5(void **state) {
     (void) state;
     dstring array[32];
     generate_valid_dstring_u8(array, 32, 255, 31, 0x24);
