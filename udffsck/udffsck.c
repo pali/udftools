@@ -54,7 +54,7 @@ uint8_t get_error(vds_sequence_t *seq, uint16_t tagIdent, vds_type_e vds);
  * \param[in] depth required depth to print
  * \return NULL terminated static char array with printed depth
  */
-char * depth2str(uint32_t depth) {
+char * depth2str(int32_t depth) {
     static char prefix[MAX_DEPTH] = {0};
 
     if(depth == 0) {
@@ -115,7 +115,6 @@ int checksum(tag descTag) {
  */
 uint16_t calculate_crc(void * restrict desc, uint16_t size) {
     uint8_t offset = sizeof(tag);
-    tag *descTag = desc;
     uint16_t crc = 0;
 
     if(size >= 16) {
@@ -196,7 +195,10 @@ char * print_timestamp(timestamp ts) {
  * \return time_t Unix timestamp structure
  */
 time_t timestamp2epoch(timestamp t) {
-    struct tm tm = {0};
+    struct tm tm;
+    tm.tm_wday = 0;   
+    tm.tm_yday = 0;   
+    tm.tm_isdst = 0;  
     tm.tm_year = t.year - 1900;
     tm.tm_mon = t.month - 1; 
     tm.tm_mday = t.day;
@@ -431,6 +433,10 @@ void map_chunk(int fd, uint8_t **dev, uint32_t chunk, size_t st_size, char * fil
 #else
     dbg("\tChunk #%d allocated\n", chunk);
 #endif
+
+    // Suppressing unused variables
+    (void)file;
+    (void)line;
 }
 
 void unmap_raw(uint8_t **ptr, uint32_t offset, size_t size) {
@@ -444,6 +450,8 @@ void unmap_raw(uint8_t **ptr, uint32_t offset, size_t size) {
     } else {
         dbg("\tArea is already unmapped\n");
     }
+
+    (void)offset;
 }
 
 void map_raw(int fd, uint8_t **ptr, uint64_t offset, size_t size, size_t st_size) {
@@ -507,7 +515,6 @@ char * dstring_suberror(uint8_t e_code) {
 }
 
 uint8_t dstring_error(char * string_name, uint8_t e_code) {
-    char * buffer[600];
     if(e_code > 0) {
         msg("Dstring %s has following errors:\n", string_name);
         for(int i=0; i<8; ++i) {
@@ -572,7 +579,7 @@ uint8_t check_dstring(dstring *in, size_t field_size) {
     if(empty_flag || (length == 0 && no_length == 0)) {
         // Check for emptyness
         dbg("Empty check\n");
-        for(int i = 0; i < field_size; i += stepping) {
+        for(int i = 0; i < (int)field_size; i += stepping) {
             if(in[i] != 0) {
                 err("Dstring is not empty.\n");
                 e_code |= DSTRING_E_NOT_EMPTY;
@@ -588,7 +595,7 @@ uint8_t check_dstring(dstring *in, size_t field_size) {
             // Check for length and zero padding.
             uint8_t char_count = 0;
             uint8_t eol_flag = 0xFF;
-            for(int i = 1; i < field_size-1; i += stepping) {
+            for(int i = 1; i < (int)(field_size-1); i += stepping) {
                 // We need to check if character is 0.
                 // For 8bit: we check character twice to keep code simplicity.
                 // For 16bit: we check character i and i+1
@@ -622,7 +629,7 @@ uint8_t check_dstring(dstring *in, size_t field_size) {
         // All uincode 1.1 characters are valid. Only endinness codes are invalid (0xFFFE and 0xFEFF)
         if(stepping == 2) {
             dbg("Invalid chars check\n");
-            for(int i = 1; i < field_size-1; i += stepping) {
+            for(int i = 1; i < (int)(field_size-1); i += stepping) {
                 if((in[i] == 0xFF && in[i+1] == 0xFE) || (in[i] == 0xFE && in[i+1] == 0xFF)) {
                     err("Dstring contains invalid characters\n");
                     e_code |= DSTRING_E_INVALID_CHARACTERS;
@@ -748,9 +755,9 @@ uint64_t count_used_bits(struct filesystemStats *stats) {
 
     uint64_t countedBits = 0;
     uint8_t rest = stats->partitionNumOfBits % 8;
-    for(int i = 0; i<stats->partitionNumOfBytes; i++) {
+    for(int i = 0; i<(int)(stats->partitionNumOfBytes); i++) {
         uint8_t piece = ~stats->actPartitionBitmap[i];
-        if(i<stats->partitionNumOfBytes-1) {
+        if(i<(int)(stats->partitionNumOfBytes-1)) {
             for(int j = 0; j<8; j++) {
                 countedBits += (piece>>j)&1;
             }
