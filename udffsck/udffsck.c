@@ -1141,7 +1141,7 @@ int get_lvid(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, size_
     dbg("LVID: numOfPartitions: %d\n", disc->udf_lvid->numOfPartitions);
 
     struct impUseLVID *impUse = (struct impUseLVID *)((uint8_t *)(disc->udf_lvid) + sizeof(struct logicalVolIntegrityDesc) + 8*disc->udf_lvid->numOfPartitions); //this is because of ECMA 167r3, 3/24, fig 22
-    stats->actUUID = ((uint64_t)((struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse))->uniqueID);
+    stats->actUUID = ((struct logicalVolHeaderDesc *)disc->udf_lvid->logicalVolContentsUse)->uniqueID;
 
     stats->LVIDtimestamp = lvid->recordingDateAndTime;
 
