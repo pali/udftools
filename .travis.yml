@@ -444,18 +444,6 @@ matrix:
 
 before_script:
   - if ! which "$CC" &>/dev/null; then export CC=${CC%%-*}; fi
-  - cd ..; mkdir cmocka; cd cmocka; PTH=$(pwd); cd ..;
-  - wget --no-check-certificate https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
-  - tar xf cmocka-1.1.0.tar.xz
-  - cd cmocka-1.1.0
-  - mkdir build
-  - cd build
-  - if [ "$PLATFORM" = "x86" ]; then CFLAGS="-m32 $CFLAGS"; fi
-  - cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release ..
-  - make
-  - make install
-  - cd ../../udftools
-  - export CFLAGS="-W -Wall -Werror -g"
   - if [ -z "$NOOPT" ]; then export CFLAGS="$CFLAGS -O2"; fi
   - if [ "${CC%%-*}" = "clang" ]; then export CFLAGS="$CFLAGS -Wno-error=unused-function"; fi
   - case "$PLATFORM" in
@@ -466,6 +454,17 @@ before_script:
       "arm")       export CONFIGURE_FLAGS="--host=arm-linux-gnueabi"; export LDFLAGS="--static" ;;
       *)           echo "Unsupported platform '$PLATFORM'"; exit 1 ;;
     esac
+  - cd ..; mkdir cmocka; cd cmocka; PTH=$(pwd); cd ..;
+  - wget --no-check-certificate https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
+  - tar xf cmocka-1.1.0.tar.xz
+  - cd cmocka-1.1.0
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release ..
+  - make
+  - make install
+  - cd ../../udftools
+  - export CFLAGS="-W -Wall -Werror -g $CFLAGS"
   - export PATH="$PTH:$PATH"
   - export LD_LIBRARY_PATH="$PTH/lib:$LD_LIBRARY_PATH"
   - export CFLAGS="$CFLAGS -I$PTH/include/"

@@ -42,7 +42,7 @@ verbosity_e verbosity = DBG;
 // Support functions
 void clear_dstring(dstring *string, size_t field_length) {
     // clear string
-    for(int i = 0; i < field_length; ++i) {
+    for(int i = 0; i < (int)field_length; ++i) {
         string[i] = 0;
     }
 }
@@ -74,7 +74,7 @@ void generate_valid_dstring_u16(dstring *string, size_t field_length, uint8_t co
 
 void print_dstring(dstring *string, size_t field_length) {
     printf("[ ");
-    for(int i=0; i<field_length; ++i) {
+    for(int i=0; i<(int)field_length; ++i) {
         printf("%02x ", string[i]);
     }
     printf("]\n");
