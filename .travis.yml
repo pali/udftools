@@ -554,6 +554,7 @@ script:
   - ./autogen.sh
   - ./configure $CONFIGURE_FLAGS
   - make
+  - set +e
   - ./udffsck/travis-tests.sh unit
   - ./udffsck/travis-tests.sh basic
   - ./udffsck/travis-tests.sh extra1
