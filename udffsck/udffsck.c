@@ -3332,7 +3332,9 @@ int fix_lvid(int fd, uint8_t **dev, struct udf_disc *disc, size_t st_size, size_
     impUse->numOfDirs = stats->countNumOfDirs;
 
     // Fix Next Unique ID by maximal found +1
-    ((struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse))->uniqueID = stats->maxUUID+1;
+    //((struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse))->uniqueID = stats->maxUUID+1;
+    struct logicalVolHeaderDesc *lvhd = (struct logicalVolHeaderDesc *)(disc->udf_lvid->logicalVolContentsUse);
+    lvhd->uniqueID = stats->maxUUID+1;
 
     // Set recording date and time to now. 
     time_t t = time(NULL);
