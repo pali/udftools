@@ -444,18 +444,6 @@ matrix:
 
 before_script:
   - if ! which "$CC" &>/dev/null; then export CC=${CC%%-*}; fi
-  - export CFLAGS="-W -Wall -Werror -g"
-  - if [ -z "$NOOPT" ]; then export CFLAGS="$CFLAGS -O2"; fi
-  - if [ "${CC%%-*}" = "clang" ]; then export CFLAGS="$CFLAGS -Wno-error=unused-function"; fi
-  - case "$PLATFORM" in
-      "x86")       export CFLAGS="-m32 $CFLAGS" ;;
-      "x86_64"|"") ;;
-      "x32")       export CFLAGS="-mx32 $CFLAGS"; export LDFLAGS="--static" ;;
-      "powerpc")   export CONFIGURE_FLAGS="--host=powerpc-linux-gnu"; export LDFLAGS="--static" ;;
-      "arm")       export CONFIGURE_FLAGS="--host=arm-linux-gnueabi"; export LDFLAGS="--static" ;;
-      *)           echo "Unsupported platform '$PLATFORM'"; exit 1 ;;
-    esac
-  - export CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-tests"
   - cd ..; mkdir cmocka; cd cmocka; PTH=$(pwd); cd ..;
   - export PATH="$PTH:$PATH"
   - export LD_LIBRARY_PATH="$PTH/lib:$LD_LIBRARY_PATH"
@@ -470,6 +458,18 @@ before_script:
   - make
   - make install
   - cd ../../udftools
+  - export CFLAGS="-W -Wall -Werror -g"
+  - if [ -z "$NOOPT" ]; then export CFLAGS="$CFLAGS -O2"; fi
+  - if [ "${CC%%-*}" = "clang" ]; then export CFLAGS="$CFLAGS -Wno-error=unused-function"; fi
+  - case "$PLATFORM" in
+      "x86")       export CFLAGS="-m32 $CFLAGS" ;;
+      "x86_64"|"") ;;
+      "x32")       export CFLAGS="-mx32 $CFLAGS"; export LDFLAGS="--static" ;;
+      "powerpc")   export CONFIGURE_FLAGS="--host=powerpc-linux-gnu"; export LDFLAGS="--static" ;;
+      "arm")       export CONFIGURE_FLAGS="--host=arm-linux-gnueabi"; export LDFLAGS="--static" ;;
+      *)           echo "Unsupported platform '$PLATFORM'"; exit 1 ;;
+    esac
+  - export CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-tests"
 
 script:
   - if [ -n "$COVERITY_SCAN_TOKEN" ]; then exit 0; fi
