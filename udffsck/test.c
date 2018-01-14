@@ -94,8 +94,8 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
 
     int pipefd[3];
     if(pipe(pipefd)) {
-        fprintf(stderr, "Pipe opening failed\n");
-        exit(-1);
+        printf("Pipe opening failed\n");
+        return -1;
     }
 
     int statval, exitval;
