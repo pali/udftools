@@ -57,6 +57,7 @@
  * After calling this, program exits with code 32 (User interrupt).
  */
 void user_interrupt(int dummy) {
+    (void)dummy;
     warn("\nUser interrupted operation. Exiting.\n");
     exit(32);
 }
@@ -68,6 +69,7 @@ void user_interrupt(int dummy) {
  * It instructs user to report it, because this behavior is bug.
  */
 void segv_interrupt(int dummy) {
+    (void)dummy;
     fatal("Unexpected error (SEGV), please report it. More info at man page. Exiting.\n");
     exit(8);
 }
@@ -79,6 +81,7 @@ void segv_interrupt(int dummy) {
  * It instructs user to report it, because this behavior is bug.
  */
 void sigbus_interrupt(int dummy) {
+    (void)dummy;
     fatal("Medium changed its size during fsck run. Is somebody manipulating with it? Exiting.\n");
     exit(8);
 }
@@ -146,7 +149,7 @@ int main(int argc, char *argv[]) {
     uint16_t fix_status = 0;
     int force_sectorsize = 0;
     int third_avdp_missing = 0;
-    struct sigaction new_action, old_action;
+    struct sigaction new_action;
     int source = -1;
 
     sigemptyset (&new_action.sa_mask);
@@ -286,7 +289,7 @@ int main(int argc, char *argv[]) {
     dbg("Chunk size %ld, rest: %ld\n", chunksize, rest);
     dev = calloc(sizeof(uint8_t *), st_size/chunksize + (rest > 0 ? 1 : 0));
     dbg("Amount of chunks: %d\n", st_size/chunksize + (rest > 0 ? 1 : 0));
-    for(uint64_t i=0; i<st_size/chunksize +(rest > 0 ? 1 : 0) ; i++) {
+    for(uint64_t i=0; i<(uint64_t)(st_size/chunksize +(rest > 0 ? 1 : 0)) ; i++) {
         dev[i] = NULL;
     }
 
@@ -356,7 +359,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Correct blocksize MUST be blocksize%512 == 0. We keep definitive list for now.
-    if(!(blocksize == 512 | blocksize == 1024 | blocksize == 2048 | blocksize == 4096)) {
+    if(!((blocksize == 512) | (blocksize == 1024) | (blocksize == 2048) | (blocksize == 4096))) {
         err("Invalid blocksize. Posible blocksizes must be dividable by 512.\n");
         exit(16);
     }

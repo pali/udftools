@@ -2401,7 +2401,6 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                 struct impUseExtAttr *impAttr;
                 struct appUseExtAttr *appAttr;
                 tag *descTag;
-                uint8_t *array;
                 uint8_t *base = NULL;
                 if(ext) {
                     eahd = *(struct extendedAttrHeaderDesc *)(efe + sizeof(struct extendedFileEntry) + efe->lengthExtendedAttr);
@@ -2416,7 +2415,6 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                     dbg("fe: %p, POS: %d, descTag: %p\n", fe, sizeof(struct fileEntry) + fe->lengthExtendedAttr, descTag);
 #endif
                 }
-                array = (uint8_t *)descTag;
 
                 if(descTag->tagIdent == TAG_IDENT_EAHD) {
                     base = (ext ? efe->allocDescs : fe->allocDescs) + eahd.appAttrLocation;
@@ -2446,6 +2444,7 @@ uint8_t get_file(int fd, uint8_t **dev, const struct udf_disc *disc, size_t st_s
                     dbg("AttrLength: %d\n", gf->attrLength);
                     if(gf->attrType == EXTATTR_APP_USE) {
                         appAttr = (struct appUseExtAttr *)gf;
+                        (void)appAttr;
                     } else {
                         err("EAHD mismatch. Expected APP, found %d\n", gf->attrType);
 

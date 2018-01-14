@@ -141,7 +141,7 @@ void logger(message_type type, char *color, const char *format, va_list arg) {
     if(verbosity >= verblvl) {
         if(color == NULL || colored == 0)
             color = "";
-        if(prefix > 0)
+        if(prefix != NULL)
             fprintf(stream, "%s[%s] ", color, prefix);
         else
             fprintf(stream, "%s", color);
