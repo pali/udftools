@@ -93,7 +93,10 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
 #endif
 
     int pipefd[3];
-    pipe(pipefd);
+    if(pipe(pipefd)) {
+        fprintf(stderr, "Pipe opening failed\n");
+        exit(-1);
+    }
 
     int statval, exitval;
     if(fork() == 0) {
