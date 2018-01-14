@@ -1,18 +1,18 @@
 dnl Process this file with autoconf to produce a configure script.
+AC_PREREQ([2.63])
 AC_INIT(udftools, 2.0, , , [https://github.com/pali/udftools/])
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(include/config.h:include/config.in)
 AM_INIT_AUTOMAKE
 
 dnl Checks for programs.
-AC_PROG_CC
 AC_PROG_CC_C99
-if test "x$ac_cv_prog_cc_c99" = "xno"; then
-        AC_MSG_ERROR([Your C compiler does not support C99 standard.])
-fi
-
 AC_DISABLE_SHARED
 AM_PROG_LIBTOOL
+
+if test "$ac_cv_prog_cc_c99" = "no"; then
+	AC_MSG_ERROR([Your C compiler does not support ISO C99.])
+fi
 
 dnl Checks for libraries.
 AC_CHECK_LIB(readline, readline, [ ])
@@ -23,6 +23,7 @@ AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h getopt.h string.h readline/readline
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
+AC_C_BIGENDIAN
 AC_HEADER_TIME
 AC_STRUCT_TM
 AC_SYS_LARGEFILE
@@ -58,7 +59,6 @@ esac],
 
 AM_CONDITIONAL(TESTS, test x"$tests" = x"true")
 
-AC_C_BIGENDIAN
 AM_CONDITIONAL(WORDS_LITTLEENDIAN, test "x$ac_cv_c_bigendian" = "xno")
 AM_CONDITIONAL(WORDS_BIGENDIAN, test "x$ac_cv_c_bigendian" = "xyes")
 

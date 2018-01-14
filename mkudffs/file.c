@@ -791,17 +791,17 @@ int udf_alloc_bitmap_blocks(struct udf_disc *disc, struct udf_desc *bitmap, uint
 	do
 	{
 		start = ((start + alignment - 1) / alignment) * alignment;
-		if (start + blocks >= sbd->numOfBits)
+		if (start + blocks >= le32_to_cpu(sbd->numOfBits))
 		{
 			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
 		if (sbd->bitmap[start/8] & (1 << (start%8)))
 		{
-			end = udf_find_next_zero_bit(sbd->bitmap, sbd->numOfBits, start);
+			end = udf_find_next_zero_bit(sbd->bitmap, le32_to_cpu(sbd->numOfBits), start);
 		}
 		else
-			start = end = udf_find_next_one_bit(sbd->bitmap, sbd->numOfBits, start);
+			start = end = udf_find_next_one_bit(sbd->bitmap, le32_to_cpu(sbd->numOfBits), start);
 	} while ((end - start) <= blocks);
 
 	clear_bits(sbd->bitmap, start, blocks);
@@ -825,7 +825,7 @@ int udf_alloc_table_blocks(struct udf_disc *disc, struct udf_desc *table, uint32
 
 	do
 	{
-		if (offset >= use->lengthAllocDescs)
+		if (offset >= le32_to_cpu(use->lengthAllocDescs))
 		{
 			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
