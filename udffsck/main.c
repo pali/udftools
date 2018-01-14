@@ -139,12 +139,14 @@ int main(int argc, char *argv[]) {
     FILE *fp;
     int status = 0;
     int blocksize = -1;
-    struct udf_disc disc = {0};
+    struct udf_disc disc;
+    memset(&disc, 0, sizeof(struct udf_disc));
     struct stat stat;
     uint8_t **dev;
     off_t st_size;
     vds_sequence_t *seq; 
-    struct filesystemStats stats =  {0};
+    struct filesystemStats stats;
+    memset(&stats, 0, sizeof(struct filesystemStats));
     uint16_t error_status = 0;
     uint16_t fix_status = 0;
     int force_sectorsize = 0;
