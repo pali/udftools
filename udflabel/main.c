@@ -85,7 +85,7 @@ static int get_sector_size(int fd)
 
 static uint16_t compute_crc(void *desc, size_t length)
 {
-	return cpu_to_le16(udf_crc((uint8_t *)desc + sizeof(tag), length - sizeof(tag), 0));
+	return udf_crc((uint8_t *)desc + sizeof(tag), length - sizeof(tag), 0);
 }
 
 static uint8_t compute_checksum(tag *tag)
