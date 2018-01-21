@@ -993,8 +993,7 @@ void setup_vds(struct udf_disc *disc)
 	setup_pd(disc, mvds, rvds, 2);
 	setup_usd(disc, mvds, rvds, 3);
 	setup_iuvd(disc, mvds, rvds, 4);
-	if (mvds->blocks > 5)
-		setup_td(disc, mvds, rvds, 5);
+	setup_td(disc, mvds, rvds, 5);
 }
 
 void setup_pvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent *rvds, uint32_t offset)
