@@ -647,21 +647,21 @@ int main(int argc, char *argv[])
 		write_desc(fd, &disc, PSPACE, TAG_IDENT_FSD, disc.udf_fsd);
 	}
 
-	if (update_pvd)
+	if (update_pvd && disc.udf_pvd[1] != disc.udf_pvd[0])
 	{
 		printf("Updating Reserve Primary Volume Descriptor...\n");
 		update_desc(disc.udf_pvd[1], sizeof(*disc.udf_pvd[1]));
 		write_desc(fd, &disc, RVDS, TAG_IDENT_PVD, disc.udf_pvd[1]);
 	}
 
-	if (update_lvd)
+	if (update_lvd && disc.udf_lvd[1] != disc.udf_lvd[0])
 	{
 		printf("Updating Reserve Logical Volume Descriptor...\n");
 		update_desc(disc.udf_lvd[1], sizeof(*disc.udf_lvd[1]) + le32_to_cpu(disc.udf_lvd[1]->mapTableLength));
 		write_desc(fd, &disc, RVDS, TAG_IDENT_LVD, disc.udf_lvd[1]);
 	}
 
-	if (update_iuvd)
+	if (update_iuvd && disc.udf_iuvd[1] != disc.udf_iuvd[0])
 	{
 		printf("Updating Reserve Implementation Use Volume Descriptor...\n");
 		update_desc(disc.udf_iuvd[1], sizeof(*disc.udf_iuvd[1]));
