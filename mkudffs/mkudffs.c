@@ -276,8 +276,11 @@ void split_space(struct udf_disc *disc)
 	}
 
 	accessType = le32_to_cpu(disc->udf_pd[0]->accessType);
-	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && sizes[LVID_SIZE] * (size_t)disc->blocksize < 8192)
+	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && sizes[LVID_SIZE] * (size_t)disc->blocksize < 8192 && blocks > 257)
 		sizes[LVID_SIZE] = (8192 + disc->blocksize-1) / disc->blocksize;
+
+	if (sizes[VDS_SIZE] > 6 && blocks <= 257)
+		sizes[VDS_SIZE] = 6;
 
 	if (!(disc->flags & FLAG_VAT) && blocks < 770)
 		start = 0;
@@ -301,7 +304,7 @@ void split_space(struct udf_disc *disc)
 		}
 		set_extent(disc, RVDS, start, sizes[VDS_SIZE]);
 	}
-	else
+	else if (blocks > 257)
 	{
 		if (blocks >= 3072)
 			start = find_next_extent_size(disc, (blocks-257+97)/32*32, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
@@ -608,13 +611,21 @@ void setup_anchor(struct udf_disc *disc)
 	mlen = ext->blocks * disc->blocksize;
 
 	ext = next_extent(disc->head, RVDS);
-	if (!ext)
+	if (!ext && disc->blocks > 257)
 	{
 		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
-	rloc = ext->start;
-	rlen = ext->blocks * disc->blocksize;
+	if (disc->blocks > 257)
+	{
+		rloc = ext->start;
+		rlen = ext->blocks * disc->blocksize;
+	}
+	else
+	{
+		rloc = mloc;
+		rlen = mlen;
+	}
 
 	ext = next_extent(disc->head, ANCHOR);
 	if (!ext)
@@ -971,7 +982,7 @@ void setup_vds(struct udf_disc *disc)
 	stable[0] = next_extent(disc->head, STABLE);
 	sspace = next_extent(disc->head, SSPACE);
 
-	if (!mvds || !rvds || !lvid)
+	if (!mvds || (!rvds && disc->blocks > 257) || !lvid)
 	{
 		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
@@ -1006,6 +1017,8 @@ void setup_pvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent
 	desc->data->buffer = disc->udf_pvd[0];
 	disc->udf_pvd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
+	if (!rvds)
+		return;
 	desc = set_desc(rvds, TAG_IDENT_PVD, offset, length, NULL);
 	memcpy(disc->udf_pvd[1] = desc->data->buffer, disc->udf_pvd[0], length);
 	disc->udf_pvd[1]->descTag = query_tag(disc, rvds, desc, 1);
@@ -1025,6 +1038,8 @@ void setup_lvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent
 	desc->data->buffer = disc->udf_lvd[0];
 	disc->udf_lvd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
+	if (!rvds)
+		return;
 	desc = set_desc(rvds, TAG_IDENT_LVD, offset, length, NULL);
 	memcpy(disc->udf_lvd[1] = desc->data->buffer, disc->udf_lvd[0], length);
 	disc->udf_lvd[1]->descTag = query_tag(disc, rvds, desc, 1);
@@ -1056,6 +1071,8 @@ void setup_pd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent 
 	desc->data->buffer = disc->udf_pd[0];
 	disc->udf_pd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
+	if (!rvds)
+		return;
 	desc = set_desc(rvds, TAG_IDENT_PD, offset, length, NULL);
 	memcpy(disc->udf_pd[1] = desc->data->buffer, disc->udf_pd[0], length);
 	disc->udf_pd[1]->descTag = query_tag(disc, rvds, desc, 1);
@@ -1085,6 +1102,8 @@ void setup_usd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent
 	desc->data->buffer = disc->udf_usd[0];
 	disc->udf_usd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
+	if (!rvds)
+		return;
 	desc = set_desc(rvds, TAG_IDENT_USD, offset, length, NULL);
 	memcpy(disc->udf_usd[1] = desc->data->buffer, disc->udf_usd[0], length);
 	disc->udf_usd[1]->descTag = query_tag(disc, rvds, desc, 1);
@@ -1102,6 +1121,8 @@ void setup_iuvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_exten
 	desc->data->buffer = disc->udf_iuvd[0];
 	disc->udf_iuvd[0]->descTag = query_tag(disc, mvds, desc, 1);
 
+	if (!rvds)
+		return;
 	desc = set_desc(rvds, TAG_IDENT_IUVD, offset, length, NULL);
 	memcpy(disc->udf_iuvd[1] = desc->data->buffer, disc->udf_iuvd[0], length);
 	disc->udf_iuvd[1]->descTag = query_tag(disc, rvds, desc, 1);
@@ -1117,6 +1138,8 @@ void setup_td(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent 
 	desc->data->buffer = disc->udf_td[0];
 	disc->udf_td[0]->descTag = query_tag(disc, mvds, desc, 1);
 
+	if (!rvds)
+		return;
 	desc = set_desc(rvds, TAG_IDENT_TD, offset, length, NULL);
 	memcpy(disc->udf_td[1] = desc->data->buffer, disc->udf_td[0], length);
 	disc->udf_td[1]->descTag = query_tag(disc, rvds, desc, 1);
