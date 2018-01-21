@@ -475,6 +475,9 @@ int main(int argc, char *argv[])
 
 	dump_space(&disc);
 
+	if (disc.blocks <= 257)
+		fprintf(stderr, "%s: Warning: UDF filesystem has less then 258 blocks, it can cause problems\n", appname);
+
 	if (len == (size_t)-1)
 		fprintf(stderr, "%s: Warning: Volume Set Identifier must be at least 8 characters long\n", appname);
 	else if (len < 16)
