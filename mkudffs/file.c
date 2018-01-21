@@ -722,6 +722,7 @@ static inline unsigned long udf_find_next_one_bit (void * addr, unsigned long si
 	tmp = leBPL_to_cpup(&tmp);
 found_first:
 	tmp &= ~0UL >> (BITS_PER_LONG-size);
+	tmp |= (1UL << size);
 found_middle:
 	return result + ffz(~tmp);
 }
