@@ -532,6 +532,17 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 		next_location = le32_to_cpu(disc->udf_anchor[anchor]->reserveVolDescSeqExt.extLocation);
 		next_length = le32_to_cpu(disc->udf_anchor[anchor]->reserveVolDescSeqExt.extLength) & EXT_LENGTH_MASK;
 		id = 1;
+		if (next_location == le32_to_cpu(disc->udf_anchor[anchor]->mainVolDescSeqExt.extLocation))
+		{
+			fprintf(stderr, "%s: Warning: Reserve Volume Descriptor Sequence is on same location as Main\n", appname);
+			disc->udf_pvd[1] = disc->udf_pvd[0];
+			disc->udf_lvd[1] = disc->udf_lvd[0];
+			disc->udf_pd[1] = disc->udf_pd[0];
+			disc->udf_usd[1] = disc->udf_usd[0];
+			disc->udf_iuvd[1] = disc->udf_iuvd[0];
+			disc->udf_td[1] = disc->udf_td[0];
+			return 0;
+		}
 	}
 	else
 	{
