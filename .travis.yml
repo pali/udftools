@@ -655,10 +655,10 @@ before_script:
   - make install
   - cd ../../udftools
 # git-lfs installation
-  - cd ..; mkdir git-lfs; cd git-lfs;
-  - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/git-lfs-install.sh
-  - chmod +x git-lfs-install.sh
-  - ./git-lfs-install.sh
+#  - cd ..; mkdir git-lfs; cd git-lfs;
+#  - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/git-lfs-install.sh
+#  - chmod +x git-lfs-install.sh
+#  - ./git-lfs-install.sh
 # Configure flags
   - export CFLAGS="-W -Wall -Werror -g $CFLAGS"
   - export PATH="$PTH:$PATH"
@@ -676,7 +676,7 @@ script:
   - set +e
   - ./udffsck/travis-tests.sh unit
     # Temporarily disabled.
-    #  - ./udffsck/travis-tests.sh basic
+  - ./udffsck/travis-tests.sh basic
     #  - ./udffsck/travis-tests.sh extra1
     # - ./udffsck/travis-tests.sh extra2
 
