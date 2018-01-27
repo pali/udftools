@@ -18,8 +18,9 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-4.4-multilib
-            - gccgo:i386
+              #        - gccgo:i386
             - golang-go:i386
+            - perl:i386
     - compiler: gcc-4.4
       env: PLATFORM=x86_64
       addons:
