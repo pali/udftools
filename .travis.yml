@@ -21,7 +21,6 @@ matrix:
               #        - gccgo:i386
             - golang-go:i386
             - perl:i386
-            - perl-modules:i386
             - perl-base:i386
     - compiler: gcc-4.4
       env: PLATFORM=x86_64
