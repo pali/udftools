@@ -5,7 +5,7 @@ if [ "$1" == 'basic' ]; then
     cd ..
     wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples.sh
 #    wget --no-check-certificate https://pac.chapadla.cz/~rain/udffsck-test-samples/udf-samples.tar.xz 
-    wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/udf-samples.tar.xz
+    wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/v1.0-beta.1/udf-samples.tar.xz
     bash decompress-samples.sh
     cd udftools/udffsck
     ./test
