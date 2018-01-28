@@ -4,8 +4,7 @@ set -e
 if [ "$1" == 'basic' ]; then  
     cd ..
     wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/decompress-samples.sh
-#    wget --no-check-certificate https://pac.chapadla.cz/~rain/udffsck-test-samples/udf-samples.tar.xz 
-    wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/v1.0-beta.1/udf-samples.tar.xz
+    wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/"$2"/udf-samples.tar.xz
     bash decompress-samples.sh
     cd udftools/udffsck
     ./test
@@ -16,25 +15,34 @@ fi
 
 if [ "$1" == 'extra1' ]; then  
     cd ..
-    wget --no-check-certificate https://pac.chapadla.cz/~rain/udffsck-test-samples/udf-samples-extra.tar.xz 
-    tar -xJvf udf-samples-extra.tar.xz udf-samples-extra/bs512_windows7_udf0201.img udf-samples-extra/bs512_windows7_udf0201_broken_file_tree.img udf-samples-extra/bs512_windows7_udf0201_chkdsk.img  
+    wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/"$2"/udf-samples-extra-1.tar.xz
+    tar -xJvf udf-samples-extra-1.tar.xz  
     cd udftools/udffsck
     ./testextra1
     cd ../..
-    rm udf-samples-extra/bs512_windows7_udf0201.img udf-samples-extra/bs512_windows7_udf0201_broken_file_tree.img udf-samples-extra/bs512_windows7_udf0201_chkdsk.img  
-    rm udf-samples-extra.tar.xz
+    rm  -r udf-samples-extra-1 udf-samples-extra-1.tar.xz
     cd udftools/udffsck
 fi
 
 if [ "$1" == 'extra2' ]; then  
     cd ..
-    wget --no-check-certificate https://pac.chapadla.cz/~rain/udffsck-test-samples/udf-samples-extra.tar.xz 
-    tar -xJvf udf-samples-extra.tar.xz udf-samples-extra/bs512_windows7_udf0201-linux-before-fix.img udf-samples-extra/bs512_windows7_udf0201-serial-broken-linux-written.img udf-samples-extra/bs512_windows7_udf0201-serial-broken-linux-written-afterfix-win-write.img  
+    wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/"$2"/udf-samples-extra-2.tar.xz
+    tar -xJvf udf-samples-extra-2.tar.xz  
     cd udftools/udffsck
     ./testextra2
+    cd ../..  
+    rm -r udf-samples-extra-2 udf-samples-extra-2.tar.xz
+    cd udftools/udffsck
+fi
+
+if [ "$1" == 'extra3' ]; then  
+    cd ..
+    wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/"$2"/udf-samples-extra-3.tar.xz
+    tar -xJvf udf-samples-extra-3.tar.xz 
+    cd udftools/udffsck
+    ./testextra3
     cd ../..
-    rm udf-samples-extra/bs512_windows7_udf0201-linux-before-fix.img udf-samples-extra/bs512_windows7_udf0201-serial-broken-linux-written.img udf-samples-extra/bs512_windows7_udf0201-serial-broken-linux-written-afterfix-win-write.img  
-    rm udf-samples-extra.tar.xz
+    rm -r udf-samples-extra-3 udf-samples-extra-3.tar.xz
     cd udftools/udffsck
 fi
 

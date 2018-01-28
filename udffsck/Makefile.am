@@ -24,6 +24,11 @@ testextra2_LDFLAGS = -lcmocka -lm
 testextra2_CFLAGS = -DEXTRA_TESTS=2 
 noinst_PROGRAMS += testextra2
 
+testextra3_SOURCES = test.c
+testextra3_LDFLAGS = -lcmocka -lm
+testextra3_CFLAGS = -DEXTRA_TESTS=3
+noinst_PROGRAMS += testextra3
+
 unittest_LDADD = $(top_builddir)/libudffs/libudffs.la
 unittest_SOURCES = unit-test.c utils.c utils.h udffsck.c udffsck.h options.c options.h log.c log.h ../include/ecma_167.h ../include/osta_udf.h ../mkudffs/mkudffs.h ../mkudffs/defaults.h ../mkudffs/file.h ../libudffs/crc.c ../include/libudffs.h ../include/udf_endian.h
 unittest_LDFLAGS = -lcmocka -lm -I$(top_srcdir)/include

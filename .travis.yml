@@ -559,7 +559,7 @@ script:
   - set +e
   - ./udffsck/travis-tests.sh unit
   - ./udffsck/travis-tests.sh basic
-    # Temporarily disabled
-    #  - ./udffsck/travis-tests.sh extra1
-    # - ./udffsck/travis-tests.sh extra2
+  - ./udffsck/travis-tests.sh extra1
+  - ./udffsck/travis-tests.sh extra2
+  - ./udffsck/travis-tests.sh extra3
 

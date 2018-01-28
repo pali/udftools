@@ -65,8 +65,12 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
     char medpwd[10240];
 #if BASIC_TESTS
     sprintf(medpwd, "../../udf-samples/%s.img", medium);    
-#elif EXTRA_TESTS
-    sprintf(medpwd, "../../udf-samples-extra/%s.img", medium);    
+#elif EXTRA_TESTS==1
+    sprintf(medpwd, "../../udf-samples-extra-1/%s.img", medium);    
+#elif EXTRA_TESTS==2
+    sprintf(medpwd, "../../udf-samples-extra-2/%s.img", medium);    
+#elif EXTRA_TESTS==3
+    sprintf(medpwd, "../../udf-samples-extra-3/%s.img", medium);    
 #else
     #error NO TEST DEFINED
 #endif
@@ -627,6 +631,8 @@ int main(void) {
 #if EXTRA_TESTS==2
         cmocka_unit_test(bs512_crossplatform_4),
         cmocka_unit_test(bs512_crossplatform_5),
+#endif
+#if EXTRA_TESTS==3
         cmocka_unit_test(bs512_crossplatform_7),
 #endif
     };
