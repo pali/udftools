@@ -18,10 +18,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-4.4-multilib
-              #        - gccgo:i386
-            - golang-go:i386
-            - perl:i386
-            - perl-base:i386
     - compiler: gcc-4.4
       env: PLATFORM=x86_64
       addons:
@@ -29,8 +25,6 @@ matrix:
           packages:
             - libreadline-dev
             - gcc-4.4
-            - gccgo
-            - golang-go
     - compiler: gcc-4.6
       env: PLATFORM=x86
       addons:
@@ -39,8 +33,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-4.6-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc-4.6
       env: PLATFORM=x86_64
       addons:
@@ -48,8 +40,6 @@ matrix:
           packages:
             - libreadline-dev
             - gcc-4.6
-            - gccgo
-            - golang-go
     - compiler: gcc-4.7
       env: PLATFORM=x86
       addons:
@@ -58,8 +48,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-4.7-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc-4.7
       env: PLATFORM=x86_64
       addons:
@@ -67,8 +55,6 @@ matrix:
           packages:
             - libreadline-dev
             - gcc-4.7
-            - gccgo
-            - golang-go
     - compiler: gcc-4.8
       env: PLATFORM=x86
       addons:
@@ -77,8 +63,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-4.8-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc-4.8
       env: PLATFORM=x86_64
       addons:
@@ -86,8 +70,6 @@ matrix:
           packages:
             - libreadline-dev
             - gcc-4.8
-            - gccgo
-            - golang-go
     - compiler: gcc-4.9
       env: PLATFORM=x86
       addons:
@@ -98,8 +80,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-4.9-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc-4.9
       env: PLATFORM=x86_64
       addons:
@@ -109,8 +89,6 @@ matrix:
           packages:
             - libreadline-dev
             - gcc-4.9
-            - gccgo
-            - golang-go
     - compiler: gcc-5
       env: PLATFORM=x86
       addons:
@@ -121,8 +99,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-5-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc-5
       env: PLATFORM=x86_64
       addons:
@@ -132,8 +108,6 @@ matrix:
           packages:
             - libreadline-dev
             - gcc-5
-            - gccgo
-            - golang-go
     - compiler: gcc-6
       env: PLATFORM=x86
       addons:
@@ -144,8 +118,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-6-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc-6
       env: PLATFORM=x86_64
       addons:
@@ -155,8 +127,6 @@ matrix:
           packages:
             - libreadline-dev
             - gcc-6
-            - gccgo
-            - golang-go
     - compiler: gcc-7
       env: PLATFORM=x86
       addons:
@@ -167,8 +137,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-7-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc-7
       env: PLATFORM=x86_64
       addons:
@@ -178,8 +146,6 @@ matrix:
           packages:
             - libreadline-dev
             - gcc-7
-            - gccgo
-            - golang-go
     - compiler: clang-3.3
       env: PLATFORM=x86
       addons:
@@ -189,8 +155,6 @@ matrix:
             - libc6-dev:i386
             - clang-3.3
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang-3.3
       env: PLATFORM=x86_64
       addons:
@@ -198,8 +162,6 @@ matrix:
           packages:
             - libreadline-dev
             - clang-3.3
-            - gccgo
-            - golang-go
     - compiler: clang-3.4
       env: PLATFORM=x86
       addons:
@@ -209,8 +171,6 @@ matrix:
             - libc6-dev:i386
             - clang-3.4
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang-3.4
       env: PLATFORM=x86_64
       addons:
@@ -218,8 +178,6 @@ matrix:
           packages:
             - libreadline-dev
             - clang-3.4
-            - gccgo
-            - golang-go
     - compiler: clang-3.5
       env: PLATFORM=x86
       addons:
@@ -229,8 +187,6 @@ matrix:
             - libc6-dev:i386
             - clang-3.5
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang-3.5
       env: PLATFORM=x86_64
       addons:
@@ -238,8 +194,6 @@ matrix:
           packages:
             - libreadline-dev
             - clang-3.5
-            - gccgo
-            - golang-go
     - compiler: clang-3.6
       env: PLATFORM=x86
       addons:
@@ -251,8 +205,6 @@ matrix:
             - libc6-dev:i386
             - clang-3.6
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang-3.6
       env: PLATFORM=x86_64
       addons:
@@ -262,8 +214,6 @@ matrix:
           packages:
             - libreadline-dev
             - clang-3.6
-            - gccgo
-            - golang-go
     - compiler: clang-3.7
       env: PLATFORM=x86
       addons:
@@ -275,8 +225,6 @@ matrix:
             - libc6-dev:i386
             - clang-3.7
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang-3.7
       env: PLATFORM=x86_64
       addons:
@@ -286,8 +234,6 @@ matrix:
           packages:
             - libreadline-dev
             - clang-3.7
-            - gccgo
-            - golang-go
     - compiler: clang-3.8
       env: PLATFORM=x86
       addons:
@@ -297,8 +243,6 @@ matrix:
             - libc6-dev:i386
             - clang-3.8
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang-3.8
       env: PLATFORM=x86_64
       addons:
@@ -306,8 +250,6 @@ matrix:
           packages:
             - libreadline-dev
             - clang-3.8
-            - gccgo
-            - golang-go
     - compiler: clang-3.9
       env: PLATFORM=x86
       addons:
@@ -317,8 +259,6 @@ matrix:
             - libc6-dev:i386
             - clang-3.9
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang-3.9
       env: PLATFORM=x86_64
       addons:
@@ -326,8 +266,6 @@ matrix:
           packages:
             - libreadline-dev
             - clang-3.9
-            - gccgo
-            - golang-go
     - compiler: clang-4.0
       env: PLATFORM=x86
       addons:
@@ -339,8 +277,6 @@ matrix:
             - libc6-dev:i386
             - clang-4.0
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang-4.0
       env: PLATFORM=x86_64
       addons:
@@ -350,8 +286,6 @@ matrix:
           packages:
             - libreadline-dev
             - clang-4.0
-            - gccgo
-            - golang-go
     - compiler: clang-5.0
       env: PLATFORM=x86
       addons:
@@ -363,8 +297,6 @@ matrix:
             - libc6-dev:i386
             - clang-5.0
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang-5.0
       env: PLATFORM=x86_64
       addons:
@@ -374,8 +306,6 @@ matrix:
           packages:
             - libreadline-dev
             - clang-5.0
-            - gccgo
-            - golang-go
     - compiler: gcc
       dist: precise
       env: PLATFORM=x86
@@ -386,8 +316,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc
       dist: precise
       env: PLATFORM=x86_64
@@ -396,8 +324,6 @@ matrix:
         apt:
           packages:
             - libreadline-dev
-            - gccgo
-            - golang-go
     - compiler: gcc
       dist: trusty
       env: PLATFORM=x86
@@ -408,8 +334,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc
       dist: trusty
       env: PLATFORM=x86_64
@@ -418,8 +342,6 @@ matrix:
         apt:
           packages:
             - libreadline-dev
-            - gccgo
-            - golang-go
     - compiler: gcc
       dist: precise
       env: PLATFORM=x86
@@ -431,8 +353,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc
       dist: precise
       env: PLATFORM=x86_64
@@ -442,8 +362,6 @@ matrix:
         apt:
           packages:
             - libreadline-dev
-            - gccgo
-            - golang-go
     - compiler: gcc
       dist: trusty
       env: PLATFORM=x86
@@ -455,8 +373,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: gcc
       dist: trusty
       env: PLATFORM=x86_64
@@ -466,8 +382,6 @@ matrix:
         apt:
           packages:
             - libreadline-dev
-            - gccgo
-            - golang-go
     - compiler: clang
       dist: precise
       env: PLATFORM=x86
@@ -478,8 +392,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang
       dist: precise
       env: PLATFORM=x86_64
@@ -488,8 +400,6 @@ matrix:
         apt:
           packages:
             - libreadline-dev
-            - gccgo
-            - golang-go
     - compiler: clang
       dist: trusty
       env: PLATFORM=x86
@@ -500,8 +410,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang
       dist: trusty
       env: PLATFORM=x86_64
@@ -510,8 +418,6 @@ matrix:
         apt:
           packages:
             - libreadline-dev
-            - gccgo
-            - golang-go
     - compiler: clang
       dist: precise
       env: PLATFORM=x86
@@ -523,8 +429,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang
       dist: precise
       env: PLATFORM=x86_64
@@ -534,8 +438,6 @@ matrix:
         apt:
           packages:
             - libreadline-dev
-            - gccgo
-            - golang-go
     - compiler: clang
       dist: trusty
       env: PLATFORM=x86
@@ -547,8 +449,6 @@ matrix:
             - libreadline-dev:i386
             - libc6-dev:i386
             - gcc-multilib
-            - gccgo:i386
-            - golang-go:i386
     - compiler: clang
       dist: trusty
       env: PLATFORM=x86_64
@@ -558,8 +458,6 @@ matrix:
         apt:
           packages:
             - libreadline-dev
-            - gccgo
-            - golang-go
     - compiler: tcc
       dist: precise
       env: PLATFORM=x86_64
@@ -569,8 +467,6 @@ matrix:
           packages:
             - libreadline-dev
             - tcc
-            - gccgo
-            - golang-go
     - compiler: tcc
       dist: trusty
       env: PLATFORM=x86_64
@@ -580,8 +476,6 @@ matrix:
           packages:
             - libreadline-dev
             - tcc
-            - gccgo
-            - golang-go
     - compiler: gcc
       dist: trusty
       env: PLATFORM=x32
@@ -590,8 +484,6 @@ matrix:
           packages:
             - libc6-dev-x32
             - gcc-multilib
-            - gccgo
-            - golang-go
     - compiler: powerpc-linux-gnu-gcc
       dist: trusty
       env: PLATFORM=powerpc
@@ -601,8 +493,6 @@ matrix:
             - gcc-powerpc-linux-gnu
             - libc6-dev-powerpc-cross
             - qemu-user
-            - gccgo
-            - golang-go
     - compiler: arm-linux-gnueabi-gcc
       dist: trusty
       env: PLATFORM=arm
@@ -612,8 +502,6 @@ matrix:
             - gcc-arm-linux-gnueabi
             - libc6-dev-armel-cross
             - qemu-user
-            - gccgo
-            - golang-go
     - compiler: gcc
       env:
       - secure: "rH+rQS0W+0U3C/W/uRqJ8E5A3KrlbWaDRpZtdT1/SO0kEMnmuG2b0UvoadcIKOEXNHnQeZ3kPQbG2Wjfo/D6up0mXGZLXAvaJZozagxdfF2QPHSpvj2NDRLM71+UaKK/ksq3auPq+o3Y74FZOc4oBr7kPpr01H0pK8/2lljxS2daINRgFfcsaRhKNshtvHBn/KLgbwa5vEB/jadKBKM+mgAYE1sFv8P3yZ3+MzxygpurJ6enU6/9JITF5QgB11ybivYCbqoEf+IhzxgsmELz0zgL+PCVzTvrrNzpCT1UZJ35vWht5Yf7/AmK3sI/rMJm7TYswFKAc7NUbn80oIw6opp7sW1oFqMEHnHNLMNSljg8BwUrbH+y6+yV7sRfG6djCTYUYGYY9ZC2Ef4r3s3ZrRwHuBujZx/DOnFj0nd0AuvETNPkMWD1996bvSQ+WkfZ4JdW335/G61GdQv7kMTutWLKrlDquqxKM1AsoP1d99vCBzpEfRKyZjDUUSmnjdvZ/QgIDidGzH3vYFO81N39HjgKZlxH+oCuoX2ak3A6BrOT7t6mgEXnGM4H9vWhoKb7hseadBsR7YnbFSRmF2FDihEoIJ/BCPykGSZWzxTF94zC3WURI1C3HL0sAHGg3M620FgFj3M4Xkf0CPsmdsjwsnZg6TgVkYwAaKKP0HI2MFs="
@@ -621,8 +509,6 @@ matrix:
           apt:
             packages:
               - libreadline-dev
-              - gccgo
-              - golang-go
           coverity_scan:
             project:
               name: "pali/udftools"
@@ -656,11 +542,6 @@ before_script:
   - make
   - make install
   - cd ../../udftools
-# git-lfs installation
-#  - cd ..; mkdir git-lfs; cd git-lfs;
-#  - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/raw/master/git-lfs-install.sh
-#  - chmod +x git-lfs-install.sh
-#  - ./git-lfs-install.sh
 # Configure flags
   - export CFLAGS="-W -Wall -Werror -g $CFLAGS"
   - export PATH="$PTH:$PATH"
@@ -677,8 +558,8 @@ script:
   - make
   - set +e
   - ./udffsck/travis-tests.sh unit
-    # Temporarily disabled.
   - ./udffsck/travis-tests.sh basic
+    # Temporarily disabled
     #  - ./udffsck/travis-tests.sh extra1
     # - ./udffsck/travis-tests.sh extra2
 
