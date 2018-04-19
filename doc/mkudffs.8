@@ -60,9 +60,9 @@ used for first 16 characters of \fB\-\-fullvsid\fP option. If omitted,
 .BI \-b,\-\-blocksize= " block\-size "
 Specify the size of blocks in bytes. Valid block size for a UDF filesystem is
 power of two in range from 512 to 32768 and must match a device logical (sector)
-size. If omitted, \fBmkudffs\fP block\-size is set to device logical block
+size. If omitted, \fBmkudffs\fP block size is set to device logical block
 (sector) size. If logical block (sector) size is unknown (e.g. when creating
-disk image) then for \fB\-\-media\-type\fP=\fIhd\fP is used block\-size 512 and
+disk image) then for \fB\-\-media\-type\fP=\fIhd\fP is used block size 512 and
 for other media types 2048.
 
 .TP
@@ -81,28 +81,28 @@ mo
 MO (Magneto Optical)
 .TP
 cd
-CD\-ROM (CD Read\-Only Memory)
+CD-ROM (CD Read-Only Memory)
 .TP
 cdr
-CD\-R (CD Recordable)
+CD-R (CD Recordable)
 .TP
 cdrw
-CD\-RW (CD Read\-Write)
+CD-RW (CD Read-Write)
 .TP
 dvd
-DVD\-ROM (DVD Read\-Only Memory)
+DVD-ROM (DVD Read-Only Memory)
 .TP
 dvdr
-DVD\-R (DVD Recordable)
+DVD-R (DVD Recordable)
 .TP
 dvdrw
-DVD\-RW (DVD Read\-Write)
+DVD-RW (DVD Read-Write)
 .TP
 dvdram
-DVD\-RAM (DVD Random Access Memory)
+DVD-RAM (DVD Random Access Memory)
 .TP
 bdr
-BD\-R (Blu\-ray Disc Recordable)
+BD-R (Blu-ray Disc Recordable)
 .RE
 
 .RS
@@ -113,14 +113,14 @@ available since mkudffs 2.0)
 .TP
 .BI \-r,\-\-udfrev= " udf\-revision "
 Specify the UDF revision to use, either in hexadecimal (e.g. 0x0201) or decimal
-(e.g. 2.01) format. Valid revisions arei 1.02, 1.50, 2.00, 2.01, 2.50 and 2.60.
-If omitted, \fBmkudffs\fP udf\-revision is \fI2.01\fP, except for Blu-ray Discs
+(e.g. 2.01) format. Valid revisions are 1.02, 1.50, 2.00, 2.01, 2.50 and 2.60.
+If omitted, \fBmkudffs\fP udf revision is \fI2.01\fP, except for Blu-ray Discs
 which is \fI2.50\fP. UDF revisions higher then 2.01 are experimental. Option
 must be specified after \fB\-\-media\-type\fP. (Values in decimal format and
 revisions higher then 2.01 are supported since mkudffs 2.0)
 
 .TP
-.B \-n,\-\-no-write
+.B \-n,\-\-no\-write
 Not really, do not write to \fIdevice\fP. Just simulate and display what would
 happen with \fIdevice\fP. Useful for determining calculated location of
 different UDF blocks.
@@ -136,23 +136,23 @@ only in case it does not exist yet.
 .TP
 .BI \-\-lvid= " logical\-volume\-identifier "
 Specify the \fILogical Volume Identifier\fP. If omitted, \fBmkudffs\fP
-logical\-volume\-identifier is \fILinuxUDF\fP. Most UDF implementations uses
+Logical Volume Identifier is \fILinuxUDF\fP. Most UDF implementations uses
 this identifier as a disk label.
 
 .TP
 .BI \-\-vid= " volume\-identifier "
 Specify the \fIVolume Identifier\fP. If omitted, \fBmkudffs\fP
-volume\-identifier is \fILinuxUDF\fP.
+Volume Identifier is \fILinuxUDF\fP.
 
 .TP
 .BI \-\-vsid= " volume\-set\-identifier "
-Specify the 17.-127. character of \fIVolume Set Identifier\fP. If omitted,
-\fBmkudffs\fP volume\-set\-identifier is \fILinuxUDF\fP.
+Specify the 17.\[en]127. character of \fIVolume Set Identifier\fP. If omitted,
+\fBmkudffs\fP Volume Set Identifier is \fILinuxUDF\fP.
 
 .TP
 .BI \-\-fsid= " file\-set\-identifier "
 Specify the \fIFile Set Identifier\fP. If omitted, \fBmkudffs\fP
-file\-set\-identifier is \fILinuxUDF\fP.
+File Set Identifier is \fILinuxUDF\fP.
 
 .TP
 .BI \-\-fullvsid= " full\-volume\-set\-identifier "
@@ -162,13 +162,13 @@ and \fB\-\-vsid\fP options. (Option available since mkudffs 1.1)
 .TP
 .BI \-\-uid= " uid "
 Specify the uid of the root (/) directory. If omitted, \fBmkudffs\fP uid is
-\fI0\fP. Special value \fI-1\fP means invalid or not specified uid.
+\fI0\fP. Special value \fI\-1\fP means invalid or not specified uid.
 (Option available since mkudffs 1.1)
 
 .TP
 .BI \-\-gid= " gid "
 Specify the gid of the root (/) directory. If omitted, \fBmkudffs\fP gid is
-\fI0\fP. Special value \fI-1\fP means invalid or not specified gid.
+\fI0\fP. Special value \fI\-1\fP means invalid or not specified gid.
 (Option available since mkudffs 1.1)
 
 .TP
@@ -210,7 +210,7 @@ omitted, \fBmkudffs\fP strategy is based on the \fB\-\-media\-type\fP.
 .TP
 .BI \-\-spartable,\ \-\-spartable= " spartable\-number "
 Enable usage Sparing Table. Optionally specify also the number of sparing
-tables. Valid numbers are 1-4. When spartable\-number is omitted then two tables
+tables. Valid numbers are 1\[en]4. When spartable number is omitted then two tables
 are written to disc. If option is omitted then usage of Sparing Table depends on
 media type. (Option prior to mkudffs 2.0 was available only for cdrw media type)
 
@@ -316,8 +316,8 @@ Operating system	Maximum UDF revision for
 _
 Name	Version	read	write
 =
-Linux	2.3.17 - 2.4.5	2.00	2.00
-\^	2.4.6 - 2.6.25	2.01	2.01
+Linux	2.3.17 \[en] 2.4.5	2.00	2.00
+\^	2.4.6 \[en] 2.6.25	2.01	2.01
 \^	2.6.26 (and new)	2.50	2.01
 _
 Windows	98/Me	1.02	none
@@ -325,10 +325,10 @@ Windows	98/Me	1.02	none
 \^	XP	2.01	none
 \^	Vista (and new)	2.60	2.50
 _
-Mac OS	8.1 - 8.5	1.02	none
-\^	8.6 - 9.2	1.50	1.50
+Mac OS	8.1 \[en] 8.5	1.02	none
+\^	8.6 \[en] 9.2	1.50	1.50
 _
-Mac OS X	10.0 - 10.3	1.50	1.50
+Mac OS X	10.0 \[en] 10.3	1.50	1.50
 \^	10.4	2.01	2.01
 \^	10.5 (and new)	2.60	2.50
 _
@@ -337,8 +337,8 @@ _
 NetBSD	4.0	2.60	none
 \^	5.0 (and new)	2.60	2.60
 _
-OpenBSD	3.8 - 3.9	1.02	none
-\^	4.0 - 4.6	1.50	\^
+OpenBSD	3.8 \[en] 3.9	1.02	none
+\^	4.0 \[en] 4.6	1.50	\^
 \^	4.7 (and new)	2.60	\^
 _
 Solaris	7 (and new)	1.50	1.50
@@ -421,7 +421,7 @@ For more information about UDF Label and UUID see \fBudflabel\fP(8) section
 .SH LIMITATIONS
 \fBmkudffs\fP cannot create UDF 2.50 Metadata partition, therefore it does not
 support UDF revisions higher then 2.01 for non Write Once media yet. So there
-is no support for Blu\-ray discs which needs UDF 2.50 (except for Blu\-ray Disc
+is no support for Blu-ray discs which needs UDF 2.50 (except for Blu-ray Disc
 Recordable which does not require Metadata partition).
 
 .SH BUGS

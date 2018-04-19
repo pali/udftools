@@ -21,14 +21,14 @@
 udflabel \- show or change UDF filesystem label
 
 .SH SYNOPSIS
-.BI "udflabel [encoding-options] [block-options] [identifier-options] " device " [" new-label "]"
+.BI "udflabel [encoding\-options] [block\-options] [identifier\-options] " device " [" new\-label "]"
 
 .SH DESCRIPTION
-When \fBudflabel\fP is invoked without \fBidentifier-options\fP and without
-specifying \fInew-label\fP then it show current label of UDF filesystem on
+When \fBudflabel\fP is invoked without \fBidentifier\-options\fP and without
+specifying \fInew\-label\fP then it show current label of UDF filesystem on
 \fIdevice\fP to standard output terminated by new line. Otherwise it update
 UDF filesystem (up to the revision 2.60) on \fIdevice\fP with new specified
-identifiers from \fBidentifier-options\fP. Specifying \fInew-label\fP is synonym
+identifiers from \fBidentifier\-options\fP. Specifying \fInew\-label\fP is synonym
 for both \fI\-\-lvid\fP and \fI\-\-vid\fP, see section \fBUDF LABEL AND UUID\fP.
 
 .SH OPTIONS
@@ -73,7 +73,7 @@ UDF image burned to DVD-RAM or BD-RE discs. Option \fI\-\-force\fP ignores UDF
 Access Type and treat it as Overwritable.
 
 .TP
-.B \-n,\-\-no-write
+.B \-n,\-\-no\-write
 Not really, do not write to \fIdevice\fP. Just simulate and display what would
 happen with \fIdevice\fP. Useful for determining which UDF blocks would be
 overwritten.
@@ -96,7 +96,7 @@ Specify the new Volume Identifier.
 
 .TP
 .BI \-\-vsid= " new\-volume\-set\-identifier "
-Specify the new 17.-127. character of Volume Set Identifier. See section
+Specify the new 17.\[en]127. character of Volume Set Identifier. See section
 \fBUDF LABEL AND UUID\fP.
 
 .TP
@@ -165,7 +165,7 @@ their hexadecimal representation (resulting in 16 bytes) and use as UUID
 .RS
 1. part: Use lowercase form of the first 8 bytes (which are hexadecimal digits)
 .br
-2. part: Convert next 4 bytes (9.-12. pos.) to their hexadecimal representation
+2. part: Convert next 4 bytes (9.\[en]12. pos.) to their hexadecimal representation
 .RE
 .RE
 
