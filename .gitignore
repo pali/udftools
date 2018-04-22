@@ -1,7 +1,15 @@
+Makefile
 Makefile.in
 aclocal.m4
 autom4te.cache/
 config/
 configure
+config.log
+config.status
 */Makefile.in
+*/Makefile
 include/config.in
+include/config.h
+include/stamp-h1
+*/.deps/
+libtool
