@@ -13,3 +13,15 @@ include/config.h
 include/stamp-h1
 */.deps/
 libtool
+.libs
+*.o
+*.lo
+*.la
+.dirstamp
+cdrwtool/cdrwtool
+mkudffs/mkudffs
+pktsetup/pktsetup
+udffsck/udffsck
+udfinfo/udfinfo
+udflabel/udflabel
+wrudf/wrudf
