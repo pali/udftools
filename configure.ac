@@ -14,8 +14,18 @@ if test "$ac_cv_prog_cc_c99" = "no"; then
 	AC_MSG_ERROR([Your C compiler does not support ISO C99.])
 fi
 
-dnl Checks for libraries.
-AC_CHECK_LIB(readline, readline, [ ])
+PKG_PROG_PKG_CONFIG
+
+dnl Checks for libraries, by using pkg-config when available
+if test -n "${PKG_CONFIG}" ; then
+  PKG_CHECK_MODULES([READLINE], [readline], [readline_found=yes], [readline_found=no])
+fi
+
+if test "${readline_found}" != "yes" ; then
+  AC_CHECK_LIB(readline, readline,
+               [AC_SUBST([READLINE_LIBS], [-lreadline])],
+               [])
+fi
 
 dnl Checks for header files.
 AC_HEADER_STDC

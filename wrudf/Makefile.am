@@ -5,6 +5,6 @@ wrudf_SOURCES = wrudf.c wrudf-cmnd.c wrudf-desc.c wrudf-cdrw.c wrudf-cdr.c ide-p
 AM_CPPFLAGS = -I$(top_srcdir)/include
 
 if USE_READLINE
-wrudf_LDADD += -lreadline
+wrudf_LDADD += $(READLINE_LIBS)
 AM_CPPFLAGS += -DUSE_READLINE
 endif
