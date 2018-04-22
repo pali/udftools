@@ -27,7 +27,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <bits/types.h>
 #include <sys/types.h>
 #include <string.h>
 #include <limits.h>
