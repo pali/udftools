@@ -3,7 +3,7 @@ AC_PREREQ([2.63])
 AC_INIT(udftools, 2.0, , , [https://github.com/pali/udftools/])
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(include/config.h:include/config.in)
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 
 dnl Checks for programs.
 AC_PROG_CC_C99
