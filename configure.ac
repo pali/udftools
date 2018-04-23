@@ -28,6 +28,10 @@ AC_HEADER_TIME
 AC_STRUCT_TM
 AC_SYS_LARGEFILE
 
+PKG_PROG_PKG_CONFIG
+PKG_CHECK_MODULES(UDEV, [udev], [ac_cv_udevdir=`$PKG_CONFIG --variable=udevdir udev`])
+AC_SUBST(UDEVDIR, $ac_cv_udevdir)
+
 dnl Checks for library functions.
 AC_SUBST(LTLIBOBJS)
 
