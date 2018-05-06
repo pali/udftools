@@ -169,7 +169,7 @@ int check_position(tag descTag, uint32_t position) {
  * \warning char array is NOT NULL terminated
  */
 char * print_timestamp(timestamp ts) {
-    static char str[34] = {0};
+    static char str[34+11] = {0}; //Total length is 34 characters. We add some reserve (11 bytes -> 1 for each parameter) to suppress GCC7 warnings.
     uint8_t type = ts.typeAndTimezone >> 12;
     int16_t offset = (ts.typeAndTimezone & 0x0800) > 0 ? (ts.typeAndTimezone & 0x0FFF) - (0x1000) : (ts.typeAndTimezone & 0x0FFF);
     int8_t hrso = 0;
@@ -180,7 +180,7 @@ char * print_timestamp(timestamp ts) {
         mino = offset%60; // offset in minutes
     }
     dbg("TypeAndTimezone: 0x%04x\n", ts.typeAndTimezone);
-    sprintf(str, "%04U-%02U-%02U %02U:%02U:%02U.%02U%02U%02U+%02U:%02U", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds ,ts.microseconds, hrso, mino);
+    sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d+%02d:%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds ,ts.microseconds, hrso, mino);
     return str; 
 }
 
