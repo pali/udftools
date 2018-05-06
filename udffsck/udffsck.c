@@ -1307,11 +1307,11 @@ uint8_t markUsedBlock(struct filesystemStats *stats, uint32_t lbn, uint32_t size
                 if(stats->actPartitionBitmap[byte] & (1<<bit)) {
                     stats->actPartitionBitmap[byte] &= ~(1<<bit);
                 } else {
-                    err("[%d:%d]Error marking block as used. It is already marked.\n", byte, bit);
+                    warn("[%d:%d]Error marking block as used. It is already marked.\n", byte, bit);
                 }
             } else { // write 1
                 if(stats->actPartitionBitmap[byte] & (1<<bit)) {
-                    err("[%d:%d]Error marking block as unused. It is already unmarked.\n", byte, bit);
+                    warn("[%d:%d]Error marking block as unused. It is already unmarked.\n", byte, bit);
                 } else {
                     stats->actPartitionBitmap[byte] |= 1<<bit;
                 }
