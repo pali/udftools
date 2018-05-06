@@ -180,7 +180,7 @@ char * print_timestamp(timestamp ts) {
         mino = offset%60; // offset in minutes
     }
     dbg("TypeAndTimezone: 0x%04x\n", ts.typeAndTimezone);
-    sprintf(str, "%04d-%02d-%02d %02d:%02d:%02d.%02d%02d%02d+%02d:%02d", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds, ts.microseconds, hrso, mino);
+    sprintf(str, "%04u-%02u-%02u %02u:%02u:%02u.%02u%02u%02u+%02u:%02u", ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second, ts.centiseconds, ts.hundredsOfMicroseconds ,ts.microseconds, hrso, mino);
     return str; 
 }
 
