@@ -526,9 +526,9 @@ before_script:
   - case "$PLATFORM" in
       "x86")       export CFLAGS="-m32 $CFLAGS" ;;
       "x86_64"|"") ;;
-      "x32")       export CFLAGS="-mx32 $CFLAGS"; export LDFLAGS="--static" ;;
-      "powerpc")   export CONFIGURE_FLAGS="--host=powerpc-linux-gnu"; export LDFLAGS="--static"; export RUN=qemu-ppc ;;
-      "arm")       export CONFIGURE_FLAGS="--host=arm-linux-gnueabi"; export LDFLAGS="--static"; export RUN=qemu-arm ;;
+      "x32")       export CFLAGS="-mx32 $CFLAGS"; export LDFLAGS="" ;;
+      "powerpc")   export CONFIGURE_FLAGS="--host=powerpc-linux-gnu"; export LDFLAGS=""; export RUN=qemu-ppc ;;
+      "arm")       export CONFIGURE_FLAGS="--host=arm-linux-gnueabi"; export LDFLAGS=""; export RUN=qemu-arm ;;
       *)           echo "Unsupported platform '$PLATFORM'"; exit 1 ;;
     esac
 # CMocka installation
