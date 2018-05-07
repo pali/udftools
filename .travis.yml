@@ -557,6 +557,7 @@ script:
   - ./configure $CONFIGURE_FLAGS
   - make
   - set +e
+  - if [[ "$PLATFORM" =~ "powerpc" ]]; then exit 0; fi # PowerPC is big-endian platform and udffsck is not currently available for BE. Therefore we are skipping them.
   - ./udffsck/travis-tests.sh unit
   - ./udffsck/travis-tests.sh basic v1.0-beta.2
   - ./udffsck/travis-tests.sh extra1 v1.0-beta.2

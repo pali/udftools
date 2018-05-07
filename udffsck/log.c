@@ -71,7 +71,9 @@ int prompt(const char *format, ...) {
         va_end(args);
 
         c = getchar();
-        while ((b=getchar()) != EOF && b != '\n');
+        do {
+            b = getchar();
+        } while (b != EOF && b != '\n');
 
         if(c == 'y' || c == 'Y') {
             return 1;
