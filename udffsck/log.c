@@ -73,7 +73,7 @@ int prompt(const char *format, ...) {
         c = getchar();
         do {
             b = getchar();
-        } while (b != EOF && b != '\n');
+        } while (b != EOF || b != '\n');
 
         if(c == 'y' || c == 'Y') {
             return 1;
