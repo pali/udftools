@@ -59,7 +59,7 @@ verbosity_e verbosity;
  */
 int prompt(const char *format, ...) {
     va_list args;
-    char b = 0,c = 0;
+    int b = 0,c = 0;
     char again = 0;
 
     do {
@@ -71,9 +71,7 @@ int prompt(const char *format, ...) {
         va_end(args);
 
         c = getchar();
-        do {
-            b = getchar();
-        } while (b != EOF || b != '\n');
+        while ((b = getchar()) != EOF && b != '\n');
 
         if(c == 'y' || c == 'Y') {
             return 1;
