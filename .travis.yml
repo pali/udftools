@@ -523,7 +523,7 @@ before_script:
   - if [ -z "$NOOPT" ]; then export CFLAGS="$CFLAGS -O2"; fi
   - if [[ "$CC" =~ "gcc" && "$CC" != "gcc-4.4" ]]; then export CFLAGS="$CFLAGS -Wno-error=unused-but-set-variable"; fi # needed for AC_PROG_CC_C99
   - if [[ "$CC" =~ "clang" ]]; then export CFLAGS="$CFLAGS -Wno-error=unused-function"; fi # -Werror=unused-function is broken on clang
-  - if [[ "$CC" =~ "tcc" ]]; then export CFLAGS="$CFLAGS -no-pie"; fi # -no-pie should fix realocations errors for TCC
+    #  - if [[ "$CC" =~ "tcc" ]]; then export CFLAGS="$CFLAGS -no-pie"; fi # -no-pie should fix realocations errors for TCC
   - case "$PLATFORM" in
       "x86")       export CFLAGS="-m32 $CFLAGS" ;;
       "x86_64"|"") ;;

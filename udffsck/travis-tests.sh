@@ -7,7 +7,7 @@ if [ "$1" == 'basic' ]; then
     wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/"$2"/udf-samples.tar.xz
     bash decompress-samples.sh
     cd udftools/udffsck
-    ./test
+    $RUN ./test
     cd ../..
     rm udf-samples.tar.xz udf-samples -r
     cd udftools/udffsck
@@ -18,7 +18,7 @@ if [ "$1" == 'extra1' ]; then
     wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/"$2"/udf-samples-extra-1.tar.xz
     tar -xJvf udf-samples-extra-1.tar.xz  
     cd udftools/udffsck
-    ./testextra1
+    $RUN ./testextra1
     cd ../..
     rm  -r udf-samples-extra-1 udf-samples-extra-1.tar.xz
     cd udftools/udffsck
@@ -29,7 +29,7 @@ if [ "$1" == 'extra2' ]; then
     wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/"$2"/udf-samples-extra-2.tar.xz
     tar -xJvf udf-samples-extra-2.tar.xz  
     cd udftools/udffsck
-    ./testextra2
+    $RUN ./testextra2
     cd ../..  
     rm -r udf-samples-extra-2 udf-samples-extra-2.tar.xz
     cd udftools/udffsck
@@ -40,7 +40,7 @@ if [ "$1" == 'extra3' ]; then
     wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/releases/download/"$2"/udf-samples-extra-3.tar.xz
     tar -xJvf udf-samples-extra-3.tar.xz 
     cd udftools/udffsck
-    ./testextra3
+    $RUN ./testextra3
     cd ../..
     rm -r udf-samples-extra-3 udf-samples-extra-3.tar.xz
     cd udftools/udffsck
@@ -48,5 +48,5 @@ fi
 
 if [ "$1" == 'unit' ]; then
     cd udffsck
-    ./unittest
+    $RUN ./unittest
 fi
