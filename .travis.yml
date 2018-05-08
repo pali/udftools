@@ -523,7 +523,6 @@ before_script:
   - if [ -z "$NOOPT" ]; then export CFLAGS="$CFLAGS -O2"; fi
   - if [[ "$CC" =~ "gcc" && "$CC" != "gcc-4.4" ]]; then export CFLAGS="$CFLAGS -Wno-error=unused-but-set-variable"; fi # needed for AC_PROG_CC_C99
   - if [[ "$CC" =~ "clang" ]]; then export CFLAGS="$CFLAGS -Wno-error=unused-function"; fi # -Werror=unused-function is broken on clang
-    #  - if [[ "$CC" =~ "tcc" ]]; then export CFLAGS="$CFLAGS -no-pie"; fi # -no-pie should fix realocations errors for TCC
   - case "$PLATFORM" in
       "x86")       export CFLAGS="-m32 $CFLAGS" ;;
       "x86_64"|"") ;;
@@ -538,8 +537,8 @@ before_script:
   - tar xf cmocka-1.1.0.tar.xz
   - cd cmocka-1.1.0
   - mkdir build
-  - cd build
-  - cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release ..
+  
+  - cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release -DWITH_STATIC_LIB=true ..
   - make
   - make install
   - cd ../../udftools
