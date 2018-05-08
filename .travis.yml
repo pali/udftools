@@ -467,6 +467,7 @@ matrix:
           packages:
             - libreadline-dev
             - tcc
+            - gcc
     - compiler: tcc
       dist: trusty
       env: PLATFORM=x86_64
@@ -476,6 +477,7 @@ matrix:
           packages:
             - libreadline-dev
             - tcc
+            - gcc
     - compiler: gcc
       dist: trusty
       env: PLATFORM=x32
@@ -538,7 +540,10 @@ before_script:
   - cd cmocka-1.1.0
   - mkdir build
   - cd build
-  - cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(which gcc) ..
+  - case "$CC" in
+      "tcc") cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(which gcc) ../ ;;
+      *) cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release ../ ;;
+    esac
   - make
   - make install
   - cd ../../udftools
