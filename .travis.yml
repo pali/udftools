@@ -535,13 +535,15 @@ before_script:
     esac
 # CMocka installation
   - cd ..; mkdir cmocka; cd cmocka; PTH=$(pwd); cd ..;
-  - wget --no-check-certificate https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz
-  - tar xf cmocka-1.1.0.tar.xz
+  - wget --no-check-certificate https://github.com/argorain/udffsck-test-samples/archive/v1.0-beta.4.tar.gz
+  - tar xzf v1.0-beta.4.tar.gz
+  - cd udffsck-test-samples-1.0-beta.4/cmocka  
+  - tar zxf cmocka-1.1.0-static-patch.tar.gz
   - cd cmocka-1.1.0
   - mkdir build
   - cd build
   - case "$CC" in
-      "tcc") cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(which gcc) ../ ;;
+      "tcc") cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release -DWITH_STATIC_LIB=ON ../ ;;
       *) cmake -DCMAKE_INSTALL_PREFIX=$PTH -DCMAKE_BUILD_TYPE=Release ../ ;;
     esac
   - make
@@ -564,8 +566,8 @@ script:
   - set +e
   - if [[ "$PLATFORM" =~ "powerpc" ]]; then exit 0; fi # PowerPC is big-endian platform and udffsck is not currently available for BE. Therefore we are skipping them.
   - ./udffsck/travis-tests.sh unit
-  - ./udffsck/travis-tests.sh basic v1.0-beta.2
-  - ./udffsck/travis-tests.sh extra1 v1.0-beta.2
-  - ./udffsck/travis-tests.sh extra2 v1.0-beta.2
-  - ./udffsck/travis-tests.sh extra3 v1.0-beta.2
+  - ./udffsck/travis-tests.sh basic v1.0-beta.4
+  - ./udffsck/travis-tests.sh extra1 v1.0-beta.4
+  - ./udffsck/travis-tests.sh extra2 v1.0-beta.4
+  - ./udffsck/travis-tests.sh extra3 v1.0-beta.4
 
