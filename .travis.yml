@@ -548,7 +548,7 @@ before_script:
     esac
   - make
   - make install
-  - cd ../../udftools
+  - cd ../../../../udftools
 # Configure flags
   - export CFLAGS="-W -Wall -Werror -g $CFLAGS"
   - export PATH="$PTH:$PATH"
