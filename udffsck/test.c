@@ -104,13 +104,13 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
 
     int statval, exitval;
     if(fork() == 0) {
-        int fdout = open(fout, O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+        /*int fdout = open(fout, O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
         int fderr = open(ferr, O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
         dup2(fdout, 1);   // make stdout go to file
         dup2(fderr, 2);   // make stderr go to file
         close(fdout);     // fd no longer needed - the dup'ed handles are sufficient
         close(fderr);     // fd no longer needed - the dup'ed handles are sufficient
-
+*/
         execv(cwd, pars);
     } else {
         wait(&statval);
@@ -137,9 +137,9 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
 void bs2048_dirty_file_tree_1(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-dirty-file-tree";
-    assert_int_equal(fsck_wrapper(medium, "-cvvv", "-b 2048"), 4); //Check it
-    assert_int_equal(fsck_wrapper(medium, "-pvvv", "-b 2048"), 1); //Fix it
-    assert_int_equal(fsck_wrapper(medium, "-cvvv", "-b 2048"), 0); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-cvv", "-b 2048"), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-pvv", "-b 2048"), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-cvv", "-b 2048"), 0); //Check it
 }
 
 /**
