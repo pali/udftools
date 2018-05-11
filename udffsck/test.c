@@ -137,9 +137,9 @@ int fsck_wrapper(const char * medium, char *const args, char *const argB) {
 void bs2048_dirty_file_tree_1(void **state) {
     (void) state;
     char *medium = "bs2048-r0201-dirty-file-tree";
-    assert_int_equal(fsck_wrapper(medium, "-c", "-b 2048"), 4); //Check it
-    assert_int_equal(fsck_wrapper(medium, "-p", "-b 2048"), 1); //Fix it
-    assert_int_equal(fsck_wrapper(medium, "-c", "-b 2048"), 0); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-cvvv", "-b 2048"), 4); //Check it
+    assert_int_equal(fsck_wrapper(medium, "-pvvv", "-b 2048"), 1); //Fix it
+    assert_int_equal(fsck_wrapper(medium, "-cvvv", "-b 2048"), 0); //Check it
 }
 
 /**
