@@ -535,7 +535,7 @@ int main(int argc, char *argv[])
 	{
 		if (!disc.udf_fsd || !check_desc(disc.udf_fsd, sizeof(*disc.udf_fsd)))
 		{
-			fprintf(stderr, "%s: Error: Main File Set Descriptor is damaged\n", appname);
+			fprintf(stderr, "%s: Error: File Set Descriptor is damaged\n", appname);
 			exit(1);
 		}
 	}
