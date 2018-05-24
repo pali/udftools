@@ -179,8 +179,15 @@ int main(int argc, char *argv[])
 	appname = "udfinfo";
 
 	memset(&disc, 0, sizeof(disc));
-	disc.flags = FLAG_LOCALE;
+
 	disc.head = calloc(1, sizeof(struct udf_extent));
+	if (!disc.head)
+	{
+		fprintf(stderr, "%s: Error: calloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
+
+	disc.flags = FLAG_LOCALE;
 	disc.tail = disc.head;
 	disc.head->space_type = USPACE;
 

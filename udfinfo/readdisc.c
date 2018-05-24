@@ -1347,6 +1347,11 @@ static void setup_pspace(struct udf_disc *disc)
 		else
 		{
 			new_ext = malloc(sizeof(struct udf_extent));
+			if (!new_ext)
+			{
+				fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+				return;
+			}
 			new_ext->space_type = PSPACE;
 			new_ext->start = location;
 			new_ext->blocks = blocks;
