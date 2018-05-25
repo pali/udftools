@@ -505,7 +505,7 @@ static int choose_anchor(struct udf_disc *disc)
 static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 {
 	uint32_t location, length, count, i;
-	uint32_t next_vdp_num, next_location, next_length, next_count;
+	uint32_t next_location, next_length, next_count;
 	uint16_t type, udf_rev_le16;
 	size_t gd_length;
 	struct genericDesc *gd_ptr;
@@ -516,6 +516,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 	unsigned char buffer[512];
 	int id, anchor;
 	int nested;
+	int done;
 
 	anchor = choose_anchor(disc);
 	if (anchor == -1)
@@ -556,7 +557,6 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 		return -2;
 
 	nested = 0;
-	next_vdp_num = 0;
 
 	while (next_location && next_count)
 	{
@@ -577,6 +577,8 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 
 		if (count > 256)
 			length = 256 * disc->blocksize;
+
+		done = 0;
 
 		for (i = 0; i < count; ++i)
 		{
@@ -617,19 +619,31 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					memcpy(gd_ptr, &buffer, sizeof(buffer));
 					set_desc(ext, type, i, sizeof(buffer), alloc_data(gd_ptr, sizeof(buffer)));
 
-					if (type == TAG_IDENT_PVD && (!disc->udf_pvd[id] || le32_to_cpu(disc->udf_pvd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum)))
-						disc->udf_pvd[id] = (struct primaryVolDesc *)gd_ptr;
-					else if (type == TAG_IDENT_PD && (!disc->udf_pd[id] || le32_to_cpu(disc->udf_pd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum)))
-						disc->udf_pd[id] = (struct partitionDesc *)gd_ptr;
-					else if (type == TAG_IDENT_IUVD && (!disc->udf_iuvd[id] || le32_to_cpu(disc->udf_iuvd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum)))
-						disc->udf_iuvd[id] = (struct impUseVolDesc *)gd_ptr;
-					else if (type == TAG_IDENT_TD && !disc->udf_td[id])
-						disc->udf_td[id] = (struct terminatingDesc *)gd_ptr;
-					else if (type == TAG_IDENT_VDP)
+					switch (type)
 					{
-						vdp = (struct volDescPtr *)gd_ptr;
-						if (next_vdp_num < le32_to_cpu(vdp->volDescSeqNum))
-						{
+						case TAG_IDENT_PVD:
+							if (!disc->udf_pvd[id] || le32_to_cpu(disc->udf_pvd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum))
+								disc->udf_pvd[id] = (struct primaryVolDesc *)gd_ptr;
+							break;
+
+						case TAG_IDENT_PD:
+							if (!disc->udf_pd[id] || le32_to_cpu(disc->udf_pd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum))
+								disc->udf_pd[id] = (struct partitionDesc *)gd_ptr;
+							break;
+
+						case TAG_IDENT_IUVD:
+							if (!disc->udf_iuvd[id] || le32_to_cpu(disc->udf_iuvd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum))
+								disc->udf_iuvd[id] = (struct impUseVolDesc *)gd_ptr;
+							break;
+
+						case TAG_IDENT_TD:
+							if (!disc->udf_td[id])
+								disc->udf_td[id] = (struct terminatingDesc *)gd_ptr;
+							done = 1;
+							break;
+
+						case TAG_IDENT_VDP:
+							vdp = (struct volDescPtr *)gd_ptr;
 							next_location = le32_to_cpu(vdp->nextVolDescSeqExt.extLocation);
 							if (next_location <= location)
 							{
@@ -638,14 +652,16 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 							}
 							else
 							{
-								next_vdp_num = le32_to_cpu(vdp->volDescSeqNum);
 								next_length = le32_to_cpu(vdp->nextVolDescSeqExt.extLength) & EXT_LENGTH_MASK;
 								next_count = next_length / disc->blocksize;
 							}
-						}
+							done = 1;
+							break;
+
+						default:
+							fprintf(stderr, "%s: Warning: Unknown descriptor in Volume Descriptor Sequence\n", appname);
+							break;
 					}
-					else
-						fprintf(stderr, "%s: Warning: Unknown descriptor in Volume Descriptor Sequence\n", appname);
 					break;
 
 				case TAG_IDENT_LVD:
@@ -744,7 +760,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					break;
 			}
 
-			if (type == TAG_IDENT_TD)
+			if (done)
 				break;
 		}
 	}
