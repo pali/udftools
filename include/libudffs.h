@@ -130,6 +130,7 @@ struct udf_disc
 	struct primaryVolDesc		*udf_pvd[2];
 	struct logicalVolDesc		*udf_lvd[2];
 	struct partitionDesc		*udf_pd[2];
+	struct partitionDesc		*udf_pd2[2];
 	struct unallocSpaceDesc		*udf_usd[2];
 	struct impUseVolDesc		*udf_iuvd[2];
 	struct terminatingDesc		*udf_td[2];
