@@ -488,7 +488,7 @@ void insert_ea(struct udf_disc *disc, struct udf_desc *desc, struct genericForma
 	struct fileEntry *fe = NULL;
 	uint8_t *extendedAttr;
 	uint32_t lengthExtendedAttr;
-	uint32_t location;
+	uint32_t location = 0;
 
 #define UPDATE_PTR                                                            \
 	do {                                                                  \
