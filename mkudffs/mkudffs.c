@@ -1237,9 +1237,13 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	struct udf_extent *anchor;
 	struct udf_desc *vtable;
 	struct udf_data *data;
-	uint32_t len;
+	uint32_t len, i;
 	struct virtualAllocationTable15 *vat15;
 	struct virtualAllocationTable20 *vat20;
+	struct impUseExtAttr *ea_attr;
+	struct LVExtensionEA *ea_lv;
+	uint8_t buffer[(sizeof(*ea_attr)+sizeof(*ea_lv)+3)/4*4];
+	uint16_t checksum;
 	uint16_t udf_rev_le16;
 
 	if (disc->flags & FLAG_MIN_300_BLOCKS)
@@ -1282,12 +1286,41 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	{
 		vtable = udf_create(disc, pspace, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
 		disc->vat_entries--; // Remove VAT file itself from VAT table
+		udf_rev_le16 = cpu_to_le16(disc->udf_rev);
+		memset(&buffer, 0, sizeof(buffer));
+		ea_attr = (struct impUseExtAttr *)buffer;
+		ea_attr->attrType = cpu_to_le32(EXTATTR_IMP_USE);
+		ea_attr->attrSubtype = EXTATTR_SUBTYPE;
+		ea_attr->attrLength = cpu_to_le32(sizeof(buffer));
+		ea_attr->impUseLength = cpu_to_le32(sizeof(*ea_lv));
+		ea_attr->impIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
+		ea_attr->impIdent.identSuffix[3] = UDF_OS_ID_LINUX;
+		memcpy(ea_attr->impIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+		strcpy((char *)ea_attr->impIdent.ident, UDF_ID_VAT_LVEXTENSION);
+		ea_lv = (struct LVExtensionEA *)&ea_attr->impUse[0];
+		checksum = 0;
+		for (i = 0; i < sizeof(*ea_attr); ++i)
+			checksum += ((uint8_t *)ea_attr)[i];
+		ea_lv->headerChecksum = cpu_to_le16(checksum);
+		if (disc->flags & FLAG_EFE)
+		{
+			struct extendedFileEntry *efe = (struct extendedFileEntry *)vtable->data->buffer;
+			ea_lv->verificationID = efe->uniqueID;
+		}
+		else
+		{
+			struct fileEntry *fe = (struct fileEntry *)vtable->data->buffer;
+			ea_lv->verificationID = fe->uniqueID;
+		}
+		ea_lv->numFiles = query_lvidiu(disc)->numFiles;
+		ea_lv->numDirs = query_lvidiu(disc)->numDirs;
+		memcpy(ea_lv->logicalVolIdent, disc->udf_lvd[0]->logicalVolIdent, 128);
+		insert_ea(disc, vtable, (struct genericFormat *)buffer, sizeof(buffer));
 		len = sizeof(struct virtualAllocationTable15);
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
 		insert_data(disc, pspace, vtable, data);
 		data = alloc_data(&default_vat15, len);
 		vat15 = data->buffer;
-		udf_rev_le16 = cpu_to_le16(disc->udf_rev);
 		memcpy(vat15->vatIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
 		insert_data(disc, pspace, vtable, data);
 	}

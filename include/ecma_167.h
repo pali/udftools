@@ -746,6 +746,7 @@ struct appUseExtAttr
 #define EXTATTR_DEV_SPEC		12
 #define EXTATTR_IMP_USE			2048
 #define EXTATTR_APP_USE			65536
+#define EXTATTR_SUBTYPE			1
 
 
 /* Unallocated Space Entry (ECMA 167r3 4/14.11) */
