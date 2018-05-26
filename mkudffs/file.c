@@ -924,7 +924,7 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 			exit(1);
 		}
 		for (i = 0; i < blocks; ++i)
-			disc->vat[disc->vat_entries++] = start+i;
+			disc->vat[disc->vat_entries++] = cpu_to_le32(start+i);
 		return start;
 	}
 	else
