@@ -621,7 +621,7 @@ void insert_ea(struct udf_disc *disc, struct udf_desc *desc, struct genericForma
 			ea_hdr->appAttrLocation = lengthExtendedAttr;
 
 		memcpy(&extendedAttr[le32_to_cpu(lengthExtendedAttr)], ea, length);
-		lengthExtendedAttr = cpu_to_le32(le32_to_cpu(efe->lengthExtendedAttr) + length);
+		lengthExtendedAttr = cpu_to_le32(le32_to_cpu(lengthExtendedAttr) + length);
 		if (disc->flags & FLAG_EFE)
 			efe->lengthExtendedAttr = lengthExtendedAttr;
 		else
