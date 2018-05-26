@@ -731,7 +731,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		if (pspace->blocks%8)
 			sbd->bitmap[nBytes-1] = 0xFF >> (8-(pspace->blocks%8));
 		clear_bits(sbd->bitmap, offset, (length + disc->blocksize - 1) / disc->blocksize);
-		sbd->descTag = udf_query_tag(disc, TAG_IDENT_SBD, 1, desc->offset, desc->data, sizeof(struct spaceBitmapDesc));
+		sbd->descTag = udf_query_tag(disc, TAG_IDENT_SBD, 1, desc->offset, desc->data, 0, sizeof(struct spaceBitmapDesc));
 	}
 	else if (disc->flags & FLAG_SPACE_TABLE)
 	{
@@ -787,7 +787,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		use->icbTag.parentICBLocation.partitionReferenceNum = cpu_to_le16(0);
 		use->icbTag.fileType = ICBTAG_FILE_TYPE_USE;
 		use->icbTag.flags = cpu_to_le16(ICBTAG_FLAG_AD_SHORT);
-		use->descTag = udf_query_tag(disc, TAG_IDENT_USE, 1, desc->offset, desc->data, sizeof(struct unallocSpaceEntry) + le32_to_cpu(use->lengthAllocDescs));
+		use->descTag = udf_query_tag(disc, TAG_IDENT_USE, 1, desc->offset, desc->data, 0, sizeof(struct unallocSpaceEntry) + le32_to_cpu(use->lengthAllocDescs));
 
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
