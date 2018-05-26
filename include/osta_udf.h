@@ -55,6 +55,7 @@
 #define UDF_ID_FREE_EA			"*UDF FreeEASpace"
 #define UDF_ID_FREE_APP_EA		"*UDF FreeAppEASpace"
 #define UDF_ID_DVD_CGMS			"*UDF DVD CGMS Info"
+#define UDF_ID_VAT_LVEXTENSION		"*UDF VAT LVExtension"
 #define UDF_ID_OS2_EA			"*UDF OS/2 EA"
 #define UDF_ID_OS2_EA_LENGTH		"*UDF OS/2 EALength"
 #define UDF_ID_MAC_VOLUME		"*UDF Mac VolumeInfo"
@@ -229,6 +230,16 @@ struct DVDCopyrightImpUse
 	uint8_t		CGMSInfo;
 	uint8_t		dataType;
 	uint8_t		protectionSystemInfo[4];
+} __attribute__ ((packed));
+
+/* Logical Volume Extended Information (UDF 1.50 Errata, DCN 5003, 3.3.4.5.1.3) */
+struct LVExtensionEA
+{
+	uint16_t	headerChecksum;
+	uint64_t	verificationID;
+	uint32_t	numFiles;
+	uint32_t	numDirs;
+	dstring		logicalVolIdent[128];
 } __attribute__ ((packed));
 
 /* Application Use Extended Attribute (UDF 2.01 3.3.4.6) */

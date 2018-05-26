@@ -1218,11 +1218,17 @@ static void read_vat(int fd, struct udf_disc *disc)
 	struct virtualPartitionMap *vpm;
 	uint32_t i, vat_block;
 	uint32_t length, offset, location;
+	uint32_t ea_length, ea_offset;
+	uint32_t ea_attr_length, ea_attr_offset;
+	uint64_t unique_id;
 	struct stat st;
 	struct fileEntry *fe;
 	struct extendedFileEntry *efe;
 	struct virtualAllocationTable15 *vat15;
 	struct virtualAllocationTable20 *vat20;
+	struct extendedAttrHeaderDesc ea_hdr;
+	struct impUseExtAttr ea_attr;
+	struct LVExtensionEA ea_lv;
 	unsigned char *vat;
 	unsigned char buffer[512];
 
@@ -1277,14 +1283,20 @@ static void read_vat(int fd, struct udf_disc *disc)
 
 		if (le16_to_cpu(fe->descTag.tagIdent) == TAG_IDENT_FE)
 		{
-			offset = sizeof(*fe) + le32_to_cpu(fe->lengthExtendedAttr);
+			ea_offset = sizeof(*fe);
+			ea_length = le32_to_cpu(fe->lengthExtendedAttr);
+			offset = ea_offset + ea_length;
 			length = le32_to_cpu(fe->lengthAllocDescs);
+			unique_id = le64_to_cpu(fe->uniqueID);
 		}
 		else if (le16_to_cpu(fe->descTag.tagIdent) == TAG_IDENT_EFE)
 		{
 			efe = (struct extendedFileEntry *)&buffer;
-			offset = sizeof(*efe) + le32_to_cpu(efe->lengthExtendedAttr);
+			ea_offset = sizeof(*efe);
+			ea_length = le32_to_cpu(efe->lengthExtendedAttr);
+			offset = ea_offset + ea_length;
 			length = le32_to_cpu(efe->lengthAllocDescs);
+			unique_id = le64_to_cpu(efe->uniqueID);
 		}
 		else
 			continue;
@@ -1333,6 +1345,65 @@ static void read_vat(int fd, struct udf_disc *disc)
 			}
 			disc->vat = (uint32_t *)vat;
 			disc->vat_entries = (length - 36) / 4;
+			if (ea_length)
+			{
+				if (sizeof(ea_hdr) > ea_length)
+					fprintf(stderr, "%s: Warning: Extended Attributes for Virtual Allocation Table are damaged\n", appname);
+				else if (read_offset(fd, disc, &ea_hdr, (size_t)i * disc->blocksize + ea_offset, sizeof(ea_hdr), 1) != 0)
+					fprintf(stderr, "%s: Warning: Extended Attributes for Virtual Allocation Table are damaged\n", appname);
+				else
+				{
+					/* UDF 1.50 3.3.4.1: if attribute does not exist then location point to byte after the EA space */
+					ea_attr_offset = le32_to_cpu(ea_hdr.impAttrLocation);
+					while (ea_attr_offset < ea_length)
+					{
+						if (read_offset(fd, disc, &ea_attr, (size_t)i * disc->blocksize + ea_offset + ea_attr_offset, sizeof(ea_attr), 1) != 0)
+						{
+							fprintf(stderr, "%s: Warning: Extended Attributes for Virtual Allocation Table are damaged\n", appname);
+							break;
+						}
+						ea_attr_length = le32_to_cpu(ea_attr.attrLength);
+						if (ea_attr_length == 0)
+							break;
+						if (ea_attr_offset + ea_attr_length > ea_length || sizeof(ea_attr) + le32_to_cpu(ea_attr.impUseLength) > ea_attr_length)
+						{
+							fprintf(stderr, "%s: Warning: Extended Attributes for Virtual Allocation Table are damaged\n", appname);
+							break;
+						}
+						if (le32_to_cpu(ea_attr.attrType) == EXTATTR_IMP_USE && strncmp((const char *)ea_attr.impIdent.ident, UDF_ID_VAT_LVEXTENSION, sizeof(ea_attr.impIdent.ident)) == 0)
+						{
+							if (ea_attr_length < sizeof(ea_attr) + sizeof(ea_lv) || le32_to_cpu(ea_attr.impUseLength) < sizeof(ea_lv))
+							{
+								fprintf(stderr, "%s: Warning: Logical Volume Extended Information for Virtual Allocation Table is damaged\n", appname);
+								break;
+							}
+							if (read_offset(fd, disc, &ea_lv, (size_t)i * disc->blocksize + ea_offset + ea_attr_offset + sizeof(ea_attr), sizeof(ea_lv), 1) != 0)
+							{
+								fprintf(stderr, "%s: Warning: Logical Volume Extended Information for Virtual Allocation Table is damaged\n", appname);
+								break;
+							}
+							if (le64_to_cpu(ea_lv.verificationID) != unique_id)
+							{
+								fprintf(stderr, "%s: Warning: Logical Volume Extended Information for Virtual Allocation Table is damaged\n", appname);
+							}
+							else
+							{
+								if (disc->udf_lvd[0])
+									memcpy(disc->udf_lvd[0]->logicalVolIdent, ea_lv.logicalVolIdent, sizeof(ea_lv.logicalVolIdent));
+								if (disc->udf_lvd[1])
+									memcpy(disc->udf_lvd[1]->logicalVolIdent, ea_lv.logicalVolIdent, sizeof(ea_lv.logicalVolIdent));
+								if (disc->udf_lvid)
+								{
+									disc->num_files = le32_to_cpu(ea_lv.numFiles);
+									disc->num_dirs = le32_to_cpu(ea_lv.numDirs);
+								}
+								break;
+							}
+						}
+						ea_attr_offset += ea_attr_length;
+					}
+				}
+			}
 		}
 		else if (fe->icbTag.fileType == ICBTAG_FILE_TYPE_VAT20)
 		{
