@@ -1067,7 +1067,7 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 			if (!disc->vat)
 				return UINT32_MAX;
 			else if (block < disc->vat_entries)
-				return disc->vat[block];
+				return le32_to_cpu(disc->vat[block]);
 			else
 				return block;
 		}
@@ -1408,7 +1408,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 		else if (fe->icbTag.fileType == ICBTAG_FILE_TYPE_VAT20)
 		{
 			vat20 = (struct virtualAllocationTable20 *)vat;
-			if (vat20->lengthHeader < sizeof(*vat20) || vat20->lengthHeader != sizeof(*vat20) + vat20->lengthImpUse || vat20->lengthHeader > length)
+			if (le16_to_cpu(vat20->lengthHeader) < sizeof(*vat20) || le16_to_cpu(vat20->lengthHeader) != sizeof(*vat20) + le16_to_cpu(vat20->lengthImpUse) || le16_to_cpu(vat20->lengthHeader) > length)
 			{
 				fprintf(stderr, "%s: Warning: Virtual Allocation Table is damaged\n", appname);
 				free(vat);
@@ -1425,8 +1425,8 @@ static void read_vat(int fd, struct udf_disc *disc)
 				disc->num_files = le32_to_cpu(vat20->numFiles);
 				disc->num_dirs = le32_to_cpu(vat20->numDirs);
 			}
-			disc->vat = (uint32_t *)(vat + vat20->lengthHeader);
-			disc->vat_entries = (length - vat20->lengthHeader) / 4;
+			disc->vat = (uint32_t *)(vat + le16_to_cpu(vat20->lengthHeader));
+			disc->vat_entries = (length - le16_to_cpu(vat20->lengthHeader)) / 4;
 		}
 		else
 		{
