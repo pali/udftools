@@ -1078,8 +1078,8 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 			packet_len = le16_to_cpu(spm->packetLength);
 			*partition = le16_to_cpu(spm->partitionNum);
 
-			packet = block & ~(packet_len-1);
-			offset = block & (packet_len-1);
+			offset = block % packet_len;
+			packet = block - offset;
 
 			for (i = 0; i < count; ++i)
 			{
