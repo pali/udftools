@@ -388,11 +388,6 @@ int main(int argc, char *argv[])
 			break;
 
 		case PD_ACCESS_TYPE_WRITE_ONCE:
-			if (!force && disc.udf_rev < 0x0200)
-			{
-				fprintf(stderr, "%s: Error: Cannot update writeonce partition of UDF revision prior to 2.00\n", appname);
-				exit(1);
-			}
 			if (!force && (new_fullvsid[0] != 0xFF || new_vid[0] != 0xFF))
 			{
 				fprintf(stderr, "%s: Error: Cannot update --vid, --vsid, --uuid or --fullvid on writeonce partition\n", appname);
