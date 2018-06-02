@@ -53,9 +53,8 @@ Virtual Allocation Table is necessary to specify correct location.
 
 Virtual Allocation Table contains locations of UDF disk blocks needed to read
 data storage, determinate used and free space blocks, read File Set Identifier
-and calculate Windows specific Volume Serial Number. Also on disks with UDF
-revisions higher then 1.50 it contains Logical Volume Identifier and overwrite
-one stored in Logical Volume Descriptor.
+and calculate Windows specific Volume Serial Number. Also it contains Logical
+Volume Identifier and overwrite previously stored in Logical Volume Descriptor.
 
 .TP
 .B \-\-locale
@@ -184,11 +183,14 @@ moreover 64 bit long. This non-standard checksum is used only by Windows systems
 systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil\fP.
 
 .SH LIMITATIONS
-\fBudfinfo\fP is not able to read Metadata Partition and Virtual Allocation
-Table stored outside of Information Control Block yet. Therefore determining
+\fBudfinfo\fP is not able to read Metadata Partition yet. Therefore determining
 used and free space blocks, reading File Set Identifier and calculating Windows
-specific Volume Serial Number may not be available for some Write Once media
-and disks with UDF revisions higher then 2.01 which have Metadata Partition.
+specific Volume Serial Number may not be available for disks with UDF revisions
+higher then 2.01 which have Metadata Partition.
+
+\fBudfinfo\fP prior to version 2.1 was unable to read Virtual Allocation Table
+stored outside of Information Control Block. Therefore above limitation applied
+also for some Write Once media.
 
 .SH AUTHOR
 .nf

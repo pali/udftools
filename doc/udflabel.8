@@ -57,8 +57,7 @@ block with fallback to the last block of block device or disk file image. In
 most cases this fallback does not have to work and for disk file images with
 Virtual Allocation Table is necessary to specify correct location.
 
-Virtual Allocation Table on disks with UDF revisions higher then 1.50 contains
-Logical Volume Identifier (UDF Label).
+Virtual Allocation Table contains Logical Volume Identifier (UDF Label).
 
 .TP
 .B \-\-force
@@ -184,9 +183,10 @@ device does not contain UDF filesystem or updating failed.
 .SH LIMITATIONS
 \fBudflabel\fP is not able to set new Label, Logical Volume Identifier and File
 Set Identifier for disks with Metadata Partition (used by UDF revisions higher
-then 2.01) or Virtual Allocation Table (used by Write Once media). Also is not
-able to read Label correctly if disk has Virtual Allocation Table stored outside
-of Information Control Block.
+then 2.01) or Virtual Allocation Table (used by Write Once media).
+
+\fBudflabel\fP prior to version 2.1 was not able to read Label correctly if disk
+has Virtual Allocation Table stored outside of Information Control Block.
 
 .SH AUTHOR
 .nf
