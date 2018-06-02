@@ -1365,6 +1365,19 @@ static void read_vat(int fd, struct udf_disc *disc)
 				break;
 			}
 
+			if (vat_length == 0)
+			{
+				fprintf(stderr, "%s: Warning: Virtual Allocation Table is empty\n", appname);
+				free(descs);
+				break;
+			}
+			else if (vat_length > 256 * disc->blocksize)
+			{
+				fprintf(stderr, "%s: Warning: Virtual Allocation Table is too big\n", appname);
+				free(descs);
+				break;
+			}
+
 			/* Prefer non-virtual partition if exists */
 			if (disc->udf_pd[0] && le16_to_cpu(disc->udf_pd[0]->partitionNumber) != le16_to_cpu(vpm->partitionNum))
 			{
@@ -1390,13 +1403,6 @@ static void read_vat(int fd, struct udf_disc *disc)
 			{
 				ext_location = location;
 				ext_partition = le16_to_cpu(vpm->partitionNum);
-			}
-
-			if (count == 0)
-			{
-				fprintf(stderr, "%s: Warning: Virtual Allocation Table is empty\n", appname);
-				free(descs);
-				break;
 			}
 
 			vat = malloc(vat_length);
