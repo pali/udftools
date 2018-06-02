@@ -1681,7 +1681,7 @@ static void read_fsd(int fd, struct udf_disc *disc)
 {
 	long_ad *ad;
 	uint16_t partition;
-	uint32_t block_num, location, position, length;
+	uint32_t block, location, position, length;
 	struct genericPartitionMap *pmap;
 	struct udf_extent *ext;
 	struct partitionDesc *pd;
@@ -1695,7 +1695,7 @@ static void read_fsd(int fd, struct udf_disc *disc)
 		return;
 
 	ad = (long_ad *)disc->udf_lvd[id]->logicalVolContentsUse;
-	block_num = le32_to_cpu(ad->extLocation.logicalBlockNum);
+	block = le32_to_cpu(ad->extLocation.logicalBlockNum);
 	partition = le16_to_cpu(ad->extLocation.partitionReferenceNum);
 	length = le32_to_cpu(ad->extLength) & EXT_LENGTH_MASK;
 
@@ -1706,7 +1706,7 @@ static void read_fsd(int fd, struct udf_disc *disc)
 		return;
 	}
 
-	position = find_block_position(disc, pmap, block_num, &partition);
+	position = find_block_position(disc, pmap, block, &partition);
 	if (position == UINT32_MAX)
 	{
 		fprintf(stderr, "%s: Warning: File Set Descriptor cannot be read\n", appname);
@@ -1742,7 +1742,7 @@ static void read_fsd(int fd, struct udf_disc *disc)
 		return;
 	}
 
-	if (le32_to_cpu(disc->udf_fsd->descTag.tagLocation) != position)
+	if (le32_to_cpu(disc->udf_fsd->descTag.tagLocation) != block)
 	{
 		fprintf(stderr, "%s: Warning: Incorrect Logical Volume Integrity Descriptor\n", appname);
 		free(disc->udf_fsd);
