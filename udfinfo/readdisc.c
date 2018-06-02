@@ -1348,7 +1348,14 @@ static void read_vat(int fd, struct udf_disc *disc)
 				count = length / sizeof(short_ad);
 				vat_length = 0;
 				for (j = 0; j < count; ++j)
+				{
+					if ((le32_to_cpu(sad[j].extLength) & EXT_LENGTH_MASK) >= UINT64_MAX - vat_length)
+					{
+						vat_length = UINT64_MAX;
+						break;
+					}
 					vat_length += le32_to_cpu(sad[j].extLength) & EXT_LENGTH_MASK;
+				}
 			}
 			else if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG)
 			{
@@ -1356,7 +1363,14 @@ static void read_vat(int fd, struct udf_disc *disc)
 				count = length / sizeof(long_ad);
 				vat_length = 0;
 				for (j = 0; j < count; ++j)
+				{
+					if ((le32_to_cpu(lad[j].extLength) & EXT_LENGTH_MASK) >= UINT64_MAX - vat_length)
+					{
+						vat_length = UINT64_MAX;
+						break;
+					}
 					vat_length += le32_to_cpu(lad[j].extLength) & EXT_LENGTH_MASK;
+				}
 			}
 			else
 			{
