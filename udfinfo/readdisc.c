@@ -1371,7 +1371,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 				free(descs);
 				break;
 			}
-			else if (vat_length > 256 * disc->blocksize)
+			else if (vat_length > (uint64_t)256 * disc->blocksize)
 			{
 				fprintf(stderr, "%s: Warning: Virtual Allocation Table is too big\n", appname);
 				free(descs);
