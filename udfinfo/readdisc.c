@@ -1216,6 +1216,12 @@ static void read_vat(int fd, struct udf_disc *disc)
 	long last;
 	struct partitionDesc *pd;
 	struct virtualPartitionMap *vpm;
+	long_ad *lad;
+	short_ad *sad;
+	uint32_t j, count;
+	uint32_t ext_length, ext_position, ext_location;
+	uint16_t ext_partition;
+	uint64_t vat_length, vat_offset;
 	uint32_t i, vat_block;
 	uint32_t length, offset, location;
 	uint32_t ea_length, ea_offset;
@@ -1230,6 +1236,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 	struct impUseExtAttr ea_attr;
 	struct LVExtensionEA ea_lv;
 	unsigned char *vat;
+	unsigned char *descs;
 	unsigned char buffer[512];
 
 	vpm = (struct virtualPartitionMap *)find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL);
@@ -1275,12 +1282,6 @@ static void read_vat(int fd, struct udf_disc *disc)
 			continue;
 		}
 
-		if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) != ICBTAG_FLAG_AD_IN_ICB)
-		{
-			fprintf(stderr, "%s: Warning: Reading Virtual Allocation Table outside of Information Control Block is not supported yet\n", appname);
-			break;
-		}
-
 		if (le16_to_cpu(fe->descTag.tagIdent) == TAG_IDENT_FE)
 		{
 			ea_offset = sizeof(*fe);
@@ -1301,42 +1302,164 @@ static void read_vat(int fd, struct udf_disc *disc)
 		else
 			continue;
 
-		if (le64_to_cpu(fe->informationLength) > length)
+		if (length == 0)
 		{
-			fprintf(stderr, "%s: Warning: Virtual Allocation Table inside of Information Control Block is larger then allocated block\n", appname);
-			break;
-		}
-
-		length = le64_to_cpu(fe->informationLength);
-
-		if (length < 36)
-		{
-			fprintf(stderr, "%s: Warning: Virtual Allocation Table is too small\n", appname);
+			fprintf(stderr, "%s: Warning: Information Control Block for Virtual Allocation Table is empty\n", appname);
 			break;
 		}
 
 		if (offset+length > disc->blocksize)
 		{
-			fprintf(stderr, "%s: Warning: Virtual Allocation Table inside of Information Control Block is larger then block size\n", appname);
+			fprintf(stderr, "%s: Warning: Information Control Block for Virtual Allocation Table is larger then block size\n", appname);
 			break;
 		}
 
-		vat = malloc(length);
-		if (!vat)
+		descs = malloc(length);
+		if (!descs)
 		{
 			fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
 			break;
 		}
 
-		if (read_offset(fd, disc, vat, (size_t)i * disc->blocksize + offset, length, 1) < 0)
+		if (read_offset(fd, disc, descs, (size_t)i * disc->blocksize + offset, length, 1) < 0)
 		{
-			free(vat);
+			free(descs);
 			break;
+		}
+
+		if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB)
+		{
+			if (le64_to_cpu(fe->informationLength) > length)
+			{
+				fprintf(stderr, "%s: Warning: Virtual Allocation Table inside of Information Control Block is larger then allocated block\n", appname);
+				free(descs);
+				break;
+			}
+			vat = descs;
+			vat_length = le64_to_cpu(fe->informationLength);
+		}
+		else
+		{
+			sad = NULL;
+			lad = NULL;
+			if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT)
+			{
+				sad = (short_ad *)descs;
+				count = length / sizeof(short_ad);
+				vat_length = 0;
+				for (j = 0; j < count; ++j)
+					vat_length += le32_to_cpu(sad[j].extLength) & EXT_LENGTH_MASK;
+			}
+			else if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG)
+			{
+				lad = (long_ad *)descs;
+				count = length / sizeof(long_ad);
+				vat_length = 0;
+				for (j = 0; j < count; ++j)
+					vat_length += le32_to_cpu(lad[j].extLength) & EXT_LENGTH_MASK;
+			}
+			else
+			{
+				fprintf(stderr, "%s: Error: Information Control Block for Virtual Allocation Table has unknown Allocation Descriptors type\n", appname);
+				free(descs);
+				break;
+			}
+
+			/* Prefer non-virtual partition if exists */
+			if (disc->udf_pd[0] && le16_to_cpu(disc->udf_pd[0]->partitionNumber) != le16_to_cpu(vpm->partitionNum))
+			{
+				ext_location = le32_to_cpu(disc->udf_pd[0]->partitionStartingLocation);
+				ext_partition = le16_to_cpu(disc->udf_pd[0]->partitionNumber);
+			}
+			else if (disc->udf_pd[1] && le16_to_cpu(disc->udf_pd[1]->partitionNumber) != le16_to_cpu(vpm->partitionNum))
+			{
+				ext_location = le32_to_cpu(disc->udf_pd[1]->partitionStartingLocation);
+				ext_partition = le16_to_cpu(disc->udf_pd[1]->partitionNumber);
+			}
+			else if (disc->udf_pd2[0] && le16_to_cpu(disc->udf_pd2[0]->partitionNumber) != le16_to_cpu(vpm->partitionNum))
+			{
+				ext_location = le32_to_cpu(disc->udf_pd2[0]->partitionStartingLocation);
+				ext_partition = le16_to_cpu(disc->udf_pd2[0]->partitionNumber);
+			}
+			else if (disc->udf_pd2[1] && le16_to_cpu(disc->udf_pd2[1]->partitionNumber) != le16_to_cpu(vpm->partitionNum))
+			{
+				ext_location = le32_to_cpu(disc->udf_pd2[1]->partitionStartingLocation);
+				ext_partition = le16_to_cpu(disc->udf_pd2[1]->partitionNumber);
+			}
+			else
+			{
+				ext_location = location;
+				ext_partition = le16_to_cpu(vpm->partitionNum);
+			}
+
+			if (count == 0)
+			{
+				fprintf(stderr, "%s: Warning: Virtual Allocation Table is empty\n", appname);
+				free(descs);
+				break;
+			}
+
+			vat = malloc(vat_length);
+			if (!vat)
+			{
+				fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+				free(descs);
+				break;
+			}
+
+			vat_offset = 0;
+			for (j = 0; j < count; ++j)
+			{
+				if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT)
+				{
+					ext_length = le32_to_cpu(sad[j].extLength) & EXT_LENGTH_MASK;
+					ext_position = le32_to_cpu(sad[j].extPosition);
+					if (ext_length == 0)
+						continue;
+				}
+				else
+				{
+					printf("long ad\n");
+					ext_length = le32_to_cpu(lad[j].extLength) & EXT_LENGTH_MASK;
+					ext_position = le32_to_cpu(lad[j].extLocation.logicalBlockNum);
+					if (ext_length == 0)
+						continue;
+					if (le32_to_cpu(lad[j].extLocation.partitionReferenceNum) != ext_partition)
+					{
+						fprintf(stderr, "%s: Error: Virtual Allocation Table is stored on different partition\n", appname);
+						count = 0;
+						break;
+					}
+				}
+
+				if (read_offset(fd, disc, vat + vat_offset, (size_t)(ext_location + ext_position) * disc->blocksize, ext_length, 1) != 0)
+				{
+					fprintf(stderr, "%s: Error: Virtual Allocation Table is damaged\n", appname);
+					count = 0;
+					break;
+				}
+
+				vat_offset += ext_length;
+			}
+
+			free(descs);
+
+			if (count == 0)
+			{
+				free(vat);
+				break;
+			}
 		}
 
 		if (fe->icbTag.fileType == ICBTAG_FILE_TYPE_UNDEF)
 		{
-			vat15 = (struct virtualAllocationTable15 *)(vat + ((length - 36) / 4) * 4);
+			if (vat_length < 36)
+			{
+				fprintf(stderr, "%s: Warning: Virtual Allocation Table is too small\n", appname);
+				free(vat);
+				break;
+			}
+			vat15 = (struct virtualAllocationTable15 *)(vat + ((vat_length - 36) / 4) * 4);
 			if (strncmp((const char *)vat15->vatIdent.ident, UDF_ID_ALLOC, sizeof(vat15->vatIdent.ident)) != 0)
 			{
 				fprintf(stderr, "%s: Warning: Virtual Allocation Table is damaged\n", appname);
@@ -1344,7 +1467,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 				break;
 			}
 			disc->vat = (uint32_t *)vat;
-			disc->vat_entries = (length - 36) / 4;
+			disc->vat_entries = (vat_length - 36) / 4;
 			if (ea_length)
 			{
 				if (sizeof(ea_hdr) > ea_length)
@@ -1408,7 +1531,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 		else if (fe->icbTag.fileType == ICBTAG_FILE_TYPE_VAT20)
 		{
 			vat20 = (struct virtualAllocationTable20 *)vat;
-			if (le16_to_cpu(vat20->lengthHeader) < sizeof(*vat20) || le16_to_cpu(vat20->lengthHeader) != sizeof(*vat20) + le16_to_cpu(vat20->lengthImpUse) || le16_to_cpu(vat20->lengthHeader) > length)
+			if (le16_to_cpu(vat20->lengthHeader) < sizeof(*vat20) || le16_to_cpu(vat20->lengthHeader) != sizeof(*vat20) + le16_to_cpu(vat20->lengthImpUse) || le16_to_cpu(vat20->lengthHeader) > vat_length)
 			{
 				fprintf(stderr, "%s: Warning: Virtual Allocation Table is damaged\n", appname);
 				free(vat);
@@ -1426,12 +1549,12 @@ static void read_vat(int fd, struct udf_disc *disc)
 				disc->num_dirs = le32_to_cpu(vat20->numDirs);
 			}
 			disc->vat = (uint32_t *)(vat + le16_to_cpu(vat20->lengthHeader));
-			disc->vat_entries = (length - le16_to_cpu(vat20->lengthHeader)) / 4;
+			disc->vat_entries = (vat_length - le16_to_cpu(vat20->lengthHeader)) / 4;
 		}
 		else
 		{
-			free(vat);
-			continue;
+			fprintf(stderr, "%s: Error: Wrong file type\n", appname);
+			exit(1);
 		}
 
 		disc->vat_block = i;
