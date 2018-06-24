@@ -51,4 +51,9 @@ void *custom_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t 
 
 #endif
 
+#if HEXPRINT
+void print_hex_array(void *ptr, size_t size); 
+#endif
+
+
 #endif //__UTILS_H__

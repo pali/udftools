@@ -1435,7 +1435,13 @@ uint8_t get_fsd(int fd, uint8_t **dev, struct udf_disc *disc, int sectorsize, si
     stats->dstringFSDCopyrightFileIdentErr = check_dstring(disc->udf_fsd->copyrightFileIdent, 32);
     stats->dstringFSDAbstractFileIdentErr = check_dstring(disc->udf_fsd->abstractFileIdent, 32);
 
+    dbg("Stream Length: %d\n", disc->udf_fsd->streamDirectoryICB.extLength);
+
     (void)sectorsize;
+
+#if HEXPRINT
+    print_hex_array(disc->udf_fsd, sizeof(struct fileSetDesc));
+#endif
 
     return 0;
 }
@@ -2529,7 +2535,9 @@ uint8_t get_file_structure(int fd, uint8_t **dev, const struct udf_disc *disc, s
     // Go to ROOT ICB 
     lb_addr icbloc = lelb_to_cpu(disc->udf_fsd->rootDirectoryICB.extLocation); 
     // Get Stream Dir ICB
-    lb_addr sicbloc = lelb_to_cpu(disc->udf_fsd->streamDirectoryICB.extLocation); 
+    lb_addr sicbloc = lelb_to_cpu(disc->udf_fsd->streamDirectoryICB.extLocation);
+    dbg("icbloc: %d\n", icbloc.logicalBlockNum); 
+    dbg("sicbloc: %d\n", sicbloc.logicalBlockNum); 
 
     lsn = icbloc.logicalBlockNum+lsnBase;
     slsn = sicbloc.logicalBlockNum+lsnBase;

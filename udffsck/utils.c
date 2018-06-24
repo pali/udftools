@@ -197,3 +197,20 @@ int custom_munmap(void *addr, size_t length, char * file, int line) {
 }
 #endif
 
+
+
+#if HEXPRINT
+void print_hex_array(void *ptr, size_t size) {
+    uint32_t shift = 0;
+    uint32_t line = 0;
+    uint32_t amount = 50000;
+     
+    for(int i=0+shift, k=0+shift; i<size && i < amount+shift; ) {
+        note("[%04d] ",line++);
+        for(int j=0; j<16; j++, i++) {
+            note("%02x ", ((unsigned char *)(ptr))[i]);
+        }
+        note("\n");
+    }
+} 
+#endif
