@@ -1,5 +1,5 @@
 '\" t -*- coding: UTF-8 -*-
-.\" Copyright (C) 2017  Pali Rohár <pali.rohar@gmail.com>
+.\" Copyright (C) 2017-2018  Pali Rohár <pali.rohar@gmail.com>
 .\"
 .\" This program is free software; you can redistribute it and/or modify
 .\" it under the terms of the GNU General Public License as published by
@@ -14,22 +14,24 @@
 .\" You should have received a copy of the GNU General Public License along
 .\" with this program; if not, write to the Free Software Foundation, Inc.,
 .\" 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
+.\"
 .TH UDFLABEL 8 "udftools" "Commands"
 
 .SH NAME
 udflabel \(en show or change UDF filesystem label
 
 .SH SYNOPSIS
-.BI "udflabel [encoding\-options] [block\-options] [identifier\-options] " device " [" new\-label "]"
+.BI "udflabel [encoding\-options] [block\-options] [identifier\-options] \
+" device " [" new\-label "]"
 
 .SH DESCRIPTION
 When \fBudflabel\fP is invoked without \fBidentifier\-options\fP and without
 specifying \fInew\-label\fP then it show current label of UDF filesystem on
 \fIdevice\fP to standard output terminated by new line. Otherwise it update
 UDF filesystem (up to the revision 2.60) on \fIdevice\fP with new specified
-identifiers from \fBidentifier\-options\fP. Specifying \fInew\-label\fP is synonym
-for both \fI\-\-lvid\fP and \fI\-\-vid\fP, see section \fBUDF LABEL AND UUID\fP.
+identifiers from \fBidentifier\-options\fP. Specifying \fInew\-label\fP is
+synonym for both \fB\-\-lvid\fP and \fB\-\-vid\fP, see section
+\fBUDF LABEL AND UUID\fP.
 
 .SH OPTIONS
 
@@ -42,9 +44,9 @@ Display the usage and the list of options.
 .TP
 .BI \-b,\-\-blocksize= " block\-size "
 Specify the size of blocks in bytes. Valid block size for a UDF filesystem is
-power of two in range from 512 to 32768 and must match a device logical (sector)
-size. If omitted, \fBudflabel\fP tries to autodetect block size. It tries logical
-(sector) size and then all valid block sizes.
+power of two in range from \fI512\fP to \fI32768\fP and must match a device
+logical (sector) size. If omitted, \fBudflabel\fP tries to autodetect block
+size. It tries logical (sector) size and then all valid block sizes.
 
 .TP
 .BI \-\-vatblock= " vat\-block "
@@ -68,7 +70,7 @@ possible. But in some rare cases it could make sense to try overwrite existing
 Label or Identifiers also for UDF filesystem which has Access Type either
 Read-Only or Recordable (Write-Once). This is possible only if underlaying media
 supports overwriting. E.g. UDF image of CD-ROM stored on hard disk or Read-Only
-UDF image burned to DVD-RAM or BD-RE discs. Option \fI\-\-force\fP ignores UDF
+UDF image burned to DVD-RAM or BD-RE discs. Option \fB\-\-force\fP ignores UDF
 Access Type and treat it as Overwritable.
 
 .TP
@@ -82,7 +84,7 @@ overwritten.
 .BI \-u,\-\-uuid= " uuid "
 Specify the UDF uuid. Must be exactly 16 hexadecimal lowercase digits and is
 used for first 16 characters of \fB\-\-fullvsid\fP option. Special value
-\fBrandom\fP generates new uuid from local time and random number. See section
+\fIrandom\fP generates new uuid from local time and random number. See section
 \fBUDF LABEL AND UUID\fP.
 
 .TP
@@ -140,15 +142,15 @@ it is a common practice for majority of UDF implementations to use UDF Logical
 Volume Identifier as a UDF disk label.
 
 UDF specification does not have concept of disk UUID like other filesystems. But
-mandates that the first 16 characters of UDF Volume Set Identifier are unique,
-a non-fixed and a non-trivial value. Plus first eight characters are hexadecimal
-digits. Windows application format.exe and Mac OS X application newfs_udf are
-known to violates this requirement and set only the first 8 characters as unique
-(others are fixed). Because there are still lot of UDF implementations which use
-in the first 16 characters only hexadecimal digits and all compliant UDF
-implementations have hexadecimal digits in the first 8 characters, the following
-algorithm for generating stable UUID was informally chosen and now is used by
-udftools, util-linux, grub2 and other projects:
+mandates that the first 16 characters of UDF Volume Set Identifier are unique, a
+non-fixed and a non-trivial value. Plus first eight characters are hexadecimal
+digits. Windows application \fBformat.exe\fP and Mac OS X application
+\fBnewfs_udf\fP are known to violates this requirement and set only the first 8
+characters as unique (others are fixed). Because there are still lot of UDF
+implementations which use in the first 16 characters only hexadecimal digits and
+all compliant UDF implementations have hexadecimal digits in the first 8
+characters, the following algorithm for generating stable UUID was informally
+chosen and now is used by udftools, util-linux, grub2 and other projects:
 
 .RS
 0. If Volume Set Identifier has less then 8 characters then stop with empty UUID
@@ -164,21 +166,22 @@ their hexadecimal representation (resulting in 16 bytes) and use as UUID
 .RS
 1. part: Use lowercase form of the first 8 bytes (which are hexadecimal digits)
 .br
-2. part: Convert next 4 bytes (9.\(en12. pos.) to their hexadecimal representation
+2. part: Convert next 4 bytes (9.\(en12. pos.) to their hexadecimal
+representation
 .RE
 .RE
 
-Which means that this generated UUID has always 16 hexadecimal lowercase digits.
-In most cases this UUID matches case-insensitively the first 16 characters of
-UDF Volume Set Identifier and for all disks compliant to the UDF specification
-the first 8 bytes of UUID matches case-insensitively the first 8 characters of
-UDF Volume Set Identifier. In that algorithm was chosen UTF-8 encoding because
-it is the only commonly used Unicode transformation to bytes with fixed points
-in all hexadecimal digits.
+Which means that this generated UUID has always 16 hexadecimal lowercase
+digits. In most cases this UUID matches case-insensitively the first 16
+characters of UDF Volume Set Identifier and for all disks compliant to the UDF
+specification the first 8 bytes of UUID matches case-insensitively the first 8
+characters of UDF Volume Set Identifier. In that algorithm was chosen UTF-8
+encoding because it is the only commonly used Unicode transformation to bytes
+with fixed points in all hexadecimal digits.
 
 .SH "EXIT STATUS"
-\fBudflabel\fP returns 0 if successful, non-zero if there are problems like block
-device does not contain UDF filesystem or updating failed.
+\fBudflabel\fP returns 0 if successful, non-zero if there are problems like
+block device does not contain UDF filesystem or updating failed.
 
 .SH LIMITATIONS
 \fBudflabel\fP is not able to set new Label, Logical Volume Identifier and File
@@ -194,8 +197,8 @@ Pali Rohár <pali.rohar@gmail.com>
 .fi
 
 .SH AVAILABILITY
-\fBudflabel\fP is part of the udftools package since version 2.0 and is available
-from https://github.com/pali/udftools/.
+\fBudflabel\fP is part of the udftools package since version 2.0 and is
+available from https://github.com/pali/udftools/.
 
 .SH "SEE ALSO"
 \fBmkudffs\fP(8), \fBpktsetup\fP(8), \fBcdrwtool\fP(1), \fBudfinfo\fP(1),

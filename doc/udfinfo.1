@@ -1,5 +1,5 @@
 '\" t -*- coding: UTF-8 -*-
-.\" Copyright (C) 2017  Pali Rohár <pali.rohar@gmail.com>
+.\" Copyright (C) 2017-2018  Pali Rohár <pali.rohar@gmail.com>
 .\"
 .\" This program is free software; you can redistribute it and/or modify
 .\" it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 .\" You should have received a copy of the GNU General Public License along
 .\" with this program; if not, write to the Free Software Foundation, Inc.,
 .\" 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
+.\"
 .TH UDFINFO 1 "udftools" "Commands"
 
 .SH NAME
@@ -36,9 +36,9 @@ Display the usage and the list of options.
 .TP
 .BI \-b,\-\-blocksize= " block\-size "
 Specify the size of blocks in bytes. Valid block size for a UDF filesystem is
-power of two in range from 512 to 32768 and must match a device logical (sector)
-size. If omitted, \fBudfinfo\fP tries to autodetect block size. It tries logical
-(sector) size and then all valid block sizes.
+power of two in range from \fI512\fP to \fI32768\fP and must match a device
+logical (sector) size. If omitted, \fBudfinfo\fP tries to autodetect block
+size. It tries logical (sector) size and then all valid block sizes.
 
 .TP
 .BI \-\-vatblock= " vat\-block "
@@ -87,70 +87,70 @@ following table:
 
 .RS
 .TP 1.6i
-filename
+.I filename
 File name of the selected block device or disk file image
 .TP
-label
-label is an alias for \fIlvid\fP, see \fBudflabel\fP(8) section \fBUDF LABEL AND
-UUID\fP
+.I label
+label is an alias for \fIlvid\fP, see \fBudflabel\fP(8) section
+\fBUDF LABEL AND UUID\fP
 .TP
-uuid
+.I uuid
 UUID are first 16 hexadecimal lowercase digits of \fIfullvsid\fP, but see
 \fBudflabel\fP(8) section \fBUDF LABEL AND UUID\fP
 .TP
-lvid
+.I lvid
 UDF Logical Volume Identifier stored in UDF Logical Volume Descriptor
 .TP
-vid
+.I vid
 UDF Volume Identifier stored in UDF Primary Volume Descriptor
 .TP
-vsid
+.I vsid
 \fIfullvsid\fP after \fIuuid\fP part, typically 17.\(en127. character
 .TP
-fsid
+.I fsid
 UDF File Set Identifier stored in UDF File Set Descriptor
 .TP
-fullvsid
+.I fullvsid
 UDF Volume Set Identifier stored in UDF Primary Volume Descriptor
 .TP
-winserialnum
+.I winserialnum
 Windows specific Volume Serial Number
 .TP
-blocksize
+.I blocksize
 UDF block size
 .TP
-blocks
+.I blocks
 Number of all blocks on the selected block device or disk file image
 .TP
-usedblocks
+.I usedblocks
 Number of used space blocks on UDF disk for data storage
 .TP
-freeblocks
+.I freeblocks
 Number of free space blocks on UDF disk for data storage
 .TP
-behindblocks
+.I behindblocks
 Number of blocks which are behind the last block used by UDF disk
 .TP
-numfiles
+.I numfiles
 Number of stored files on UDF disk
 .TP
-numdirs
+.I numdirs
 Number of stored directories on UDF disk
 .TP
-udfrev
+.I udfrev
 UDF revision needed for reading UDF disk
 .TP
-udfwriterev
+.I udfwriterev
 UDF revision needed for writing or modifying UDF disk
 .TP
-vatblock
+.I vatblock
 UDF block location of the Virtual Allocation Table (visible only when available)
 .TP
-integrity
+.I integrity
 UDF integrity of Logical Volume, one of: \fIopened\fP, \fIclosed\fP,
 \fIunknown\fP
 .TP
-accesstype
+.I accesstype
 UDF Access Type, one of: \fIoverwritable\fP, \fIrewritable\fP, \fIwriteonce\fP,
 \fIreadonly\fP, \fIpseudo\-overwritable\fP, \fIunknown\fP
 .RE
@@ -180,7 +180,7 @@ calculated as four separate 8 bit XOR checksums of 512 bytes long UDF File Set
 Descriptor. Therefore it cannot be set or changed as opposite to UUID which is
 moreover 64 bit long. This non-standard checksum is used only by Windows systems
 (since Windows 98 era when it was introduced) and can be displayed on Windows
-systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil\fP.
+systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil.exe\fP.
 
 .SH LIMITATIONS
 \fBudfinfo\fP is not able to read Metadata Partition yet. Therefore determining
