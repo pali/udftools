@@ -184,17 +184,17 @@ disk, not on just one partition. Valid options are:
 .TP 1.4i
 .I preserve
 preserve existing UDF boot area, do not touch it (default for media type
-different from hd)
+different from \fIhd\fP)
 .TP
 .I erase
-erase existing UDF boot area, fill it by zeros (default for hd media type on
-partitions and on removable disks)
+erase existing UDF boot area, fill it by zeros (default for \fIhd\fP media type
+on partitions and on removable disks)
 .TP
 .I mbr
 put MBR table with one partition which starts at sector 0 (includes MBR itself)
 and spans whole disk device, needed only for non-removable hard disks used on
-Microsoft Windows systems (default for hd media type on non-removable hard disk
-without partitions), see section \fBWHOLE DISK VS PARTITION\fP
+Microsoft Windows systems (default for \fIhd\fP media type on non-removable hard
+disk without partitions), see section \fBWHOLE DISK VS PARTITION\fP
 .RE
 
 .RS
@@ -212,8 +212,8 @@ Specify the allocation strategy to use. Valid strategies are \fI4\fP and
 Enable usage Sparing Table. Optionally specify also the number of sparing
 tables. Valid numbers are \fI1\(en4\fP. When spartable number is omitted then
 two tables are written to disc. If option is omitted then usage of Sparing Table
-depends on media type. (Option prior to mkudffs 2.0 was available only for cdrw
-media type)
+depends on media type. (Option prior to mkudffs 2.0 was available only for
+\fIcdrw\fP media type)
 
 .TP
 .BI \-\-sparspace= " num\-of\-entires "
@@ -431,7 +431,7 @@ Recordable which does not require Metadata partition).
 from identifier strings in \fB\-\-utf8\fP mode, \fB\-\-vsid\fP option was
 completely broken and \fB\-\-blocksize\fP must have been manually specified for
 hard disks as default value was hardcoded for optical disks. \fBmkudffs\fP prior
-to version 2.0 generated broken and unreadable cdr disc images.
+to version 2.0 generated broken and unreadable \fIcdr\fP disc images.
 
 .SH AUTHOR
 .nf
