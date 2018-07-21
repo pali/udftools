@@ -1233,7 +1233,7 @@ void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct ud
 
 void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 {
-	uint32_t offset = 0;
+	uint32_t offset;
 	struct udf_extent *anchor;
 	struct udf_desc *vtable;
 	struct udf_data *data;
@@ -1245,13 +1245,17 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	uint8_t buffer[(sizeof(*ea_attr)+sizeof(*ea_lv)+3)/4*4];
 	uint16_t checksum;
 	uint16_t udf_rev_le16;
+	uint32_t min_blocks;
+
+	/* Put VAT to the last sector correctly aligned */
+	offset = pspace->tail->offset + (pspace->tail->length + (disc->sizing[PSPACE_SIZE].align * (disc->blocksize-1))) / (disc->sizing[PSPACE_SIZE].align * disc->blocksize);
 
 	if (disc->flags & FLAG_MIN_300_BLOCKS)
 	{
-		// On optical discs one track has minimal size of 300 sectors, so put VAT to the last sector
-		offset = pspace->tail->offset + (pspace->tail->length + disc->blocksize-1) / disc->blocksize;
-		if (pspace->start + offset < 299)
-			offset = 299 - pspace->start;
+		// On optical TAO discs one track has minimal size of 300 sectors
+		min_blocks = (300 + disc->sizing[PSPACE_SIZE].align-1) / disc->sizing[PSPACE_SIZE].align * disc->sizing[PSPACE_SIZE].align - 1;
+		if (pspace->start + offset < min_blocks)
+			offset = min_blocks - pspace->start;
 	}
 
 	if (disc->flags & FLAG_CLOSED)
