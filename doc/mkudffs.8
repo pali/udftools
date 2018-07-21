@@ -223,9 +223,12 @@ mkudffs 2.0)
 
 .TP
 .BI \-\-packetlen= " length "
-Packet length in number of blocks for Sparing Table. It specify also size of the
-Sparing Space. If omitted, default value for DVD discs \fI16\fP blocks,
-otherwise \fI32\fP.
+Packet length in number of blocks used for alignment. All continuous UDF
+structures would be aligned to packets. It specify also size of the Sparing
+Space and packet length in Sparing Table. It should match device ECC/packet
+length. If omitted, default value for DVD discs is \fI16\fP blocks, for CD/BD
+discs it is \fI32\fP blocks and otherwise \fI1\fP block. (Option prior to
+mkudffs 2.1 was available only for \fIcdrw\fP and \fIdvdrw\fP media types)
 
 .TP
 .B \-\-vat

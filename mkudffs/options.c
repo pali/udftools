@@ -100,7 +100,7 @@ void usage(void)
 		"\t--strategy=        Allocation strategy to use (4, 4096; default: based on media type)\n"
 		"\t--spartable        Use Sparing Table (default: based on media type) and set its count (1 - 4; default: 2)\n"
 		"\t--sparspace=       Number of entries in Sparing Table (default: 1024, but based on media type)\n"
-		"\t--packetlen=       Packet length in number of blocks for Sparing Table (default: based on media type)\n"
+		"\t--packetlen=       Packet length in number of blocks used for alignment (default: based on media type)\n"
 		"\t--vat              Use Virtual Allocation Table (default: based on media type)\n"
 		"\t--closed           Close disc with Virtual Allocation Table (default: do not close)\n"
 		"\t--space=           Space (freedbitmap, freedtable, unallocbitmap, unalloctable; default: unallocbitmap)\n"
@@ -133,6 +133,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	unsigned long int blocks = 0;
 	int rev = 0;
 	int use_sparable = 0;
+	unsigned long int spartable = 2;
 	unsigned long int sparspace = 0;
 	int failed;
 
@@ -491,11 +492,10 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_SPARTABLE:
 			{
-				unsigned long int spartable = 2;
 				if (optarg)
 				{
 					spartable = strtoul_safe(optarg, 0, &failed);
-					if (failed || spartable > 4)
+					if (failed || spartable == 0 || spartable > 4)
 					{
 						fprintf(stderr, "%s: Error: Invalid value for option --spartable\n", appname);
 						exit(1);
@@ -506,7 +506,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					fprintf(stderr, "%s: Error: Cannot use Sparing Table when VAT is enabled\n", appname);
 					exit(1);
 				}
-				add_type2_sparable_partition(disc, 0, spartable, packetlen);
 				use_sparable = 1;
 				break;
 			}
@@ -527,21 +526,23 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_PACKETLEN:
 			{
-				struct sparablePartitionMap *spm;
 				unsigned long int packetlen_opt = strtoul_safe(optarg, 0, &failed);
-				if (failed || packetlen_opt > UINT16_MAX)
+				if (failed || packetlen_opt == 0 || packetlen_opt > UINT16_MAX)
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --packetlen\n", appname);
 					exit(1);
 				}
 				packetlen = packetlen_opt;
-				if ((spm = find_type2_sparable_partition(disc, 0)))
-					spm->packetLength = cpu_to_le16(packetlen);
 				break;
 			}
 			case OPT_MEDIA_TYPE:
 			case 'm':
 			{
+				if (media != MEDIA_TYPE_NONE)
+				{
+					fprintf(stderr, "%s: Error: Option --media-type was specified more times\n", appname);
+					exit(1);
+				}
 				if (rev)
 				{
 					fprintf(stderr, "%s: Error: Option --media-type must be specified before option --udfrev\n", appname);
@@ -552,35 +553,30 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					fprintf(stderr, "%s: Error: Option --media-type must be specified before option --packetlen\n", appname);
 					exit(1);
 				}
-				if (media != MEDIA_TYPE_NONE)
-				{
-					fprintf(stderr, "%s: Error: Option --media-type was specified more times\n", appname);
-					exit(1);
-				}
 				if (!strcmp(optarg, "hd"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 					media = MEDIA_TYPE_HD;
+					packetlen = 1;
 				}
 				else if (!strcmp(optarg, "dvd"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
 					media = MEDIA_TYPE_DVD;
+					packetlen = 16;
 				}
 				else if (!strcmp(optarg, "dvdram"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 					media = MEDIA_TYPE_DVDRAM;
+					packetlen = 16;
 				}
 				else if (!strcmp(optarg, "dvdrw"))
 				{
-					struct sparablePartitionMap *spm;
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 					media = MEDIA_TYPE_DVDRW;
 					use_sparable = 1;
 					packetlen = 16;
-					if ((spm = find_type2_sparable_partition(disc, 0)))
-						spm->packetLength = cpu_to_le16(packetlen);
 				}
 				else if (!strcmp(optarg, "dvdr"))
 				{
@@ -588,24 +584,28 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					media = MEDIA_TYPE_DVDR;
 					disc->flags |= FLAG_VAT | FLAG_MIN_300_BLOCKS;
 					disc->flags &= ~FLAG_CLOSED;
+					packetlen = 16;
 				}
 				else if (!strcmp(optarg, "worm"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
 					media = MEDIA_TYPE_WORM;
 					disc->flags |= (FLAG_STRATEGY4096 | FLAG_BLANK_TERMINAL);
+					packetlen = 1;
 				}
 				else if (!strcmp(optarg, "mo"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 					media = MEDIA_TYPE_MO;
 					disc->flags |= (FLAG_STRATEGY4096 | FLAG_BLANK_TERMINAL);
+					packetlen = 1;
 				}
 				else if (!strcmp(optarg, "cdrw"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 					media = MEDIA_TYPE_CDRW;
 					use_sparable = 1;
+					packetlen = 32;
 				}
 				else if (!strcmp(optarg, "cdr"))
 				{
@@ -613,11 +613,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					media = MEDIA_TYPE_CDR;
 					disc->flags |= FLAG_VAT | FLAG_MIN_300_BLOCKS;
 					disc->flags &= ~FLAG_CLOSED;
+					packetlen = 32;
 				}
 				else if (!strcmp(optarg, "cd"))
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
 					media = MEDIA_TYPE_CD;
+					packetlen = 32;
 				}
 				else if (!strcmp(optarg, "bdr"))
 				{
@@ -626,6 +628,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					disc->flags |= FLAG_VAT | FLAG_MIN_300_BLOCKS;
 					disc->flags &= ~FLAG_CLOSED;
 					udf_set_version(disc, 0x0250);
+					packetlen = 32;
 				}
 				else
 				{
@@ -696,35 +699,35 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	if (optind < argc)
 		usage();
 
-	if (packetlen && !use_sparable)
+	/* TODO: autodetection */
+	if (media == MEDIA_TYPE_NONE)
 	{
-		fprintf(stderr, "%s: Error: Option --packetlen cannot be used without Sparing Table\n", appname);
-		exit(1);
+		media = MEDIA_TYPE_HD;
+		packetlen = 1;
 	}
 
-	if (le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) == 0)
+	if (disc->flags & FLAG_VAT)
 	{
-		if (disc->flags & FLAG_VAT)
+		if (disc->udf_rev < 0x0150)
 		{
-			if (disc->udf_rev < 0x0150)
-			{
-				fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for VAT\n", appname);
-				exit(1);
-			}
-			add_type1_partition(disc, 0);
-			add_type2_virtual_partition(disc, 0);
+			fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for VAT\n", appname);
+			exit(1);
 		}
-		else if (use_sparable)
+		add_type1_partition(disc, 0);
+		add_type2_virtual_partition(disc, 0);
+	}
+	else if (use_sparable)
+	{
+		if (disc->udf_rev < 0x0150)
 		{
-			if (disc->udf_rev < 0x0150)
-			{
-				fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for Sparing Table\n", appname);
-				exit(1);
-			}
-			add_type2_sparable_partition(disc, 0, 2, packetlen);
+			fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for Sparing Table\n", appname);
+			exit(1);
 		}
-		else
-			add_type1_partition(disc, 0);
+		add_type2_sparable_partition(disc, 0, spartable, packetlen);
+	}
+	else
+	{
+		add_type1_partition(disc, 0);
 	}
 
 	/* TODO: UDF 2.50+ require for non-VAT disks Metadata partition which mkudffs cannot create yet */
@@ -749,12 +752,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		exit(1);
 	}
 
-	/* TODO: autodetection */
-	if (media == MEDIA_TYPE_NONE)
-		media = MEDIA_TYPE_HD;
-
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
+		disc->sizing[i].align = packetlen;
 		if (disc->sizing[i].denomSize == 0)
 			disc->sizing[i] = default_sizing[default_media[media]][i];
 	}
@@ -766,11 +766,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			disc->sizing[SSPACE_SIZE].minSize = sparspace;
 			disc->sizing[STABLE_SIZE].minSize = 0; // recalculation is implemented in split_space()
 		}
-		if (!packetlen)
-			packetlen = le16_to_cpu(default_sparmap.packetLength);
-		disc->sizing[PSPACE_SIZE].align = packetlen;
-		disc->sizing[SSPACE_SIZE].align = packetlen;
-		disc->sizing[STABLE_SIZE].align = packetlen;
 		if (disc->sizing[SSPACE_SIZE].minSize == 0)
 			disc->sizing[SSPACE_SIZE].minSize = 1024;
 	}
