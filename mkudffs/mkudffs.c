@@ -1246,14 +1246,17 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	uint16_t checksum;
 	uint16_t udf_rev_le16;
 	uint32_t min_blocks;
+	uint32_t align;
 
 	/* Put VAT to the last sector correctly aligned */
-	offset = pspace->tail->offset + (pspace->tail->length + (disc->sizing[PSPACE_SIZE].align * (disc->blocksize-1))) / (disc->sizing[PSPACE_SIZE].align * disc->blocksize);
+	align = disc->sizing[PSPACE_SIZE].align;
+	offset = pspace->tail->offset + (pspace->tail->length + disc->blocksize-1) / disc->blocksize;
+	offset = (offset + align) / align * align - 1;
 
 	if (disc->flags & FLAG_MIN_300_BLOCKS)
 	{
 		// On optical TAO discs one track has minimal size of 300 sectors
-		min_blocks = (300 + disc->sizing[PSPACE_SIZE].align-1) / disc->sizing[PSPACE_SIZE].align * disc->sizing[PSPACE_SIZE].align - 1;
+		min_blocks = (300 + align) / align * align - 1;
 		if (pspace->start + offset < min_blocks)
 			offset = min_blocks - pspace->start;
 	}
