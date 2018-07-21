@@ -582,7 +582,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
 					media = MEDIA_TYPE_DVDR;
-					disc->flags |= FLAG_VAT | FLAG_MIN_300_BLOCKS;
+					disc->flags |= FLAG_VAT;
 					disc->flags &= ~FLAG_CLOSED;
 					packetlen = 16;
 				}
@@ -625,7 +625,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				{
 					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
 					media = MEDIA_TYPE_BDR;
-					disc->flags |= FLAG_VAT | FLAG_MIN_300_BLOCKS;
+					disc->flags |= FLAG_VAT;
 					disc->flags &= ~FLAG_CLOSED;
 					udf_set_version(disc, 0x0250);
 					packetlen = 32;
