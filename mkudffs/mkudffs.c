@@ -196,8 +196,8 @@ int udf_set_version(struct udf_disc *disc, int udf_rev)
 
 void get_random_bytes(void *buffer, size_t count)
 {
-	int fd;
-	size_t i;
+	int fd, value;
+	size_t i, n;
 
 	fd = open("/dev/urandom", O_RDONLY);
 	if (fd >= 0)
@@ -210,8 +210,14 @@ void get_random_bytes(void *buffer, size_t count)
 		close(fd);
 	}
 
-	for (i = 0; i < count; ++i)
-		((uint8_t *)buffer)[i] = rand() & 0xFF;
+	for (i = 0; i < count; i += n)
+	{
+		value = rand();
+		n = sizeof(value);
+		if (i + n > count)
+			n = count - i;
+		memcpy(buffer+i, &value, n);
+	}
 }
 
 void split_space(struct udf_disc *disc)
