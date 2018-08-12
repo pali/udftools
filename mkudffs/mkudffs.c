@@ -282,7 +282,7 @@ void split_space(struct udf_disc *disc)
 	}
 
 	accessType = le32_to_cpu(disc->udf_pd[0]->accessType);
-	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && sizes[LVID_SIZE] * (size_t)disc->blocksize < 8192 && blocks > 257)
+	if ((accessType == PD_ACCESS_TYPE_OVERWRITABLE || accessType == PD_ACCESS_TYPE_REWRITABLE) && (uint64_t)sizes[LVID_SIZE] * disc->blocksize < 8192 && blocks > 257)
 		sizes[LVID_SIZE] = (8192 + disc->blocksize-1) / disc->blocksize;
 
 	if (sizes[VDS_SIZE] > 6 && blocks <= 257)
