@@ -127,7 +127,7 @@ static void write_desc(int fd, struct udf_disc *disc, enum udf_space_type type, 
 	struct udf_extent *ext;
 	struct udf_desc *desc;
 	off_t off;
-	size_t offset;
+	off_t offset;
 	ssize_t ret;
 
 	ext = disc->head;
@@ -141,9 +141,9 @@ static void write_desc(int fd, struct udf_disc *disc, enum udf_space_type type, 
 
 			printf("  ... at block %lu\n", (unsigned long int)(ext->start + desc->offset));
 
-			offset = (size_t)disc->blocksize * (ext->start + desc->offset);
+			offset = (off_t)disc->blocksize * (ext->start + desc->offset);
 			off = lseek(fd, offset, SEEK_SET);
-			if (off != (off_t)-1 && (size_t)off != offset)
+			if (off != (off_t)-1 && off != offset)
 			{
 				errno = EIO;
 				off = (off_t)-1;
