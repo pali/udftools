@@ -211,7 +211,7 @@ void get_random_bytes(void *buffer, size_t count)
 	}
 
 	for (i = 0; i < count; ++i)
-		((uint8_t *)buffer)[i] = rand() % 0xFF;
+		((uint8_t *)buffer)[i] = rand() & 0xFF;
 }
 
 void split_space(struct udf_disc *disc)
