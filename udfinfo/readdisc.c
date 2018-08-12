@@ -39,7 +39,7 @@ static int read_offset(int fd, struct udf_disc *disc, void *buf, off_t offset, s
 	off_t off;
 	ssize_t ret;
 
-	if (offset + count > (off_t)disc->blocks * disc->blocksize)
+	if (offset + (off_t)count > (off_t)disc->blocks * disc->blocksize)
 	{
 		if (warn_beyond)
 			fprintf(stderr, "%s: Warning: Trying to read beyond end of disk\n", appname);
