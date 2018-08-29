@@ -146,6 +146,15 @@ struct udf_disc
 
 	struct udf_extent		*head;
 	struct udf_extent		*tail;
+	struct udf_badblock_frag	*badblocks_head;
+	struct udf_badblock_frag	**badblocks_tail;
+};
+
+struct udf_badblock_frag
+{
+	uint32_t			start;
+	uint32_t			blocks;
+	struct udf_badblock_frag	*next;
 };
 
 struct udf_extent
@@ -220,6 +229,7 @@ struct udf_desc *find_desc(struct udf_extent *, uint32_t);
 struct udf_desc *set_desc(struct udf_extent *, uint16_t, uint32_t, uint32_t, struct udf_data *);
 void append_data(struct udf_desc *, struct udf_data *);
 struct udf_data *alloc_data(void *, int);
+void add_badblocks(struct udf_disc *disc, uint32_t start, uint32_t blocks);
 
 /* unicode.c */
 extern size_t decode_utf8(const dchars *, char *, size_t, size_t);

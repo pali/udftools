@@ -132,6 +132,8 @@ void udf_init_disc(struct udf_disc *disc)
 
 	disc->head = malloc(sizeof(struct udf_extent));
 	disc->tail = disc->head;
+	disc->badblocks_head = NULL;
+	disc->badblocks_tail = &disc->badblocks_head;
 
 	disc->head->space_type = USPACE;
 	disc->head->start = 0;
@@ -228,6 +230,7 @@ void split_space(struct udf_disc *disc)
 	uint32_t start, size, start2, size2;
 	struct sparablePartitionMap *spm;
 	struct udf_extent *ext;
+	struct udf_badblock_frag *bad_frag;
 	uint32_t accessType;
 	uint32_t i, j;
 
@@ -268,6 +271,17 @@ void split_space(struct udf_disc *disc)
 	// Final anchor point at sector End-Of-Volume/Session for sequentially writable media
 	if (!(disc->flags & FLAG_VAT))
 		set_extent(disc, ANCHOR, blocks-1, 1);
+
+	for (bad_frag = disc->badblocks_head; bad_frag; bad_frag = bad_frag->next)
+	{
+		uint32_t s = find_next_extent_size(disc, bad_frag->start, USPACE, bad_frag->blocks, 1);
+		if (s != bad_frag->start)
+		{
+			fprintf(stderr, "%s: Failed to reserve bad sectors starting from %ld length %ld\n", appname, (unsigned long)bad_frag->start, (unsigned long)bad_frag->blocks);
+			exit(1);
+		}
+		set_extent(disc, BAD, bad_frag->start, bad_frag->blocks);
+	}
 
 	// Calculate minimal size for Sparing Table needed for Sparing Space
 	if ((spm = find_type2_sparable_partition(disc, 0)) && disc->sizing[STABLE_SIZE].minSize == 0)

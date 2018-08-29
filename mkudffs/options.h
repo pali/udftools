@@ -65,5 +65,6 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, int *, int *);
 #define OPT_GID		0x2010
 #define OPT_MODE	0x2011
 #define OPT_BOOTAREA	0x2012
+#define OPT_BADBLOCKS	0x2013
 
 #endif /* _OPTIONS_H */
