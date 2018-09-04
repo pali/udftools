@@ -1635,9 +1635,9 @@ static void setup_pspace(struct udf_disc *disc, int second)
 	if (ext->space_type != USPACE)
 	{
 		fprintf(stderr, "%s: Warning: %sPartition Space overlaps with other blocks\n", appname, second ? "Second " : "");
-		ext = ext->next;
-		if (ext->space_type == USPACE)
+		if (ext->next && ext->next->space_type == USPACE)
 		{
+			ext = ext->next;
 			if (blocks > ext->start - location && blocks - (ext->start - location) < ext->blocks)
 				ext = set_extent(disc, PSPACE, ext->start, blocks - (ext->start - location));
 			else
@@ -1657,10 +1657,11 @@ static void setup_pspace(struct udf_disc *disc, int second)
 			new_ext->start = location;
 			new_ext->blocks = blocks;
 			new_ext->head = new_ext->tail = NULL;
-			new_ext->prev = ext->prev;
-			new_ext->next = ext;
+			new_ext->prev = ext;
+			new_ext->next = ext->next;
 			new_ext->prev->next = new_ext;
-			new_ext->next->prev = new_ext;
+			if (new_ext->next)
+				new_ext->next->prev = new_ext;
 		}
 	}
 	else
