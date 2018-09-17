@@ -1439,7 +1439,6 @@ static void read_vat(int fd, struct udf_disc *disc)
 				}
 				else
 				{
-					printf("long ad\n");
 					ext_length = le32_to_cpu(lad[j].extLength) & EXT_LENGTH_MASK;
 					ext_position = le32_to_cpu(lad[j].extLocation.logicalBlockNum);
 					if (ext_length == 0)
