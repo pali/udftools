@@ -107,7 +107,8 @@ void parse_args(int argc, char *argv[], struct cdrw_disc *disc, const char **dev
 			}
 			case 'v':
 			{
-				if (udf_set_version(&disc->udf_disc, strtol(optarg, NULL, 16)))
+				int udf_rev = strtol(optarg, NULL, 16);
+				if (udf_rev < 0x0150 || udf_rev > 0x0201 || udf_set_version(&disc->udf_disc, udf_rev))
 					exit(1);
 				printf("udf version set to 0x%04x\n", disc->udf_disc.udf_rev);
 				break;
