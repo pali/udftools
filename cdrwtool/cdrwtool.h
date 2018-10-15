@@ -235,6 +235,5 @@ int print_disc_track_info(int);
 void make_write_page(write_params_t *, struct cdrw_disc *);
 void print_params(write_params_t *);
 void cdrw_init_disc(struct cdrw_disc *);
-int udf_set_version(struct udf_disc *, int);
 
 #endif /* _CDRWTOOL_H */

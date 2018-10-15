@@ -29,6 +29,8 @@
 #include "libudffs.h"
 #include "options.h"
 
+#include "../mkudffs/mkudffs.h"
+
 struct option long_options[] = {
 	{ "help", no_argument, NULL, OPT_HELP },
 	{ "device", 1, NULL, 'd' },
