@@ -114,27 +114,16 @@ void usage(void)
 	exit(1);
 }
 
-static unsigned long int strtoul_safe(const char *str, int base, int *failed)
-{
-	char *endptr = NULL;
-	unsigned long int ret;
-	errno = 0;
-	ret = strtoul(str, &endptr, base);
-	*failed = (!*str || *endptr || errno) ? 1 : 0;
-	return ret;
-}
-
 void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, int *create_new_file, int *blocksize, int *media_ptr)
 {
 	int retval;
 	int i;
 	int media = MEDIA_TYPE_NONE;
-	uint16_t packetlen = 0;
-	unsigned long int blocks = 0;
-	int rev = 0;
 	int use_sparable = 0;
-	unsigned long int spartable = 2;
-	unsigned long int sparspace = 0;
+	uint16_t rev = 0;
+	uint32_t spartable = 2;
+	uint32_t sparspace = 0;
+	uint16_t packetlen = 0;
 	int failed;
 
 	while ((retval = getopt_long(argc, argv, "l:u:b:m:r:nh", long_options, NULL)) != EOF)
@@ -147,7 +136,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				break;
 			case OPT_BLK_SIZE:
 			case 'b':
-				disc->blocksize = strtoul_safe(optarg, 0, &failed);
+				disc->blocksize = strtou32(optarg, 0, &failed);
 				if (failed || disc->blocksize < 512 || disc->blocksize > 32768 || (disc->blocksize & (disc->blocksize - 1)))
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --blocksize\n", appname);
@@ -162,16 +151,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				unsigned char maj = 0;
 				unsigned char min = 0;
 				int len = 0;
-				if (sscanf(optarg, "%hhx.%hhx%n", &maj, &min, &len) >= 2 && !optarg[len])
+				if (sscanf(optarg, "%*[0-9].%*[0-9]%n", &len) >= 0 && !optarg[len] && sscanf(optarg, "%hhx.%hhx%n", &maj, &min, &len) >= 2 && !optarg[len])
 				{
 					rev = (maj << 8) | min;
 				}
 				else
 				{
-					unsigned long int rev_opt = strtoul_safe(optarg, 16, &failed);
-					if (!failed && rev_opt < INT_MAX)
-						rev = rev_opt;
-					else
+					rev = strtou16(optarg, 16, &failed);
+					if (failed)
 						rev = 0;
 				}
 				if (!rev || udf_set_version(disc, rev))
@@ -419,40 +406,42 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_UID:
 			{
-				unsigned long int uid = strtoul_safe(optarg, 0, &failed);
 				if (strcmp(optarg, "-1") == 0)
 				{
-					uid = UINT32_MAX;
-					failed = 0;
+					disc->uid = UINT32_MAX;
 				}
-				if (failed || uid > UINT32_MAX)
+				else
 				{
-					fprintf(stderr, "%s: Error: Invalid value for option --uid\n", appname);
-					exit(1);
+					disc->uid = strtou32(optarg, 0, &failed);
+					if (failed)
+					{
+						fprintf(stderr, "%s: Error: Invalid value for option --uid\n", appname);
+						exit(1);
+					}
 				}
-				disc->uid = uid;
 				break;
 			}
 			case OPT_GID:
 			{
-				unsigned long int gid = strtoul_safe(optarg, 0, &failed);
 				if (strcmp(optarg, "-1") == 0)
 				{
-					gid = UINT32_MAX;
-					failed = 0;
+					disc->gid = UINT32_MAX;
 				}
-				if (failed || gid > UINT32_MAX)
+				else
 				{
-					fprintf(stderr, "%s: Error: Invalid value for option --gid\n", appname);
-					exit(1);
+					disc->gid = strtou32(optarg, 0, &failed);
+					if (failed)
+					{
+						fprintf(stderr, "%s: Error: Invalid value for option --gid\n", appname);
+						exit(1);
+					}
 				}
-				disc->gid = gid;
 				break;
 			}
 			case OPT_MODE:
 			{
-				unsigned long int mode = strtoul_safe(optarg, 8, &failed);
-				if (failed || mode > UINT16_MAX || (mode & ~(S_IRWXU|S_IRWXG|S_IRWXO)))
+				uint16_t mode = strtou16(optarg, 8, &failed);
+				if (failed || (mode & ~(S_IRWXU|S_IRWXG|S_IRWXO)))
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --mode\n", appname);
 					exit(1);
@@ -478,23 +467,22 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_STRATEGY:
 			{
-				unsigned long int strategy = strtoul_safe(optarg, 0, &failed);
-				if (failed || (strategy != 4 && strategy != 4096))
+				if (strcmp(optarg, "4096") == 0)
+					disc->flags |= FLAG_STRATEGY4096;
+				else if (strcmp(optarg, "4") == 0)
+					disc->flags &= ~FLAG_STRATEGY4096;
+				else
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --strategy\n", appname);
 					exit(1);
 				}
-				if (strategy == 4096)
-					disc->flags |= FLAG_STRATEGY4096;
-				else
-					disc->flags &= ~FLAG_STRATEGY4096;
 				break;
 			}
 			case OPT_SPARTABLE:
 			{
 				if (optarg)
 				{
-					spartable = strtoul_safe(optarg, 0, &failed);
+					spartable = strtou32(optarg, 0, &failed);
 					if (failed || spartable == 0 || spartable > 4)
 					{
 						fprintf(stderr, "%s: Error: Invalid value for option --spartable\n", appname);
@@ -516,8 +504,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					fprintf(stderr, "%s: Error: Option --spartable must be specified before option --sparspace\n", appname);
 					exit(1);
 				}
-				sparspace = strtoul_safe(optarg, 0, &failed);
-				if (failed || sparspace > UINT32_MAX)
+				sparspace = strtou32(optarg, 0, &failed);
+				if (failed)
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --sparspace\n", appname);
 					exit(1);
@@ -526,13 +514,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_PACKETLEN:
 			{
-				unsigned long int packetlen_opt = strtoul_safe(optarg, 0, &failed);
-				if (failed || packetlen_opt == 0 || packetlen_opt > UINT16_MAX)
+				packetlen = strtou16(optarg, 0, &failed);
+				if (failed || packetlen == 0)
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --packetlen\n", appname);
 					exit(1);
 				}
-				packetlen = packetlen_opt;
 				break;
 			}
 			case OPT_MEDIA_TYPE:
@@ -688,13 +675,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	optind ++;
 	if (optind < argc)
 	{
-		blocks = strtoul_safe(argv[optind++], 0, &failed);
-		if (failed || blocks > UINT32_MAX)
+		disc->blocks = strtou32(argv[optind++], 0, &failed);
+		if (failed)
 		{
 			fprintf(stderr, "%s: Error: Invalid value for block-count\n", appname);
 			exit(1);
 		}
-		disc->blocks = blocks;
 	}
 	if (optind < argc)
 		usage();

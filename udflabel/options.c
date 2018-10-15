@@ -89,16 +89,6 @@ static void usage(void)
 	exit(1);
 }
 
-static unsigned long int strtoul_safe(const char *str, int base, int *failed)
-{
-	char *endptr = NULL;
-	unsigned long int ret;
-	errno = 0;
-	ret = strtoul(str, &endptr, base);
-	*failed = (!*str || *endptr || errno) ? 1 : 0;
-	return ret;
-}
-
 static void get_random_bytes(void *buffer, size_t count)
 {
 	int fd;
@@ -181,7 +171,6 @@ static void process_vid_lvid_arg(struct udf_disc *disc, int option, const char *
 
 void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, int *force, dstring *new_lvid, dstring *new_vid, dstring *new_fsid, dstring *new_fullvsid, char *new_uuid, dstring *new_vsid)
 {
-	unsigned long int value;
 	int failed;
 	int ret;
 	size_t len;
@@ -196,22 +185,20 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, 
 				break;
 			case OPT_BLK_SIZE:
 			case 'b':
-				value = strtoul_safe(optarg, 0, &failed);
-				if (failed || value < 512 || value > 32768 || (value & (value - 1)))
+				disc->blocksize = strtou32(optarg, 0, &failed);
+				if (failed || disc->blocksize < 512 || disc->blocksize > 32768 || (disc->blocksize & (disc->blocksize - 1)))
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --blocksize\n", appname);
 					exit(1);
 				}
-				disc->blocksize = value;
 				break;
 			case OPT_VAT_BLOCK:
-				value = strtoul_safe(optarg, 0, &failed);
-				if (failed || value > UINT32_MAX)
+				disc->vat_block = strtou32(optarg, 0, &failed);
+				if (failed)
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --vatblock\n", appname);
 					exit(1);
 				}
-				disc->vat_block = value;
 				break;
 			case OPT_FORCE:
 				*force = 1;

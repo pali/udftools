@@ -19,6 +19,8 @@
 #include "config.h"
 
 #include <ctype.h>
+#include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,4 +83,28 @@ size_t gen_uuid_from_vol_set_ident(char uuid[17], const dstring *vol_set_ident, 
 		return nonhexpos;
 
 	return 16;
+}
+
+uint32_t strtou32(const char *str, int base, int *failed)
+{
+	char *endptr = NULL;
+	long long int conv;
+	int len, ret;
+
+	/* strto* skips leading whitespaces, so detect them via space and %n format */
+	ret = sscanf(str, " %n", &len);
+	/* strtou* does not signal underflow, so use signed variant */
+	errno = 0;
+	conv = strtoll(str, &endptr, base);
+	*failed = (ret < 0 || !*str || conv < 0 || conv > UINT32_MAX || *endptr || errno) ? 1 : 0;
+	return conv;
+}
+
+uint16_t strtou16(const char *str, int base, int *failed)
+{
+	uint32_t conv;
+
+	conv = strtou32(str, base, failed);
+	*failed = (*failed || conv > UINT16_MAX) ? 1 : 0;
+	return conv;
 }

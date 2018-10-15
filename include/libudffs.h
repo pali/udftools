@@ -232,5 +232,7 @@ extern size_t encode_string(struct udf_disc *, dstring *, const char *, size_t);
 /* misc.c */
 extern const char *appname;
 size_t gen_uuid_from_vol_set_ident(char[17], const dstring *, size_t);
+uint32_t strtou32(const char *, int, int *);
+uint16_t strtou16(const char *, int, int *);
 
 #endif /* __LIBUDFFS_H */
