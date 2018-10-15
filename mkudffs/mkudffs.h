@@ -62,7 +62,7 @@ enum media_type {
 extern char *udf_space_type_str[UDF_SPACE_TYPE_SIZE];
 
 void udf_init_disc(struct udf_disc *);
-int udf_set_version(struct udf_disc *, int);
+int udf_set_version(struct udf_disc *, uint16_t);
 void get_random_bytes(void *, size_t);
 void split_space(struct udf_disc *);
 void dump_space(struct udf_disc *);

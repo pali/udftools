@@ -142,7 +142,7 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->head->tail = NULL;
 }
 
-int udf_set_version(struct udf_disc *disc, int udf_rev)
+int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 {
 	struct logicalVolIntegrityDescImpUse *lvidiu;
 	uint16_t udf_rev_le16;
