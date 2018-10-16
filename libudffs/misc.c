@@ -88,23 +88,21 @@ size_t gen_uuid_from_vol_set_ident(char uuid[17], const dstring *vol_set_ident, 
 uint32_t strtou32(const char *str, int base, int *failed)
 {
 	char *endptr = NULL;
-	long long int conv;
-	int len, ret;
+	long long int ret;
 
-	/* strto* skips leading whitespaces, so detect them via space and %n format */
-	ret = sscanf(str, " %n", &len);
 	/* strtou* does not signal underflow, so use signed variant */
 	errno = 0;
-	conv = strtoll(str, &endptr, base);
-	*failed = (ret < 0 || !*str || conv < 0 || conv > UINT32_MAX || *endptr || errno) ? 1 : 0;
-	return conv;
+	ret = strtoll(str, &endptr, base);
+	/* strto* skips leading whitespaces, so detect them via isspace */
+	*failed = (!*str || isspace(*str) || *endptr || errno || ret < 0 || ret > UINT32_MAX) ? 1 : 0;
+	return ret;
 }
 
 uint16_t strtou16(const char *str, int base, int *failed)
 {
-	uint32_t conv;
+	uint32_t ret;
 
-	conv = strtou32(str, base, failed);
-	*failed = (*failed || conv > UINT16_MAX) ? 1 : 0;
-	return conv;
+	ret = strtou32(str, base, failed);
+	*failed = (*failed || ret > UINT16_MAX) ? 1 : 0;
+	return ret;
 }
