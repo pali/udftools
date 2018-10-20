@@ -949,10 +949,15 @@ static void parse_lvidiu(struct udf_disc *disc)
 	}
 
 	lvidiu = (struct logicalVolIntegrityDescImpUse *)&(disc->udf_lvid->impUse[le32_to_cpu(disc->udf_lvid->numOfPartitions) * 2 * sizeof(uint32_t)]);
-	disc->udf_rev = le16_to_cpu(lvidiu->minUDFReadRev);
-	disc->udf_write_rev = le16_to_cpu(lvidiu->minUDFWriteRev);
 	disc->num_files = le32_to_cpu(lvidiu->numFiles);
 	disc->num_dirs = le32_to_cpu(lvidiu->numDirs);
+
+	/* Fields minUDFReadRev and minUDFWriteRev are defined since UDF 1.02 */
+	if (disc->udf_rev >= 0x0102)
+	{
+		disc->udf_rev = le16_to_cpu(lvidiu->minUDFReadRev);
+		disc->udf_write_rev = le16_to_cpu(lvidiu->minUDFWriteRev);
+	}
 }
 
 static struct genericPartitionMap *find_partition(struct udf_disc *disc, uint8_t type, const char *ident)
