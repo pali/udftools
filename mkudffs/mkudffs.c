@@ -149,7 +149,9 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 
 	if (disc->udf_rev == udf_rev)
 		return 0;
-	else if (udf_rev != 0x0102 &&
+	else if (
+		udf_rev != 0x0101 &&
+		udf_rev != 0x0102 &&
 		udf_rev != 0x0150 &&
 		udf_rev != 0x0200 &&
 		udf_rev != 0x0201 &&
@@ -172,7 +174,7 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 		disc->flags &= ~FLAG_EFE;
 		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
 	}
-	else // 0x0102
+	else // 0x0102 and older
 	{
 		disc->flags &= ~FLAG_VAT;
 		disc->flags &= ~FLAG_EFE;
@@ -185,12 +187,23 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 	memcpy(disc->udf_iuvd[0]->impIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
 	memcpy(disc->udf_stable[0]->sparingIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
 	lvidiu = query_lvidiu(disc);
-	if (udf_rev == 0x0260)
-		lvidiu->minUDFReadRev = cpu_to_le16(0x0250);
+	if (udf_rev < 0x0102)
+	{
+		/* The ImplementationUse area for the Logical Volume Integrity Descriptor
+		 * prior to UDF 1.02 does not define UDF revisions, so clear these fields */
+		lvidiu->minUDFReadRev = cpu_to_le16(0);
+		lvidiu->minUDFWriteRev = cpu_to_le16(0);
+		lvidiu->maxUDFWriteRev = cpu_to_le16(0);
+	}
 	else
-		lvidiu->minUDFReadRev = cpu_to_le16(udf_rev);
-	lvidiu->minUDFWriteRev = cpu_to_le16(udf_rev);
-	lvidiu->maxUDFWriteRev = cpu_to_le16(udf_rev);
+	{
+		if (udf_rev == 0x0260)
+			lvidiu->minUDFReadRev = cpu_to_le16(0x0250);
+		else
+			lvidiu->minUDFReadRev = cpu_to_le16(udf_rev);
+		lvidiu->minUDFWriteRev = cpu_to_le16(udf_rev);
+		lvidiu->maxUDFWriteRev = cpu_to_le16(udf_rev);
+	}
 	return 0;
 }
 

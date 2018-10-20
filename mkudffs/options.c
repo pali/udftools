@@ -85,7 +85,7 @@ void usage(void)
 		"\t--uuid=, -u        UDF uuid, first 16 characters of Volume set identifier (default: random)\n"
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
 		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, dvdr, worm, mo, cdrw, cdr, cd, bdr; default: hd)\n"
-		"\t--udfrev=, -r      UDF revision (1.02, 1.50, 2.00, 2.01, 2.50, 2.60; default: 2.01)\n"
+		"\t--udfrev=, -r      UDF revision (1.01, 1.02, 1.50, 2.00, 2.01, 2.50, 2.60; default: 2.01)\n"
 		"\t--no-write, -n     Not really, do not write to device, just simulate\n"
 		"\t--new-file         Create new image file, fail if already exists\n"
 		"\t--lvid=            Logical Volume Identifier (default: LinuxUDF)\n"
