@@ -18,7 +18,7 @@
 .TH UDFINFO 1 "udftools" "Commands"
 
 .SH NAME
-udfinfo \(en show information about UDF filesystem
+udfinfo \(em show information about UDF filesystem
 
 .SH SYNOPSIS
 .BI "udfinfo [ options ] " device
@@ -36,9 +36,9 @@ Display the usage and the list of options.
 .TP
 .BI \-b,\-\-blocksize= " block\-size "
 Specify the size of blocks in bytes. Valid block size for a UDF filesystem is
-power of two in range from \fI512\fP to \fI32768\fP and must match a device
-logical (sector) size. If omitted, \fBudfinfo\fP tries to autodetect block
-size. It tries logical (sector) size and then all valid block sizes.
+a power of two in the range from \fI512\fP to \fI32768\fP and must match a
+device logical (sector) size. If omitted, \fBudfinfo\fP tries to autodetect
+block size. First it tries logical (sector) size and then all valid block sizes.
 
 .TP
 .BI \-\-vatblock= " vat\-block "
@@ -48,12 +48,12 @@ last written/recorded disk block.
 
 If omitted, \fBudfinfo\fP for optical disc tries to detect the last recorded
 block with fallback to the last block of block device or disk file image. In
-most cases this fallback does not have to work and for disk file images with
-Virtual Allocation Table is necessary to specify correct location.
+most cases, this fallback does not have to work and for disk file images with
+Virtual Allocation Table is necessary to specify the correct location.
 
 Virtual Allocation Table contains locations of UDF disk blocks needed to read
 data storage, determinate used and free space blocks, read File Set Identifier
-and calculate Windows specific Volume Serial Number. Also it contains Logical
+and calculate Windows-specific Volume Serial Number. Also, it contains Logical
 Volume Identifier and overwrite previously stored in Logical Volume Descriptor.
 
 .TP
@@ -63,13 +63,13 @@ Encode UDF string identifiers on output according to current locale settings
 
 .TP
 .B \-\-u8
-Encode UDF string identifiers on output to 8 bit OSTA Compressed Unicode format,
+Encode UDF string identifiers on output to 8-bit OSTA Compressed Unicode format,
 equivalent to Latin1 (ISO-8859-1). This will work only for strings which Unicode
 code points are below U+100.
 
 .TP
 .B \-\-u16
-Encode UDF string identifiers on output to 16 bit OSTA Compressed Unicode
+Encode UDF string identifiers on output to 16-bit OSTA Compressed Unicode
 format, equivalent to UCS-2BE.
 
 .TP
@@ -77,8 +77,8 @@ format, equivalent to UCS-2BE.
 Encode UDF string identifiers on output to UTF-8.
 
 .SH "EXIT STATUS"
-\fBudfinfo\fP returns 0 if successful, non-zero if there are problems like block
-device does not contain UDF filesystem.
+\fBudfinfo\fP returns 0 if successful, non-zero if there are problems like a
+block device does not contain UDF filesystem.
 
 .SH "OUTPUT FORMAT"
 First part of the \fBudfinfo\fP standard output contains information in
@@ -114,7 +114,7 @@ UDF File Set Identifier stored in UDF File Set Descriptor
 UDF Volume Set Identifier stored in UDF Primary Volume Descriptor
 .TP
 .I winserialnum
-Windows specific Volume Serial Number
+Windows-specific Volume Serial Number
 .TP
 .I blocksize
 UDF block size
@@ -156,7 +156,7 @@ UDF Access Type, one of: \fIoverwritable\fP, \fIrewritable\fP, \fIwriteonce\fP,
 .RE
 
 When UDF integrity is not \fIclosed\fP it means that the UDF disk was not
-properly unmounted, is in inconsistent state and needs repairing.
+properly unmounted, is in an inconsistent state and needs repairing.
 
 All UDF string identifiers are stored on UDF disk in Unicode, therefore they are
 locale or code page agnostic. Options \fB\-\-locale\fP, \fB\-\-u8\fP,
@@ -175,18 +175,18 @@ start=\fIblock\-num\fP, blocks=\fIblock\-count\fP, type=\fIblock\-type\fP
 With meaning that \fIblock\-type\fP starts at UDF block \fIblock\-num\fP and
 span \fIblock\-count\fP blocks on device.
 
-Windows specific \fIVolume Serial Number\fP is a non-standard 32 bit checksum,
-calculated as four separate 8 bit XOR checksums of 512 bytes long UDF File Set
-Descriptor. Therefore it cannot be set or changed as opposite to UUID which is
-moreover 64 bit long. This non-standard checksum is used only by Windows systems
+Windows-specific \fIVolume Serial Number\fP is a non-standard 32-bit checksum,
+calculated as four separate 8-bit XOR checksums of 512 bytes long UDF File Set
+Descriptor. Therefore, it cannot be set or changed as opposed to UUID which is
+64-bit long. This non-standard checksum is used only by Windows systems
 (since Windows 98 era when it was introduced) and can be displayed on Windows
 systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil.exe\fP.
 
 .SH LIMITATIONS
-\fBudfinfo\fP is not able to read Metadata Partition yet. Therefore determining
-used and free space blocks, reading File Set Identifier and calculating Windows
-specific Volume Serial Number may not be available for disks with UDF revisions
-higher then 2.01 which have Metadata Partition.
+\fBudfinfo\fP is not able to read Metadata Partition yet. Therefore, determining
+used and free space blocks, reading File Set Identifier and calculating
+Windows-specific Volume Serial Number may not be available for disks with UDF
+revisions higher than 2.01 which have Metadata Partition.
 
 \fBudfinfo\fP prior to version 2.1 was unable to read Virtual Allocation Table
 stored outside of Information Control Block. Therefore above limitation applied

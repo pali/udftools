@@ -24,7 +24,7 @@
 .TH MKUDFFS 8 "udftools" "System Management Commands"
 
 .SH NAME
-mkudffs \(en create an UDF filesystem
+mkudffs \(em create a UDF filesystem
 
 .SH SYNOPSIS
 .BI "mkudffs [ options ] " device " [ " blocks\-count " ] "
@@ -51,9 +51,9 @@ and \fB\-\-vid\fP options. If omitted, \fBmkudffs\fP label is \fILinuxUDF\fP. \
 
 .TP
 .BI \-u,\-\-uuid= " uuid "
-Specify the UDF uuid. Must be exactly 16 hexadecimal lowercase digits and is
+Specify the UDF uuid. It must be exactly 16 hexadecimal lowercase digits and is
 used for first 16 characters of \fB\-\-fullvsid\fP option. If omitted,
-\fBmkudffs\fP uuid is generated from local time and random number. (Option
+\fBmkudffs\fP uuid is generated from local time and a random number. (Option
 available since mkudffs 1.1)
 
 .TP
@@ -112,8 +112,8 @@ available since mkudffs 2.0)
 
 .TP
 .BI \-r,\-\-udfrev= " udf\-revision "
-Specify the UDF revision to use, either in hexadecimal (e.g. \fI0x0201\fP) or
-decimal (e.g. \fI2.01\fP) format. Valid revisions are \fI1.01\fP, \fI1.02\fP,
+Specify the UDF revision to use, either in hexadecimal BCD (e.g. \fI0x0201\fP)
+or decimal (e.g. \fI2.01\fP) format. Valid revisions are \fI1.01\fP, \fI1.02\fP,
 \fI1.50\fP, \fI2.00\fP, \fI2.01\fP, \fI2.50\fP and \fI2.60\fP. If omitted,
 \fBmkudffs\fP UDF revision is \fI2.01\fP, except for Blu-ray Discs which is
 \fI2.50\fP. UDF revisions higher then \fI2.01\fP are experimental. Option must
@@ -124,7 +124,7 @@ revisions higher then \fI2.01\fP are supported since mkudffs 2.0, UDF revision
 .TP
 .B \-n,\-\-no\-write
 Not really, do not write to \fIdevice\fP. Just simulate and display what would
-happen with \fIdevice\fP. Useful for determining calculated location of
+happen with \fIdevice\fP. Useful for determining the calculated location of
 different UDF blocks. (Option available since mkudffs 2.0)
 
 .TP
@@ -178,9 +178,9 @@ Specify permissions in octal mode bits of the root (/) directory. If omitted,
 
 .TP
 .BI \-\-bootarea= " fill "
-Specify how to fill UDF boot area which is first 32kB of disk and is not used by
-UDF itself. Option \fImbr\fP make sense only when running \fBmkudffs\fP on whole
-disk, not on just one partition. Valid options are:
+Specify how to fill UDF boot area which is the first 32kB of the disk and is not
+used by UDF itself. Option \fImbr\fP make sense only when running \fBmkudffs\fP
+on whole disk, not on just one partition. Valid options are:
 .RS 1.2i
 .TP 1.4i
 .I preserve
@@ -211,35 +211,35 @@ Specify the allocation strategy to use. Valid strategies are \fI4\fP and
 .TP
 .BI \-\-spartable,\ \-\-spartable= " spartable\-number "
 Enable usage Sparing Table. Optionally specify also the number of sparing
-tables. Valid numbers are \fI1\(en4\fP. When spartable number is omitted then
-two tables are written to disc. If option is omitted then usage of Sparing Table
-depends on media type. (Option prior to mkudffs 2.0 was available only for
-\fIcdrw\fP media type)
+tables. Valid numbers are \fI1\(en4\fP. When the spartable number is omitted
+then two tables are written to the disc. If the option is omitted then usage of
+Sparing Table depends on the media type. (Option prior to mkudffs 2.0 was
+available only for \fIcdrw\fP media type)
 
 .TP
 .BI \-\-sparspace= " num\-of\-entires "
-Specify the number of entries in Sparing Table. If omitted, default number of
-entries is \fI1024\fP, but depends on media type. (Option available since
+Specify the number of entries in Sparing Table. If omitted, the default number
+of entries is \fI1024\fP, but depends on the media type. (Option available since
 mkudffs 2.0)
 
 .TP
 .BI \-\-packetlen= " length "
-Packet length in number of blocks used for alignment. All continuous UDF
-structures would be aligned to packets. It specify also size of the Sparing
-Space and packet length in Sparing Table. It should match device ECC/packet
-length. If omitted, default value for DVD discs is \fI16\fP blocks, for CD/BD
-discs it is \fI32\fP blocks and otherwise \fI1\fP block. (Option prior to
-mkudffs 2.1 was available only for \fIcdrw\fP and \fIdvdrw\fP media types)
+Packet length in a number of blocks used for alignment. All continuous UDF
+structures would be aligned to packets. It specifies also the size of the
+Sparing Space and packet length in Sparing Table. It should match the device
+ECC/packet length. If omitted, default value for DVD discs is \fI16\fP blocks,
+for CD/BD discs it is \fI32\fP blocks and otherwise \fI1\fP block. (Option prior
+to mkudffs 2.1 was available only for \fIcdrw\fP and \fIdvdrw\fP media types)
 
 .TP
 .B \-\-vat
 Enable usage of Virtual Allocation Table (VAT). If omitted, usage depends on
-media type. (Option available since mkudffs 2.0)
+the media type. (Option available since mkudffs 2.0)
 
 .TP
 .B \-\-closed
 Close disc with Virtual Allocation Table. AVDP is written also to the end of
-disc. By default disc with Virtual Allocation Table is not closed.
+the disc. By default, the disc with Virtual Allocation Table is not closed.
 
 .TP
 .BI \-\-space= " space "
@@ -285,9 +285,9 @@ Don't Use Extended File Entries for the root (/) directory. Affects only UDF
 
 .TP
 .B \-\-locale
-Treat identifier string options as strings encoded according to current locale
-settings (default). Must be specified as first argument. (Option available since
-mkudffs 2.0)
+Treat identifier string options as strings encoded according to the current
+locale settings (default). Must be specified as the first argument. (Option
+available since mkudffs 2.0)
 
 .TP
 .B \-\-u8
@@ -301,12 +301,12 @@ Treat identifier string options as strings encoded in 16-bit OSTA Compressed
 Unicode format, equivalent to UCS-2BE. Note that it is not possible to include
 zero byte in command line options, therefore any character which has at least
 one zero byte cannot be supplied (this applies to all Latin1 characters). Must
-be specified as first argument.
+be specified as the first argument.
 
 .TP
 .B \-\-utf8
 Treat identifier string options as strings encoded in UTF-8. Must be specified
-as first argument.
+as the first argument.
 
 .SH COMPATIBILITY
 
@@ -357,51 +357,51 @@ Note that Windows 98 and Windows Me can read UDF filesystem only from CD and DVD
 optical discs, not from hard disks.
 
 .SS "BLOCK SIZE"
-In most cases operating systems are unable to mount UDF filesystem if UDF block
-size differs from logical sector size of device. Typically hard disks have
+In most cases, operating systems are unable to mount UDF filesystem if UDF block
+size differs from logical sector size of the device. Typically hard disks have
 sector size 512 bytes and optical media 2048 bytes. Therefore UDF block size
-must match logical sector size of device.
+must match the logical sector size of the device.
 
 Linux kernel prior to version 2.6.30 used hardcoded UDF block size of 2048 bytes
 independently of logical sector size, therefore it was not able to automatically
 mount UDF filesystem if block size differed from 2048. Since 2.6.30 and prior to
-4.11 Linux kernel used logical sector size of device as UDF block size, plus it
-tried fallback to 2048. Since 4.11 it uses logical sector size and fallbacks to
-any valid block size between logical sector size and 4096. Therefore since
-version 2.6.30 Linux kernel can automatically mount UDF filesystems correctly if
-UDF block size matches device logical sector size and since version 4.11 can
-automatically also mount devices which sector size does not match UDF block
-size. In any case and also for Linux kernel prior to version 2.6.30, different
-UDF block size (which is not autodetected) can be manually specified via
-\fBbs\fP=\fIblocksize\fP mount parameter.
+4.11 Linux kernel used a logical sector size of the device as UDF block size,
+plus it tried fallback to 2048. Since 4.11 it uses logical sector size and
+fallbacks to any valid block size between logical sector size and 4096.
+Therefore since version 2.6.30 Linux kernel can automatically mount UDF
+filesystems correctly if UDF block size matches device logical sector size and
+since version 4.11 can automatically also mount devices which sector size does
+not match UDF block size. In any case and also for Linux kernel prior to version
+2.6.30, different UDF block size (which is not autodetected) can be manually
+specified via \fBbs\fP=\fIblocksize\fP mount parameter.
 
 .SS "WHOLE DISK VS PARTITION"
 UDF filesystem is supposed to be formatted on the whole media and not to the
 partitioned hard disk. Mac OS X systems enforce this rule and reject to
 automatically mount UDF filesystem unless it is formatted on the whole
 unpartitioned hard disk. Possible partition table (e.g. MBR or GPT) on disk with
-valid UDF filesystem is ignored. On the other hand Microsoft Windows systems are
-unable to detect non-removable hard disks without MBR or GPT partition table.
-Removable disks do not have this restriction. Consequence is that non-removable
-hard disks formatted to UDF by Windows Vista+ are not recognized by Mac OS X
-systems and vice-versa. Note that manual mount of UDF partition on partitioned
-hard disk on Mac OS X system is possible and working (e.g. by running commands
-\fCmkdir /Volumes/DriveName && mount_udf /dev/disk1s1 /Volumes/DriveName\fP). \
-But there is no known way to mount unpartitioned non-removable disk on Windows
-system.
+valid UDF filesystem is ignored. On the other hand, Microsoft Windows systems
+are unable to detect non-removable hard disks without MBR or GPT partition
+table. Removable disks do not have this restriction. A consequence is that
+non-removable hard disks formatted to UDF by Windows Vista+ are not recognized
+by Mac OS X systems and vice-versa. Note that manual mount of UDF partition on
+partitioned hard disk on Mac OS X system is possible and working (e.g. by
+running commands \fC\%mkdir \%/Volumes/DriveName \%&& \%mount_udf \%/dev/disk1s1
+\%/Volumes/DriveName\fP). But there is no known way to mount an unpartitioned
+non-removable disk on Windows system.
 
 Thanks to reserved and unused UDF boot area (first 32kB of UDF filesystem) it is
 possible to deal with this problem, by putting MBR on such non-removable hard
 disk just for compatibility reasons with Windows. Such MBR table would contain
-one partition which starts at sector 0 (includes MBR itself) and span whole disk
-device. So the whole disk device and also first partition on disk points to same
-sectors. Therefore UDF filesystem can be mounted either from whole disk device
-(needed for Mac OS X systems) or from first partition (needed for Microsoft
-Windows systems).
+one partition which starts at sector 0 (includes MBR itself) and spans whole
+disk device. So the whole disk device and also the first partition on disk
+points to same sectors. Therefore UDF filesystem can be mounted either from
+whole disk device (needed for Mac OS X systems) or from first partition (needed
+for Microsoft Windows systems).
 
 Linux kernel ignores MBR table if contains partition which starts at sector 0. \
-Normally Linux kernel can detect and mount UDF filesystem either on partition or
-on whole disk device. It does not have any restrictions.
+Normally Linux kernel can detect and mount UDF filesystem either on a partition
+or on whole disk device. It does not have any restrictions.
 
 \fBmkudffs\fP option \fB\-\-bootarea\fP=\fImbr\fP put such MBR table for
 compatibility with Microsoft Windows systems into disk when formatting.
@@ -414,9 +414,9 @@ Volume Identifier\fP and \fIVolume Identifier\fP.
 
 Linux libblkid prior to version 2.30 incorrectly processed non-ASCII identifier
 strings encoded in 8-bit OSTA Compressed Unicode format. Therefore \fBmkudffs\fP
-since version 2.0 for compatibility reasons tries to encode non-ASCII identifier
-strings in 16-bit OSTA Compressed Unicode format and then fallbacks to 8-bit
-format.
+since version 2.0 for compatibility reasons tries to encode a non-ASCII
+identifier strings in 16-bit OSTA Compressed Unicode format and then fallbacks
+to 8-bit format.
 
 For more information about UDF Label and UUID see \fBudflabel\fP(8) section
 \fBUDF LABEL AND UUID\fP.
@@ -426,7 +426,7 @@ For more information about UDF Label and UUID see \fBudflabel\fP(8) section
 
 .SH LIMITATIONS
 \fBmkudffs\fP cannot create UDF 2.50 Metadata partition, therefore it does not
-support UDF revisions higher then 2.01 for non Write Once media yet. So there is
+support UDF revisions higher than 2.01 for non Write Once media yet. So there is
 no support for Blu-ray discs which needs UDF 2.50 (except for Blu-ray Disc
 Recordable which does not require Metadata partition).
 

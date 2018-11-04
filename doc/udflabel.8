@@ -18,7 +18,7 @@
 .TH UDFLABEL 8 "udftools" "Commands"
 
 .SH NAME
-udflabel \(en show or change UDF filesystem label
+udflabel \(em show or change UDF filesystem label
 
 .SH SYNOPSIS
 .BI "udflabel [encoding\-options] [block\-options] [identifier\-options] \
@@ -26,8 +26,8 @@ udflabel \(en show or change UDF filesystem label
 
 .SH DESCRIPTION
 When \fBudflabel\fP is invoked without \fBidentifier\-options\fP and without
-specifying \fInew\-label\fP then it show current label of UDF filesystem on
-\fIdevice\fP to standard output terminated by new line. Otherwise it update
+specifying \fInew\-label\fP then it shows current label of UDF filesystem on
+\fIdevice\fP to standard output terminated by new line. Otherwise it updates
 UDF filesystem (up to the revision 2.60) on \fIdevice\fP with new specified
 identifiers from \fBidentifier\-options\fP. Specifying \fInew\-label\fP is
 synonym for both \fB\-\-lvid\fP and \fB\-\-vid\fP, see section
@@ -44,9 +44,9 @@ Display the usage and the list of options.
 .TP
 .BI \-b,\-\-blocksize= " block\-size "
 Specify the size of blocks in bytes. Valid block size for a UDF filesystem is
-power of two in range from \fI512\fP to \fI32768\fP and must match a device
-logical (sector) size. If omitted, \fBudflabel\fP tries to autodetect block
-size. It tries logical (sector) size and then all valid block sizes.
+a power of two in the range from \fI512\fP to \fI32768\fP and must match a
+device logical (sector) size. If omitted, \fBudflabel\fP tries to autodetect
+block size. First it tries logical (sector) size and then all valid block sizes.
 
 .TP
 .BI \-\-vatblock= " vat\-block "
@@ -56,22 +56,22 @@ last written/recorded disk block.
 
 If omitted, \fBudflabel\fP for optical disc tries to detect the last recorded
 block with fallback to the last block of block device or disk file image. In
-most cases this fallback does not have to work and for disk file images with
-Virtual Allocation Table is necessary to specify correct location.
+most cases, this fallback does not have to work and for disk file images with
+Virtual Allocation Table it is necessary to specify the correct location.
 
 Virtual Allocation Table contains Logical Volume Identifier (UDF Label).
 
 .TP
 .B \-\-force
 Force updating UDF disks without write support. Some media, like CD-ROM, DVD-ROM
-or BD-ROM are read-only. Other media, like CD-RW or DVD-RW are write-once. UDF
+or BD-ROM are read-only. Other media, like CD-RW or DVD-RW, are write-once. UDF
 is designed also for such media where updating Label or Identifiers is not
-possible. But in some rare cases it could make sense to try overwrite existing
-Label or Identifiers also for UDF filesystem which has Access Type either
-Read-Only or Recordable (Write-Once). This is possible only if underlaying media
-supports overwriting. E.g. UDF image of CD-ROM stored on hard disk or Read-Only
-UDF image burned to DVD-RAM or BD-RE discs. Option \fB\-\-force\fP ignores UDF
-Access Type and treat it as Overwritable.
+possible. But in some rare cases, it could make sense to try and overwrite the
+existing Label or Identifiers also for UDF filesystem which has Access Type
+either Read-Only or Recordable (Write-Once). This is possible only if underlying
+media supports overwriting. E.g. UDF image of CD-ROM stored on hard disk or
+Read-Only UDF image burned to DVD-RAM or BD-RE discs. Option \fB\-\-force\fP
+ignores UDF Access Type and treats it as Overwritable.
 
 .TP
 .B \-n,\-\-no\-write
@@ -84,7 +84,7 @@ overwritten.
 .BI \-u,\-\-uuid= " uuid "
 Specify the UDF uuid. Must be exactly 16 hexadecimal lowercase digits and is
 used for first 16 characters of \fB\-\-fullvsid\fP option. Special value
-\fIrandom\fP generates new uuid from local time and random number. See section
+\fIrandom\fP generates new uuid from local time and a random number. See section
 \fBUDF LABEL AND UUID\fP.
 
 .TP
@@ -113,7 +113,7 @@ Specify the new Volume Set identifier. Overwrite previous \fB\-\-uuid\fP and
 .TP
 .B \-\-locale
 Treat identifier string options as strings encoded according to current locale
-settings (default). Must be specified as first argument.
+settings (default). Must be specified as the first argument.
 
 .TP
 .B \-\-u8
@@ -127,30 +127,31 @@ Treat identifier string options as strings encoded in 16-bit OSTA Compressed
 Unicode format, equivalent to UCS-2BE. Note that it is not possible to include
 zero byte in command line options, therefore any character which has at least
 one zero byte cannot be supplied (this applies to all Latin1 characters). Must
-be specified as first argument.
+be specified as the first argument.
 
 .TP
 .B \-\-utf8
 Treat identifier string options as strings encoded in UTF-8. Must be specified
-as first argument.
+as the first argument.
 
 .SH "UDF LABEL AND UUID"
-UDF specification does not say anything about a disk label but describe that UDF
-Logical Volume Identifier is extremely important field for media identification
-in a jukebox as that field is displayed to the user. And based on this statement
-it is a common practice for majority of UDF implementations to use UDF Logical
-Volume Identifier as a UDF disk label.
+UDF specification does not say anything about a disk label but it describes that
+UDF Logical Volume Identifier is an extremely important field for media
+identification in a jukebox as that field is displayed to the user. And based on
+this statement it is a common practice for the majority of UDF implementations
+to use UDF Logical Volume Identifier as a UDF disk label.
 
-UDF specification does not have concept of disk UUID like other filesystems. But
-mandates that the first 16 characters of UDF Volume Set Identifier are unique, a
-non-fixed and a non-trivial value. Plus first eight characters are hexadecimal
-digits. Windows application \fBformat.exe\fP and Mac OS X application
-\fBnewfs_udf\fP are known to violates this requirement and set only the first 8
-characters as unique (others are fixed). Because there are still lot of UDF
-implementations which use in the first 16 characters only hexadecimal digits and
-all compliant UDF implementations have hexadecimal digits in the first 8
-characters, the following algorithm for generating stable UUID was informally
-chosen and now is used by udftools, util-linux, grub2 and other projects:
+UDF specification does not have a concept of disk UUID like other filesystems. \
+But mandates that the first 16 characters of UDF Volume Set Identifier are
+unique, a non-fixed and a non-trivial value. Plus first eight characters are
+hexadecimal digits. Windows application \fBformat.exe\fP and Mac OS X
+application \fBnewfs_udf\fP are known to violates this requirement and set only
+the first 8 characters as unique (others are fixed). Since, there are still a
+lot of UDF implementations which use in the first 16 characters only hexadecimal
+digits and all compliant UDF implementations have hexadecimal digits in the
+first 8 characters, the following algorithm for generating stable UUID was
+informally chosen and now is used by udftools, util-linux, grub2 and other
+projects:
 
 .RS
 0. If Volume Set Identifier has less then 8 characters then stop with empty UUID
@@ -164,7 +165,8 @@ their hexadecimal representation (resulting in 16 bytes) and use as UUID
 .br
 4. Otherwise, compose UUID from two 8 byte parts:
 .RS
-1. part: Use lowercase form of the first 8 bytes (which are hexadecimal digits)
+1. part: Use the lowercase form of the first 8 bytes (which are hexadecimal
+digits)
 .br
 2. part: Convert next 4 bytes (9.\(en12. pos.) to their hexadecimal
 representation
@@ -172,7 +174,7 @@ representation
 .RE
 
 Which means that this generated UUID has always 16 hexadecimal lowercase
-digits. In most cases this UUID matches case-insensitively the first 16
+digits. In most cases, this UUID matches case-insensitively the first 16
 characters of UDF Volume Set Identifier and for all disks compliant to the UDF
 specification the first 8 bytes of UUID matches case-insensitively the first 8
 characters of UDF Volume Set Identifier. In that algorithm was chosen UTF-8
@@ -188,8 +190,8 @@ block device does not contain UDF filesystem or updating failed.
 Set Identifier for disks with Metadata Partition (used by UDF revisions higher
 then 2.01) or Virtual Allocation Table (used by Write Once media).
 
-\fBudflabel\fP prior to version 2.1 was not able to read Label correctly if disk
-has Virtual Allocation Table stored outside of Information Control Block.
+\fBudflabel\fP prior to version 2.1 was not able to read Label correctly if the
+disk has Virtual Allocation Table stored outside of Information Control Block.
 
 .SH AUTHOR
 .nf
