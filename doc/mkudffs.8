@@ -367,7 +367,7 @@ independently of logical sector size, therefore it was not able to automatically
 mount UDF filesystem if block size differed from 2048. Since 2.6.30 and prior to
 4.11 Linux kernel used a logical sector size of the device as UDF block size,
 plus it tried fallback to 2048. Since 4.11 it uses logical sector size and
-fallbacks to any valid block size between logical sector size and 4096.
+fallbacks to any valid block size between logical sector size and 4096. \
 Therefore since version 2.6.30 Linux kernel can automatically mount UDF
 filesystems correctly if UDF block size matches device logical sector size and
 since version 4.11 can automatically also mount devices which sector size does
