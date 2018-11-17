@@ -39,4 +39,31 @@ AM_CONDITIONAL(USE_READLINE, test "$ac_cv_lib_readline_readline" = "yes" -a "$ac
 
 AC_CONFIG_FILES(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile udfinfo/Makefile udflabel/Makefile wrudf/Makefile doc/Makefile)
 
+AC_ARG_ENABLE(debug,
+AS_HELP_STRING([--enable-debug],
+[enable debugging, default: no]),
+[case "${enableval}" in
+    yes) debug=true ;;
+    no)  debug=false ;;
+    *)   AC_MSG_ERROR([bad value ${enableval} for --enable-debug]) ;;
+esac],
+[debug=false])
+
+AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
+
+AC_ARG_ENABLE(tests,
+AS_HELP_STRING([--enable-tests],
+[enable tests building, default: no]),
+[case "${enableval}" in
+    yes) tests=true ;;
+    no)  tests=false ;;
+    *)   AC_MSG_ERROR([bad value ${enableval} for --enable-tests]) ;;
+esac],
+[tests=false])
+
+AM_CONDITIONAL(TESTS, test x"$tests" = x"true")
+
+AM_CONDITIONAL(WORDS_LITTLEENDIAN, test "x$ac_cv_c_bigendian" = "xno")
+AM_CONDITIONAL(WORDS_BIGENDIAN, test "x$ac_cv_c_bigendian" = "xyes")
+
 AC_OUTPUT

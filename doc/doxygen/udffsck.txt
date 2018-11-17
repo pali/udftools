@@ -1,0 +1,101 @@
+
+/** 
+\page udffsck-doc udffsck documentation
+\tableofcontents
+Author: **Vojtech Vladyka** <<vojtech.vladyka@gmail.com>>
+
+Developer documentation for **udffsck** tool.
+
+\section purpose Purpose
+Purpose of this tool is check and correction of UDF filesystem metadata. UDF standard doesn't cover data integrity itself, it is covered by used medium (most usually ECC blocks).
+
+In case of found errors on filesystem, this tool can try to fix them. Fixing process is irreversible and writes changes back to checked medium. You should always back up your data before.
+
+\section limitations Limitations
+There are several limits for this tool. 
+ - it can work with UDF up to version 2.01
+ - it can't fix WORM devices (obviously)
+ - it ignores errors against specification errata if those are just recomendations (for example LVID size)
+
+\section usage Usage
+
+\subsection SYNOPSIS Synopsis
+       udffsck [-vvvciph] [-B BLOCKSIZE] medium
+
+\subsection OPTIONS Options
+<b>-B BLOCKSIZE</b> --  Force udffsck to use this blocksize instead of autodetection.  This value is in bytes.  Default is autodetected value by finding VRS and AVDP positions.
+
+<b>-c</b> --  Only check medium and print found errors.  This is default behavior.
+
+<b>-i</b> --  Interactively fix medium.  In this mode all corrections must be authorized by user.
+
+<b>-p</b> --  Automatical corrections. This is like -i, but all questions are answered yes.
+
+<b>-h</b> --  Short help message.
+
+<b>-v</b> --  Warning verbosity level.  Errors and warning will be printed.
+
+<b>-vv</b> -- Message verbosity level.  Errors, warnings and messages will be printed.  Recomended for manual usage.
+
+<b>-vvv</b> -- Debug Verbosity level.  Only for development and debug purposes.  And for nosy users.
+
+\subsection RETURN Return codes
+The exit code returned by udffsck is the sum of the following conditions:
+ - 0 -- No errors
+ - 1 -- File system errors corrected
+ - 2 -- File system errors corrected, system should be rebooted (not used at this moment)
+ - 4 -- File system errors left uncorrected
+ - 8 -- Operational error
+ - 16 -- Usage or syntax error
+ - 32 -- udffsck canceled by user request
+ - 128 -- Shared library error (not used at this moment)
+
+\subsection EXAMPLES Examples
+Check medium and show it structure to user:
+\code{.sh}
+udffsck -vvc /dev/sda2
+\endcode
+
+Check and fix medium image automatically, show only errors:
+\code{.sh}
+udffsck -p udf_image_file.img
+\endcode
+
+\section structure Tool design
+Tool is designed as single pass sequence with recursive file tree parsing. Following picture shows overall structure of tool after successfull UDF recognition. Red boxes are critical for function, orange boxes can fail but it depends on failure type how critical it is, green boxes can fail more or less without consequences. 
+\image html udffsck_steps.png "Overall algorithm steps"
+All descriptors are checked for Checksum match, CRC match and position match. Critical descriptors (AVDP and VDS) are redundant as next layer of security. If any check fails, descriptor is marked as wrong and if there is his redundant correct copy, it can be fixed. Otherwise it is unrecoverable error.
+\image html udffsck_det-ch.png "UDF protection mechanisms on metadata"
+Found errors are stored and passed to correction functions as is shown on following picture by red dotted arrows. Blue dashed area is error detection part and it stops after File tree step if tool is run in Check only mode. Green dashed area is correction part. FSD and File tree are in both, because it was no use to split them.
+\image html udffsck_steps-korekce.png "Error triggers flow"
+
+\subsection avdp AVDP detection algorithm
+AVDP detection algorithm is core function to read UDF. There 4 possible positions (sector #256, #512, last sector and last sector - 256) and there can be single AVDP or up to 3 of them. It is critical to find at least one correct to continue.
+\image html udffsck_avdp.png "AVDP detection algorithm"
+
+\subsection files File Tree
+File tree detection is recursive algorithm consisting from two parts. First part is function get_file(), which loads (Extended) File Entry (FE, EFE) and process it. If FE is directory, it continues to inspect its File Identifier Descriptor (FID) with inspect_fid(). Both algorithms are at following pictures. There is third function between them, which is not captured on pictures named translate_fid(). It linearizes FID area between actual positions.
+
+File tree checks for errors in modification timestamps (must be older than LVID one), Unique ID match, declared and actual file size match and Checksum, CRC and position. It also builds map of used blocks and space. If is found error in declared space, file is considered as unfinished write and during correction will be deleted (FID will be set as deleted and FE will be zeroed). It can actually happen even for directory FE and then is lost whole sub-tree.
+\image html udffsck_get-file.png "get_file() function workflow"
+\image html udffsck_inspect-fid.png "inspect_fid() function workflow"
+
+\section changelog Changelog
+ - 1.00-beta [2017-05-14] -- first beta release 
+
+\section reporting Bug reporting
+Almost every software have bugs and this one is not different. If you find some bug or weird behavior, please report it to <vojtech.vladyka@gmail.com> with as much information as possible. This means complete log at maximum verbosity and if possible, binary copy of medium, which made it fail.
+
+Logs are obtainable in this way:
+\code{.sh}
+udffsck -vvv -c /path/to/medium > output.log 2>&1 
+\endcode
+It produce file output.log with stdout and stderr. 
+If you want to provide medium image, you can do it with dd.
+\code{.sh}
+touch medium.img
+dd if=/path/to/medium of=medium.img bs=512
+\endcode
+\n
+Last change: 2017-05-14
+*/

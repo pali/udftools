@@ -1,0 +1,34 @@
+# Doxygen outputs
+doc/html/
+doc/latex/
+doc/doxygen_sqlite3.db
+
+# Objects & build products
+Makefile
+*.in
+configure
+config
+*.m4
+*.cache
+*.o
+.*
+*.lo
+*.la
+*.log
+include/config.h
+include/config.in
+include/stamp-h1
+config.status
+*.in~
+
+# Binaries
+wrudf/wrudf
+libtool
+udffsck/udffsck
+udffsck/test
+udffsck/testextra1
+udffsck/testextra2
+udffsck/unittest
+mkudffs/mkudffs
+pktsetup/pktsetup
+cdrwtool/cdrwtool

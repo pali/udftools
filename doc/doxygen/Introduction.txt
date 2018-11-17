@@ -1,0 +1,15 @@
+﻿/** 
+\mainpage UDFTOOLS Documentation
+
+This is documentation for UDFTOOLS project. It consists from those subprojects:
+ - cdrwtool
+ - mkudffs
+ - pktsetup
+ - \link udffsck-doc udffsck \endlink 
+ - wrudf
+
+Their documentations are in their relative folders in their source files.
+
+\n
+Last change: $Date:: 2017-05-20#$
+*/

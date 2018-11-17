@@ -1,0 +1,161 @@
+.\" Copyright 2017 Vojtech Vladyka <vojtech.vladyka@gmail.com>
+.\"
+.\" This is free documentation; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of
+.\" the License, or (at your option) any later version.
+.\"
+.\" The GNU General Public License's references to "object code"
+.\" and "executables" are to be interpreted as the output of any
+.\" document formatting or typesetting system, including
+.\" intermediate and printed output.
+.\"
+.\" This manual is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public
+.\" License along with this manual; if not, write to the Free
+.\" Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111,
+.\" USA.
+.\"
+.\" References consulted:
+.\"     udftools src
+.\"
+.TH UDFFSCK 8 "udftools" "System Management Commands"
+.SH NAME
+udffsck \- check and correction for UDF filesystem
+.SH SYNOPSIS
+.B udffsck
+[\fB\-vvvcipCh\fR]
+[\fB\-b\fR \fIBLOCKSIZE\fR]
+.IR medium
+.SH DESCRIPTION
+.B udffsck
+is used to check and correct UDF file systems.
+There are known limitations regarding UDF version, which is now limited to 2.01 or older.
+.PP
+.I medium 
+is the device file where file system is stored (e.g. 
+.IR /dev/sda1 ).
+.PP
+Please note it is not safe run
+.B udffsck 
+on mounted file system.
+Even if you think it is safe to run it on mounted file system, whole report is invalid.
+You should never never make any changes on mounted file system, so if
+.B udffsck 
+asks to do so, only valid answer is ,,no'', otherwise you can break your filesystem instead.
+.PP
+.SH OPTIONS
+.TP
+.BR \-b " " \fIBLOCKSIZE\fR
+Force udffsck to use this blocksize instead of autodetection.
+This value is in bytes.
+Default is autodetected value by finding VRS and AVDP positions.
+.TP
+.BR \-c
+Only check medium and print found errors.
+This is default behavior.
+.TP
+.BR \-C
+Coloring output with ASCII color code.
+.TP
+.BR \-i
+Interactively fix medium. 
+In this mode all corrections must be authorized by user.
+.TP
+.BR \-p
+Automatical corrections. This is like 
+.BR -i , 
+but all questions are answered yes.
+.TP
+.BR \-h 
+Short help message.
+.TP
+.BR \-v 
+Warning verbosity level. 
+Errors and warning will be printed.
+.TP
+.BR \-vv 
+Message verbosity level. 
+Errors, warnings and messages will be printed. 
+Recomended for manual usage.
+.TP
+.BR \-vvv
+Debug Verbosity level. 
+Only for development and debug purposes. 
+And for nosy users.
+.SH EXIT CODE
+The exit code returned by
+.B udffsck
+is the sum of the following conditions:
+.br
+\       0\      \-\ No errors
+.br
+\       1\      \-\ File system errors corrected
+.br
+\       2\      \-\ File system errors corrected, system should
+.br
+\       \       \ \ be rebooted (not used at this moment)
+.br
+\       4\      \-\ File system errors left uncorrected
+.br
+\       8\      \-\ Operational error
+.br
+\       16\     \-\ Usage or syntax error
+.br
+\       32\     \-\ udffsck canceled by user request
+.br
+\       128\    \-\ Shared library error (not used at this moment)
+.br
+.SH EXAMPLES
+Check medium and show it structure to user:
+.PP
+.nf
+.RS
+udffsck -vvc /dev/sda2 
+.RE
+.fi
+.PP
+Check and fix medium image automatically, show only errors:
+.PP
+.nf
+.RS
+udffsck -p udf_image_file.img 
+.RE
+.fi
+.PP
+.SH BUGS
+Reading and correcting is supported on UDF filesystems up to version 2.01.
+More recent filesystems are not currently covered and
+.B udffsck
+will end with exit code 8. 
+.SH REPORTING BUGS
+Almost any piece of software will have bugs.
+If you manage to find a filesystem which causes
+.B udffsck
+to crash, or which 
+.B udffsck
+is unable to  repair,  please report it to the author.
+.PP
+Please include as much information as possible in bug report.
+It helps to analyze bug and hopefuly fix it.
+.PP
+Necessary information in bug report are 
+.B udffsck
+version (obtainable by -h option) and OS information (uname -a).
+Also if possible attach compressed medium image which made 
+.B udffsck
+fail and complete log from stdout and stderr at debug verbosity (obtainable by -vvv option).
+.SH AUTHOR
+This version of 
+.B udffsck 
+was written by Vojtech Vladyka <vojtech.vladyka@gmail.com>
+.SH "SEE ALSO"
+.BR cdrwtool (1),
+.BR fsck (8),
+.BR mkudfs (8),
+.BR pktsetup (8),
+.BR wrudf (8)
