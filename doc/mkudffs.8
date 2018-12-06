@@ -386,9 +386,9 @@ table. Removable disks do not have this restriction. A consequence is that
 non-removable hard disks formatted to UDF by Windows Vista+ are not recognized
 by Mac OS X systems and vice-versa. Note that manual mount of UDF partition on
 partitioned hard disk on Mac OS X system is possible and working (e.g. by
-running commands \fC\%mkdir \%/Volumes/DriveName \%&& \%mount_udf \%/dev/disk1s1
-\%/Volumes/DriveName\fP). But there is no known way to mount an unpartitioned
-non-removable disk on Windows system.
+running commands: \f(CW\%mkdir \%/Volumes/DriveName \%&& \%mount_udf
+\%/dev/disk1s1 \%/Volumes/DriveName\fP). But there is no known way to mount an
+unpartitioned non-removable disk on Windows system.
 
 Thanks to reserved and unused UDF boot area (first 32kB of UDF filesystem) it is
 possible to deal with this problem, by putting MBR on such non-removable hard
