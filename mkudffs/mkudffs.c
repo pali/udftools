@@ -51,6 +51,7 @@ void udf_init_disc(struct udf_disc *disc)
 	struct tm 	*tm;
 	int		altzone;
 	unsigned long int rnd;
+	char		uuid[17];
 
 	srand(time(NULL));
 
@@ -85,8 +86,8 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc));
 	memcpy(disc->udf_pvd[0], &default_pvd, sizeof(struct primaryVolDesc));
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
-	sprintf((char *)&disc->udf_pvd[0]->volSetIdent[1], "%08lx%08lx%s",
-		((unsigned long int)mktime(tm))%0xFFFFFFFF, rnd%0xFFFFFFFF, &disc->udf_pvd[0]->volSetIdent[17]);
+	snprintf(uuid, sizeof(uuid), "%08lx%08lx", ((unsigned long int)mktime(tm)) & 0xFFFFFFFF, rnd & 0xFFFFFFFF);
+	memcpy(&disc->udf_pvd[0]->volSetIdent[1], uuid, 16);
 	disc->udf_pvd[0]->volIdent[31] = strlen((char *)disc->udf_pvd[0]->volIdent);
 	disc->udf_pvd[0]->volSetIdent[127] = strlen((char *)disc->udf_pvd[0]->volSetIdent);
 

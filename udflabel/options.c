@@ -117,7 +117,7 @@ static void process_uuid_arg(const char *arg, char *new_uuid)
 	if (strcmp(arg, "random") == 0)
 	{
 		get_random_bytes(&rnd, sizeof(rnd));
-		snprintf(new_uuid, 17, "%08lx%08lx", ((unsigned long int)time(NULL)) % 0xFFFFFFFF, rnd % 0xFFFFFFFF);
+		snprintf(new_uuid, 17, "%08lx%08lx", ((unsigned long int)time(NULL)) & 0xFFFFFFFF, rnd & 0xFFFFFFFF);
 		return;
 	}
 
