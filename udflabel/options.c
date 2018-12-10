@@ -92,10 +92,17 @@ static void usage(void)
 static void process_uuid_arg(const char *arg, char *new_uuid)
 {
 	int i;
+	time_t cur_time;
+	uint32_t uuid_time;
 
 	if (strcmp(arg, "random") == 0)
 	{
-		snprintf(new_uuid, 17, "%08lx%08lx", ((unsigned long int)time(NULL)) & 0xFFFFFFFF, (unsigned long int)randu32());
+		cur_time = time(NULL);
+		if (cur_time != (time_t)-1 && cur_time >= 0)
+			uuid_time = cur_time & 0xFFFFFFFF;
+		else
+			uuid_time = randu32();
+		snprintf(new_uuid, 17, "%08lx%08lx", (unsigned long int)uuid_time, (unsigned long int)randu32());
 		return;
 	}
 

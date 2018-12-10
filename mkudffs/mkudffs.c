@@ -50,6 +50,7 @@ void udf_init_disc(struct udf_disc *disc)
 	struct timeval	tv;
 	struct tm 	*tm;
 	int		altzone;
+	uint32_t	uuid_time;
 	char		uuid[17];
 
 	memset(disc, 0x00, sizeof(*disc));
@@ -60,28 +61,49 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->blkssz = 512;
 	disc->mode = 0755;
 
-	gettimeofday(&tv, NULL);
-	tm = localtime(&tv.tv_sec);
-	altzone = timezone - 3600;
-	if (daylight)
-		ts.typeAndTimezone = cpu_to_le16(((-altzone/60) & 0x0FFF) | 0x1000);
+	if (gettimeofday(&tv, NULL) != 0 || tv.tv_sec == (time_t)-1 || (tm = localtime(&tv.tv_sec)) == NULL || tm->tm_year < 1-1900 || tm->tm_year > 9999-1900)
+	{
+		/* fallback to 1.1.1980 00:00:00 */
+		ts.typeAndTimezone = cpu_to_le16(0x1000);
+		ts.year = cpu_to_le16(1980);
+		ts.month = 1;
+		ts.day = 1;
+		ts.hour = 0;
+		ts.minute = 0;
+		ts.second = 0;
+		ts.centiseconds = 0;
+		ts.hundredsOfMicroseconds = 0;
+		ts.microseconds = 0;
+		/* and for uuid use random bytes */
+		uuid_time = randu32();
+	}
 	else
-		ts.typeAndTimezone = cpu_to_le16(((-timezone/60) & 0x0FFF) | 0x1000);
-	ts.year = cpu_to_le16(1900 + tm->tm_year);
-	ts.month = 1 + tm->tm_mon;
-	ts.day = tm->tm_mday;
-	ts.hour = tm->tm_hour;
-	ts.minute = tm->tm_min;
-	ts.second = tm->tm_sec;
-	ts.centiseconds = tv.tv_usec / 10000;
-	ts.hundredsOfMicroseconds = (tv.tv_usec - ts.centiseconds * 10000) / 100;
-	ts.microseconds = tv.tv_usec - ts.centiseconds * 10000 - ts.hundredsOfMicroseconds * 100;
+	{
+		altzone = timezone - 3600;
+		if (daylight)
+			ts.typeAndTimezone = cpu_to_le16(((-altzone/60) & 0x0FFF) | 0x1000);
+		else
+			ts.typeAndTimezone = cpu_to_le16(((-timezone/60) & 0x0FFF) | 0x1000);
+		ts.year = cpu_to_le16(1900 + tm->tm_year);
+		ts.month = 1 + tm->tm_mon;
+		ts.day = tm->tm_mday;
+		ts.hour = tm->tm_hour;
+		ts.minute = tm->tm_min;
+		ts.second = tm->tm_sec;
+		ts.centiseconds = tv.tv_usec / 10000;
+		ts.hundredsOfMicroseconds = (tv.tv_usec - ts.centiseconds * 10000) / 100;
+		ts.microseconds = tv.tv_usec - ts.centiseconds * 10000 - ts.hundredsOfMicroseconds * 100;
+		if (tv.tv_sec < 0)
+			uuid_time = randu32();
+		else
+			uuid_time = tv.tv_sec & 0xFFFFFFFF;
+	}
 
 	/* Allocate/Initialize Descriptors */
 	disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc));
 	memcpy(disc->udf_pvd[0], &default_pvd, sizeof(struct primaryVolDesc));
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
-	snprintf(uuid, sizeof(uuid), "%08lx%08lx", ((unsigned long int)mktime(tm)) & 0xFFFFFFFF, (unsigned long int)randu32());
+	snprintf(uuid, sizeof(uuid), "%08lx%08lx", (unsigned long int)uuid_time, (unsigned long int)randu32());
 	memcpy(&disc->udf_pvd[0]->volSetIdent[1], uuid, 16);
 	disc->udf_pvd[0]->volIdent[31] = strlen((char *)disc->udf_pvd[0]->volIdent);
 	disc->udf_pvd[0]->volSetIdent[127] = strlen((char *)disc->udf_pvd[0]->volSetIdent);
