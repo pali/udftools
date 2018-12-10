@@ -89,35 +89,13 @@ static void usage(void)
 	exit(1);
 }
 
-static void get_random_bytes(void *buffer, size_t count)
-{
-	int fd;
-	size_t i;
-
-	fd = open("/dev/urandom", O_RDONLY);
-	if (fd >= 0)
-	{
-		if (read(fd, buffer, count) == (ssize_t)count)
-		{
-			close(fd);
-			return;
-		}
-		close(fd);
-	}
-
-	for (i = 0; i < count; ++i)
-		((uint8_t *)buffer)[i] = rand() % 0xFF;
-}
-
 static void process_uuid_arg(const char *arg, char *new_uuid)
 {
-	unsigned long int rnd;
 	int i;
 
 	if (strcmp(arg, "random") == 0)
 	{
-		get_random_bytes(&rnd, sizeof(rnd));
-		snprintf(new_uuid, 17, "%08lx%08lx", ((unsigned long int)time(NULL)) & 0xFFFFFFFF, rnd & 0xFFFFFFFF);
+		snprintf(new_uuid, 17, "%08lx%08lx", ((unsigned long int)time(NULL)) & 0xFFFFFFFF, (unsigned long int)randu32());
 		return;
 	}
 

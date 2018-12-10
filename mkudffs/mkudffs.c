@@ -50,10 +50,7 @@ void udf_init_disc(struct udf_disc *disc)
 	struct timeval	tv;
 	struct tm 	*tm;
 	int		altzone;
-	unsigned long int rnd;
 	char		uuid[17];
-
-	srand(time(NULL));
 
 	memset(disc, 0x00, sizeof(*disc));
 
@@ -80,13 +77,11 @@ void udf_init_disc(struct udf_disc *disc)
 	ts.hundredsOfMicroseconds = (tv.tv_usec - ts.centiseconds * 10000) / 100;
 	ts.microseconds = tv.tv_usec - ts.centiseconds * 10000 - ts.hundredsOfMicroseconds * 100;
 
-	get_random_bytes(&rnd, sizeof(rnd));
-
 	/* Allocate/Initialize Descriptors */
 	disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc));
 	memcpy(disc->udf_pvd[0], &default_pvd, sizeof(struct primaryVolDesc));
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
-	snprintf(uuid, sizeof(uuid), "%08lx%08lx", ((unsigned long int)mktime(tm)) & 0xFFFFFFFF, rnd & 0xFFFFFFFF);
+	snprintf(uuid, sizeof(uuid), "%08lx%08lx", ((unsigned long int)mktime(tm)) & 0xFFFFFFFF, (unsigned long int)randu32());
 	memcpy(&disc->udf_pvd[0]->volSetIdent[1], uuid, 16);
 	disc->udf_pvd[0]->volIdent[31] = strlen((char *)disc->udf_pvd[0]->volIdent);
 	disc->udf_pvd[0]->volSetIdent[127] = strlen((char *)disc->udf_pvd[0]->volSetIdent);
@@ -206,32 +201,6 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 		lvidiu->maxUDFWriteRev = cpu_to_le16(udf_rev);
 	}
 	return 0;
-}
-
-void get_random_bytes(void *buffer, size_t count)
-{
-	int fd, value;
-	size_t i, n;
-
-	fd = open("/dev/urandom", O_RDONLY);
-	if (fd >= 0)
-	{
-		if (read(fd, buffer, count) == (ssize_t)count)
-		{
-			close(fd);
-			return;
-		}
-		close(fd);
-	}
-
-	for (i = 0; i < count; i += n)
-	{
-		value = rand();
-		n = sizeof(value);
-		if (i + n > count)
-			n = count - i;
-		memcpy(buffer+i, &value, n);
-	}
 }
 
 void split_space(struct udf_disc *disc)
@@ -525,7 +494,7 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	}
 
 	if (!mbr->disk_signature)
-		get_random_bytes(&mbr->disk_signature, sizeof(mbr->disk_signature));
+		mbr->disk_signature = le32_to_cpu(randu32());
 
 	lba_blocks = ((uint64_t)disc->blocks * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
 

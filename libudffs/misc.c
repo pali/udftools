@@ -24,6 +24,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 #include "libudffs.h"
 
@@ -105,4 +109,50 @@ uint16_t strtou16(const char *str, int base, int *failed)
 	ret = strtou32(str, base, failed);
 	*failed = (*failed || ret > UINT16_MAX) ? 1 : 0;
 	return ret;
+}
+
+static inline unsigned int intlog2(unsigned int word)
+{
+	unsigned int result = 0;
+
+	while (word >>= 1)
+		result++;
+	return result;
+}
+
+uint32_t randu32(void)
+{
+	int fd;
+	uint32_t value;
+	unsigned int bits;
+	unsigned int rand_bits;
+
+	static int srand_done = 0;
+
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd >= 0)
+	{
+		if (read(fd, &value, sizeof(value)) == sizeof(value))
+		{
+			close(fd);
+			return value;
+		}
+		close(fd);
+	}
+
+	if (!srand_done)
+	{
+		srand(time(NULL) * getpid());
+		srand_done = 1;
+	}
+
+	value = 0;
+	rand_bits = intlog2((unsigned int)RAND_MAX+1);
+	for (bits = 0; bits < 32; bits += rand_bits)
+	{
+		value <<= rand_bits;
+		value |= rand();
+	}
+
+	return value;
 }
