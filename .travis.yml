@@ -138,6 +138,25 @@ matrix:
           packages:
             - libreadline-dev
             - gcc-7
+    - compiler: gcc-8
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-8-multilib
+    - compiler: gcc-8
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev
+            - gcc-8
     - compiler: clang-3.3
       env: PLATFORM=x86
       addons:
@@ -298,6 +317,50 @@ matrix:
           packages:
             - libreadline-dev
             - clang-5.0
+    - compiler: clang-6.0
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-6.0
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-6.0
+            - gcc-multilib
+    - compiler: clang-6.0
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-6.0
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev
+            - clang-6.0
+    - compiler: clang-7
+      env: PLATFORM=x86
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-7
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - clang-7
+            - gcc-multilib
+    - compiler: clang-7
+      env: PLATFORM=x86_64
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-7
+            - ubuntu-toolchain-r-test
+          packages:
+            - libreadline-dev
+            - clang-7
     - compiler: gcc
       dist: precise
       env: PLATFORM=x86
