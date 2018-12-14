@@ -1313,7 +1313,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 			break;
 		}
 
-		if (offset+length > disc->blocksize)
+		if (ea_length > disc->blocksize || offset > disc->blocksize || length > disc->blocksize || offset + length > disc->blocksize)
 		{
 			fprintf(stderr, "%s: Warning: Information Control Block for Virtual Allocation Table is larger then block size\n", appname);
 			break;
