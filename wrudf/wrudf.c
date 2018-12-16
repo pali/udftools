@@ -643,7 +643,7 @@ parseCmnd(char* line)
 int show_help()
 {
 	char *msg =
-	"Interactive tool to maintain an UDF filesystem.\n"
+	"Interactive tool to maintain a UDF filesystem.\n"
 	"Usage:\n"
 	"\twrudf [device]\n"
 	"Available commands:\n"
