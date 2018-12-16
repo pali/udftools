@@ -10,7 +10,7 @@
 #ifndef _CDRWTOOL_H
 #define _CDRWTOOL_H 1
 
-#include <inttypes.h>
+#include <stdint.h>
 #include <linux/cdrom.h>
 #include "../include/libudffs.h"
 
@@ -90,22 +90,6 @@ struct cdrw_disc
 	unsigned int	close_session;
 	struct udf_disc	udf_disc;
 };
-
-#ifndef be16_to_cpu
-#define be16_to_cpu(x) \
-        ((uint16_t)( \
-                (((uint16_t)(x) & (uint16_t)0x00ffU) << 8) | \
-                (((uint16_t)(x) & (uint16_t)0xff00U) >> 8) ))
-#endif
-
-#ifndef be32_to_cpu
-#define be32_to_cpu(x) \
-        ((uint32_t)( \
-                (((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) | \
-                (((uint32_t)(x) & (uint32_t)0x0000ff00UL) <<  8) | \
-                (((uint32_t)(x) & (uint32_t)0x00ff0000UL) >>  8) | \
-                (((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) ))
-#endif
 
 typedef struct disc_info {
 	uint16_t length;

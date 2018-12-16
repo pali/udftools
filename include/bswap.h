@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#include <inttypes.h>
+#include <stdint.h>
 #include <sys/types.h>
 
 #define constant_swab16(x) \

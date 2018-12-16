@@ -29,9 +29,11 @@
 #ifndef __LIBUDFFS_H
 #define __LIBUDFFS_H
 
+#include <stddef.h>
+
 #include "ecma_167.h"
 #include "osta_udf.h"
-#include "udf_endian.h"
+#include "bswap.h"
 
 #define FLAG_FREED_BITMAP		0x00000001
 #define FLAG_FREED_TABLE		0x00000002

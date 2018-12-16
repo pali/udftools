@@ -26,7 +26,6 @@
 
 #include "ecma_167.h"
 #include "osta_udf.h"
-#include "udf_endian.h"
 #include "libudffs.h"
 
 #define CS0				0x00000001

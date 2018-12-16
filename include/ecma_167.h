@@ -38,7 +38,7 @@
  * ECMA-167r3 defines and structure definitions
  */
 
-#include <inttypes.h>
+#include <stdint.h>
 
 #ifndef _ECMA_167_H
 #define _ECMA_167_H 1
