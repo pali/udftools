@@ -1,7 +1,7 @@
 /*
  * options.c
  *
- * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2001-2002  Ben Fennema
  * Copyright (c) 2014-2018  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *

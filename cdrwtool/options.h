@@ -1,7 +1,7 @@
 /*
  * options.h
  *
- * Copyright (c) 2002       Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2002       Ben Fennema
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify

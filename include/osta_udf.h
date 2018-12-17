@@ -4,7 +4,7 @@
  * This file is based on OSTA UDF(tm) 2.01 (March 15, 2000)
  * http://www.osta.org
  *
- * Copyright (c) 2001-2002  Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2001-2002  Ben Fennema
  * Copyright (c) 2017-2018  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *

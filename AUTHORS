@@ -1,9 +1,9 @@
 libudffs
-	Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+	Ben Fennema
 	Pali Rohár <pali.rohar@gmail.com>
 
 mkudffs
-	Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+	Ben Fennema
 	Pali Rohár <pali.rohar@gmail.com>
 	Steve Kenton <skenton@ou.edu>
 
@@ -15,7 +15,7 @@ udflabel
 
 cdrwtool
 	Jens Axboe <axboe@suse.de>
-	Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+	Ben Fennema
 
 pktsetup
 	Jens Axboe <axboe@suse.de>
@@ -27,6 +27,6 @@ wrudf
 
 doc
 	Paul Thompson <set@pobox.com>
-	Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+	Ben Fennema
 	Pali Rohár <pali.rohar@gmail.com>
 	Steve Kenton <skenton@ou.edu>

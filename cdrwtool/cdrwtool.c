@@ -2,7 +2,7 @@
  * cdrwtool - perform all sort of actions on a CD-R, CD-RW, and DVD-R drive.
  *
  * Copyright (c) 1999,2000	Jens Axboe <axboe@suse.de>
- * Copyright (c) 2002           Ben Fennema <bfennema@falcon.csc.calpoly.edu>
+ * Copyright (c) 2002           Ben Fennema
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
