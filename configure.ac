@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_PREREQ([2.64])
-AC_INIT(udftools, 2.0, , , [https://github.com/pali/udftools/])
+AC_INIT(udftools, 2.1, , , [https://github.com/pali/udftools/])
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(include/config.h:include/config.in)
 AM_INIT_AUTOMAKE

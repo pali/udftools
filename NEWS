@@ -1,3 +1,26 @@
+Changes in 2.1
+* Fixed compilation with glibc >= 2.25
+* Allow to compile without libreadline
+* Use pkgconfig for detection of udev rules directory
+* Set minimal version of autoconf to 2.64
+* Enforce ISO C99 compiler
+* Fixed support for big endian systems
+* Fixed converting strings to integers
+* Added support for UDF 1.50 Logical Volume Extended Information (contains volume label)
+* Added support for UDF 1.01 revision
+* Added workaround for Year 2038 Bug
+* udfinfo & udflabel:
+  * Fixed accessing disks when MVDS and RVDS descriptors points to same location
+  * Fixed support for disks >= 4GB on 32bit systems
+  * Implemented reading VAT outside of outside of ICB
+  * Various fixes for reading UDF descriptors
+* mkudffs:
+  * Space optimization for small disks
+  * Allow to set alignment of UDF structures via --packetlen option for any media type
+  * Fixed alignment of VAT and generation of DVD-R and BD-R discs
+* cdrwtool:
+  * Disallow specifying unsupported UDF revisions
+
 Changes in 2.0
 * For UDF uuid is used same algorithm as in util-linux v2.30
 * Fixed Unicode encode/decode functions to correctly process OSTA Unicode d-string and d-characters
