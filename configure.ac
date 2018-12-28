@@ -18,7 +18,6 @@ dnl Checks for libraries.
 AC_CHECK_LIB(readline, readline, [ ])
 
 dnl Checks for header files.
-AC_HEADER_STDC
 AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h getopt.h readline/readline.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
