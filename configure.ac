@@ -23,8 +23,6 @@ AC_CHECK_HEADERS(readline/readline.h)
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
 AC_C_BIGENDIAN
-AC_HEADER_TIME
-AC_STRUCT_TM
 AC_SYS_LARGEFILE
 
 PKG_PROG_PKG_CONFIG
