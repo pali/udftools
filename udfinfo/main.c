@@ -19,6 +19,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <locale.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -155,7 +156,7 @@ static void dump_space(struct udf_disc *disc)
 				continue;
 			if (start_ext->space_type & (USPACE|RESERVED))
 				continue;
-			printf("start=%lu, blocks=%lu, type=%s\n", (unsigned long int)start_ext->start, (unsigned long int)start_ext->blocks, udf_space_type_str[i]);
+			printf("start=%"PRIu32", blocks=%"PRIu32", type=%s\n", start_ext->start, start_ext->blocks, udf_space_type_str[i]);
 		}
 	}
 }
@@ -281,19 +282,19 @@ int main(int argc, char *argv[])
 	print_dstring(&disc, "vsid", vsid, sizeof(vsid));
 	print_dstring(&disc, "fsid", disc.udf_fsd ? disc.udf_fsd->fileSetIdent : NULL, sizeof(disc.udf_fsd->fileSetIdent));
 	print_dstring(&disc, "fullvsid", pvd ? pvd->volSetIdent : NULL, sizeof(pvd->volSetIdent));
-	printf("winserialnum=0x%08lx\n", (unsigned long int)serial_num);
-	printf("blocksize=%d\n", disc.blocksize);
-	printf("blocks=%lu\n", (unsigned long int)disc.blocks);
-	printf("usedblocks=%lu\n", (unsigned long int)used_blocks);
-	printf("freeblocks=%lu\n", (unsigned long int)disc.free_space_blocks);
-	printf("behindblocks=%lu\n", (unsigned long int)behind_blocks);
-	printf("numfiles=%lu\n", (unsigned long int)disc.num_files);
-	printf("numdirs=%lu\n", (unsigned long int)disc.num_dirs);
-	printf("udfrev=%x.%02x\n", (unsigned int)(disc.udf_rev >> 8), (unsigned int)(disc.udf_rev & 0xFF));
-	printf("udfwriterev=%x.%02x\n", (unsigned int)(disc.udf_write_rev >> 8), (unsigned int)(disc.udf_write_rev & 0xFF));
+	printf("winserialnum=0x%08"PRIx32"\n", serial_num);
+	printf("blocksize=%"PRIu32"\n", disc.blocksize);
+	printf("blocks=%"PRIu32"\n", disc.blocks);
+	printf("usedblocks=%"PRIu32"\n", used_blocks);
+	printf("freeblocks=%"PRIu32"\n", disc.free_space_blocks);
+	printf("behindblocks=%"PRIu32"\n", behind_blocks);
+	printf("numfiles=%"PRIu32"\n", disc.num_files);
+	printf("numdirs=%"PRIu32"\n", disc.num_dirs);
+	printf("udfrev=%"PRIx16".%02"PRIx16"\n", disc.udf_rev >> 8, disc.udf_rev & 0xFF);
+	printf("udfwriterev=%"PRIx16".%02"PRIx16"\n", disc.udf_write_rev >> 8, disc.udf_write_rev & 0xFF);
 
 	if (disc.vat_block)
-		printf("vatblock=%lu\n", (unsigned long int)disc.vat_block);
+		printf("vatblock=%"PRIu32"\n", disc.vat_block);
 
 	if (disc.udf_lvid)
 	{

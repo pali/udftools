@@ -19,6 +19,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -331,7 +332,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	if (disc->blocksize)
 	{
 		if (disc->blksize / disc->blocksize > UINT32_MAX)
-			fprintf(stderr, "%s: Warning: Disk is too big (%llu), using only %lu blocks\n", appname, (unsigned long long int)(disc->blksize / disc->blocksize), (unsigned long int)UINT32_MAX);
+			fprintf(stderr, "%s: Warning: Disk is too big (%"PRIu64"), using only %"PRIu32" blocks\n", appname, disc->blksize / disc->blocksize, UINT32_MAX);
 
 		setup_blocks(disc);
 
@@ -460,10 +461,10 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	}
 
 	if (disc->blksize / disc->blocksize > UINT32_MAX)
-		fprintf(stderr, "%s: Warning: Disk is too big (%llu), using only %lu blocks\n", appname, (unsigned long long int)(disc->blksize / disc->blocksize), (unsigned long int)UINT32_MAX);
+		fprintf(stderr, "%s: Warning: Disk is too big (%"PRIu64"), using only %"PRIu32" blocks\n", appname, disc->blksize / disc->blocksize, UINT32_MAX);
 
 	if (disc->blkssz && disc->blkssz != disc->blocksize)
-		fprintf(stderr, "%s: Warning: Disk logical sector size (%d) does not match UDF block size (%u)\n", appname, disc->blkssz, (unsigned int)disc->blocksize);
+		fprintf(stderr, "%s: Warning: Disk logical sector size (%u) does not match UDF block size (%"PRIu32")\n", appname, disc->blkssz, disc->blocksize);
 
 	if (disc->blocksize <= 2048)
 	{
@@ -586,7 +587,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 		{
 			if (count >= 256)
 			{
-				fprintf(stderr, "%s: Warning: Too many descriptors (%lu) in Volume Descriptor Sequence, stopping scanning\n", appname, (long unsigned int)count);
+				fprintf(stderr, "%s: Warning: Too many descriptors (%"PRIu32") in Volume Descriptor Sequence, stopping scanning\n", appname, count);
 				break;
 			}
 
@@ -682,10 +683,17 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 				case TAG_IDENT_LVD:
 					lvd = (struct logicalVolDesc *)gd_ptr;
 
-					gd_length = sizeof(*lvd) + le32_to_cpu(lvd->mapTableLength);
-					if (i*disc->blocksize + gd_length > length || gd_length > 256*disc->blocksize)
+					if (sizeof(*lvd) + (uint64_t)le32_to_cpu(lvd->mapTableLength) > 256*disc->blocksize)
 					{
-						fprintf(stderr, "%s: Warning: Logical Volume Descriptor is too big (%llu)\n", appname, (unsigned long long int)(i*disc->blocksize + gd_length));
+						fprintf(stderr, "%s: Warning: Logical Volume Descriptor is too big (%"PRIu64")\n", appname, (uint64_t)(sizeof(*lvd) + (uint64_t)le32_to_cpu(lvd->mapTableLength)));
+						i = count-1;
+						break;
+					}
+
+					gd_length = sizeof(*lvd) + le32_to_cpu(lvd->mapTableLength);
+					if (i*disc->blocksize + gd_length > length)
+					{
+						fprintf(stderr, "%s: Warning: Logical Volume Descriptor is beyond end of Volume Descriptor Sequence\n", appname);
 						i = count-1;
 						break;
 					}
@@ -735,10 +743,17 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 				case TAG_IDENT_USD:
 					usd = (struct unallocSpaceDesc *)&buffer;
 
-					gd_length = sizeof(*usd) + le32_to_cpu(usd->numAllocDescs) * sizeof(*usd->allocDescs);
-					if (i*disc->blocksize + gd_length > length || gd_length > 256*disc->blocksize)
+					if (sizeof(*usd) + (uint64_t)le32_to_cpu(usd->numAllocDescs) * sizeof(*usd->allocDescs) > 256*disc->blocksize)
 					{
-						fprintf(stderr, "%s: Warning: Unallocated Space Descriptor is too big (%llu)\n", appname, (unsigned long long int)(i*disc->blocksize + gd_length));
+						fprintf(stderr, "%s: Warning: Unallocated Space Descriptor is too big (%"PRIu64")\n", appname, (uint64_t)(sizeof(*usd) + (uint64_t)le32_to_cpu(usd->numAllocDescs) * sizeof(*usd->allocDescs)));
+						i = count-1;
+						break;
+					}
+
+					gd_length = sizeof(*usd) + le32_to_cpu(usd->numAllocDescs) * sizeof(*usd->allocDescs);
+					if (i*disc->blocksize + gd_length > length)
+					{
+						fprintf(stderr, "%s: Warning: Unallocated Space Descriptor is beyond end of Volume Descriptor Sequence\n", appname);
 						i = count-1;
 						break;
 					}
@@ -834,7 +849,7 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 	{
 		if (length > 256*disc->blocksize)
 		{
-			fprintf(stderr, "%s: Warning: Logical Volume Integrity Descriptor Sequence is too big (%lu)\n", appname, (unsigned long int)length);
+			fprintf(stderr, "%s: Warning: Logical Volume Integrity Descriptor Sequence is too big (%"PRIu32")\n", appname, length);
 			break;
 		}
 
@@ -864,12 +879,12 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 		lvid = (struct logicalVolIntegrityDesc *)buffer;
 		if (le32_to_cpu(lvid->numOfPartitions) > 32)
 		{
-			fprintf(stderr, "%s: Warning: Too many partitions (%lu) in Logical Volume Integrity Descriptor, stopping scanning\n", appname, (unsigned long int)le32_to_cpu(lvid->numOfPartitions));
+			fprintf(stderr, "%s: Warning: Too many partitions (%"PRIu32") in Logical Volume Integrity Descriptor, stopping scanning\n", appname, le32_to_cpu(lvid->numOfPartitions));
 			break;
 		}
 		if (le32_to_cpu(lvid->lengthOfImpUse) > 32*disc->blocksize)
 		{
-			fprintf(stderr, "%s: Warning: Logical Volume Integrity Descriptor Implementation Use is too big (%lu), stopping scanning\n", appname, (unsigned long int)le32_to_cpu(lvid->lengthOfImpUse));
+			fprintf(stderr, "%s: Warning: Logical Volume Integrity Descriptor Implementation Use is too big (%"PRIu32"), stopping scanning\n", appname, le32_to_cpu(lvid->lengthOfImpUse));
 			break;
 		}
 
@@ -1172,7 +1187,7 @@ static void read_stable(int fd, struct udf_disc *disc)
 		st_len = sizeof(*st) + num * sizeof(struct sparingEntry);
 		if (st_len > length)
 		{
-			fprintf(stderr, "%s: Warning: Sparing Table is too big (%llu)\n", appname, (unsigned long long int)st_len);
+			fprintf(stderr, "%s: Warning: Sparing Table is too big (%zu)\n", appname, st_len);
 			return;
 		}
 
@@ -1283,7 +1298,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 
 		if (location + le32_to_cpu(fe->descTag.tagLocation) != i)
 		{
-			fprintf(stderr, "%s: Warning: Found Virtual Allocation Table at partition offset %u (block %u), but expected at offset %u, ignoring it\n", appname, (unsigned int)(i-location), (unsigned int)i, (unsigned int)(le32_to_cpu(fe->descTag.tagLocation)));
+			fprintf(stderr, "%s: Warning: Found Virtual Allocation Table at partition offset %"PRIu32" (block %"PRIu32"), but expected at offset %"PRIu32", ignoring it\n", appname, i-location, i, le32_to_cpu(fe->descTag.tagLocation));
 			continue;
 		}
 
@@ -1587,7 +1602,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 			disc->udf_lvid->integrityType = cpu_to_le32(LVID_INTEGRITY_TYPE_CLOSE);
 
 		if (i != vat_block)
-			fprintf(stderr, "%s: Note: Found Virtual Allocation Table at block %u (expected at block %u)\n", appname, (unsigned int)i, (unsigned int)vat_block);
+			fprintf(stderr, "%s: Note: Found Virtual Allocation Table at block %"PRIu32" (expected at block %"PRIu32")\n", appname, i, vat_block);
 
 		return;
 	}
