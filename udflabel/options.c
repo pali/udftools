@@ -20,6 +20,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -103,7 +104,7 @@ static void process_uuid_arg(const char *arg, char *new_uuid)
 			uuid_time = cur_time & 0xFFFFFFFF;
 		else
 			uuid_time = randu32();
-		snprintf(new_uuid, 17, "%08lx%08lx", (unsigned long int)uuid_time, (unsigned long int)randu32());
+		snprintf(new_uuid, 17, "%08"PRIx32"%08"PRIx32"", uuid_time, randu32());
 		return;
 	}
 

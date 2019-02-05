@@ -19,6 +19,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <locale.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -139,7 +140,7 @@ static void write_desc(int fd, struct udf_disc *disc, enum udf_space_type type, 
 			if (!desc->data || desc->data->buffer != buffer)
 				continue;
 
-			printf("  ... at block %lu\n", (unsigned long int)(ext->start + desc->offset));
+			printf("  ... at block %"PRIu32"\n", ext->start + desc->offset);
 
 			offset = (off_t)disc->blocksize * (ext->start + desc->offset);
 			off = lseek(fd, offset, SEEK_SET);
@@ -366,7 +367,7 @@ int main(int argc, char *argv[])
 
 	if (disc.udf_write_rev > 0x0260)
 	{
-		fprintf(stderr, "%s: Error: Minimal UDF Write Revision is %x.%02x, but udflabel supports only 2.60\n", appname, (unsigned int)(disc.udf_write_rev >> 8), (unsigned int)(disc.udf_write_rev & 0xFF));
+		fprintf(stderr, "%s: Error: Minimal UDF Write Revision is %"PRIx16".%02"PRIx16", but udflabel supports only 2.60\n", appname, disc.udf_write_rev >> 8, disc.udf_write_rev & 0xFF);
 		exit(1);
 	}
 
