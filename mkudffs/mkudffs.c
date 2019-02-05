@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -104,7 +105,7 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc));
 	memcpy(disc->udf_pvd[0], &default_pvd, sizeof(struct primaryVolDesc));
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
-	snprintf(uuid, sizeof(uuid), "%08lx%08lx", (unsigned long int)uuid_time, (unsigned long int)randu32());
+	snprintf(uuid, sizeof(uuid), "%08" PRIu32 "%08" PRIu32, uuid_time, randu32());
 	memcpy(&disc->udf_pvd[0]->volSetIdent[1], uuid, 16);
 	disc->udf_pvd[0]->volIdent[31] = strlen((char *)disc->udf_pvd[0]->volIdent);
 	disc->udf_pvd[0]->volSetIdent[127] = strlen((char *)disc->udf_pvd[0]->volSetIdent);
@@ -463,7 +464,7 @@ void dump_space(struct udf_disc *disc)
 
 	while (start_ext != NULL)
 	{
-		printf("start=%lu, blocks=%lu, type=", (unsigned long int)start_ext->start, (unsigned long int)start_ext->blocks);
+		printf("start=%"PRIu32", blocks=%"PRIu32", type=", start_ext->start, start_ext->blocks);
 		for (i=0; i<UDF_SPACE_TYPE_SIZE; i++)
 		{
 			if (!(start_ext->space_type & (1<<i)))
