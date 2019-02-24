@@ -400,10 +400,10 @@ void updateSparingTable() {
 	} else { // DISK_IMAGE
 	    off = lseek(device, 2048 * pbn, SEEK_SET);
 	    if( off == (off_t)-1 )
-		fail("writeSparingTable at %d: %m\n", pbn);
+		fail("writeSparingTable at %d: %s\n", pbn, strerror(errno));
 	    len = write(device, pb->pkt, 32 * 2048);
 	    if( len < 0 )
-		fail("writeSparingTable at %d: %m\n", pbn);
+		fail("writeSparingTable at %d: %s\n", pbn, strerror(errno));
 	    if( len != 32 * 2048 )
 		fail("writeSparingTable at %d: %s\n", pbn, strerror(EIO));
 	}
@@ -428,10 +428,10 @@ readPacket(struct packetbuf* pb)
     } else {
 	off = lseek(device, 2048 * physical, SEEK_SET);
 	if( off == (off_t)-1 )
-	    fail("readPacket: lseek failed %m\n");
+	    fail("readPacket: lseek failed %s\n", strerror(errno));
 	len = read(device, pb->pkt, 32 * 2048);
 	if( len < 0 )
-	    fail("readPacket: read failed %m\n");
+	    fail("readPacket: read failed %s\n", strerror(errno));
 	if( len != 32 * 2048 )
 	    fail("readPacket: read failed %s\n", strerror(EIO));
 	ret = 0;
@@ -483,10 +483,10 @@ writePacket(struct packetbuf* pb)
 #endif
 	off = lseek(device, 2048 * physical, SEEK_SET);
 	if( off == (off_t)-1 )
-	    fail("writePacket: writeHD failed %m\n");
+	    fail("writePacket: writeHD failed %s\n", strerror(errno));
 	len = write(device, pb->pkt, 32 * 2048);
 	if( len < 0 )
-	    fail("writePacket: writeHD failed %m\n");
+	    fail("writePacket: writeHD failed %s\n", strerror(errno));
 	if( len != 32 * 2048 )
 	    fail("writePacket: writeHD failed %s\n", strerror(EIO));
 	ret = 0;
@@ -805,10 +805,10 @@ initIO(char *filename)
 	/* heuristically determine medium imitated on disk image based on VAT FileEntry in block 512 */
 	off = lseek(device, 2048 * 512, SEEK_SET);
 	if( off == (off_t)-1 )
-	    fail("initIO: lseek %s failed: %m\n", filename);
+	    fail("initIO: lseek %s failed: %s\n", filename, strerror(errno));
 	len = read(device, &ident, 2);
 	if( len < 0 )
-	    fail("initIO: read %s failed: %m\n", filename);
+	    fail("initIO: read %s failed: %s\n", filename, strerror(errno));
 	if( len != 2 )
 	    fail("initIO: read %s failed: %s\n", filename, strerror(EIO));
 	medium = ident == TAG_IDENT_VDP ? CDR : CDRW;

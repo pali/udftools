@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <locale.h>
+#include <errno.h>
 #include <sys/resource.h>
 
 #ifdef USE_READLINE
@@ -683,7 +684,7 @@ main(int argc, char** argv)
 	devicename = argv[1];			/* can specify disk image filename */
 
     if( setpriority(PRIO_PROCESS, 0, -10) ) {
-	printf("setpriority(): %m\n");
+	printf("setpriority(): %s\n", strerror(errno));
     }
 
     hdWorkingDir = getcwd(NULL, 0);

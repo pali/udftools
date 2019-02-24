@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 #include "wrudf.h"
 #include "ide-pc.h"
 #include "bswap.h"
@@ -65,7 +66,7 @@ unsigned char*	readCDR(uint32_t lbn, uint16_t partition) {
 	stat = lseek(device, 2048 * pbn, SEEK_SET);
 	stat = read(device, blockBuffer, 2048);
 	if( stat != 2048 )
-	    fail("readCDR(hd) failed %m\n");
+	    fail("readCDR(hd) failed %s\n", strerror(errno));
 	else
 	    return blockBuffer;
     }
@@ -89,7 +90,7 @@ writeHD(uint32_t physical, unsigned char* src)
     stat = write(device, src, 2048);
 
     if( stat != 2048 ) {
-	printf("writeHD failed %m\n");
+	printf("writeHD failed %s\n", strerror(errno));
     }
 }
 

@@ -268,12 +268,12 @@ copyDirectory(Directory *dir, char* name)
     struct fileIdentDesc *fid;
 
     if( !(srcDir = opendir(name)) ) {
-	printf("Open dir '%s': %m\n", name);
+	printf("Open dir '%s': %s\n", name, strerror(errno));
 	return CMND_FAILED;
     }
 
     if( chdir(name) != 0 ) {
-	printf("Change dir '%s': %m\n", name);
+	printf("Change dir '%s': %s\n", name, strerror(errno));
 	closedir(srcDir);
 	return CMND_FAILED;
     }
@@ -317,7 +317,7 @@ copyDirectory(Directory *dir, char* name)
     }
 
     if( chdir("..") != 0 )
-	printf("Change dir '..': %m\n");
+	printf("Change dir '..': %s\n", strerror(errno));
 
     closedir(srcDir);
     return CMND_OK;
@@ -851,14 +851,14 @@ cpCommand(void)
 		    cpyDir = readDirectory(curDir, &newFid->icb, srcname);
 		}
 		if( chdir(cmndv[i]) != 0 )
-			printf("Change dir '%s': %m\n", cmndv[i]);
+			printf("Change dir '%s': %s\n", cmndv[i], strerror(errno));
 		else
 			copyDirectory(cpyDir, ".");
 	    } else 
 		printf("Destination is not a directory\n");
 
 	    if( chdir(hdWorkingDir) != 0 ) {
-		printf("Change dir '%s': %m\n", hdWorkingDir);
+		printf("Change dir '%s': %s\n", hdWorkingDir, strerror(errno));
 		return CMND_FAILED;
 	    }
 	    continue;
@@ -1048,7 +1048,7 @@ int cdhCommand()
 	return WRONG_NO_ARGS;
 
     if( chdir(cmndv[0]) != 0 ) {
-	printf("Change dir '%s': %m\n", cmndv[0]);
+	printf("Change dir '%s': %s\n", cmndv[0], strerror(errno));
 	return CMND_FAILED;
     }
 
