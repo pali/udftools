@@ -594,3 +594,6 @@ script:
   - ./autogen.sh
   - ./configure $CONFIGURE_FLAGS
   - make
+
+after_failure:
+  - cat config.log
