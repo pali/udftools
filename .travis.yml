@@ -579,6 +579,7 @@ before_script:
   - export CFLAGS="-W -Wall -Werror -g"
   - if [ -z "$NOOPT" ]; then export CFLAGS="$CFLAGS -O2"; fi
   - if ! [[ "$CC" =~ "gcc" && "`$CC -dumpversion | sed 's/^\([0-9]\)\.\([0-9]\).*/\1\2/;'`" -lt 48 ]]; then export CFLAGS="$CFLAGS -pedantic"; fi
+  - if [[ "$CC" =~ "gcc" && "`$CC -dumpversion | sed 's/^\([0-9]\)\.\([0-9]\).*/\1\2/;'`" = "48" ]]; then export CFLAGS="$CFLAGS -Wno-error=pedantic"; fi
   - if [[ "$CC" =~ "gcc" && "$CC" != "gcc-4.4" ]]; then export CFLAGS="$CFLAGS -Wno-error=unused-but-set-variable"; fi # needed for AC_PROG_CC_C99
   - if [[ "$CC" =~ "clang" ]]; then export CFLAGS="$CFLAGS -Wno-error=unused-function"; fi # -Werror=unused-function is broken on clang
   - case "$PLATFORM" in
