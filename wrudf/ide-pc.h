@@ -144,7 +144,7 @@ typedef struct mode_header {
     u_char	dev_specific;
     u_short	r1;
     u_short	block_desc_length;		// 0
-}   mode_hdr;;
+}   mode_hdr;
 
 #define GPMODE_READ_ERROR_RECOV_PAGE		0x01	// Read/Write Error Recov in Mt Fuji version
 
