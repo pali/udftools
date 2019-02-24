@@ -576,7 +576,7 @@ matrix:
 
 before_script:
   - if ! which "$CC" &>/dev/null; then export CC=${CC%%-*}; fi
-  - export CFLAGS="-W -Wall -Werror -g"
+  - export CFLAGS="-W -Wall -Werror -pedantic -g"
   - if [ -z "$NOOPT" ]; then export CFLAGS="$CFLAGS -O2"; fi
   - if [[ "$CC" =~ "gcc" && "$CC" != "gcc-4.4" ]]; then export CFLAGS="$CFLAGS -Wno-error=unused-but-set-variable"; fi # needed for AC_PROG_CC_C99
   - if [[ "$CC" =~ "clang" ]]; then export CFLAGS="$CFLAGS -Wno-error=unused-function"; fi # -Werror=unused-function is broken on clang
