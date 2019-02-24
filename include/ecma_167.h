@@ -71,7 +71,7 @@ typedef uint8_t		dstring;
 typedef struct
 {
 	uint16_t	typeAndTimezone;
-	int16_t		year;
+	uint16_t	year;
 	uint8_t		month;
 	uint8_t		day;
 	uint8_t		hour;
