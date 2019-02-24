@@ -711,7 +711,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					{
 						memcpy(lvd, &buffer, sizeof(buffer));
 						errno = 0;
-						if (read(fd, (void *)lvd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
+						if (read(fd, (uint8_t *)lvd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
 						{
 							fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 							free(lvd);
@@ -771,7 +771,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					{
 						memcpy(usd, &buffer, sizeof(buffer));
 						errno = 0;
-						if (read(fd, (void *)usd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
+						if (read(fd, (uint8_t *)usd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
 						{
 							fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 							free(usd);
@@ -908,7 +908,7 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 		{
 			memcpy(lvid, &buffer, sizeof(buffer));
 			errno = 0;
-			if (read(fd, (void *)lvid + sizeof(buffer), lvid_length - sizeof(buffer)) != (ssize_t)(lvid_length - sizeof(buffer)))
+			if (read(fd, (uint8_t *)lvid + sizeof(buffer), lvid_length - sizeof(buffer)) != (ssize_t)(lvid_length - sizeof(buffer)))
 			{
 				fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 				free(lvid);
@@ -1204,7 +1204,7 @@ static void read_stable(int fd, struct udf_disc *disc)
 		{
 			memcpy(disc->udf_stable[i], &buffer, sizeof(buffer));
 			errno = 0;
-			if (read(fd, (void *)disc->udf_stable[i] + sizeof(buffer), st_len - sizeof(buffer)) != (ssize_t)(st_len - sizeof(buffer)))
+			if (read(fd, (uint8_t *)disc->udf_stable[i] + sizeof(buffer), st_len - sizeof(buffer)) != (ssize_t)(st_len - sizeof(buffer)))
 			{
 				fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 				free(disc->udf_stable[i]);
@@ -1965,7 +1965,7 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, struct generic
 	{
 		memcpy(use, &buffer, sizeof(buffer));
 		errno = 0;
-		if (read(fd, (void *)use + sizeof(buffer), use_len - sizeof(buffer)) != (ssize_t)(use_len - sizeof(buffer)))
+		if (read(fd, (uint8_t *)use + sizeof(buffer), use_len - sizeof(buffer)) != (ssize_t)(use_len - sizeof(buffer)))
 		{
 			fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 			free(use);
