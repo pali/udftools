@@ -398,6 +398,24 @@ matrix:
           packages:
             - libreadline-dev
     - compiler: gcc
+      dist: xenial
+      env: PLATFORM=x86
+           DIST=xenial
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: xenial
+      env: PLATFORM=x86_64
+           DIST=xenial
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: gcc
       dist: precise
       env: PLATFORM=x86
            DIST=precise
@@ -437,6 +455,26 @@ matrix:
         apt:
           packages:
             - libreadline-dev
+    - compiler: gcc
+      dist: xenial
+      env: PLATFORM=x86
+           DIST=xenial
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: xenial
+      env: PLATFORM=x86_64
+           DIST=xenial
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
     - compiler: clang
       dist: precise
       env: PLATFORM=x86
@@ -469,6 +507,24 @@ matrix:
       dist: trusty
       env: PLATFORM=x86_64
            DIST=trusty
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: clang
+      dist: xenial
+      env: PLATFORM=x86
+           DIST=xenial
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: xenial
+      env: PLATFORM=x86_64
+           DIST=xenial
       addons:
         apt:
           packages:
@@ -508,6 +564,26 @@ matrix:
       dist: trusty
       env: PLATFORM=x86_64
            DIST=trusty
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: clang
+      dist: xenial
+      env: PLATFORM=x86
+           DIST=xenial
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: xenial
+      env: PLATFORM=x86_64
+           DIST=xenial
            NOOPT=1
       addons:
         apt:
@@ -526,6 +602,15 @@ matrix:
       dist: trusty
       env: PLATFORM=x86_64
            DIST=trusty
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - tcc
+    - compiler: tcc
+      dist: xenial
+      env: PLATFORM=x86_64
+           DIST=xenial
       addons:
         apt:
           packages:
