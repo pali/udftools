@@ -89,8 +89,7 @@ typedef struct _dir_ {
     long_ad		icb;				/* icb of this directory itself */
     char		*name;
     uint32_t		dirDirty;
-    struct fileEntry	fe;
-    uint8_t		spacer[2048-sizeof(struct fileEntry)];
+    uint8_t		fe[2048];
 }   Directory;
 
 extern Directory		*rootDir, *curDir;

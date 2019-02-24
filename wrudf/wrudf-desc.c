@@ -32,9 +32,11 @@ removeFID(Directory *dir, struct fileIdentDesc *fid)
 {
     uint32_t lenFID = (sizeof(struct fileIdentDesc) + fid->lengthOfImpUse + fid->lengthFileIdent + 3) & ~3;
     uint32_t lenMove;
+    struct fileEntry *fe;
 
-    dir->fe.informationLength -= lenFID;
-    lenMove = dir->fe.informationLength - ((char *)fid - dir->data);
+    fe = (struct fileEntry *)dir->fe;
+    fe->informationLength -= lenFID;
+    lenMove = fe->informationLength - ((char *)fid - dir->data);
     memcpy(fid, (char *)fid + lenFID, lenMove);
     dir->dirDirty = 1;
     return 0;
@@ -50,7 +52,10 @@ deleteFID(Directory * dir, struct fileIdentDesc * fid)
 {
     int		rv;
     struct fileEntry *fe;
+    struct fileEntry *dirfe;
     struct logicalVolIntegrityDescImpUse *lvidiu;
+
+    dirfe = (struct fileEntry *)dir->fe;
 
     rv = CMND_OK;
 
@@ -73,11 +78,11 @@ deleteFID(Directory * dir, struct fileIdentDesc * fid)
     } else {
 	if( medium == CDR ) {
 	    if( fe->icbTag.fileType == ICBTAG_FILE_TYPE_DIRECTORY )
-		dir->fe.fileLinkCount--;
+		dirfe->fileLinkCount--;
 	    vat[fid->icb.extLocation.logicalBlockNum] = 0xFFFFFFFF;	
 	} else {
 	    if( fe->icbTag.fileType == ICBTAG_FILE_TYPE_DIRECTORY ) {
-		dir->fe.fileLinkCount--;
+		dirfe->fileLinkCount--;
 		lvidiu = (struct logicalVolIntegrityDescImpUse*)
 		    (lvid->data + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
 		lvidiu->numDirs--;
@@ -117,6 +122,7 @@ findFileIdentDesc(Directory *dir, char* name)
 {
     uint64_t		i;
     char		*data;
+    struct fileEntry	*fe;
     struct fileIdentDesc *fid;
     dchars              uName[256];
     size_t              uLen;
@@ -126,8 +132,9 @@ findFileIdentDesc(Directory *dir, char* name)
         return NULL;
 
     data = dir->data;
+    fe = (struct fileEntry *)dir->fe;
 
-    for( i = 0; i < dir->fe.informationLength; 
+    for( i = 0; i < fe->informationLength; 
 	 i += (sizeof(struct fileIdentDesc) + fid->lengthOfImpUse + fid->lengthFileIdent + 3) & ~3 ) {
 
 	fid = (struct fileIdentDesc*)(data + i);
@@ -220,20 +227,23 @@ int
 insertFileIdentDesc(Directory *dir, struct fileIdentDesc* fid) 
 {
     uint32_t		lenFid;
+    struct fileEntry	*fe;
     
     lenFid = (sizeof(struct fileIdentDesc) + fid->lengthOfImpUse + fid->lengthFileIdent + 3) & ~3;
     fid->descTag.descCRCLength = lenFid - sizeof(tag);
     setChecksum(fid);
 
-    if( dir->fe.informationLength + lenFid > dir->dataSize ) {
+    fe = (struct fileEntry *)dir->fe;
+
+    if( fe->informationLength + lenFid > dir->dataSize ) {
 	if( !(dir->data = realloc(dir->data, dir->dataSize + 2048)) ) {
 	    fail("Realloc directory data failed\n");
 	}
 	dir->dataSize += 2048;
     }
     
-    memcpy(dir->data + dir->fe.informationLength, fid, lenFid);
-    dir->fe.informationLength += lenFid;
+    memcpy(dir->data + fe->informationLength, fid, lenFid);
+    fe->informationLength += lenFid;
     dir->dirDirty = 1;
     return CMND_OK;
 }

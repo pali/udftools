@@ -338,6 +338,7 @@ deleteDirectory(Directory *dir, struct fileIdentDesc* fid)
     char		*name;
     struct fileIdentDesc *childFid;
     Directory		*childDir;
+    struct fileEntry	*fe;
     
     rv = 0;
 
@@ -356,8 +357,9 @@ deleteDirectory(Directory *dir, struct fileIdentDesc* fid)
     /* check permission */
 
     notEmpty = 0;
+    fe = (struct fileEntry *)childDir->fe;
 
-    for( i = 0; i < childDir->fe.informationLength;
+    for( i = 0; i < fe->informationLength;
 	 i += ((sizeof(struct fileIdentDesc) + childFid->lengthOfImpUse + childFid->lengthFileIdent + 3) & ~3) ) 
     {
 	childFid = (struct fileIdentDesc*)(childDir->data + i);
@@ -392,6 +394,7 @@ readDirectory(Directory *parentDir, long_ad* icb, char *name)
     char	*p;
     uint32_t	len;
     Directory	*dir;
+    struct fileEntry	*fe;
 
     if( parentDir == NULL ) 
 	dir = rootDir;
@@ -422,14 +425,15 @@ readDirectory(Directory *parentDir, long_ad* icb, char *name)
 	strcpy(dir->name, name);
     }
     p = readTaggedBlock(icb->extLocation.logicalBlockNum, icb->extLocation.partitionReferenceNum);
-    memcpy(&dir->fe, p, 2048);
+    memcpy(dir->fe, p, 2048);
+    fe = (struct fileEntry *)dir->fe;
 
-    if( (dir->fe.icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB ) {
-	memcpy(dir->data, dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr, dir->fe.lengthAllocDescs);
-	memset(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr, 0, dir->fe.lengthAllocDescs);
+    if( (fe->icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB ) {
+	memcpy(dir->data, fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr, fe->lengthAllocDescs);
+	memset(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr, 0, fe->lengthAllocDescs);
     } else {
-	if( dir->fe.informationLength > dir->dataSize ) {
-	    len = (dir->fe.informationLength + 2047) & ~2047;
+	if( fe->informationLength > dir->dataSize ) {
+	    len = (fe->informationLength + 2047) & ~2047;
 	    dir->data = realloc(dir->data, len);
 	    if( !dir->data ) {
 		printf("Realloc directory data failed\n");
@@ -437,13 +441,13 @@ readDirectory(Directory *parentDir, long_ad* icb, char *name)
 	    }
 	    dir->dataSize = len;
 	}
-	readExtents(dir->data, (dir->fe.icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT,
-	    dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr);
+	readExtents(dir->data, (fe->icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT,
+	    fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr);
 	if( medium == CDRW ) {
-	    if( (dir->fe.icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT )
-		freeShortExtents((short_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr));
-	    else if( (dir->fe.icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG )
-		freeLongExtents((long_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr));
+	    if( (fe->icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT )
+		freeShortExtents((short_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr));
+	    else if( (fe->icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG )
+		freeLongExtents((long_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr));
 	}
     }
     printf("Read dir %s\n", dir->name);
@@ -461,6 +465,7 @@ updateDirectory(Directory* dir)
 {
     uint64_t i;
     struct fileIdentDesc *fid;
+    struct fileEntry *fe;
 
     if( dir->child )
 	updateDirectory(dir->child);
@@ -468,42 +473,44 @@ updateDirectory(Directory* dir)
     if( !dir->dirDirty )
 	return CMND_OK;
 
-    if( sizeof(struct fileEntry) + dir->fe.lengthExtendedAttr + dir->fe.informationLength <= 2048 ) {			
+    fe = (struct fileEntry *)dir->fe;
+
+    if( sizeof(struct fileEntry) + fe->lengthExtendedAttr + fe->informationLength <= 2048 ) {			
         /* fileIdentDescs embedded in directory ICB */
-	dir->fe.logicalBlocksRecorded = 0;
-	dir->fe.icbTag.flags = (dir->fe.icbTag.flags & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_IN_ICB;
-	dir->fe.lengthAllocDescs = dir->fe.informationLength;
-	memcpy(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr, dir->data, dir->fe.lengthAllocDescs);
+	fe->logicalBlocksRecorded = 0;
+	fe->icbTag.flags = (fe->icbTag.flags & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_IN_ICB;
+	fe->lengthAllocDescs = fe->informationLength;
+	memcpy(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr, dir->data, fe->lengthAllocDescs);
 
 	/* UDF2.00 2.2.1.3  - For a structure in virtual space, tagLocation is the virtual location */
-	for( i = 0; i < dir->fe.informationLength;
+	for( i = 0; i < fe->informationLength;
 	     i += (sizeof(struct fileIdentDesc) + fid->lengthOfImpUse + fid->lengthFileIdent + 3) & ~3 ) 
 	{
-	    fid = (struct fileIdentDesc*) (dir->fe.extendedAttrAndAllocDescs + i);
+	    fid = (struct fileIdentDesc*) (fe->extendedAttrAndAllocDescs + i);
 	    fid->descTag.tagLocation = dir->icb.extLocation.logicalBlockNum;
 	    setChecksum(&fid->descTag);
 	}
     } else {
 	/* get new extents for the directory data */
-	dir->fe.logicalBlocksRecorded = ((dir->fe.informationLength + 2047) & ~2047) >> 11;
+	fe->logicalBlocksRecorded = ((fe->informationLength + 2047) & ~2047) >> 11;
 
 	if( medium == CDR ) {
 	    long_ad *ad;
 	    struct allocDescImpUse *adiu;
 	    uint32_t	blkno;
 
-	    dir->fe.icbTag.flags = (dir->fe.icbTag.flags & ~ ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_LONG;
-	    ad = (long_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr);
-	    ad->extLength = dir->fe.informationLength;
+	    fe->icbTag.flags = (fe->icbTag.flags & ~ ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_LONG;
+	    ad = (long_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr);
+	    ad->extLength = fe->informationLength;
 	    ad->extLocation.logicalBlockNum  =  blkno = getNWA() + 1 - pd->partitionStartingLocation;
 	    ad->extLocation.partitionReferenceNum = pd->partitionNumber;
 	    adiu = (struct allocDescImpUse*)(ad->impUse);
-	    memcpy(&adiu->impUse, &dir->fe.uniqueID, sizeof(uint32_t));
+	    memcpy(&adiu->impUse, &fe->uniqueID, sizeof(uint32_t));
 	    memset(ad + 1, 0, sizeof(long_ad));			/* necessary only if infolength multiple of 2048 */
-	    dir->fe.lengthAllocDescs = 2 * sizeof(long_ad);
+	    fe->lengthAllocDescs = 2 * sizeof(long_ad);
 
 	    /* set tagLocation in all FIDs */
-	    for( i = 0; i < dir->fe.informationLength;
+	    for( i = 0; i < fe->informationLength;
 		 i += (sizeof(struct fileIdentDesc) + fid->lengthOfImpUse + fid->lengthFileIdent + 3) & ~3 ) 
 	    {
 		fid = (struct fileIdentDesc*) (dir->data + i);
@@ -517,15 +524,15 @@ updateDirectory(Directory* dir)
 	    uint32_t	*blocks, blkno, len;
 	    short_ad	*extent;
 
-	    extent =(short_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr);
-	    dir->fe.lengthAllocDescs = getExtents(dir->fe.informationLength, extent);
-	    dir->fe.icbTag.flags = (dir->fe.icbTag.flags & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT;
+	    extent =(short_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr);
+	    fe->lengthAllocDescs = getExtents(fe->informationLength, extent);
+	    fe->icbTag.flags = (fe->icbTag.flags & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT;
 
 	    /* find which blocks are to going be used to set tagLocations */
-	    blocks = (uint32_t*)malloc(dir->fe.logicalBlocksRecorded * sizeof(uint32_t));
+	    blocks = (uint32_t*)malloc(fe->logicalBlocksRecorded * sizeof(uint32_t));
 	    blkno = extent->extPosition;
 	    len = extent->extLength;
-	    for( i = 0; i < dir->fe.logicalBlocksRecorded; i++ ) {
+	    for( i = 0; i < fe->logicalBlocksRecorded; i++ ) {
 		blocks[i] = blkno;
 		if( len <= 2048 ) {
 		    extent++;
@@ -537,7 +544,7 @@ updateDirectory(Directory* dir)
 		}
 	    }
 	    /* set tagLocation */
-	    for( i = 0; i < dir->fe.informationLength;
+	    for( i = 0; i < fe->informationLength;
 		 i += (sizeof(struct fileIdentDesc) + fid->lengthOfImpUse + fid->lengthFileIdent + 3) & ~3 ) 
 	    {
 		fid = (struct fileIdentDesc*) (dir->data + i);
@@ -550,17 +557,17 @@ updateDirectory(Directory* dir)
 	}
     }
 
-    dir->fe.descTag.descCRCLength = 
-	sizeof(struct fileEntry) + dir->fe.lengthExtendedAttr + dir->fe.lengthAllocDescs - sizeof(tag);
+    fe->descTag.descCRCLength = 
+	sizeof(struct fileEntry) + fe->lengthExtendedAttr + fe->lengthAllocDescs - sizeof(tag);
     setChecksum(&dir->fe);
 
     if( medium == CDRW ) {
 	/* write the directory fileEntry */
 	writeBlock(dir->icb.extLocation.logicalBlockNum, dir->icb.extLocation.partitionReferenceNum, &dir->fe);
 
-	if( dir->fe.logicalBlocksRecorded  ) {
+	if( fe->logicalBlocksRecorded  ) {
 	    /* write any directory data */
-	    writeExtents(dir->data, 1, (short_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr));
+	    writeExtents(dir->data, 1, (short_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr));
 	}
     } else {		/* medium == CDR */
 	int retries;
@@ -574,11 +581,11 @@ updateDirectory(Directory* dir)
 	    pbn = writeCDR(&dir->fe);
 	    vat[((long_ad*)&dir->icb)->extLocation.logicalBlockNum] = pbn - pd->partitionStartingLocation;
 
-	    if( dir->fe.logicalBlocksRecorded )
-		for( i = 0; i < dir->fe.informationLength; i += 2048 )
+	    if( fe->logicalBlocksRecorded )
+		for( i = 0; i < fe->informationLength; i += 2048 )
 		    writeCDR(dir->data + i);
 
-	    if( verifyCDR(&dir->fe) == 0 )
+	    if( verifyCDR((struct fileEntry *)dir->fe) == 0 )
 		break;
 
 	    if( ++retries > 3 ) {
@@ -600,6 +607,7 @@ makeDir(Directory *dir, char* name )
 {
     Directory		*newDir;
     struct fileEntry	*fe;
+    struct fileEntry	*dirfe;
     struct fileIdentDesc *backFid, *forwFid;
     struct allocDescImpUse *adiu;
     struct logicalVolIntegrityDescImpUse *lvidiu;
@@ -642,7 +650,8 @@ makeDir(Directory *dir, char* name )
     }
 
     insertFileIdentDesc(dir, forwFid);
-    dir->fe.fileLinkCount++;
+    dirfe = (struct fileEntry *)dir->fe;
+    dirfe->fileLinkCount++;
     dir->dirDirty = 1;
 
     /* setup directory structure for new directory */
@@ -978,6 +987,7 @@ int cdcCommand() {
 int lscCommand(void) {
     struct fileIdentDesc *fid;
     struct fileEntry *fe;
+    struct fileEntry *curfe;
     char	*name, filename[512];
     uint64_t	i;
     int		state;
@@ -992,7 +1002,9 @@ int lscCommand(void) {
 	    return state;
     }
 
-    for( i = 0; i < curDir->fe.informationLength;
+    curfe = (struct fileEntry *)curDir->fe;
+
+    for( i = 0; i < curfe->informationLength;
 	 i += ((sizeof(struct fileIdentDesc) + fid->lengthOfImpUse + fid->lengthFileIdent + 3) & ~3) ) 
     {
 	fid = (struct fileIdentDesc*)(curDir->data + i);
@@ -1075,8 +1087,11 @@ directoryIsEmpty(Directory *dir)
 {
     uint64_t i;
     struct fileIdentDesc *fid;
+    struct fileEntry *fe;
 
-    for( i = 0; i < dir->fe.informationLength;
+    fe = (struct fileEntry *)dir->fe;
+
+    for( i = 0; i < fe->informationLength;
 	 i += ((sizeof(struct fileIdentDesc) + fid->lengthOfImpUse + fid->lengthFileIdent + 3) & ~3) ) 
     {
 	fid = (struct fileIdentDesc*)(dir->data + i);
