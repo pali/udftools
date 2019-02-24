@@ -88,7 +88,7 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 					memset(buffer, 0x00, bufferlen);
 					lastpacket = ++ packet;
 
-					memcpy(buffer, data->buffer + (bufferlen - offset), data->length - (bufferlen - offset));
+					memcpy(buffer, (uint8_t *)data->buffer + (bufferlen - offset), data->length - (bufferlen - offset));
 					offset = data->length - (bufferlen - offset);
 				}
 				else
