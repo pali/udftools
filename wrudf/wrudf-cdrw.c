@@ -74,18 +74,22 @@ int	writePacket(struct packetbuf* pb);
 void markBlock(enum markAction action, uint32_t blkno) {
     uint8_t	*bm;
     uint8_t	mask;
+    uint32_t	value;
 
     spaceMapDirty = 1;
     bm = spaceMap->bitmap + (blkno >> 3);
     mask = 1 << (blkno & 7);
+    memcpy(&value, &lvid->data[sizeof(uint32_t)*pd->partitionNumber], sizeof(value));
 
     if( action == FREE ) {
 	*bm |= mask;
-	lvid->freeSpaceTable[pd->partitionNumber]++;
+	value++;
     } else {
 	*bm &= ~mask;
-	lvid->freeSpaceTable[pd->partitionNumber]--;
+	value--;
     }
+
+    memcpy(&lvid->data[sizeof(uint32_t)*pd->partitionNumber], &value, sizeof(value));
 }
 
 /*	GetExtents()

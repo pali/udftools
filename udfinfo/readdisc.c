@@ -963,7 +963,7 @@ static void parse_lvidiu(struct udf_disc *disc)
 		return;
 	}
 
-	lvidiu = (struct logicalVolIntegrityDescImpUse *)&(disc->udf_lvid->impUse[le32_to_cpu(disc->udf_lvid->numOfPartitions) * 2 * sizeof(uint32_t)]);
+	lvidiu = (struct logicalVolIntegrityDescImpUse *)&(disc->udf_lvid->data[le32_to_cpu(disc->udf_lvid->numOfPartitions) * 2 * sizeof(uint32_t)]);
 	disc->num_files = le32_to_cpu(lvidiu->numFiles);
 	disc->num_dirs = le32_to_cpu(lvidiu->numDirs);
 
@@ -2024,7 +2024,7 @@ static void scan_free_space_blocks(int fd, struct udf_disc *disc)
 {
 	long_ad *ad;
 	uint16_t partition;
-	uint32_t blocks, location, length;
+	uint32_t blocks, location, length, value;
 	struct genericPartitionMap *pmap;
 	struct partitionHeaderDesc *phd;
 	struct partitionDesc *pd;
@@ -2046,7 +2046,8 @@ static void scan_free_space_blocks(int fd, struct udf_disc *disc)
 
 	if (partition < le32_to_cpu(disc->udf_lvid->numOfPartitions))
 	{
-		blocks = le32_to_cpu(disc->udf_lvid->freeSpaceTable[partition]);
+		memcpy(&value, &disc->udf_lvid->data[sizeof(uint32_t)*partition], sizeof(value));
+		blocks = le32_to_cpu(value);
 		if (blocks != 0xFFFFFFFF)
 		{
 			disc->free_space_blocks = blocks;

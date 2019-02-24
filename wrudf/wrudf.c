@@ -408,7 +408,7 @@ initialise(char *devicename)
     integrityDescBlocknumber++;
 
     updateTimestamp(0,0);
-    memcpy(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions, &entityWRUDF, sizeof(regid));
+    memcpy(lvid->data + 2 * sizeof(uint32_t) * lvid->numOfPartitions, &entityWRUDF, sizeof(regid));
     lvid->recordingDateAndTime = timeStamp;
     lvid->integrityType = LVID_INTEGRITY_TYPE_OPEN;
     lvid->descTag.tagLocation = integrityDescBlocknumber;

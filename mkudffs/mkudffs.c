@@ -236,7 +236,7 @@ void split_space(struct udf_disc *disc)
 	struct sparablePartitionMap *spm;
 	struct udf_extent *ext;
 	uint32_t accessType;
-	uint32_t i, j;
+	uint32_t i, value;
 
 	// OS boot area
 	if (disc->flags & FLAG_BOOTAREA_MBR)
@@ -431,16 +431,18 @@ void split_space(struct udf_disc *disc)
 	for (i=0; i<le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps); i++)
 	{
 		if (i == 1)
-			disc->udf_lvid->freeSpaceTable[i] = cpu_to_le32(0xFFFFFFFF);
+			value = cpu_to_le32(0xFFFFFFFF);
 		else
-			disc->udf_lvid->freeSpaceTable[i] = cpu_to_le32(size);
+			value = cpu_to_le32(size);
+		memcpy(&disc->udf_lvid->data[sizeof(uint32_t)*i], &value, sizeof(value));
 	}
-	for (j=0; j<le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps); j++)
+	for (i=0; i<le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps); i++)
 	{
-		if (j == 1)
-			disc->udf_lvid->sizeTable[i+j] = cpu_to_le32(0xFFFFFFFF);
+		if (i == 1)
+			value = cpu_to_le32(0xFFFFFFFF);
 		else
-			disc->udf_lvid->sizeTable[i+j] = cpu_to_le32(size);
+			value = cpu_to_le32(size);
+		memcpy(&disc->udf_lvid->data[sizeof(uint32_t)*le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) + sizeof(uint32_t)*i], &value, sizeof(value));
 	}
 
 	if (!next_extent(disc->head, LVID))
@@ -688,12 +690,15 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 	struct udf_desc *desc;
 	struct partitionHeaderDesc *phd = (struct partitionHeaderDesc *)disc->udf_pd[0]->partitionContentsUse;
 	uint32_t length = (sizeof(struct spaceBitmapDesc) + (pspace->blocks+7)/8 + disc->blocksize-1) / disc->blocksize * disc->blocksize;
+	uint32_t value;
+
+	memcpy(&value, &disc->udf_lvid->data[sizeof(uint32_t)*0], sizeof(value));
 
 	if (disc->flags & FLAG_FREED_BITMAP)
 	{
 		phd->freedSpaceBitmap.extPosition = cpu_to_le32(offset);
 		phd->freedSpaceBitmap.extLength = cpu_to_le32(length);
-		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length / disc->blocksize));
+		value = cpu_to_le32(le32_to_cpu(value) - (length / disc->blocksize));
 	}
 	else if (disc->flags & FLAG_FREED_TABLE)
 	{
@@ -701,19 +706,19 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
 			phd->freedSpaceTable.extLength = cpu_to_le32(disc->blocksize * 2);
-			disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - 2);
+			value = cpu_to_le32(le32_to_cpu(value) - 2);
 		}
 		else
 		{
 			phd->freedSpaceTable.extLength = cpu_to_le32(disc->blocksize);
-			disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - 1);
+			value = cpu_to_le32(le32_to_cpu(value) - 1);
 		}
 	}
 	else if (disc->flags & FLAG_UNALLOC_BITMAP)
 	{
 		phd->unallocSpaceBitmap.extPosition = cpu_to_le32(offset);
 		phd->unallocSpaceBitmap.extLength = cpu_to_le32(length);
-		disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - (length / disc->blocksize));
+		value = cpu_to_le32(le32_to_cpu(value) - (length / disc->blocksize));
 	}
 	else if (disc->flags & FLAG_UNALLOC_TABLE)
 	{
@@ -721,14 +726,16 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
 			phd->unallocSpaceTable.extLength = cpu_to_le32(disc->blocksize * 2);
-			disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - 2);
+			value = cpu_to_le32(le32_to_cpu(value) - 2);
 		}
 		else
 		{
 			phd->unallocSpaceTable.extLength = cpu_to_le32(disc->blocksize);
-			disc->udf_lvid->freeSpaceTable[0] = cpu_to_le32(le32_to_cpu(disc->udf_lvid->freeSpaceTable[0]) - 1);
+			value = cpu_to_le32(le32_to_cpu(value) - 1);
 		}
 	}
+
+	memcpy(&disc->udf_lvid->data[sizeof(uint32_t)*0], &value, sizeof(value));
 
 	if (disc->flags & FLAG_SPACE_BITMAP)
 	{
@@ -1373,11 +1380,11 @@ void add_type1_partition(struct udf_disc *disc, uint16_t partitionNum)
 		sizeof(struct logicalVolIntegrityDesc) +
 		sizeof(uint32_t) * 2 * (npm + 1) +
 		sizeof(struct logicalVolIntegrityDescImpUse));
-	memmove(&disc->udf_lvid->impUse[sizeof(uint32_t) * 2 * (npm + 1)],
-		&disc->udf_lvid->impUse[sizeof(uint32_t) * 2 * npm],
+	memmove(&disc->udf_lvid->data[sizeof(uint32_t) * 2 * (npm + 1)],
+		&disc->udf_lvid->data[sizeof(uint32_t) * 2 * npm],
 		sizeof(struct logicalVolIntegrityDescImpUse));
-	memmove(&disc->udf_lvid->impUse[sizeof(uint32_t) * (npm + 1)],
-		&disc->udf_lvid->impUse[sizeof(uint32_t) * npm],
+	memmove(&disc->udf_lvid->data[sizeof(uint32_t) * (npm + 1)],
+		&disc->udf_lvid->data[sizeof(uint32_t) * npm],
 		sizeof(uint32_t));
 }
 
@@ -1410,11 +1417,11 @@ void add_type2_sparable_partition(struct udf_disc *disc, uint16_t partitionNum, 
 		sizeof(struct logicalVolIntegrityDesc) +
 		sizeof(uint32_t) * 2 * (npm + 1) +
 		sizeof(struct logicalVolIntegrityDescImpUse));
-	memmove(&disc->udf_lvid->impUse[sizeof(uint32_t) * 2 * (npm + 1)],
-		&disc->udf_lvid->impUse[sizeof(uint32_t) * 2 * npm],
+	memmove(&disc->udf_lvid->data[sizeof(uint32_t) * 2 * (npm + 1)],
+		&disc->udf_lvid->data[sizeof(uint32_t) * 2 * npm],
 		sizeof(struct logicalVolIntegrityDescImpUse));
-	memmove(&disc->udf_lvid->impUse[sizeof(uint32_t) * (npm + 1)],
-		&disc->udf_lvid->impUse[sizeof(uint32_t) * npm],
+	memmove(&disc->udf_lvid->data[sizeof(uint32_t) * (npm + 1)],
+		&disc->udf_lvid->data[sizeof(uint32_t) * npm],
 		sizeof(uint32_t));
 }
 
@@ -1470,11 +1477,11 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 		sizeof(struct logicalVolIntegrityDesc) +
 		sizeof(uint32_t) * 2 * (npm + 1) +
 		sizeof(struct logicalVolIntegrityDescImpUse));
-	memmove(&disc->udf_lvid->impUse[sizeof(uint32_t) * 2 * (npm + 1)],
-		&disc->udf_lvid->impUse[sizeof(uint32_t) * 2 * npm],
+	memmove(&disc->udf_lvid->data[sizeof(uint32_t) * 2 * (npm + 1)],
+		&disc->udf_lvid->data[sizeof(uint32_t) * 2 * npm],
 		sizeof(struct logicalVolIntegrityDescImpUse));
-	memmove(&disc->udf_lvid->impUse[sizeof(uint32_t) * (npm + 1)],
-		&disc->udf_lvid->impUse[sizeof(uint32_t) * npm],
+	memmove(&disc->udf_lvid->data[sizeof(uint32_t) * (npm + 1)],
+		&disc->udf_lvid->data[sizeof(uint32_t) * npm],
 		sizeof(uint32_t));
 }
 

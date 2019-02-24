@@ -50,7 +50,7 @@ static inline struct impUseVolDescImpUse *query_iuvdiu(struct udf_disc *disc)
 
 static inline struct logicalVolIntegrityDescImpUse *query_lvidiu(struct udf_disc *disc)
 {
-	return (struct logicalVolIntegrityDescImpUse *)&(disc->udf_lvid->impUse[le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) * 2 * sizeof(uint32_t)]);
+	return (struct logicalVolIntegrityDescImpUse *)&(disc->udf_lvid->data[le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps) * 2 * sizeof(uint32_t)]);
 }
 
 #endif /* __FILE_H */

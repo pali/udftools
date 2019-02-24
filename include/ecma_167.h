@@ -319,7 +319,7 @@ struct logicalVolDesc
 	regid		impIdent;
 	uint8_t		impUse[128];
 	extent_ad	integritySeqExt;
-	uint8_t		partitionMaps[0];
+	uint8_t		partitionMaps[];
 } __attribute__ ((packed));
 
 /* Generic Partition Map (ECMA 167r3 3/10.7.1) */
@@ -327,7 +327,7 @@ struct genericPartitionMap
 {
 	uint8_t		partitionMapType;
 	uint8_t		partitionMapLength;
-	uint8_t		partitionMapping[0];
+	uint8_t		partitionMapping[];
 } __attribute__ ((packed));
 
 /* Partition Map Type (ECMA 167r3 3/10.7.1.1) */
@@ -358,7 +358,7 @@ struct unallocSpaceDesc
 	tag		descTag;
 	uint32_t	volDescSeqNum;
 	uint32_t	numAllocDescs;
-	extent_ad	allocDescs[0];
+	extent_ad	allocDescs[];
 } __attribute__ ((packed));
 
 /* Terminating Descriptor (ECMA 167r3 3/10.9) */
@@ -378,9 +378,10 @@ struct logicalVolIntegrityDesc
 	uint8_t		logicalVolContentsUse[32];
 	uint32_t	numOfPartitions;
 	uint32_t	lengthOfImpUse;
-	uint32_t	freeSpaceTable[0];
-	uint32_t	sizeTable[0];
-	uint8_t		impUse[0];
+	uint8_t		data[];
+/*	uint32_t	freeSpaceTable[0]; */
+/*	uint32_t	sizeTable[0]; */
+/*	uint8_t		impUse[0]; */
 } __attribute__ ((packed));
 
 /* Integrity Type (ECMA 167r3 3/10.10.3) */
@@ -477,9 +478,8 @@ struct fileIdentDesc
 	uint8_t		lengthFileIdent;
 	long_ad		icb;
 	uint16_t	lengthOfImpUse;
-	uint8_t		impUse[0];
-	dchars		fileIdent[0];
-	uint8_t		padding[0];
+	uint8_t		impUseAndFileIdent[];
+/*	uint8_t		padding[0]; */
 } __attribute__ ((packed));
 
 /* File Characteristics (ECMA 167r3 4/14.4.3) */
@@ -589,8 +589,7 @@ struct fileEntry
 	uint64_t	uniqueID;
 	uint32_t	lengthExtendedAttr;
 	uint32_t	lengthAllocDescs;
-	uint8_t		extendedAttr[0];
-	uint8_t		allocDescs[0];
+	uint8_t		extendedAttrAndAllocDescs[];
 } __attribute__ ((packed));
 
 /* Permissions (ECMA 167r3 4/14.9.5) */
@@ -645,7 +644,7 @@ struct genericFormat
 	uint8_t		attrSubtype;
 	uint8_t		reserved[3];
 	uint32_t	attrLength;
-	uint8_t		attrData[0];
+	uint8_t		attrData[];
 } __attribute__ ((packed));
 
 /* Character Set Information (ECMA 167r3 4/14.10.3) */
@@ -657,7 +656,7 @@ struct charSetInfo
 	uint32_t	attrLength;
 	uint32_t	escapeSeqLength;
 	uint8_t		charSetType;
-	uint8_t		escapeSeq[0];
+	uint8_t		escapeSeq[];
 } __attribute__ ((packed));
 
 /* Alternate Permissions (ECMA 167r3 4/14.10.4) */
@@ -699,7 +698,7 @@ struct infoTimesExtAttr
 	uint32_t	attrLength;
 	uint32_t	dataLength;
 	uint32_t	infoTimeExistence;
-	uint8_t		infoTimes[0];
+	uint8_t		infoTimes[];
 } __attribute__ ((packed));
 
 /* Device Specification (ECMA 167r3 4/14.10.7) */
@@ -712,7 +711,7 @@ struct deviceSpec
 	uint32_t	impUseLength;
 	uint32_t	majorDeviceIdent;
 	uint32_t	minorDeviceIdent;
-	uint8_t		impUse[0];
+	uint8_t		impUse[];
 } __attribute__ ((packed));
 
 /* Implementation Use Extended Attr (ECMA 167r3 4/14.10.8) */
@@ -724,7 +723,7 @@ struct impUseExtAttr
 	uint32_t	attrLength;
 	uint32_t	impUseLength;
 	regid		impIdent;
-	uint8_t		impUse[0];
+	uint8_t		impUse[];
 } __attribute__ ((packed));
 
 /* Application Use Extended Attribute (ECMA 167r3 4/14.10.9) */
@@ -736,7 +735,7 @@ struct appUseExtAttr
 	uint32_t	attrLength;
 	uint32_t	appUseLength;
 	regid		appIdent;
-	uint8_t		appUse[0];
+	uint8_t		appUse[];
 } __attribute__ ((packed));
 
 #define EXTATTR_CHAR_SET		1
@@ -755,7 +754,7 @@ struct unallocSpaceEntry
 	tag		descTag;
 	icbtag		icbTag;
 	uint32_t	lengthAllocDescs;
-	uint8_t		allocDescs[0];
+	uint8_t		allocDescs[];
 } __attribute__ ((packed));
 
 /* Space Bitmap Descriptor (ECMA 167r3 4/14.12) */
@@ -764,7 +763,7 @@ struct spaceBitmapDesc
 	tag		descTag;
 	uint32_t	numOfBits;
 	uint32_t	numOfBytes;
-	uint8_t		bitmap[0];
+	uint8_t		bitmap[];
 } __attribute__ ((packed));
 
 /* Partition Integrity Entry (ECMA 167r3 4/14.13) */
@@ -805,7 +804,7 @@ struct pathComponent
 	uint8_t		componentType;
 	uint8_t		lengthComponentIdent;
 	uint16_t	componentFileVersionNum;
-	dchars		componentIdent[0];
+	dchars		componentIdent[];
 } __attribute__ ((packed));
 
 /* File Entry (ECMA 167r3 4/14.17) */
@@ -835,8 +834,7 @@ struct extendedFileEntry
 	uint64_t	uniqueID;
 	uint32_t	lengthExtendedAttr;
 	uint32_t	lengthAllocDescs;
-	uint8_t		extendedAttr[0];
-	uint8_t		allocDescs[0];
+	uint8_t		extendedAttrAndAllocDescs[];
 } __attribute__ ((packed));
 
 #endif /* _ECMA_167_H */

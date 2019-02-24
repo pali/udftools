@@ -102,7 +102,7 @@ struct logicalVolIntegrityDescImpUse
 	uint16_t	minUDFReadRev;
 	uint16_t	minUDFWriteRev;
 	uint16_t	maxUDFWriteRev;
-	uint8_t		impUse[0];
+	uint8_t		impUse[];
 } __attribute__ ((packed));
 
 /* Implementation Use Volume Descriptor (UDF 2.01 2.2.7) */
@@ -159,7 +159,7 @@ struct sparablePartitionMap
 /* Virtual Allocation Table (UDF 1.5 2.2.10) */
 struct virtualAllocationTable15
 {
-	uint32_t	vatEntry[0];
+/*	uint32_t	vatEntry[0]; */
 	regid		vatIdent;
 	uint32_t	previousVATICBLoc;
 } __attribute__ ((packed));  
@@ -179,8 +179,8 @@ struct virtualAllocationTable20
 	uint16_t	minUDFWriteRev;
 	uint16_t	maxUDFWriteRev;
 	uint16_t	reserved;
-	uint8_t		impUse[0];
-	uint32_t	vatEntry[0];
+	uint8_t		impUse[];
+/*	uint32_t	vatEntry[0]; */
 } __attribute__ ((packed));
 
 #define ICBTAG_FILE_TYPE_VAT20		0xF8U
@@ -200,7 +200,7 @@ struct sparingTable
 	uint16_t	reserved;
 	uint32_t	sequenceNum;
 	struct sparingEntry
-			mapEntry[0];
+			mapEntry[];
 } __attribute__ ((packed));
 
 /* struct long_ad ICB - ADImpUse (UDF 2.01 2.2.4.3) */
@@ -220,7 +220,7 @@ struct allocDescImpUse
 struct freeEaSpace
 {
 	uint16_t	headerChecksum;
-	uint8_t		freeEASpace[0];
+	uint8_t		freeEASpace[];
 } __attribute__ ((packed));
 
 /* DVD Copyright Management Information (UDF 2.01 3.3.4.5.1.2) */
@@ -247,7 +247,7 @@ struct LVExtensionEA
 struct freeAppEASpace
 {
 	uint16_t	headerChecksum;
-	uint8_t		freeEASpace[0];
+	uint8_t		freeEASpace[];
 } __attribute__ ((packed));
 
 /* UDF Defined System Stream (UDF 2.01 3.3.7) */

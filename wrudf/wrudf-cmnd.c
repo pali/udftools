@@ -122,7 +122,7 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	loc = getNWA() + 1 - pd->partitionStartingLocation;
 	nBytes = (uint32_t) fe->informationLength ;
 
-	for( ad = (long_ad*)(fe->allocDescs + fe->lengthExtendedAttr); nBytes > 0; ad++ ) {
+	for( ad = (long_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr); nBytes > 0; ad++ ) {
 	    if( nBytes > maxVarPktSize ) {
 		ad->extLength = maxVarPktSize;
 		nBytes -= maxVarPktSize;
@@ -144,7 +144,7 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	    ad++;
 	}
 
-	fe->lengthAllocDescs = (uint8_t*)ad - (fe->allocDescs + fe->lengthExtendedAttr);
+	fe->lengthAllocDescs = (uint8_t*)ad - (fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr);
 	fe->descTag.descCRCLength = sizeof(struct fileEntry) + 
 	    fe->lengthExtendedAttr + fe->lengthAllocDescs - sizeof(tag);
 	fe->descTag.tagLocation = newVATentry();
@@ -164,7 +164,7 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	    fid->icb.extLocation.partitionReferenceNum = virtualPartitionNum;
 
 	    /* write file data */
-	    extent = (long_ad*)(fe->allocDescs + fe->lengthExtendedAttr);
+	    extent = (long_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr);
 
 	    for( blkInPkt = nBytes = 0; nBytes < fe->informationLength; extent++ ) {
 		blkno = extent->extLocation.logicalBlockNum;
@@ -212,7 +212,7 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	markBlock(ALLOC, fe->descTag.tagLocation);
 
 	fe->lengthAllocDescs = 					/* extents for the file data */
-	    getExtents(fe->informationLength, (short_ad*)(fe->allocDescs + fe->lengthExtendedAttr));
+	    getExtents(fe->informationLength, (short_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr));
 	if( !fe->lengthAllocDescs ) {
 	    printf("No space for file\n");
 	    close(fd);
@@ -229,7 +229,7 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
 	fid->icb.extLocation.partitionReferenceNum = pd->partitionNumber;
 
 	/* write file data */
-	extent = (short_ad*)(fe->allocDescs + fe->lengthExtendedAttr);
+	extent = (short_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr);
 	for( nBytes = 0; nBytes < fe->informationLength; extent++ ) {
 	    blkno = extent->extPosition;
 	    for( i = 0; i < extent->extLength; blkno++, i += 2048 ) {
@@ -248,7 +248,7 @@ copyFile(Directory *dir, char* inName, char*newName, struct stat *fileStat)
     insertFileIdentDesc(dir, fid);
 
     lvidiu = (struct logicalVolIntegrityDescImpUse*)
-	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+	(lvid->data + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
     lvidiu->numFiles++;
 
     close(fd);
@@ -348,7 +348,7 @@ deleteDirectory(Directory *dir, struct fileIdentDesc* fid)
 	return deleteFID(dir, fid);			/* delete regular files */
 
     name = malloc(fid->lengthFileIdent + 1);
-    strncpy(name, (char *)(fid->fileIdent + fid->lengthOfImpUse), fid->lengthFileIdent);
+    strncpy(name, (char *)(fid->impUseAndFileIdent + fid->lengthOfImpUse), fid->lengthFileIdent);
     name[fid->lengthFileIdent] = 0;
     readDirectory(dir, &fid->icb, name);
     childDir = dir->child;
@@ -425,8 +425,8 @@ readDirectory(Directory *parentDir, long_ad* icb, char *name)
     memcpy(&dir->fe, p, 2048);
 
     if( (dir->fe.icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_IN_ICB ) {
-	memcpy(dir->data, dir->fe.allocDescs + dir->fe.lengthExtendedAttr, dir->fe.lengthAllocDescs);
-	memset(dir->fe.allocDescs + dir->fe.lengthExtendedAttr, 0, dir->fe.lengthAllocDescs);
+	memcpy(dir->data, dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr, dir->fe.lengthAllocDescs);
+	memset(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr, 0, dir->fe.lengthAllocDescs);
     } else {
 	if( dir->fe.informationLength > dir->dataSize ) {
 	    len = (dir->fe.informationLength + 2047) & ~2047;
@@ -438,12 +438,12 @@ readDirectory(Directory *parentDir, long_ad* icb, char *name)
 	    dir->dataSize = len;
 	}
 	readExtents(dir->data, (dir->fe.icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT,
-	    dir->fe.allocDescs + dir->fe.lengthExtendedAttr);
+	    dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr);
 	if( medium == CDRW ) {
 	    if( (dir->fe.icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_SHORT )
-		freeShortExtents((short_ad*)(dir->fe.allocDescs + dir->fe.lengthExtendedAttr));
+		freeShortExtents((short_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr));
 	    else if( (dir->fe.icbTag.flags & ICBTAG_FLAG_AD_MASK) == ICBTAG_FLAG_AD_LONG )
-		freeLongExtents((long_ad*)(dir->fe.allocDescs + dir->fe.lengthExtendedAttr));
+		freeLongExtents((long_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr));
 	}
     }
     printf("Read dir %s\n", dir->name);
@@ -473,13 +473,13 @@ updateDirectory(Directory* dir)
 	dir->fe.logicalBlocksRecorded = 0;
 	dir->fe.icbTag.flags = (dir->fe.icbTag.flags & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_IN_ICB;
 	dir->fe.lengthAllocDescs = dir->fe.informationLength;
-	memcpy(dir->fe.allocDescs + dir->fe.lengthExtendedAttr, dir->data, dir->fe.lengthAllocDescs);
+	memcpy(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr, dir->data, dir->fe.lengthAllocDescs);
 
 	/* UDF2.00 2.2.1.3  - For a structure in virtual space, tagLocation is the virtual location */
 	for( i = 0; i < dir->fe.informationLength;
 	     i += (sizeof(struct fileIdentDesc) + fid->lengthOfImpUse + fid->lengthFileIdent + 3) & ~3 ) 
 	{
-	    fid = (struct fileIdentDesc*) (dir->fe.allocDescs + i);
+	    fid = (struct fileIdentDesc*) (dir->fe.extendedAttrAndAllocDescs + i);
 	    fid->descTag.tagLocation = dir->icb.extLocation.logicalBlockNum;
 	    setChecksum(&fid->descTag);
 	}
@@ -493,7 +493,7 @@ updateDirectory(Directory* dir)
 	    uint32_t	blkno;
 
 	    dir->fe.icbTag.flags = (dir->fe.icbTag.flags & ~ ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_LONG;
-	    ad = (long_ad*)(dir->fe.allocDescs + dir->fe.lengthExtendedAttr);
+	    ad = (long_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr);
 	    ad->extLength = dir->fe.informationLength;
 	    ad->extLocation.logicalBlockNum  =  blkno = getNWA() + 1 - pd->partitionStartingLocation;
 	    ad->extLocation.partitionReferenceNum = pd->partitionNumber;
@@ -517,7 +517,7 @@ updateDirectory(Directory* dir)
 	    uint32_t	*blocks, blkno, len;
 	    short_ad	*extent;
 
-	    extent =(short_ad*)(dir->fe.allocDescs + dir->fe.lengthExtendedAttr);
+	    extent =(short_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr);
 	    dir->fe.lengthAllocDescs = getExtents(dir->fe.informationLength, extent);
 	    dir->fe.icbTag.flags = (dir->fe.icbTag.flags & ~ICBTAG_FLAG_AD_MASK) | ICBTAG_FLAG_AD_SHORT;
 
@@ -560,7 +560,7 @@ updateDirectory(Directory* dir)
 
 	if( dir->fe.logicalBlocksRecorded  ) {
 	    /* write any directory data */
-	    writeExtents(dir->data, 1, (short_ad*)(dir->fe.allocDescs + dir->fe.lengthExtendedAttr));
+	    writeExtents(dir->data, 1, (short_ad*)(dir->fe.extendedAttrAndAllocDescs + dir->fe.lengthExtendedAttr));
 	}
     } else {		/* medium == CDR */
 	int retries;
@@ -668,7 +668,7 @@ makeDir(Directory *dir, char* name )
     newDir->dirDirty = 1;
 
     lvidiu = (struct logicalVolIntegrityDescImpUse*)
-	(lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+	(lvid->data + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
     lvidiu->numDirs++;
 
     free(backFid);
@@ -1002,7 +1002,7 @@ int lscCommand(void) {
 	if( fid->fileCharacteristics & FID_FILE_CHAR_PARENT )
 	    strcpy(filename, "..");
 	else
-	    decode_locale((dchars *)(fid->fileIdent + fid->lengthOfImpUse), filename, fid->lengthFileIdent, sizeof(filename));
+	    decode_locale((dchars *)(fid->impUseAndFileIdent + fid->lengthOfImpUse), filename, fid->lengthFileIdent, sizeof(filename));
 
 	fe = readTaggedBlock( fid->icb.extLocation.logicalBlockNum, fid->icb.extLocation.partitionReferenceNum);
 

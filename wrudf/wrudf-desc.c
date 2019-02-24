@@ -79,11 +79,11 @@ deleteFID(Directory * dir, struct fileIdentDesc * fid)
 	    if( fe->icbTag.fileType == ICBTAG_FILE_TYPE_DIRECTORY ) {
 		dir->fe.fileLinkCount--;
 		lvidiu = (struct logicalVolIntegrityDescImpUse*)
-		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+		    (lvid->data + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
 		lvidiu->numDirs--;
 	    } else {
 		lvidiu = (struct logicalVolIntegrityDescImpUse*)
-		    (lvid->impUse + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
+		    (lvid->data + 2 * sizeof(uint32_t) * lvid->numOfPartitions);
 		lvidiu->numFiles--;
 	    }
 
@@ -92,10 +92,10 @@ deleteFID(Directory * dir, struct fileIdentDesc * fid)
 	    case ICBTAG_FLAG_AD_IN_ICB:
 		break;
 	    case ICBTAG_FLAG_AD_SHORT:
-		freeShortExtents((short_ad*)(fe->allocDescs + fe->lengthExtendedAttr));
+		freeShortExtents((short_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr));
 		break;
 	    case ICBTAG_FLAG_AD_LONG:
-		freeLongExtents((long_ad*)(fe->allocDescs + fe->lengthExtendedAttr));
+		freeLongExtents((long_ad*)(fe->extendedAttrAndAllocDescs + fe->lengthExtendedAttr));
 		break;
 	    default:
 		printf("UDF does not use Extended Alloc Descs\n");
@@ -148,7 +148,7 @@ findFileIdentDesc(Directory *dir, char* name)
 	    continue;
 
 	if( fid->lengthFileIdent == uLen
-	    && memcmp( fid->fileIdent, uName, fid->lengthFileIdent) == 0 )
+	    && memcmp( fid->impUseAndFileIdent, uName, fid->lengthFileIdent) == 0 )
 	    return fid;
     }
     return NULL;
@@ -210,7 +210,7 @@ makeFileIdentDesc(char* name)
 		uName[0] = 0x8;
 	}
 	fid->lengthFileIdent = uLen;
-	memcpy(fid->fileIdent + fid->lengthOfImpUse, uName, fid->lengthFileIdent);
+	memcpy(fid->impUseAndFileIdent + fid->lengthOfImpUse, uName, fid->lengthFileIdent);
     }
     return fid;
 } 
