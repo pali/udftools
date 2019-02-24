@@ -104,7 +104,7 @@ tag query_tag(struct udf_disc *disc, struct udf_extent *ext, struct udf_desc *de
 	data = desc->data;
 	while (data != NULL)
 	{
-		crc = udf_crc(data->buffer + offset, data->length - offset, crc);
+		crc = udf_crc((uint8_t *)data->buffer + offset, data->length - offset, crc);
 		offset = 0;
 		data = data->next;
 	}
@@ -152,7 +152,7 @@ tag udf_query_tag(struct udf_disc *disc, uint16_t Ident, uint16_t SerialNum, uin
 	{
 		if ((clength = data->length) > length)
 			clength = length;
-		crc = udf_crc(data->buffer + skip + offset, clength - offset, crc);
+		crc = udf_crc((uint8_t *)data->buffer + skip + offset, clength - offset, crc);
 		length -= clength;
 		offset = 0;
 		skip = 0;
