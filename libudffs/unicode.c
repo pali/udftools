@@ -30,6 +30,7 @@
 
 #include "libudffs.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,6 +71,17 @@ size_t decode_utf8(const dchars *in, char *out, size_t inlen, size_t outlen)
 			if (len+2 >= outlen)
 				return (size_t)-1;
 			out[len++] = (uint8_t)(0xc0 | (c >> 6));
+			out[len++] = (uint8_t)(0x80 | (c & 0x3f));
+		}
+		else if (c >= 0xD800 && c <= 0xDBFF && i+1 < inlen && (((unsigned int)in[i] << 8) | in[i+1]) >= 0xDC00 && (((unsigned int)in[i] << 8) | in[i+1]) <= 0xDFFF)
+		{
+			c = 0x10000 + ((c - 0xD800) << 10) + ((((unsigned int)in[i] << 8) | in[i+1]) - 0xDC00);
+			i += 2;
+			if (len+4 >= outlen)
+				return (size_t)-1;
+			out[len++] = (uint8_t)(0xf0 | (c >> 18));
+			out[len++] = (uint8_t)(0x80 | ((c >> 12) & 0x3f));
+			out[len++] = (uint8_t)(0x80 | ((c >> 6) & 0x3f));
 			out[len++] = (uint8_t)(0x80 | (c & 0x3f));
 		}
 		else
@@ -153,14 +165,14 @@ try_again:
 			if (max_val == 0x7F)
 			{
 				len = 1;
-				max_val = 0xFFFF;
+				max_val = 0x10FFFF;
 				out[0] = 0x10;
 				goto try_again;
 			}
 			return (size_t)-1;
 		}
 
-		if (max_val == 0xFFFF)
+		if (max_val == 0x10FFFF)
 		{
 			if (len + 2 > outlen)
 			{
@@ -168,6 +180,14 @@ try_again:
 				max_val = 0xFF;
 				out[0] = 0x8;
 				goto try_again;
+			}
+			if (utf_char > 0xFFFF)
+			{
+				if (len+4 > outlen)
+					return (size_t)-1;
+				out[len++] = ((((utf_char - 0x10000) >> 10) + 0xD800) >> 8) & 0xFF;
+				out[len++] = (((utf_char - 0x10000) >> 10) + 0xD800) & 0xFF;
+				utf_char = ((utf_char - 0x10000) & 0x3FF) + 0xDC00;
 			}
 			out[len++] = utf_char >> 8;
 		}
@@ -215,7 +235,20 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 	{
 		wcs[len] = in[i++];
 		if (in[0] == 16)
+		{
 			wcs[len] = (wcs[len] << 8) | in[i++];
+#if WCHAR_MAX >= 0x10FFFF
+			if (wcs[len] >= 0xD800 && wcs[len] <= 0xDBFF && i+1 < inlen)
+			{
+				wchar_t ch = (((wchar_t)in[i] << 8) | in[i+1]);
+				if (ch >= 0xDC00 && ch <= 0xDFFF)
+				{
+					wcs[len] = 0x10000 + ((wcs[len] - 0xD800) << 10) + (ch - 0xDC00);
+					i += 2;
+				}
+			}
+#endif
+		}
 		++len;
 	}
 
@@ -253,6 +286,12 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 	return len;
 }
 
+#if WCHAR_MAX > 0x10FFFF
+#define DCHAR_IN_WCHAR_MAX 0x10FFFF
+#else
+#define DCHAR_IN_WCHAR_MAX WCHAR_MAX
+#endif
+
 size_t encode_locale(dchars *out, const char *in, size_t outlen)
 {
 	size_t i;
@@ -288,13 +327,13 @@ try_again:
 			{
 				len = 1;
 				out[0] = 16;
-				max_val = 0xFFFF;
+				max_val = DCHAR_IN_WCHAR_MAX;
 				goto try_again;
 			}
 			goto error_out;
 		}
 
-		if (max_val == 0xFFFF)
+		if (max_val == DCHAR_IN_WCHAR_MAX)
 		{
 			if (len+2 > outlen)
 			{
@@ -303,6 +342,16 @@ try_again:
 				max_val = 0xFF;
 				goto try_again;
 			}
+#if WCHAR_MAX > 0xFFFF
+			if (wcs[i] > 0xFFFF)
+			{
+				if (len+4 > outlen)
+					return (size_t)-1;
+				out[len++] = ((((wcs[i] - 0x10000) >> 10) + 0xD800) >> 8) & 0xFF;
+				out[len++] = (((wcs[i] - 0x10000) >> 10) + 0xD800) & 0xFF;
+				wcs[i] = ((wcs[i] - 0x10000) & 0x3FF) + 0xDC00;
+			}
+#endif
 			out[len++] = (wcs[i] >> 8) & 0xFF;
 		}
 
