@@ -136,16 +136,6 @@ try_again:
 					utf_char = c & 0x07;
 					utf_cnt = 3;
 				}
-				else if ((c & 0xFC) == 0xF8)
-				{
-					utf_char = c & 0x03;
-					utf_cnt = 4;
-				}
-				else if ((c & 0xFE) == 0xfc)
-				{
-					utf_char = c & 0x01;
-					utf_cnt = 5;
-				}
 				else
 					goto error_invalid;
 				continue;
