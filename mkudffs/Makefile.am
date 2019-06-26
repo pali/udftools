@@ -5,7 +5,7 @@ mkudffs_SOURCES = main.c mkudffs.c defaults.c file.c options.c mkudffs.h default
 AM_CPPFLAGS = -I$(top_srcdir)/include
 
 install-exec-hook:
-	cd "$(DESTDIR)$(sbindir)" && ln -sf mkudffs$(EXEEXT) mkfs.udf$(EXEEXT)
+	cd "$(DESTDIR)$(sbindir)" && $(LN_S) -f mkudffs$(EXEEXT) mkfs.udf$(EXEEXT)
 
 uninstall-hook:
-	cd "$(DESTDIR)$(sbindir)" && rm -f mkfs.udf$(EXEEXT)
+	cd "$(DESTDIR)$(sbindir)" && $(RM) mkfs.udf$(EXEEXT)

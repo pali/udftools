@@ -9,6 +9,7 @@ dnl Checks for programs.
 AC_PROG_CC_C99
 AC_DISABLE_SHARED
 AM_PROG_LIBTOOL
+AC_PROG_LN_S
 
 AS_IF([test "$ac_cv_prog_cc_c99" = "no"], [AC_MSG_ERROR([Your C compiler does not support ISO C99.])])
 
