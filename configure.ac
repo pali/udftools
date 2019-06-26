@@ -10,9 +10,7 @@ AC_PROG_CC_C99
 AC_DISABLE_SHARED
 AM_PROG_LIBTOOL
 
-if test "$ac_cv_prog_cc_c99" = "no"; then
-	AC_MSG_ERROR([Your C compiler does not support ISO C99.])
-fi
+AS_IF([test "$ac_cv_prog_cc_c99" = "no"], [AC_MSG_ERROR([Your C compiler does not support ISO C99.])])
 
 dnl Checks for libraries.
 AC_CHECK_LIB(readline, readline, [ ])
