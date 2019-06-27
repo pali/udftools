@@ -37,6 +37,7 @@
 #include <ctype.h>
 #include <wchar.h>
 #include <errno.h>
+#include <limits.h>
 
 size_t decode_utf8(const dchars *in, char *out, size_t inlen, size_t outlen)
 {
@@ -212,7 +213,7 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 	size_t wcslen, clen;
 	wchar_t *wcs;
 	mbstate_t ps;
-	char cbuf[MB_CUR_MAX];
+	char cbuf[MB_LEN_MAX];
 
 	if (outlen == 0)
 		return (size_t)-1;
