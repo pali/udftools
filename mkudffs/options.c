@@ -72,6 +72,7 @@ static struct option long_options[] = {
 	{ "closed", no_argument, NULL, OPT_CLOSED },
 	{ "new-file", no_argument, NULL, OPT_NEW_FILE },
 	{ "no-write", no_argument, NULL, OPT_NO_WRITE },
+	{ "read-only", no_argument, NULL, OPT_READ_ONLY },
 	{ 0, 0, NULL, 0 },
 };
 
@@ -97,6 +98,7 @@ void usage(void)
 		"\t--uid=             Uid of the root directory (default: 0)\n"
 		"\t--gid=             Gid of the root directory (default: 0)\n"
 		"\t--mode=            Permissions (octal mode bits) of the root directory (default: 0755)\n"
+		"\t--read-only        Set UDF Access Type for overwritable media types to read-only\n"
 		"\t--bootarea=        UDF boot area (preserve, erase, mbr; default: based on media type)\n"
 		"\t--strategy=        Allocation strategy to use (4, 4096; default: based on media type)\n"
 		"\t--spartable        Use Sparing Table (default: based on media type) and set its count (1 - 4; default: 2)\n"
@@ -120,6 +122,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	int retval;
 	int i;
 	int media = MEDIA_TYPE_NONE;
+	int read_only = 0;
 	int use_sparable = 0;
 	uint16_t rev = 0;
 	uint32_t spartable = 2;
@@ -198,6 +201,11 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			case OPT_NEW_FILE:
 			{
 				*create_new_file = 1;
+				break;
+			}
+			case OPT_READ_ONLY:
+			{
+				read_only = 1;
 				break;
 			}
 			case OPT_UNICODE8:
@@ -690,7 +698,18 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	if (media == MEDIA_TYPE_NONE)
 	{
 		media = MEDIA_TYPE_HD;
+		disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 		packetlen = 1;
+	}
+
+	if (read_only)
+	{
+		if (le32_to_cpu(disc->udf_pd[0]->accessType) != PD_ACCESS_TYPE_OVERWRITABLE)
+		{
+			fprintf(stderr, "%s: Error: Option --read-only can be used only for overwritable media types\n", appname);
+			exit(1);
+		}
+		disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
 	}
 
 	if (disc->flags & FLAG_VAT)

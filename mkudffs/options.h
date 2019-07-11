@@ -45,6 +45,7 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, int *, int *);
 #define OPT_VAT		0x1008
 #define OPT_NEW_FILE	0x1009
 #define OPT_NO_WRITE	0x1010
+#define OPT_READ_ONLY	0x1011
 
 #define OPT_BLK_SIZE	0x2000
 #define OPT_UDF_REV	0x2001

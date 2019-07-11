@@ -177,6 +177,12 @@ Specify permissions in octal mode bits of the root (/) directory. If omitted,
 \fBmkudffs\fP mode is \fI0755\fP. (Option available since mkudffs 2.0)
 
 .TP
+.BI \-\-read\-only
+Set \fIUDF Access Type\fP for overwritable media types (\fIhd\fP, \fIdvdram\fP,
+\fIdvdrw\fP) to read-only. This option specify that the whole UDF disk should be
+treated as read-only. (Option available since mkudffs 2.2)
+
+.TP
 .BI \-\-bootarea= " fill "
 Specify how to fill UDF boot area which is the first 32kB of the disk and is not
 used by UDF itself. Option \fImbr\fP make sense only when running \fBmkudffs\fP
