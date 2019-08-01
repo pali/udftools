@@ -579,19 +579,26 @@ void setup_vrs(struct udf_disc *disc)
 {
 	struct udf_extent *ext;
 	struct udf_desc *desc;
+	size_t vsComponentLen = sizeof(struct volStructDesc);
+
+	if (   (disc->blocksize == 4096)
+	    && (disc->udf_pd[0]->accessType == constant_cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE)))
+	{
+		vsComponentLen = 4096;
+	}
 
 	if (!(ext = next_extent(disc->head, VRS)))
 		return;
-	desc = set_desc(ext, 0x00, 0, sizeof(struct volStructDesc), NULL);
+	desc = set_desc(ext, 0x00, 0, vsComponentLen, NULL);
 	disc->udf_vrs[0] = (struct volStructDesc *)desc->data->buffer;
 	disc->udf_vrs[0]->structType = 0x00;
 	disc->udf_vrs[0]->structVersion = 0x01;
 	memcpy(disc->udf_vrs[0]->stdIdent, VSD_STD_ID_BEA01, VSD_STD_ID_LEN);
 
 	if (disc->blocksize >= 2048)
-		desc = set_desc(ext, 0x00, 1, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 1, vsComponentLen, NULL);
 	else
-		desc = set_desc(ext, 0x00, 2048 / disc->blocksize, sizeof(struct volStructDesc), NULL);
+		desc = set_desc(ext, 0x00, 2048 / disc->blocksize, vsComponentLen, NULL);
 	disc->udf_vrs[1] = (struct volStructDesc *)desc->data->buffer;
 	disc->udf_vrs[1]->structType = 0x00;
 	disc->udf_vrs[1]->structVersion = 0x01;
@@ -608,6 +615,19 @@ void setup_vrs(struct udf_disc *disc)
 	disc->udf_vrs[2]->structType = 0x00;
 	disc->udf_vrs[2]->structVersion = 0x01;
 	memcpy(disc->udf_vrs[2]->stdIdent, VSD_STD_ID_TEA01, VSD_STD_ID_LEN);
+
+	if (vsComponentLen == 4096)
+	{
+		// Ref: https://lkml.org/lkml/2019/7/9/596 (ISSUE 2)
+		// Work around Windows chkdsk inability to process properly-formatted 4K media
+		for (int i=0; i <= 1; ++i)
+		{
+			struct volStructDesc *dummyDesc = disc->udf_vrs[i] + 1;
+			dummyDesc->structType = 0x00;
+			dummyDesc->structVersion = 0x01;
+			memcpy(dummyDesc->stdIdent, VSD_STD_ID_BOOT2, VSD_STD_ID_LEN);
+		}
+	}
 }
 
 void setup_anchor(struct udf_disc *disc)
