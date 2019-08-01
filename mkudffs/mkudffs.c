@@ -458,6 +458,11 @@ void split_space(struct udf_disc *disc)
 				size = ext->blocks;
 			}
 
+			// Make sure partition doesn't have a space bitmap with a partial last byte.
+			// It's a corner case that some systems (Windows chkdsk) don't handle properly.
+			if ((disc->flags & FLAG_UNALLOC_BITMAP) && (size & 7))
+				size &= ~7;
+
 			// round size down to a multiple of alignment/packet_size
 			if (size % offsets[PSPACE_SIZE])
 				size -= (size % offsets[PSPACE_SIZE]);
