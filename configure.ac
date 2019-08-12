@@ -25,7 +25,8 @@ AC_C_BIGENDIAN
 AC_SYS_LARGEFILE
 
 PKG_PROG_PKG_CONFIG
-PKG_CHECK_MODULES(UDEV, [udev], [ac_cv_udevdir=`$PKG_CONFIG --variable=udevdir udev`])
+PKG_CHECK_MODULES(UDEV, [udev], [ac_cv_udevdir=`$PKG_CONFIG --variable=udevdir udev`], [ac_cv_udevdir=""])
+AM_CONDITIONAL(UDEVDIR, [test "$ac_cv_udevdir" != ""])
 AC_SUBST(UDEVDIR, $ac_cv_udevdir)
 
 dnl Checks for library functions.
