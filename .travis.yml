@@ -323,6 +323,8 @@ matrix:
       env: PLATFORM=x86
       addons:
         apt:
+          sources:
+            - llvm-toolchain-xenial-7
           packages:
             - libreadline-dev:i386
             - libc6-dev:i386
@@ -332,6 +334,8 @@ matrix:
       env: PLATFORM=x86_64
       addons:
         apt:
+          sources:
+            - llvm-toolchain-xenial-7
           packages:
             - libreadline-dev
             - clang-7
