@@ -347,7 +347,7 @@ try_again:
 			if (wcs[i] > 0xFFFF)
 			{
 				if (len+4 > outlen)
-					return (size_t)-1;
+					goto error_out;
 				out[len++] = ((((wcs[i] - 0x10000) >> 10) + 0xD800) >> 8) & 0xFF;
 				out[len++] = (((wcs[i] - 0x10000) >> 10) + 0xD800) & 0xFF;
 				wcs[i] = ((wcs[i] - 0x10000) & 0x3FF) + 0xDC00;
