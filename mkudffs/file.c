@@ -28,6 +28,7 @@
 
 #include "config.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -206,6 +207,11 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 					parent->length += sizeof(short_ad);
 					parent->data->length += sizeof(short_ad);
 					parent->data->buffer = realloc(parent->data->buffer, parent->length);
+					if (!parent->data->buffer)
+					{
+						fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+						exit(1);
+					}
 					efe = (struct extendedFileEntry *)parent->data->buffer;
 					sad = (short_ad *)&efe->extendedAttrAndAllocDescs[le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs)];
 					sad->extPosition = cpu_to_le32(block);
@@ -219,6 +225,11 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 					parent->length += sizeof(long_ad);
 					parent->data->length += sizeof(long_ad);
 					parent->data->buffer = realloc(parent->data->buffer, parent->length);
+					if (!parent->data->buffer)
+					{
+						fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+						exit(1);
+					}
 					efe = (struct extendedFileEntry *)parent->data->buffer;
 					lad = (long_ad *)&efe->extendedAttrAndAllocDescs[le32_to_cpu(efe->lengthExtendedAttr) + le32_to_cpu(efe->lengthAllocDescs)];
 					lad->extLocation.logicalBlockNum = cpu_to_le32(block);
@@ -278,6 +289,11 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 					parent->length += sizeof(short_ad);
 					parent->data->length += sizeof(short_ad);
 					parent->data->buffer = realloc(parent->data->buffer, parent->length);
+					if (!parent->data->buffer)
+					{
+						fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+						exit(1);
+					}
 					fe = (struct fileEntry *)parent->data->buffer;
 					sad = (short_ad *)&fe->extendedAttrAndAllocDescs[le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs)];
 					sad->extPosition = cpu_to_le32(block);
@@ -291,6 +307,11 @@ int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_des
 					parent->length += sizeof(long_ad);
 					parent->data->length += sizeof(long_ad);
 					parent->data->buffer = realloc(parent->data->buffer, parent->length);
+					if (!parent->data->buffer)
+					{
+						fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+						exit(1);
+					}
 					fe = (struct fileEntry *)parent->data->buffer;
 					lad = (long_ad *)&fe->extendedAttrAndAllocDescs[le32_to_cpu(fe->lengthExtendedAttr) + le32_to_cpu(fe->lengthAllocDescs)];
 					lad->extLocation.logicalBlockNum = cpu_to_le32(block);
@@ -521,6 +542,12 @@ void insert_ea(struct udf_disc *disc, struct udf_desc *desc, struct genericForma
 		desc->data->length += sizeof(*ea_hdr);
 		desc->data->buffer = realloc(desc->data->buffer, desc->data->length);
 
+		if (!desc->data->buffer)
+		{
+			fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
+
 		UPDATE_PTR;
 
 		if (disc->flags & FLAG_EFE)
@@ -545,6 +572,12 @@ void insert_ea(struct udf_disc *disc, struct udf_desc *desc, struct genericForma
 		desc->length += length;
 		desc->data->length += length;
 		desc->data->buffer = realloc(desc->data->buffer, desc->data->length);
+
+		if (!desc->data->buffer)
+		{
+			fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
 
 		UPDATE_PTR;
 
@@ -582,6 +615,12 @@ void insert_ea(struct udf_disc *disc, struct udf_desc *desc, struct genericForma
 		desc->data->length += length;
 		desc->data->buffer = realloc(desc->data->buffer, desc->data->length);
 
+		if (!desc->data->buffer)
+		{
+			fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
+
 		UPDATE_PTR;
 
 		if (le32_to_cpu(ea_hdr->appAttrLocation) != 0xFFFFFFFF)
@@ -615,6 +654,12 @@ void insert_ea(struct udf_disc *disc, struct udf_desc *desc, struct genericForma
 		desc->length += length;
 		desc->data->length += length;
 		desc->data->buffer = realloc(desc->data->buffer, desc->data->length);
+
+		if (!desc->data->buffer)
+		{
+			fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
 
 		UPDATE_PTR;
 

@@ -54,6 +54,8 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 	{
 		bufferlen = disc->blocksize * 32;
 		buffer = calloc(bufferlen, 1);
+		if (buffer == NULL)
+			return -1;
 	}
 
 	if (ext == NULL)

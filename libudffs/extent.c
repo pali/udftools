@@ -30,6 +30,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -268,6 +269,11 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 		else if (blocks < start_ext->blocks)
 		{
 			new_ext = malloc(sizeof(struct udf_extent));
+			if (!new_ext)
+			{
+				fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+				exit(1);
+			}
 			new_ext->space_type = type;
 			new_ext->start = start;
 			new_ext->blocks = blocks;
@@ -296,6 +302,11 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 		if (start + blocks == start_ext->start + start_ext->blocks)
 		{
 			new_ext = malloc(sizeof(struct udf_extent));
+			if (!new_ext)
+			{
+				fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+				exit(1);
+			}
 			new_ext->space_type = type;
 			new_ext->start = start;
 			new_ext->blocks = blocks;
@@ -315,6 +326,11 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 		else if (start + blocks < start_ext->start + start_ext->blocks)
 		{
 			new_ext = malloc(sizeof(struct udf_extent));
+			if (!new_ext)
+			{
+				fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+				exit(1);
+			}
 			new_ext->space_type = type;
 			new_ext->start = start;
 			new_ext->blocks = blocks;
@@ -322,6 +338,11 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 			new_ext->prev = start_ext;
 
 			new_ext->next = malloc(sizeof(struct udf_extent));
+			if (!new_ext->next)
+			{
+				fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+				exit(1);
+			}
 			new_ext->next->prev = new_ext;
 			new_ext->next->space_type = start_ext->space_type;
 			new_ext->next->start = start + blocks;
@@ -346,6 +367,11 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 				exit(1);
 			}
 			new_ext = malloc(sizeof(struct udf_extent));
+			if (!new_ext)
+			{
+				fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+				exit(1);
+			}
 			new_ext->space_type = type;
 			new_ext->start = start;
 			new_ext->blocks = blocks;
@@ -416,6 +442,12 @@ struct udf_desc *set_desc(struct udf_extent *ext, uint16_t ident, uint32_t offse
 {
 	struct udf_desc *start_desc, *new_desc = calloc(1, sizeof(struct udf_desc));
 
+	if (!new_desc)
+	{
+		fprintf(stderr, "%s: Error: calloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
+
 	new_desc->ident = ident;
 	new_desc->offset = offset;
 	new_desc->length = length;
@@ -485,11 +517,23 @@ struct udf_data *alloc_data(void *buffer, int length)
 {
 	struct udf_data *data = calloc(1, sizeof(struct udf_data));
 
+	if (!data)
+	{
+		fprintf(stderr, "%s: Error: calloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
+
 	if (buffer)
 		data->buffer = buffer;
 	else if (length)
 		data->buffer = calloc(1, length);
 	data->length = length;
+
+	if (!data->buffer)
+	{
+		fprintf(stderr, "%s: Error: calloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 
 	return data;
 }

@@ -265,6 +265,8 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 	{
 		bufferlen = disc->blocksize;
 		buffer = calloc(bufferlen, 1);
+		if (buffer == NULL)
+			return -1;
 	}
 
 	if (!(ext->space_type & (USPACE|RESERVED)))
@@ -285,6 +287,8 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 				{
 					bufferlen = (data->length + offset + disc->blocksize - 1) & ~(disc->blocksize - 1);
 					buffer = realloc(buffer, bufferlen);
+					if (buffer == NULL)
+						return -1;
 				}
 				memcpy(buffer + offset, data->buffer, data->length);
 				offset += data->length;

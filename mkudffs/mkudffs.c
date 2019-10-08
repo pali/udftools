@@ -103,6 +103,11 @@ void udf_init_disc(struct udf_disc *disc)
 
 	/* Allocate/Initialize Descriptors */
 	disc->udf_pvd[0] = malloc(sizeof(struct primaryVolDesc));
+	if (!disc->udf_pvd[0])
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memcpy(disc->udf_pvd[0], &default_pvd, sizeof(struct primaryVolDesc));
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
 	snprintf(uuid, sizeof(uuid), "%08" PRIu32 "%08" PRIu32, uuid_time, randu32());
@@ -111,16 +116,36 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->udf_pvd[0]->volSetIdent[127] = strlen((char *)disc->udf_pvd[0]->volSetIdent);
 
 	disc->udf_lvd[0] = malloc(sizeof(struct logicalVolDesc));
+	if (!disc->udf_lvd[0])
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memcpy(disc->udf_lvd[0], &default_lvd, sizeof(struct logicalVolDesc));
 	disc->udf_lvd[0]->logicalVolIdent[127] = strlen((char *)disc->udf_lvd[0]->logicalVolIdent);
 
 	disc->udf_pd[0] = malloc(sizeof(struct partitionDesc));
+	if (!disc->udf_pd[0])
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memcpy(disc->udf_pd[0], &default_pd, sizeof(struct partitionDesc));
 
 	disc->udf_usd[0] = malloc(sizeof(struct unallocSpaceDesc));
+	if (!disc->udf_usd[0])
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memcpy(disc->udf_usd[0], &default_usd, sizeof(struct unallocSpaceDesc));
 
 	disc->udf_iuvd[0] = malloc(sizeof(struct impUseVolDesc) + sizeof(struct impUseVolDescImpUse));
+	if (!disc->udf_iuvd[0])
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memcpy(disc->udf_iuvd[0], &default_iuvd, sizeof(struct impUseVolDesc));
 	memcpy(query_iuvdiu(disc), &default_iuvdiu, sizeof(struct impUseVolDescImpUse));
 	query_iuvdiu(disc)->logicalVolIdent[127] = strlen((char *)query_iuvdiu(disc)->logicalVolIdent);
@@ -129,20 +154,45 @@ void udf_init_disc(struct udf_disc *disc)
 	query_iuvdiu(disc)->LVInfo3[35] = strlen((char *)query_iuvdiu(disc)->LVInfo3);
 
 	disc->udf_td[0] = malloc(sizeof(struct terminatingDesc));
+	if (!disc->udf_td[0])
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memcpy(disc->udf_td[0], &default_td, sizeof(struct terminatingDesc));
 
 	disc->udf_lvid = malloc(sizeof(struct logicalVolIntegrityDesc) + sizeof(struct logicalVolIntegrityDescImpUse));
+	if (!disc->udf_lvid)
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memcpy(disc->udf_lvid, &default_lvid, sizeof(struct logicalVolIntegrityDesc));
 	memcpy(&disc->udf_lvid->recordingDateAndTime, &ts, sizeof(timestamp));
 	memcpy(query_lvidiu(disc), &default_lvidiu, sizeof(struct logicalVolIntegrityDescImpUse));
 
 	disc->udf_stable[0] = malloc(sizeof(struct sparingTable));
+	if (!disc->udf_stable[0])
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memcpy(disc->udf_stable[0], &default_stable, sizeof(struct sparingTable));
 
 	disc->vat = calloc(1, disc->blocksize);
+	if (!disc->vat)
+	{
+		fprintf(stderr, "%s: Error: calloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	disc->vat_entries = 0;
 
 	disc->udf_fsd = malloc(sizeof(struct fileSetDesc));
+	if (!disc->udf_fsd)
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memcpy(disc->udf_fsd, &default_fsd, sizeof(struct fileSetDesc));
 	memcpy(&disc->udf_fsd->recordingDateAndTime, &ts, sizeof(timestamp));
 	disc->udf_fsd->logicalVolIdent[127] = strlen((char *)disc->udf_fsd->logicalVolIdent);
@@ -151,6 +201,11 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->udf_fsd->abstractFileIdent[31] = strlen((char *)disc->udf_fsd->abstractFileIdent);
 
 	disc->head = malloc(sizeof(struct udf_extent));
+	if (!disc->head)
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	disc->tail = disc->head;
 
 	disc->head->space_type = USPACE;
@@ -651,12 +706,22 @@ void setup_anchor(struct udf_disc *disc)
 	do
 	{
 		ext->head = ext->tail = malloc(sizeof(struct udf_desc) + sizeof(struct udf_data));
+		if (!ext->head)
+		{
+			fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
 		ext->head->data = (struct udf_data *)&(ext->head)[1];
 		ext->head->data->next = ext->head->data->prev = NULL;
 		ext->head->ident = TAG_IDENT_AVDP;
 		ext->head->offset = 0;
 		ext->head->length = ext->head->data->length = sizeof(struct anchorVolDescPtr);
 		disc->udf_anchor[i] = ext->head->data->buffer = malloc(sizeof(struct anchorVolDescPtr));
+		if (!disc->udf_anchor[i])
+		{
+			fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
 		ext->head->next = ext->head->prev = NULL;
 		disc->udf_anchor[i]->mainVolDescSeqExt.extLocation = cpu_to_le32(mloc);
 		disc->udf_anchor[i]->mainVolDescSeqExt.extLength = cpu_to_le32(mlen);
@@ -1110,6 +1175,11 @@ void setup_usd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent
 	{
 		length += sizeof(extent_ad);
 		disc->udf_usd[0] = realloc(disc->udf_usd[0], length);
+		if (!disc->udf_usd[0])
+		{
+			fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
 		disc->udf_usd[0]->numAllocDescs = cpu_to_le32(le32_to_cpu(disc->udf_usd[0]->numAllocDescs)+1);
 		disc->udf_usd[0]->allocDescs[count].extLength = cpu_to_le32(ext->blocks * disc->blocksize);
 		disc->udf_usd[0]->allocDescs[count].extLocation = cpu_to_le32(ext->start);
@@ -1232,6 +1302,11 @@ void setup_stable(struct udf_disc *disc, struct udf_extent *stable[4], struct ud
 		spm->locSparingTable[i] = cpu_to_le32(stable[i]->start);
 
 	disc->udf_stable[0] = realloc(disc->udf_stable[0], length);
+	if (!disc->udf_stable[0])
+	{
+		fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	disc->udf_stable[0]->reallocationTableLen = cpu_to_le16(num);
 	for (i=0; i<num; i++)
 	{
@@ -1365,6 +1440,12 @@ void add_type1_partition(struct udf_disc *disc, uint16_t partitionNum)
 		sizeof(struct logicalVolDesc) + mtl +
 		sizeof(struct genericPartitionMap1));
 
+	if (!disc->udf_lvd[0])
+	{
+		fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
+
 	pm = (struct genericPartitionMap1 *)&disc->udf_lvd[0]->partitionMaps[mtl];
 	mtl += sizeof(struct genericPartitionMap1);
 
@@ -1380,6 +1461,11 @@ void add_type1_partition(struct udf_disc *disc, uint16_t partitionNum)
 		sizeof(struct logicalVolIntegrityDesc) +
 		sizeof(uint32_t) * 2 * (npm + 1) +
 		sizeof(struct logicalVolIntegrityDescImpUse));
+	if (!disc->udf_lvid)
+	{
+		fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memmove(&disc->udf_lvid->data[sizeof(uint32_t) * 2 * (npm + 1)],
 		&disc->udf_lvid->data[sizeof(uint32_t) * 2 * npm],
 		sizeof(struct logicalVolIntegrityDescImpUse));
@@ -1399,6 +1485,12 @@ void add_type2_sparable_partition(struct udf_disc *disc, uint16_t partitionNum, 
 		sizeof(struct logicalVolDesc) + mtl +
 		sizeof(struct sparablePartitionMap));
 
+	if (!disc->udf_lvd[0])
+	{
+		fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
+
 	pm = (struct sparablePartitionMap *)&disc->udf_lvd[0]->partitionMaps[mtl];
 	mtl += sizeof(struct sparablePartitionMap);
 
@@ -1417,6 +1509,11 @@ void add_type2_sparable_partition(struct udf_disc *disc, uint16_t partitionNum, 
 		sizeof(struct logicalVolIntegrityDesc) +
 		sizeof(uint32_t) * 2 * (npm + 1) +
 		sizeof(struct logicalVolIntegrityDescImpUse));
+	if (!disc->udf_lvid)
+	{
+		fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memmove(&disc->udf_lvid->data[sizeof(uint32_t) * 2 * (npm + 1)],
 		&disc->udf_lvid->data[sizeof(uint32_t) * 2 * npm],
 		sizeof(struct logicalVolIntegrityDescImpUse));
@@ -1463,6 +1560,12 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 		sizeof(struct logicalVolDesc) + mtl +
 		sizeof(struct virtualPartitionMap));
 
+	if (!disc->udf_lvd[0])
+	{
+		fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
+
 	pm = (struct virtualPartitionMap *)&disc->udf_lvd[0]->partitionMaps[mtl];
 	mtl += sizeof(struct virtualPartitionMap);
 
@@ -1477,6 +1580,11 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 		sizeof(struct logicalVolIntegrityDesc) +
 		sizeof(uint32_t) * 2 * (npm + 1) +
 		sizeof(struct logicalVolIntegrityDescImpUse));
+	if (!disc->udf_lvid)
+	{
+		fprintf(stderr, "%s: Error: realloc failed: %s\n", appname, strerror(errno));
+		exit(1);
+	}
 	memmove(&disc->udf_lvid->data[sizeof(uint32_t) * 2 * (npm + 1)],
 		&disc->udf_lvid->data[sizeof(uint32_t) * 2 * npm],
 		sizeof(struct logicalVolIntegrityDescImpUse));
