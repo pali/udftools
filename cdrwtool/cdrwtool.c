@@ -198,7 +198,7 @@ int set_write_mode(int fd, write_params_t *w)
 	if ((len <= offset+13) || (w->data_block == 10 && len <= offset+51))
 	{
 		perror("mode_sense_write");
-		return ret;
+		return 1;
 	}
 
 	buffer = calloc(len, sizeof(unsigned char));
@@ -268,7 +268,7 @@ int get_write_mode(int fd, write_params_t *w)
 	if (len <= offset+13)
 	{
 		perror("mode_sense_write");
-		return ret;
+		return 1;
 	}
 
 	buffer = calloc(len, sizeof(unsigned char));
