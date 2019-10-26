@@ -529,7 +529,7 @@ struct udf_data *alloc_data(void *buffer, int length)
 		data->buffer = calloc(1, length);
 	data->length = length;
 
-	if (!data->buffer)
+	if (!buffer && length && !data->buffer)
 	{
 		fprintf(stderr, "%s: Error: calloc failed: %s\n", appname, strerror(errno));
 		exit(1);
