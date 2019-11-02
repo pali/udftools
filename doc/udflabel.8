@@ -187,11 +187,15 @@ block device does not contain UDF filesystem or updating failed.
 
 .SH LIMITATIONS
 \fBudflabel\fP is not able to set new Label, Logical Volume Identifier and File
-Set Identifier for disks with Metadata Partition (used by UDF revisions higher
-then 2.01) or Virtual Allocation Table (used by Write Once media).
+Set Identifier for disks with Virtual Allocation Table (used by Write Once
+media).
+
+\fBudflabel\fP prior to version 2.2 was not able to set a new Label, Logical
+Volume Identifier and File Set Identifier for disks with Metadata Partition
+(used by UDF revisions higher then 2.01).
 
 \fBudflabel\fP prior to version 2.1 was not able to read Label correctly if the
-disk has Virtual Allocation Table stored outside of Information Control Block.
+disk had Virtual Allocation Table stored outside of Information Control Block.
 
 .SH AUTHOR
 .nf

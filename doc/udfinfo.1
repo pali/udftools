@@ -183,10 +183,11 @@ Descriptor. Therefore, it cannot be set or changed as opposed to UUID which is
 systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil.exe\fP.
 
 .SH LIMITATIONS
-\fBudfinfo\fP is not able to read Metadata Partition yet. Therefore, determining
-used and free space blocks, reading File Set Identifier and calculating
-Windows-specific Volume Serial Number may not be available for disks with UDF
-revisions higher than 2.01 which have Metadata Partition.
+\fBudfinfo\fP prior to version 2.2 was unable to read Metadata Partition.
+Therefore, determining used and free space blocks, reading File Set Identifier
+and calculating Windows-specific Volume Serial Number did not have to be
+available or correctly calculated for disks with UDF revisions higher than 2.01
+which had Metadata Partition.
 
 \fBudfinfo\fP prior to version 2.1 was unable to read Virtual Allocation Table
 stored outside of Information Control Block. Therefore above limitation applied
