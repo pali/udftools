@@ -1035,30 +1035,6 @@ static struct genericPartitionMap *find_partition(struct udf_disc *disc, uint8_t
 	return NULL;
 }
 
-static struct genericPartitionMap *get_partition(struct udf_disc *disc, int id, uint16_t partition)
-{
-	uint16_t i;
-	uint32_t offset;
-	struct genericPartitionMap *pmap;
-
-	if (partition >= le32_to_cpu(disc->udf_lvd[id]->numPartitionMaps))
-		return NULL;
-
-	offset = 0;
-	for (i = 0; i <= partition; ++i)
-	{
-		if (offset >= le32_to_cpu(disc->udf_lvd[id]->mapTableLength))
-			return NULL;
-		pmap = (struct genericPartitionMap *)&disc->udf_lvd[id]->partitionMaps[offset];
-		offset += pmap->partitionMapLength;
-	}
-
-	if (offset > le32_to_cpu(disc->udf_lvd[id]->mapTableLength))
-		return NULL;
-
-	return pmap;
-}
-
 static struct partitionDesc *find_partition_descriptor(struct udf_disc *disc, uint16_t partition)
 {
 	int id;
@@ -1745,7 +1721,7 @@ static void read_fsd(int fd, struct udf_disc *disc)
 	partition = le16_to_cpu(ad->extLocation.partitionReferenceNum);
 	length = le32_to_cpu(ad->extLength) & EXT_LENGTH_MASK;
 
-	pmap = get_partition(disc, id, partition);
+	pmap = find_partition(disc, -1, NULL, -1, &partition);
 	if (!pmap)
 	{
 		fprintf(stderr, "%s: Warning: Incorrect Logical Volume Descriptor\n", appname);
