@@ -144,6 +144,9 @@ struct udf_disc
 	uint32_t			*vat;
 	uint64_t			vat_entries;
 
+	short_ad			*metadata_filemap[2];
+	uint32_t			metadata_filemap_count[2];
+
 	struct fileSetDesc		*udf_fsd;
 
 	struct udf_extent		*head;

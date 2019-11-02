@@ -156,6 +156,24 @@ struct sparablePartitionMap
 	uint32_t	locSparingTable[4];
 } __attribute__ ((packed));
 
+/* Metadata Partition Map (UDF 2.60 2.2.10) */
+struct metadataPartitionMap
+{
+	uint8_t		partitionMapType;
+	uint8_t		partitionMapLength;
+	uint8_t		reserved1[2];
+	regid		partIdent;
+	uint16_t	volSeqNum;
+	uint16_t	partitionNum;
+	uint32_t	metadataFileLoc;
+	uint32_t	metadataMirrorFileLoc;
+	uint32_t	metadataBitmapFileLoc;
+	uint32_t	allocUnitSize;
+	uint16_t	alignUnitSize;
+	uint8_t		flags;
+	uint8_t		reserved2[5];
+} __attribute__ ((packed));
+
 /* Virtual Allocation Table (UDF 1.5 2.2.10) */
 struct virtualAllocationTable15
 {
@@ -202,6 +220,11 @@ struct sparingTable
 	struct sparingEntry
 			mapEntry[];
 } __attribute__ ((packed));
+
+/* Metadata File (and Metadata Mirror File) (UDF 2.60 2.2.13.1) */
+#define ICBTAG_FILE_TYPE_MAIN		0xFA
+#define ICBTAG_FILE_TYPE_MIRROR		0xFB
+#define ICBTAG_FILE_TYPE_BITMAP		0xFC
 
 /* struct long_ad ICB - ADImpUse (UDF 2.01 2.2.4.3) */
 struct allocDescImpUse

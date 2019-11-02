@@ -1066,11 +1066,10 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 {
 	struct genericPartitionMap1 *pm1;
 	struct udfPartitionMap2 *upm2;
-	struct virtualPartitionMap *vpm;
 	struct sparablePartitionMap *spm;
-	uint8_t count, i;
+	uint32_t count, i;
 	uint16_t packet_len, num, j;
-	uint32_t location, packet, offset;
+	uint32_t location, length, packet, offset;
 
 	if (pmap->partitionMapType == GP_PARTITION_MAP_TYPE_1)
 	{
@@ -1081,11 +1080,9 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 	else if (pmap->partitionMapType == GP_PARTITION_MAP_TYPE_2)
 	{
 		upm2 = (struct udfPartitionMap2 *)pmap;
+		*partition = le16_to_cpu(upm2->partitionNum);
 		if (strncmp((char *)upm2->partIdent.ident, UDF_ID_VIRTUAL, sizeof(upm2->partIdent.ident)) == 0)
 		{
-			vpm = (struct virtualPartitionMap *)upm2;
-			*partition = le16_to_cpu(vpm->partitionNum);
-
 			if (!disc->vat)
 				return UINT32_MAX;
 			else if (block < disc->vat_entries)
@@ -1098,8 +1095,6 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 			spm = (struct sparablePartitionMap *)upm2;
 			count = spm->numSparingTables;
 			packet_len = le16_to_cpu(spm->packetLength);
-			*partition = le16_to_cpu(spm->partitionNum);
-
 			offset = block % packet_len;
 			packet = block - offset;
 
@@ -1125,8 +1120,26 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 		}
 		else if (strncmp((char *)upm2->partIdent.ident, UDF_ID_METADATA, sizeof(upm2->partIdent.ident)) == 0)
 		{
-			/* TODO: Add support for Metadata */
-			fprintf(stderr, "%s: Warning: Metadata Partition Map is not supported\n", appname);
+			location = 0;
+			count = disc->metadata_filemap_count[0];
+			for (i = 0; i < count; ++i)
+			{
+				length = (le32_to_cpu(disc->metadata_filemap[0][i].extLength) & EXT_LENGTH_MASK) / disc->blocksize;
+				if (block >= location && block < location + length)
+					return le32_to_cpu(disc->metadata_filemap[0][i].extPosition) + (block - location);
+				location += length;
+			}
+
+			location = 0;
+			count = disc->metadata_filemap_count[1];
+			for (i = 0; i < count; ++i)
+			{
+				length = (le32_to_cpu(disc->metadata_filemap[1][i].extLength) & EXT_LENGTH_MASK) / disc->blocksize;
+				if (block >= location && block < location + length)
+					return le32_to_cpu(disc->metadata_filemap[1][i].extPosition) + (block - location);
+				location += length;
+			}
+
 			return UINT32_MAX;
 		}
 		else
@@ -1610,6 +1623,116 @@ static void read_vat(int fd, struct udf_disc *disc)
 	}
 
 	fprintf(stderr, "%s: Error: Virtual Allocation Table not found, maybe wrong --vatblock?\n", appname);
+}
+
+static void read_metadata_file(int fd, struct udf_disc *disc, uint32_t start, uint32_t location, int mirror)
+{
+	short_ad *sad;
+	struct fileEntry *fe;
+	struct extendedFileEntry *efe;
+	uint32_t length, offset;
+	uint32_t ea_length, ea_offset;
+	unsigned char buffer[512];
+
+	if (read_offset(fd, disc, &buffer, (off_t)(start + location) * disc->blocksize, sizeof(buffer), 1) < 0)
+	{
+		fprintf(stderr, "%s: Warning: Cannot read Metadata %sFile\n", appname, (mirror ? "Mirror " : ""));
+		return;
+	}
+
+	fe = (struct fileEntry *)&buffer;
+
+	if (fe->icbTag.fileType != (mirror ? ICBTAG_FILE_TYPE_MIRROR : ICBTAG_FILE_TYPE_MAIN))
+	{
+		fprintf(stderr, "%s: Warning: Information Control Block for Metadata %sFile has unknown File type\n", appname, (mirror ? "Mirror " : ""));
+		return;
+	}
+
+	if ((le16_to_cpu(fe->icbTag.flags) & ICBTAG_FLAG_AD_MASK) != ICBTAG_FLAG_AD_SHORT)
+	{
+		fprintf(stderr, "%s: Warning: Information Control Block for Metadata %sFile has unknown Allocation Descriptors type\n", appname, (mirror ? "Mirror " : ""));
+		return;
+	}
+
+	if (le32_to_cpu(fe->descTag.tagLocation) != location)
+	{
+		fprintf(stderr, "%s: Warning: Descriptor for Metadata %sFile has invalid location\n", appname, (mirror ? "Mirror " : ""));
+		return;
+	}
+
+	if (le16_to_cpu(fe->descTag.tagIdent) == TAG_IDENT_FE)
+	{
+		ea_offset = sizeof(*fe);
+		ea_length = le32_to_cpu(fe->lengthExtendedAttr);
+		offset = ea_offset + ea_length;
+		length = le32_to_cpu(fe->lengthAllocDescs);
+		if (le64_to_cpu(fe->uniqueID) != 0)
+			fprintf(stderr, "%s: Warning: File Entry for Metadata %sFile has invalid Unique ID\n", appname, (mirror ? "Mirror " : ""));
+	}
+	else if (le16_to_cpu(fe->descTag.tagIdent) == TAG_IDENT_EFE)
+	{
+		efe = (struct extendedFileEntry *)&buffer;
+		ea_offset = sizeof(*efe);
+		ea_length = le32_to_cpu(efe->lengthExtendedAttr);
+		offset = ea_offset + ea_length;
+		length = le32_to_cpu(efe->lengthAllocDescs);
+		if (le64_to_cpu(efe->uniqueID) != 0)
+			fprintf(stderr, "%s: Warning: Extended File Entry for Metadata %sFile has invalid Unique ID\n", appname, (mirror ? "Mirror " : ""));
+	}
+	else
+	{
+		fprintf(stderr, "%s: Warning: Descriptor for Metadata %sFile has unknown Tag Identifier\n", appname, (mirror ? "Mirror " : ""));
+		return;
+	}
+
+	if (length < sizeof(short_ad))
+	{
+		fprintf(stderr, "%s: Warning: Allocation Descriptors for Metadata %sFile are empty\n", appname, (mirror ? "Mirror " : ""));
+		return;
+	}
+
+	if (ea_length > disc->blocksize || offset > disc->blocksize || length > disc->blocksize || offset + length > disc->blocksize)
+	{
+		fprintf(stderr, "%s: Warning: Allocation Descriptors for Metadata %sFile are larger then block size\n", appname, (mirror ? "Mirror " : ""));
+		return;
+	}
+
+	sad = malloc(length);
+	if (!sad)
+	{
+		fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
+		return;
+	}
+
+	if (read_offset(fd, disc, sad, (off_t)(start + location) * disc->blocksize + offset, length, 1) < 0)
+	{
+		fprintf(stderr, "%s: Warning: Cannot read Allocation Descriptors for Metadata %sFile\n", appname, (mirror ? "Mirror " : ""));
+		free(sad);
+		return;
+	}
+
+	disc->metadata_filemap[mirror ? 1 : 0] = sad;
+	disc->metadata_filemap_count[mirror ? 1 : 0] = length / sizeof(short_ad);
+}
+
+static void read_metadata(int fd, struct udf_disc *disc)
+{
+	struct partitionDesc *pd;
+	struct metadataPartitionMap *mpm;
+
+	mpm = (struct metadataPartitionMap *)find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_METADATA, -1, NULL);
+	if (!mpm)
+		return;
+
+	pd = find_partition_descriptor(disc, le16_to_cpu(mpm->partitionNum));
+	if (!pd)
+	{
+		fprintf(stderr, "%s: Error: Metadata Partition Map found, but corresponding Partition Descriptor not found\n", appname);
+		return;
+	}
+
+	read_metadata_file(fd, disc, le32_to_cpu(pd->partitionStartingLocation), le32_to_cpu(mpm->metadataFileLoc), 0);
+	read_metadata_file(fd, disc, le32_to_cpu(pd->partitionStartingLocation), le32_to_cpu(mpm->metadataMirrorFileLoc), 1);
 }
 
 static void setup_pspace(struct udf_disc *disc, int second)
@@ -2162,6 +2285,7 @@ int read_disc(int fd, struct udf_disc *disc)
 	parse_lvidiu(disc);
 	read_stable(fd, disc);
 	read_vat(fd, disc);
+	read_metadata(fd, disc);
 	setup_pspace(disc, 0);
 	setup_pspace(disc, 1);
 
