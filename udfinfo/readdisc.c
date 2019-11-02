@@ -975,10 +975,11 @@ static void parse_lvidiu(struct udf_disc *disc)
 	}
 }
 
-static struct genericPartitionMap *find_partition(struct udf_disc *disc, uint8_t type, const char *ident)
+static struct genericPartitionMap *find_partition(struct udf_disc *disc, uint8_t type, const char *ident, uint16_t partition, uint16_t *partition_map_num)
 {
 	uint32_t i, offset;
 	struct genericPartitionMap *pmap;
+	struct genericPartitionMap1 *pm1;
 	struct udfPartitionMap2 *upm2;
 	int id;
 
@@ -989,21 +990,46 @@ static struct genericPartitionMap *find_partition(struct udf_disc *disc, uint8_t
 	else
 		return NULL;
 
-	offset = 0;
-	for (i = 0; i < le32_to_cpu(disc->udf_lvd[id]->numPartitionMaps); ++i)
+	for (i = 0, offset = 0; i < le32_to_cpu(disc->udf_lvd[id]->numPartitionMaps) && offset < le32_to_cpu(disc->udf_lvd[id]->mapTableLength); ++i, offset += pmap->partitionMapLength)
 	{
-		if (offset >= le32_to_cpu(disc->udf_lvd[id]->mapTableLength))
-			return NULL;
 		pmap = (struct genericPartitionMap *)&disc->udf_lvd[id]->partitionMaps[offset];
-		if (pmap->partitionMapType == type)
+
+		if (type != (uint8_t)-1 && pmap->partitionMapType != type)
+			continue;
+
+		if (partition_map_num && *partition_map_num != (uint16_t)-1 && i != *partition_map_num)
+			continue;
+
+		if (partition != (uint16_t)-1)
 		{
-			if (!ident)
-				return pmap;
-			upm2 = (struct udfPartitionMap2 *)pmap;
-			if (strncmp((char *)upm2->partIdent.ident, ident, sizeof(upm2->partIdent.ident)) == 0)
-				return pmap;
+			if (pmap->partitionMapType == GP_PARTITION_MAP_TYPE_1)
+			{
+				pm1 = (struct genericPartitionMap1 *)pmap;
+				if (le16_to_cpu(pm1->partitionNum) != partition)
+					continue;
+			}
+			else if (pmap->partitionMapType == GP_PARTITION_MAP_TYPE_2)
+			{
+				upm2 = (struct udfPartitionMap2 *)pmap;
+				if (le16_to_cpu(upm2->partitionNum) != partition)
+					continue;
+			}
+			else
+				continue;
 		}
-		offset += pmap->partitionMapLength;
+
+		if (ident)
+		{
+			if (pmap->partitionMapType != GP_PARTITION_MAP_TYPE_2)
+				continue;
+			upm2 = (struct udfPartitionMap2 *)pmap;
+			if (strncmp((char *)upm2->partIdent.ident, ident, sizeof(upm2->partIdent.ident)) != 0)
+				continue;
+		}
+
+		if (partition_map_num && *partition_map_num == (uint16_t)-1)
+			*partition_map_num = i;
+		return pmap;
 	}
 
 	return NULL;
@@ -1151,7 +1177,7 @@ static void read_stable(int fd, struct udf_disc *disc)
 	struct sparingTable *st;
 	struct udf_extent *ext;
 
-	spm = (struct sparablePartitionMap *)find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_SPARABLE);
+	spm = (struct sparablePartitionMap *)find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_SPARABLE, -1, NULL);
 	if (!spm)
 		return;
 
@@ -1259,7 +1285,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 	unsigned char *descs;
 	unsigned char buffer[512];
 
-	vpm = (struct virtualPartitionMap *)find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL);
+	vpm = (struct virtualPartitionMap *)find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL, -1, NULL);
 	if (!vpm)
 	{
 		if (disc->vat_block)
@@ -1647,7 +1673,7 @@ static void setup_pspace(struct udf_disc *disc, int second)
 		return;
 	}
 
-	if (location + blocks > disc->blocks && !find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL))
+	if (location + blocks > disc->blocks && !find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL, -1, NULL))
 		fprintf(stderr, "%s: Warning: %sPartition Space is beyond end of disk\n", appname, second ? "Second " : "");
 
 	ext = find_extent(disc, location);
@@ -1800,7 +1826,7 @@ static void setup_total_space_blocks(struct udf_disc *disc)
 
 	disc->total_space_blocks = le32_to_cpu(disc->udf_pd[id]->partitionLength);
 
-	warn_beyond = !find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL);
+	warn_beyond = !find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL, -1, NULL);
 
 	if (warn_beyond && disc->total_space_blocks + le32_to_cpu(disc->udf_pd[id]->partitionStartingLocation) > disc->blocks)
 	{
@@ -2020,84 +2046,62 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, struct generic
 	return blocks;
 }
 
-static void scan_free_space_blocks(int fd, struct udf_disc *disc)
+static uint32_t count_free_partition_blocks(int fd, struct udf_disc *disc, struct partitionDesc *pd)
 {
-	long_ad *ad;
 	uint16_t partition;
 	uint32_t blocks, location, length, value;
 	struct genericPartitionMap *pmap;
+	struct virtualPartitionMap *vpm;
 	struct partitionHeaderDesc *phd;
-	struct partitionDesc *pd;
 	char *ident;
-	int id;
 
-	if (!disc->udf_lvid)
-		return;
+	/* Use only main partition maps which span whole parition descriptor, so only Type 1 and Type 2 Sparable */
+	partition = -1;
+	pmap = find_partition(disc, GP_PARTITION_MAP_TYPE_1, NULL, le16_to_cpu(pd->partitionNumber), &partition);
+	if (!pmap)
+		pmap = find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_SPARABLE, le16_to_cpu(pd->partitionNumber), &partition);
+	if (!pmap)
+	{
+		fprintf(stderr, "%s: Warning: Determining free space blocks is not possible\n", appname);
+		return 0;
+	}
 
-	if (disc->udf_lvd[0])
-		id = 0;
-	else if (disc->udf_lvd[1])
-		id = 1;
+	if (disc->vat)
+		vpm = (struct virtualPartitionMap *)find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL, le16_to_cpu(pd->partitionNumber), NULL);
 	else
-		return;
+		vpm = NULL;
 
-	ad = (long_ad *)disc->udf_lvd[id]->logicalVolContentsUse;
-	partition = le16_to_cpu(ad->extLocation.partitionReferenceNum);
-
-	if (partition < le32_to_cpu(disc->udf_lvid->numOfPartitions))
+	/* LVID does not contain up-to-date information when VAT is built on top of main partition */
+	if (!vpm && disc->udf_lvid && partition < le32_to_cpu(disc->udf_lvid->numOfPartitions))
 	{
 		memcpy(&value, &disc->udf_lvid->data[sizeof(uint32_t)*partition], sizeof(value));
 		blocks = le32_to_cpu(value);
 		if (blocks != 0xFFFFFFFF)
-		{
-			disc->free_space_blocks = blocks;
-			return;
-		}
+			return blocks;
 	}
 
-	pmap = get_partition(disc, id, partition);
-	if (!pmap)
-		return;
+	location = le32_to_cpu(pd->partitionStartingLocation);
 
-	if (find_block_position(disc, pmap, 0, &partition) == UINT32_MAX)
-	{
-		fprintf(stderr, "%s: Warning: Determining free space blocks is not possible\n", appname);
-		return;
-	}
-
-	pd = find_partition_descriptor(disc, partition);
-	if (!pd)
-	{
-		fprintf(stderr, "%s: Warning: Determining free space blocks is not possible\n", appname);
-		return;
-	}
+	/* If VAT is built on top of main partition then expects that all space blocks after VAT block are free */
+	if (vpm)
+		return location + disc->total_space_blocks - (disc->vat_block+1);
 
 	ident = (char *)pd->partitionContents.ident;
 	length = sizeof(pd->partitionContents.ident);
 	if (strncmp(ident, PD_PARTITION_CONTENTS_NSR02, length) != 0 && strncmp(ident, PD_PARTITION_CONTENTS_NSR03, length) != 0)
 	{
 		fprintf(stderr, "%s: Warning: Unknown Partition Descriptor Content, determining free space blocks is not possible\n", appname);
-		return;
+		return 0;
 	}
 
-	location = le32_to_cpu(pd->partitionStartingLocation);
 	phd = (struct partitionHeaderDesc *)pd->partitionContentsUse;
-
-	if (disc->vat)
-	{
-		disc->free_space_blocks = location + disc->total_space_blocks - (disc->vat_block+1);
-		return;
-	}
 
 	length = le32_to_cpu(phd->unallocSpaceBitmap.extLength) & EXT_LENGTH_MASK;
 	if (length)
 	{
 		blocks = count_bitmap_blocks(fd, disc, pmap, le32_to_cpu(phd->unallocSpaceBitmap.extPosition), length);
 		if (blocks)
-		{
-			disc->free_space_blocks = blocks;
-			return;
-		}
+			return blocks;
 	}
 
 	length = le32_to_cpu(phd->freedSpaceBitmap.extLength) & EXT_LENGTH_MASK;
@@ -2105,10 +2109,7 @@ static void scan_free_space_blocks(int fd, struct udf_disc *disc)
 	{
 		blocks = count_bitmap_blocks(fd, disc, pmap, le32_to_cpu(phd->freedSpaceBitmap.extPosition), length);
 		if (blocks)
-		{
-			disc->free_space_blocks = blocks;
-			return;
-		}
+			return blocks;
 	}
 
 	length = le32_to_cpu(phd->unallocSpaceTable.extLength) & EXT_LENGTH_MASK;
@@ -2116,10 +2117,7 @@ static void scan_free_space_blocks(int fd, struct udf_disc *disc)
 	{
 		blocks = count_table_blocks(fd, disc, pmap, le32_to_cpu(phd->unallocSpaceTable.extPosition), length);
 		if (blocks)
-		{
-			disc->free_space_blocks = blocks;
-			return;
-		}
+			return blocks;
 	}
 
 	length = le32_to_cpu(phd->freedSpaceTable.extLength) & EXT_LENGTH_MASK;
@@ -2127,13 +2125,30 @@ static void scan_free_space_blocks(int fd, struct udf_disc *disc)
 	{
 		blocks = count_table_blocks(fd, disc, pmap, le32_to_cpu(phd->freedSpaceTable.extPosition), length);
 		if (blocks)
-		{
-			disc->free_space_blocks = blocks;
-			return;
-		}
+			return blocks;
 	}
 
+	return 0;
+}
+
+static void scan_free_space_blocks(int fd, struct udf_disc *disc)
+{
 	disc->free_space_blocks = 0;
+
+	if (disc->udf_pd[0])
+		disc->free_space_blocks += count_free_partition_blocks(fd, disc, disc->udf_pd[0]);
+	else if (disc->udf_pd[1])
+		disc->free_space_blocks += count_free_partition_blocks(fd, disc, disc->udf_pd[1]);
+	else
+	{
+		fprintf(stderr, "%s: Warning: Determining free space blocks is not possible\n", appname);
+		return;
+	}
+
+	if (disc->udf_pd2[0])
+		disc->free_space_blocks += count_free_partition_blocks(fd, disc, disc->udf_pd2[0]);
+	else if (disc->udf_pd2[1])
+		disc->free_space_blocks += count_free_partition_blocks(fd, disc, disc->udf_pd2[1]);
 }
 
 int read_disc(int fd, struct udf_disc *disc)
@@ -2146,7 +2161,7 @@ int read_disc(int fd, struct udf_disc *disc)
 	scan_mvds(fd, disc);
 	scan_rvds(fd, disc);
 
-	if (!disc->udf_anchor[1] && !disc->udf_anchor[2] && !find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL))
+	if (!disc->udf_anchor[1] && !disc->udf_anchor[2] && !find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_VIRTUAL, -1, NULL))
 		fprintf(stderr, "%s: Warning: Second and third Anchor Volume Descriptor Pointer not found\n", appname);
 
 	if (!disc->udf_pvd[0] && !disc->udf_pvd[1])
