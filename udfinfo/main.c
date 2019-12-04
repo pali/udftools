@@ -164,6 +164,7 @@ static void dump_space(struct udf_disc *disc)
 int main(int argc, char *argv[])
 {
 	struct udf_disc disc;
+	struct stat stat;
 	dstring vsid[128];
 	char uuid[17];
 	char *filename;
@@ -175,6 +176,7 @@ int main(int argc, char *argv[])
 	uint32_t behind_blocks;
 	size_t ret;
 	int fd;
+	int fd2;
 
 	setlocale(LC_CTYPE, "");
 	appname = "udfinfo";
@@ -199,6 +201,15 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(errno));
 		exit(1);
+	}
+
+	if (fstat(fd, &stat) == 0 && S_ISBLK(stat.st_mode))
+	{
+		fd2 = open(filename, O_RDONLY|O_EXCL);
+		if (fd2 >= 0)
+			close(fd2);
+		else if (errno == EBUSY)
+			fprintf(stderr, "%s: Warning: Device '%s' is busy, %s may report bogus information\n", appname, filename, appname);
 	}
 
 	disc.blksize = get_size(fd);
