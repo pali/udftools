@@ -188,6 +188,7 @@ int main(int argc, char *argv[])
 	struct impUseVolDescImpUse *iuvdiu;
 	size_t len;
 	int fd;
+	int fd2;
 	int i;
 	char buf[256];
 	dstring new_lvid[128];
@@ -270,18 +271,17 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (fstat(fd, &stat) != 0)
+	{
+		fprintf(stderr, "%s: Error: Cannot stat device '%s': %s\n", appname, filename, strerror(errno));
+		exit(1);
+	}
+
 	if (update)
 	{
-		int fd2;
 		int flags2;
 		char filename2[64];
 		const char *error;
-
-		if (fstat(fd, &stat) != 0)
-		{
-			fprintf(stderr, "%s: Error: Cannot stat device '%s': %s\n", appname, filename, strerror(errno));
-			exit(1);
-		}
 
 		if (!(disc.flags & FLAG_NO_WRITE))
 			flags2 = O_RDWR;
@@ -314,6 +314,14 @@ int main(int argc, char *argv[])
 
 		close(fd);
 		fd = fd2;
+	}
+	else if (S_ISBLK(stat.st_mode))
+	{
+		fd2 = open(filename, O_RDONLY|O_EXCL);
+		if (fd2 >= 0)
+			close(fd2);
+		else if (errno == EBUSY)
+			fprintf(stderr, "%s: Warning: Device '%s' is busy, %s may report bogus information\n", appname, filename, appname);
 	}
 
 	disc.blksize = get_size(fd);
