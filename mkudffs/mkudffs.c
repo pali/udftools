@@ -110,7 +110,7 @@ void udf_init_disc(struct udf_disc *disc)
 	}
 	memcpy(disc->udf_pvd[0], &default_pvd, sizeof(struct primaryVolDesc));
 	memcpy(&disc->udf_pvd[0]->recordingDateAndTime, &ts, sizeof(timestamp));
-	snprintf(uuid, sizeof(uuid), "%08" PRIu32 "%08" PRIu32, uuid_time, randu32());
+	snprintf(uuid, sizeof(uuid), "%08" PRIx32 "%08" PRIx32, uuid_time, randu32());
 	memcpy(&disc->udf_pvd[0]->volSetIdent[1], uuid, 16);
 	disc->udf_pvd[0]->volIdent[31] = strlen((char *)disc->udf_pvd[0]->volIdent);
 	disc->udf_pvd[0]->volSetIdent[127] = strlen((char *)disc->udf_pvd[0]->volSetIdent);
