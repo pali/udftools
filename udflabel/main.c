@@ -301,15 +301,9 @@ int main(int argc, char *argv[])
 		fd2 = open(filename2, flags2);
 		if (fd2 < 0)
 		{
-			if (errno != ENOENT)
-			{
-				error = (errno != EBUSY) ? strerror(errno) : "Device is busy, maybe mounted?";
-				fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, error);
-				exit(1);
-			}
-
 			// Fallback to orignal filename when /proc is not available, but this introduce race condition between stat and open
-			fd2 = open(filename, flags2);
+			if (errno == ENOENT)
+				fd2 = open(filename, flags2);
 			if (fd2 < 0)
 			{
 				error = (errno != EBUSY) ? strerror(errno) : "Device is busy, maybe mounted?";
