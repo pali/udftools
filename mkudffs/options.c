@@ -180,11 +180,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					fprintf(stderr, "%s: Error: At least UDF revision 2.50 is needed for BD-R discs\n", appname);
 					exit(1);
 				}
-				if (rev < 0x0150 && use_sparable)
-				{
-					fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for Sparing Table\n", appname);
-					exit(1);
-				}
 				break;
 			}
 			case OPT_NO_WRITE:
