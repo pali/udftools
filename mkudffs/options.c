@@ -35,7 +35,12 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
+#include <linux/cdrom.h>
 
 #include "mkudffs.h"
 #include "defaults.h"
@@ -86,7 +91,7 @@ void usage(void)
 		"\t--label=, -l       UDF label, synonym for both --lvid and --vid (default: LinuxUDF)\n"
 		"\t--uuid=, -u        UDF uuid, first 16 characters of Volume set identifier (default: random)\n"
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
-		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, dvdr, worm, mo, cdrw, cdr, cd, bdr; default: hd)\n"
+		"\t--media-type=, -m  Media type (hd, dvd, dvdram, dvdrw, dvdr, worm, mo, cdrw, cdr, cd, bdr; default: detect)\n"
 		"\t--udfrev=, -r      UDF revision (1.01, 1.02, 1.50, 2.00, 2.01, 2.50, 2.60; default: 2.01)\n"
 		"\t--no-write, -n     Not really, do not write to device, just simulate\n"
 		"\t--new-file         Create new image file, fail if already exists\n"
@@ -123,7 +128,10 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	int i;
 	int media = MEDIA_TYPE_NONE;
 	int read_only = 0;
+	int use_vat = 0;
 	int use_sparable = 0;
+	int closed_vat = 0;
+	int strategy = 0;
 	uint16_t rev = 0;
 	uint32_t spartable = 2;
 	uint32_t sparspace = 0;
@@ -168,16 +176,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				if (!rev || udf_set_version(disc, rev))
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --udfrev\n", appname);
-					exit(1);
-				}
-				if (rev < 0x0150 && (media == MEDIA_TYPE_DVDRW || media == MEDIA_TYPE_DVDR || media == MEDIA_TYPE_CDRW || media == MEDIA_TYPE_CDR))
-				{
-					fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for CD-R/CD-RW/DVD-R/DVD-RW discs\n", appname);
-					exit(1);
-				}
-				if (rev < 0x0250 && media == MEDIA_TYPE_BDR)
-				{
-					fprintf(stderr, "%s: Error: At least UDF revision 2.50 is needed for BD-R discs\n", appname);
 					exit(1);
 				}
 				break;
@@ -249,18 +247,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_CLOSED:
 			{
-				if (!(disc->flags & FLAG_VAT))
-				{
-					fprintf(stderr, "%s: Error: Option --vat must be specified before option --closed\n", appname);
-					exit(1);
-				}
-				disc->flags |= FLAG_CLOSED;
+				closed_vat = 1;
 				break;
 			}
 			case OPT_VAT:
 			{
-				disc->flags |= FLAG_VAT;
-				disc->flags &= ~FLAG_CLOSED;
+				use_vat = 1;
 				break;
 			}
 			case OPT_LVID:
@@ -472,9 +464,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			case OPT_STRATEGY:
 			{
 				if (strcmp(optarg, "4096") == 0)
-					disc->flags |= FLAG_STRATEGY4096;
+					strategy = 4096;
 				else if (strcmp(optarg, "4") == 0)
-					disc->flags &= ~FLAG_STRATEGY4096;
+					strategy = 4;
 				else
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --strategy\n", appname);
@@ -493,7 +485,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 						exit(1);
 					}
 				}
-				if (disc->flags & FLAG_VAT)
+				if (use_vat)
 				{
 					fprintf(stderr, "%s: Error: Cannot use Sparing Table when VAT is enabled\n", appname);
 					exit(1);
@@ -546,80 +538,55 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				}
 				if (!strcmp(optarg, "hd"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 					media = MEDIA_TYPE_HD;
-					packetlen = 1;
 				}
 				else if (!strcmp(optarg, "dvd"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
 					media = MEDIA_TYPE_DVD;
-					packetlen = 16;
 				}
 				else if (!strcmp(optarg, "dvdram"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 					media = MEDIA_TYPE_DVDRAM;
-					packetlen = 16;
 				}
 				else if (!strcmp(optarg, "dvdrw"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 					media = MEDIA_TYPE_DVDRW;
 					use_sparable = 1;
-					packetlen = 16;
 				}
 				else if (!strcmp(optarg, "dvdr"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
 					media = MEDIA_TYPE_DVDR;
-					disc->flags |= FLAG_VAT;
-					disc->flags &= ~FLAG_CLOSED;
-					packetlen = 16;
+					use_vat = 1;
 				}
 				else if (!strcmp(optarg, "worm"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
 					media = MEDIA_TYPE_WORM;
-					disc->flags |= (FLAG_STRATEGY4096 | FLAG_BLANK_TERMINAL);
-					packetlen = 1;
+					strategy = 4096;
 				}
 				else if (!strcmp(optarg, "mo"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 					media = MEDIA_TYPE_MO;
-					disc->flags |= (FLAG_STRATEGY4096 | FLAG_BLANK_TERMINAL);
-					packetlen = 1;
+					strategy = 4096;
 				}
 				else if (!strcmp(optarg, "cdrw"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 					media = MEDIA_TYPE_CDRW;
 					use_sparable = 1;
-					packetlen = 32;
 				}
 				else if (!strcmp(optarg, "cdr"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
 					media = MEDIA_TYPE_CDR;
-					disc->flags |= FLAG_VAT | FLAG_MIN_300_BLOCKS;
-					disc->flags &= ~FLAG_CLOSED;
-					packetlen = 32;
+					use_vat = 1;
 				}
 				else if (!strcmp(optarg, "cd"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
 					media = MEDIA_TYPE_CD;
-					packetlen = 32;
 				}
 				else if (!strcmp(optarg, "bdr"))
 				{
-					disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
 					media = MEDIA_TYPE_BDR;
-					disc->flags |= FLAG_VAT;
-					disc->flags &= ~FLAG_CLOSED;
+					use_vat = 1;
 					udf_set_version(disc, 0x0250);
-					packetlen = 32;
 				}
 				else
 				{
@@ -689,13 +656,253 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	if (optind < argc)
 		usage();
 
-	/* TODO: autodetection */
+	/* Autodetect media type */
 	if (media == MEDIA_TYPE_NONE)
 	{
-		media = MEDIA_TYPE_HD;
-		disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
-		packetlen = 1;
+		int fd;
+		long last;
+		struct stat st;
+		unsigned int mmc_profile;
+
+		mmc_profile = -1;
+
+		fd = open(*device, O_RDONLY);
+
+		/* Check if device is optical disc
+		 * pktcdvd.ko accepts only these ioctls:
+		 * CDROMEJECT CDROMMULTISESSION CDROMREADTOCENTRY
+		 * CDROM_LAST_WRITTEN CDROM_SEND_PACKET SCSI_IOCTL_SEND_COMMAND */
+		if (fd >= 0 && fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, CDROM_LAST_WRITTEN, &last) == 0)
+		{
+			struct cdrom_generic_command cgc;
+			struct request_sense sense;
+			unsigned char features[8];
+			unsigned char discinfo[36];
+
+			memset(&cgc, 0, sizeof(cgc));
+			memset(&sense, 0, sizeof(sense));
+			memset(&features, 0, sizeof(features));
+			cgc.cmd[0] = GPCMD_GET_CONFIGURATION;
+			cgc.cmd[8] = sizeof(features);
+			cgc.buffer = features;
+			cgc.buflen = sizeof(features);
+			cgc.sense = &sense;
+			cgc.data_direction = CGC_DATA_READ;
+			cgc.quiet = 1;
+			cgc.timeout = 500;
+
+			if (ioctl(fd, CDROM_SEND_PACKET, &cgc) >= 0)
+			{
+				mmc_profile = features[6] << 8 | features[7];
+			}
+			else
+			{
+				memset(&cgc, 0, sizeof(cgc));
+				memset(&sense, 0, sizeof(sense));
+				memset(&discinfo, 0, sizeof(discinfo));
+				cgc.cmd[0] = GPCMD_READ_DISC_INFO;
+				cgc.cmd[8] = sizeof(discinfo);
+				cgc.buffer = discinfo;
+				cgc.buflen = sizeof(discinfo);
+				cgc.sense = &sense;
+				cgc.data_direction = CGC_DATA_READ;
+				cgc.quiet = 1;
+				cgc.timeout = 500;
+
+				if (ioctl(fd, CDROM_SEND_PACKET, &cgc) == 0)
+				{
+					if (discinfo[2] & 16) /* Erasable bit set = CD-RW */
+						mmc_profile = 0x0A;
+					else if ((discinfo[2] & 3) == 2) /* Complete disk status = CD-ROM */
+						mmc_profile = 0x08;
+					else
+						mmc_profile = 0x09;
+				}
+				else
+				{
+					mmc_profile = 0x00;
+				}
+			}
+		}
+
+		if (fd >= 0)
+			close(fd);
+
+		switch (mmc_profile)
+		{
+			case 0x03: /* Magneto-Optical with sector erase */
+			case 0x05: /* Advance Storage Magneto-Optical */
+				printf("Detected Magneto-Optical disc\n");
+				media = MEDIA_TYPE_MO;
+				break;
+
+			case 0x0A: /* CD-RW */
+				printf("Detected CD-RW optical disc\n");
+				media = MEDIA_TYPE_CDRW;
+				break;
+
+			case 0x12: /* DVD-RAM */
+				printf("Detected DVD-RAM optical disc\n");
+				media = MEDIA_TYPE_DVDRAM;
+				break;
+
+			case 0x13: /* DVD-RW Restricted Overwrite */
+			case 0x14: /* DVD-RW Sequential recording */
+			case 0x1A: /* DVD+RW */
+				printf("Detected DVD-RW optical disc\n");
+				media = MEDIA_TYPE_DVDRW;
+				break;
+
+			case 0x08: /* CD-ROM */
+			case 0x10: /* DVD-ROM */
+			case 0x20: /* DDCD-ROM */
+			case 0x40: /* BD-ROM */
+			case 0x50: /* HDDVD-ROM */
+				fprintf(stderr, "%s: Error: Detected read-only optical disc, use --media-type option to specify media type\n", appname);
+				exit(1);
+
+			case 0x04: /* Magneto-Optical write once */
+			case 0x09: /* CD-R */
+			case 0x11: /* DVD-R */
+			case 0x15: /* DVD-R DL Sequential Recording */
+			case 0x16: /* DVD-R DL Jump Recording */
+			case 0x18: /* DVD-R Download Disc Recording */
+			case 0x1B: /* DVD+R */
+			case 0x21: /* DDCD-R */
+			case 0x2B: /* DVD+R DL */
+			case 0x41: /* BD-R SRM */
+			case 0x42: /* BD-R RRM */
+			case 0x51: /* HDDVD-R */
+			case 0x58: /* HDDVD-R DL */
+				fprintf(stderr, "%s: Error: Detected write-once optical disc, use --media-type option to specify media type\n", appname);
+				exit(1);
+
+			case 0x17: /* DVD-RW DL */
+			case 0x22: /* DDCD-RW */
+			case 0x2A: /* DVD+RW DL */
+			case 0x43: /* BD-RE */
+			case 0x52: /* HDDVD-RAM */
+			case 0x53: /* HDDVD-RW */
+			case 0x5A: /* HDDVD-RW DL */
+				fprintf(stderr, "%s: Error: Detected unsupported optical disc, use --media-type option to specify media type\n", appname);
+				exit(1);
+
+			case 0x00: /* Unknown */
+			case 0x01: /* Non-removable */
+			case 0x02: /* Removable */
+			default:
+				fprintf(stderr, "%s: Error: Detected unknown optical disc, use --media-type option to specify media type\n", appname);
+				exit(1);
+
+			case -1: /* Not an optical disc */
+				media = MEDIA_TYPE_HD;
+				break;
+		}
 	}
+
+	switch (media)
+	{
+		case MEDIA_TYPE_HD:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
+			if (!packetlen)
+				packetlen = 1;
+			break;
+
+		case MEDIA_TYPE_DVD:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
+			if (!packetlen)
+				packetlen = 16;
+			break;
+
+		case MEDIA_TYPE_DVDRAM:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
+			if (!packetlen)
+				packetlen = 16;
+			break;
+
+		case MEDIA_TYPE_DVDRW:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
+			use_sparable = 1;
+			if (!packetlen)
+				packetlen = 16;
+			break;
+
+		case MEDIA_TYPE_DVDR:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
+			use_vat = 1;
+			if (!packetlen)
+				packetlen = 16;
+			break;
+
+		case MEDIA_TYPE_WORM:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
+			disc->flags |= FLAG_BLANK_TERMINAL;
+			if (!strategy)
+				strategy = 4096;
+			if (!packetlen)
+				packetlen = 1;
+			break;
+
+		case MEDIA_TYPE_MO:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
+			disc->flags |= FLAG_BLANK_TERMINAL;
+			if (!strategy)
+				strategy = 4096;
+			if (!packetlen)
+				packetlen = 1;
+			break;
+
+		case MEDIA_TYPE_CDRW:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
+			use_sparable = 1;
+			if (!packetlen)
+				packetlen = 32;
+			break;
+
+		case MEDIA_TYPE_CDR:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
+			disc->flags |= FLAG_MIN_300_BLOCKS;
+			use_vat = 1;
+			if (!packetlen)
+				packetlen = 32;
+			break;
+
+		case MEDIA_TYPE_CD:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
+			if (!packetlen)
+				packetlen = 32;
+			break;
+
+		case MEDIA_TYPE_BDR:
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
+			use_vat = 1;
+			if (!rev)
+				udf_set_version(disc, 0x0250);
+			if (!packetlen)
+				packetlen = 32;
+			break;
+
+		default:
+			fprintf(stderr, "%s: Error: Unhandled media type\n", appname);
+			exit(1);
+	}
+
+	if (rev)
+	{
+		if (rev < 0x0150 && (media == MEDIA_TYPE_DVDRW || media == MEDIA_TYPE_DVDR || media == MEDIA_TYPE_CDRW || media == MEDIA_TYPE_CDR))
+		{
+			fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for CD-R/CD-RW/DVD-R/DVD-RW discs\n", appname);
+			exit(1);
+		}
+		if (rev < 0x0250 && media == MEDIA_TYPE_BDR)
+		{
+			fprintf(stderr, "%s: Error: At least UDF revision 2.50 is needed for BD-R discs\n", appname);
+			exit(1);
+		}
+	}
+
+	if (strategy == 4096)
+		disc->flags |= FLAG_STRATEGY4096;
 
 	if (read_only)
 	{
@@ -707,13 +914,22 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
 	}
 
-	if (disc->flags & FLAG_VAT)
+	if (closed_vat && !use_vat)
+	{
+		fprintf(stderr, "%s: Error: Option --closed cannot be used without --vat or --media-type cdr/dvdr/bdr\n", appname);
+		exit(1);
+	}
+
+	if (use_vat)
 	{
 		if (disc->udf_rev < 0x0150)
 		{
 			fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for VAT\n", appname);
 			exit(1);
 		}
+		disc->flags |= FLAG_VAT;
+		if (!closed_vat)
+			disc->flags &= ~FLAG_CLOSED;
 		add_type1_partition(disc, 0);
 		add_type2_virtual_partition(disc, 0);
 	}

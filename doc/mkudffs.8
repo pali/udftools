@@ -67,11 +67,12 @@ size \fI512\fP and for other media types \fI2048\fP.
 
 .TP
 .BI \-m,\-\-media\-type= " media\-type "
-Specify the media type. Must be specified before \fB\-\-udfrev\fP. Valid media
-types are:
+Specify the media type. Must be specified before \fB\-\-udfrev\fP. Default
+value is autodetected. When autodetection does not work (e.g. when creating
+disk image) then \fIhd\fP value is assumed. Valid media types are:
 .RS 1.2i
 .TP 1.6i
-.IR hd " (default)"
+.I hd
 HD (Hard Disk)
 .TP
 .I worm
@@ -107,7 +108,7 @@ BD-R (Blu-ray Disc Recordable)
 
 .RS
 (Short option variant \fB\-m\fP and values \fIcd\fP, \fIdvdr\fP, \fIbdr\fP are
-available since mkudffs 2.0)
+available since mkudffs 2.0 and autodetection is supported since mkudffs 2.2)
 .RE
 
 .TP
