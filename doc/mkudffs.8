@@ -63,7 +63,8 @@ power of two in range from \fI512\fP to \fI32768\fP and must match a device
 logical (sector) size. If omitted, \fBmkudffs\fP block size is set to device
 logical block (sector) size. If logical block (sector) size is unknown (e.g. \
 when creating disk image) then for \fB\-\-media\-type\fP=\fIhd\fP is used block
-size \fI512\fP and for other media types \fI2048\fP.
+size \fI512\fP and for other media types \fI2048\fP. (Prior to mkudffs 1.1
+default value was always 2048 independently of \fB\-\-media\-type\fP)
 
 .TP
 .BI \-m,\-\-media\-type= " media\-type "
@@ -313,7 +314,7 @@ be specified as the first argument.
 .TP
 .B \-\-utf8
 Treat identifier string options as strings encoded in UTF-8. Must be specified
-as the first argument.
+as the first argument. (Prior to mkudffs 2.0 this was default option)
 
 .SH COMPATIBILITY
 
