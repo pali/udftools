@@ -79,8 +79,8 @@ int wait_cmd(int fd, struct cdrom_generic_command *cgc, unsigned char *buf,
 	struct request_sense sense;
 	int ret;
 
-	if (cgc->timeout <= 0)
-		cgc->timeout = 500;
+	if (timeout <= 0)
+		timeout = 500;
 
 	memset(&sense, 0, sizeof(sense));
 
