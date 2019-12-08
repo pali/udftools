@@ -573,13 +573,13 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	{
 		if (read(fd, &old_mbr, sizeof(struct mbr)) == sizeof(struct mbr))
 		{
-			if (old_mbr.boot_signature == constant_cpu_to_le16(MBR_BOOT_SIGNATURE))
-				mbr->disk_signature = le32_to_cpu(old_mbr.disk_signature);
+			if (le16_to_cpu(old_mbr.boot_signature) == MBR_BOOT_SIGNATURE)
+				mbr->disk_signature = old_mbr.disk_signature;
 		}
 	}
 
 	if (!mbr->disk_signature)
-		mbr->disk_signature = le32_to_cpu(randu32());
+		mbr->disk_signature = cpu_to_le32(randu32());
 
 	lba_blocks = ((uint64_t)disc->blocks * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
 
