@@ -132,6 +132,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	int use_sparable = 0;
 	int closed_vat = 0;
 	int strategy = 0;
+	int no_efe = 0;
 	uint16_t rev = 0;
 	uint32_t spartable = 2;
 	uint32_t sparspace = 0;
@@ -188,7 +189,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			}
 			case OPT_NO_EFE:
 			{
-				disc->flags &= ~FLAG_EFE;
+				no_efe = 1;
 				break;
 			}
 			case OPT_NEW_FILE:
@@ -900,6 +901,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			exit(1);
 		}
 	}
+
+	if (no_efe)
+		disc->flags &= ~FLAG_EFE;
 
 	if (strategy == 4096)
 		disc->flags |= FLAG_STRATEGY4096;
