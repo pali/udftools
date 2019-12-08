@@ -251,7 +251,6 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 	}
 	else // 0x0102 and older
 	{
-		disc->flags &= ~FLAG_VAT;
 		disc->flags &= ~FLAG_EFE;
 		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
 	}
