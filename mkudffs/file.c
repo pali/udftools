@@ -1152,6 +1152,11 @@ int udf_alloc_blocks(struct udf_disc *disc, struct udf_extent *pspace, uint32_t 
 			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
+		if ((disc->vat_entries + blocks) * sizeof(uint32_t) > disc->blocksize)
+		{
+			fprintf(stderr, "%s: Error: Too many blocks for Virtual Allocation Table\n", appname);
+			exit(1);
+		}
 		for (i = 0; i < blocks; ++i)
 			disc->vat[disc->vat_entries++] = cpu_to_le32(start+i);
 		return start;
