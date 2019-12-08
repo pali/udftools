@@ -911,7 +911,14 @@ static inline unsigned long udf_find_next_one_bit (void * addr, unsigned long si
 	offset &= (BITS_PER_LONG-1);
 	if (offset)
 	{
-		tmp = leBPL_to_cpup(p++);
+		if (size >= BITS_PER_LONG)
+			tmp = leBPL_to_cpup(p++);
+		else
+		{
+			tmp = 0;
+			memcpy(&tmp, p, (size+7)/8);
+			tmp = leBPL_to_cpup(&tmp);
+		}
 		tmp &= ~0UL << offset;
 		if (size < BITS_PER_LONG)
 			goto found_first;
@@ -958,7 +965,14 @@ static inline unsigned long udf_find_next_zero_bit(void * addr, unsigned long si
 	offset &= (BITS_PER_LONG-1);
 	if (offset)
 	{
-		tmp = leBPL_to_cpup(p++);
+		if (size >= BITS_PER_LONG)
+			tmp = leBPL_to_cpup(p++);
+		else
+		{
+			tmp = 0;
+			memcpy(&tmp, p, (size+7)/8);
+			tmp = leBPL_to_cpup(&tmp);
+		}
 		tmp |= (~0UL >> (BITS_PER_LONG-offset));
 		if (size < BITS_PER_LONG)
 			goto found_first;
