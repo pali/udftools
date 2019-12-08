@@ -179,14 +179,6 @@ void udf_init_disc(struct udf_disc *disc)
 	}
 	memcpy(disc->udf_stable[0], &default_stable, sizeof(struct sparingTable));
 
-	disc->vat = calloc(1, disc->blocksize);
-	if (!disc->vat)
-	{
-		fprintf(stderr, "%s: Error: calloc failed: %s\n", appname, strerror(errno));
-		exit(1);
-	}
-	disc->vat_entries = 0;
-
 	disc->udf_fsd = malloc(sizeof(struct fileSetDesc));
 	if (!disc->udf_fsd)
 	{
@@ -740,6 +732,17 @@ void setup_anchor(struct udf_disc *disc)
 void setup_partition(struct udf_disc *disc)
 {
 	struct udf_extent *pspace;
+
+	if (disc->flags & FLAG_VAT)
+	{
+		disc->vat = calloc(1, disc->blocksize);
+		if (!disc->vat)
+		{
+			fprintf(stderr, "%s: Error: calloc failed: %s\n", appname, strerror(errno));
+			exit(1);
+		}
+		disc->vat_entries = 0;
+	}
 
 	pspace = next_extent(disc->head, PSPACE);
 	if (!pspace)
