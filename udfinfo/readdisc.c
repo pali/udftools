@@ -1098,6 +1098,9 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 			offset = block % packet_len;
 			packet = block - offset;
 
+			if (count > 4)
+				count = 4;
+
 			for (i = 0; i < count; ++i)
 			{
 				if (!disc->udf_stable[i])
@@ -1174,7 +1177,7 @@ static void read_stable(int fd, struct udf_disc *disc)
 	if (count > 4)
 	{
 		fprintf(stderr, "%s: Warning: Too many Sparing Tables\n", appname);
-		return;
+		count = 4;
 	}
 
 	length = le32_to_cpu(spm->sizeSparingTable);
