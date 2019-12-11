@@ -639,7 +639,7 @@ int main(int argc, char *argv[])
 		{
 			if (fdatasync(fd) != 0)
 			{
-				fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
+				fprintf(stderr, "%s: Error: Synchronization to device '%s' failed: %s\n", appname, filename, strerror(errno));
 				exit(1);
 			}
 		}
@@ -676,11 +676,17 @@ int main(int argc, char *argv[])
 	printf("Synchronizing...\n");
 	if (!(disc.flags & FLAG_NO_WRITE))
 	{
-		if (fdatasync(fd) != 0)
+		if (fsync(fd) != 0)
 		{
-			fprintf(stderr, "%s: Synchronization failed: %s\n", appname, strerror(errno));
+			fprintf(stderr, "%s: Error: Synchronization to device '%s' failed: %s\n", appname, filename, strerror(errno));
 			exit(1);
 		}
+	}
+
+	if (close(fd) != 0 && errno != EINTR)
+	{
+		fprintf(stderr, "%s: Error: Closing device '%s' failed: %s\n", appname, filename, strerror(errno));
+		exit(1);
 	}
 
 	printf("Done\n");
