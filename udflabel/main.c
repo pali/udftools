@@ -157,7 +157,7 @@ static void write_desc(int fd, struct udf_disc *disc, enum udf_space_type type, 
 
 			if (!(disc->flags & FLAG_NO_WRITE))
 			{
-				ret = write(fd, desc->data->buffer, desc->data->length);
+				ret = write_nointr(fd, desc->data->buffer, desc->data->length);
 				if (ret >= 0 && (size_t)ret != desc->data->length)
 				{
 					errno = EIO;

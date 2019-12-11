@@ -55,7 +55,7 @@ static int valid_offset(int fd, off_t offset)
 
 	if (lseek(fd, offset, SEEK_SET) < 0)
 		return 0;
-	if (read(fd, &ch, 1) < 1)
+	if (read_nointr(fd, &ch, 1) < 1)
 		return 0;
 	return 1;
 }
@@ -236,7 +236,7 @@ static int is_removable_disk(int fd)
 	if (rem_fd < 0)
 		return -1;
 
-	ret = read(rem_fd, buf, sizeof(buf)-1);
+	ret = read_nointr(rem_fd, buf, sizeof(buf)-1);
 	close(rem_fd);
 
 	if (ret < 0)
@@ -299,7 +299,7 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 				memset(buffer + offset, 0x00, length - offset);
 			if (!(disc->flags & FLAG_NO_WRITE))
 			{
-				if (write(fd, buffer, length) != length)
+				if (write_nointr(fd, buffer, length) != length)
 					return -1;
 			}
 			desc = desc->next;
@@ -319,7 +319,7 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 		{
 			if (!(disc->flags & FLAG_NO_WRITE))
 			{
-				if (write(fd, buffer, length) != length)
+				if (write_nointr(fd, buffer, length) != length)
 					return -1;
 			}
 		}

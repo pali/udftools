@@ -240,5 +240,7 @@ size_t gen_uuid_from_vol_set_ident(char[17], const dstring *, size_t);
 uint32_t strtou32(const char *, int, int *);
 uint16_t strtou16(const char *, int, int *);
 uint32_t randu32(void);
+ssize_t read_nointr(int, void *, size_t);
+ssize_t write_nointr(int, const void *, size_t);
 
 #endif /* __LIBUDFFS_H */

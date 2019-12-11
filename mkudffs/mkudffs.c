@@ -563,7 +563,7 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 
 	if (fd >= 0 && lseek(fd, ((off_t)start) * disc->blocksize, SEEK_SET) >= 0)
 	{
-		if (read(fd, &old_mbr, sizeof(struct mbr)) == sizeof(struct mbr))
+		if (read_nointr(fd, &old_mbr, sizeof(struct mbr)) == sizeof(struct mbr))
 		{
 			if (le16_to_cpu(old_mbr.boot_signature) == MBR_BOOT_SIGNATURE)
 				mbr->disk_signature = old_mbr.disk_signature;

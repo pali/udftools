@@ -59,7 +59,7 @@ static int read_offset(int fd, struct udf_disc *disc, void *buf, off_t offset, s
 		return -1;
 	}
 
-	ret = read(fd, buf, count);
+	ret = read_nointr(fd, buf, count);
 	if (ret >= 0 && (size_t)ret != count)
 	{
 		errno = EIO;
@@ -710,8 +710,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					else
 					{
 						memcpy(lvd, &buffer, sizeof(buffer));
-						errno = 0;
-						if (read(fd, (uint8_t *)lvd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
+						if (read_nointr(fd, (uint8_t *)lvd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
 						{
 							fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 							free(lvd);
@@ -770,8 +769,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					else
 					{
 						memcpy(usd, &buffer, sizeof(buffer));
-						errno = 0;
-						if (read(fd, (uint8_t *)usd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
+						if (read_nointr(fd, (uint8_t *)usd + sizeof(buffer), gd_length - sizeof(buffer)) != (ssize_t)(gd_length - sizeof(buffer)))
 						{
 							fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 							free(usd);
@@ -907,8 +905,7 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 		else
 		{
 			memcpy(lvid, &buffer, sizeof(buffer));
-			errno = 0;
-			if (read(fd, (uint8_t *)lvid + sizeof(buffer), lvid_length - sizeof(buffer)) != (ssize_t)(lvid_length - sizeof(buffer)))
+			if (read_nointr(fd, (uint8_t *)lvid + sizeof(buffer), lvid_length - sizeof(buffer)) != (ssize_t)(lvid_length - sizeof(buffer)))
 			{
 				fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 				free(lvid);
@@ -1221,8 +1218,7 @@ static void read_stable(int fd, struct udf_disc *disc)
 		else
 		{
 			memcpy(disc->udf_stable[i], &buffer, sizeof(buffer));
-			errno = 0;
-			if (read(fd, (uint8_t *)disc->udf_stable[i] + sizeof(buffer), st_len - sizeof(buffer)) != (ssize_t)(st_len - sizeof(buffer)))
+			if (read_nointr(fd, (uint8_t *)disc->udf_stable[i] + sizeof(buffer), st_len - sizeof(buffer)) != (ssize_t)(st_len - sizeof(buffer)))
 			{
 				fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 				free(disc->udf_stable[i]);
@@ -1996,7 +1992,7 @@ static uint32_t count_bitmap_blocks(int fd, struct udf_disc *disc, struct generi
 
 	for (bytes = (bits+7) / 8; bytes > sizeof(buffer); bytes -= sizeof(buffer))
 	{
-		if (read(fd, &buffer, sizeof(buffer)) != (ssize_t)sizeof(buffer))
+		if (read_nointr(fd, &buffer, sizeof(buffer)) != (ssize_t)sizeof(buffer))
 		{
 			fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 			return 0;
@@ -2016,7 +2012,7 @@ static uint32_t count_bitmap_blocks(int fd, struct udf_disc *disc, struct generi
 	if (bytes)
 	{
 		memset(&buffer, 0, sizeof(buffer));
-		if (read(fd, &buffer, bytes) != (ssize_t)bytes)
+		if (read_nointr(fd, &buffer, bytes) != (ssize_t)bytes)
 		{
 			fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 			return 0;
@@ -2092,8 +2088,7 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, struct generic
 	else
 	{
 		memcpy(use, &buffer, sizeof(buffer));
-		errno = 0;
-		if (read(fd, (uint8_t *)use + sizeof(buffer), use_len - sizeof(buffer)) != (ssize_t)(use_len - sizeof(buffer)))
+		if (read_nointr(fd, (uint8_t *)use + sizeof(buffer), use_len - sizeof(buffer)) != (ssize_t)(use_len - sizeof(buffer)))
 		{
 			fprintf(stderr, "%s: Warning: read failed: %s\n", appname, strerror(errno ? errno : EIO));
 			free(use);

@@ -156,3 +156,29 @@ uint32_t randu32(void)
 
 	return value;
 }
+
+ssize_t read_nointr(int fd, void *buf, size_t count)
+{
+	ssize_t ret;
+
+	do ret = read(fd, buf, count);
+	while (ret < 0 && errno == EINTR);
+
+	if (ret >= 0 && errno)
+		errno = 0;
+
+	return ret;
+}
+
+ssize_t write_nointr(int fd, const void *buf, size_t count)
+{
+	ssize_t ret;
+
+	do ret = write(fd, buf, count);
+	while (ret < -1 && errno == EINTR);
+
+	if (ret >= 0 && errno)
+		errno = 0;
+
+	return ret;
+}

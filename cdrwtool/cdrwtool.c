@@ -359,7 +359,7 @@ int write_file(int fd, struct cdrw_disc *disc)
 
 	while (!ret && go_on) {
 		blocks = disc->fpacket ? disc->packet_size : size / CDROM_BLOCK;
-		ret = read(file, buf, size);
+		ret = read_nointr(file, buf, size);
 		if (ret == -1) {
 			perror("read from file");
 			break;
