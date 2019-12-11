@@ -501,5 +501,20 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	if (!(disc.flags & FLAG_NO_WRITE))
+	{
+		if (fsync(fd) != 0)
+		{
+			fprintf(stderr, "%s: Error: Synchronization to device '%s' failed: %s\n", appname, filename, strerror(errno));
+			exit(1);
+		}
+	}
+
+	if (fd >= 0 && close(fd) != 0 && errno != EINTR)
+	{
+		fprintf(stderr, "%s: Error: Closing device '%s' failed: %s\n", appname, filename, strerror(errno));
+		exit(1);
+	}
+
 	return 0;
 }
