@@ -212,7 +212,8 @@ void udf_init_disc(struct udf_disc *disc)
 int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 {
 	struct logicalVolIntegrityDescImpUse *lvidiu;
-	uint16_t udf_rev_le16;
+	struct domainIdentSuffix *dis;
+	struct UDFIdentSuffix *uis;
 
 	if (disc->udf_rev == udf_rev)
 		return 0;
@@ -247,11 +248,15 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
 	}
 
-	udf_rev_le16 = cpu_to_le16(udf_rev);
-	memcpy(disc->udf_fsd->domainIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
-	memcpy(disc->udf_lvd[0]->domainIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
-	memcpy(disc->udf_iuvd[0]->impIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
-	memcpy(disc->udf_stable[0]->sparingIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+	dis = (struct domainIdentSuffix *)disc->udf_fsd->domainIdent.identSuffix;
+	dis->UDFRevision = cpu_to_le16(udf_rev);
+	dis = (struct domainIdentSuffix *)disc->udf_lvd[0]->domainIdent.identSuffix;
+	dis->UDFRevision = cpu_to_le16(udf_rev);
+	uis = (struct UDFIdentSuffix *)disc->udf_iuvd[0]->impIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(udf_rev);
+	uis = (struct UDFIdentSuffix *)disc->udf_stable[0]->sparingIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(udf_rev);
+
 	lvidiu = query_lvidiu(disc);
 	if (udf_rev < 0x0102)
 	{
@@ -1344,9 +1349,9 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	struct virtualAllocationTable20 *vat20;
 	struct impUseExtAttr *ea_attr;
 	struct LVExtensionEA *ea_lv;
+	struct UDFIdentSuffix *uis;
 	uint8_t buffer[(sizeof(*ea_attr)+sizeof(*ea_lv)+3)/4*4];
 	uint16_t checksum;
-	uint16_t udf_rev_le16;
 	uint32_t min_blocks;
 	uint32_t align;
 
@@ -1395,16 +1400,16 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	{
 		vtable = udf_create(disc, pspace, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
 		disc->vat_entries--; // Remove VAT file itself from VAT table
-		udf_rev_le16 = cpu_to_le16(disc->udf_rev);
 		memset(&buffer, 0, sizeof(buffer));
 		ea_attr = (struct impUseExtAttr *)buffer;
 		ea_attr->attrType = cpu_to_le32(EXTATTR_IMP_USE);
 		ea_attr->attrSubtype = EXTATTR_SUBTYPE;
 		ea_attr->attrLength = cpu_to_le32(sizeof(buffer));
 		ea_attr->impUseLength = cpu_to_le32(sizeof(*ea_lv));
-		ea_attr->impIdent.identSuffix[2] = UDF_OS_CLASS_UNIX;
-		ea_attr->impIdent.identSuffix[3] = UDF_OS_ID_LINUX;
-		memcpy(ea_attr->impIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+		uis = (struct UDFIdentSuffix *)ea_attr->impIdent.identSuffix;
+		uis->UDFRevision = cpu_to_le16(disc->udf_rev);
+		uis->OSClass = UDF_OS_CLASS_UNIX;
+		uis->OSIdentifier = UDF_OS_ID_LINUX;
 		strcpy((char *)ea_attr->impIdent.ident, UDF_ID_VAT_LVEXTENSION);
 		ea_lv = (struct LVExtensionEA *)&ea_attr->impUse[0];
 		checksum = 0;
@@ -1430,7 +1435,8 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 		insert_data(disc, pspace, vtable, data);
 		data = alloc_data(&default_vat15, len);
 		vat15 = data->buffer;
-		memcpy(vat15->vatIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+		uis = (struct UDFIdentSuffix *)vat15->vatIdent.identSuffix;
+		uis->UDFRevision = cpu_to_le16(disc->udf_rev);
 		insert_data(disc, pspace, vtable, data);
 	}
 
@@ -1486,7 +1492,7 @@ void add_type2_sparable_partition(struct udf_disc *disc, uint16_t partitionNum, 
 	struct sparablePartitionMap *pm;
 	int mtl = le32_to_cpu(disc->udf_lvd[0]->mapTableLength);
 	int npm = le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps);
-	uint16_t udf_rev_le16 = cpu_to_le16(disc->udf_rev);
+	struct UDFIdentSuffix *uis;
 
 	disc->udf_lvd[0] = realloc(disc->udf_lvd[0],
 		sizeof(struct logicalVolDesc) + mtl +
@@ -1505,7 +1511,8 @@ void add_type2_sparable_partition(struct udf_disc *disc, uint16_t partitionNum, 
 	disc->udf_lvd[0]->numPartitionMaps = cpu_to_le32(npm + 1);
 	memcpy(pm, &default_sparmap, sizeof(struct sparablePartitionMap));
 	pm->partitionNum = cpu_to_le16(partitionNum);
-	memcpy(pm->partIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+	uis = (struct UDFIdentSuffix *)pm->partIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(disc->udf_rev);
 	if (packetlen)
 		pm->packetLength = cpu_to_le16(packetlen);
 	pm->numSparingTables = spartable;
@@ -1561,7 +1568,7 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 	struct virtualPartitionMap *pm;
 	int mtl = le32_to_cpu(disc->udf_lvd[0]->mapTableLength);
 	int npm = le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps);
-	uint16_t udf_rev_le16 = cpu_to_le16(disc->udf_rev);
+	struct UDFIdentSuffix *uis;
 
 	disc->udf_lvd[0] = realloc(disc->udf_lvd[0],
 		sizeof(struct logicalVolDesc) + mtl +
@@ -1580,7 +1587,8 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 	disc->udf_lvd[0]->numPartitionMaps = cpu_to_le32(npm + 1);
 	memcpy(pm, &default_virtmap, sizeof(struct virtualPartitionMap));
 	pm->partitionNum = cpu_to_le16(partitionNum);
-	memcpy(pm->partIdent.identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
+	uis = (struct UDFIdentSuffix *)pm->partIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(disc->udf_rev);
 
 	disc->udf_lvid->numOfPartitions = cpu_to_le32(npm + 1);
 	disc->udf_lvid = realloc(disc->udf_lvid,
