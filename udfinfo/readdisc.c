@@ -507,7 +507,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 {
 	uint32_t location, length, count, i;
 	uint32_t next_location, next_length, next_count;
-	uint16_t type, udf_rev_le16;
+	uint16_t type;
 	size_t gd_length;
 	struct genericDesc *gd_ptr;
 	struct partitionDesc *pd_ptr;
@@ -515,6 +515,8 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 	struct volDescPtr *vdp;
 	struct logicalVolDesc *lvd;
 	struct unallocSpaceDesc *usd;
+	struct domainIdentSuffix *dis;
+	struct UDFIdentSuffix *uis;
 	unsigned char buffer[512];
 	int id, anchor;
 	int nested;
@@ -649,7 +651,15 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 
 						case TAG_IDENT_IUVD:
 							if (!disc->udf_iuvd[id] || le32_to_cpu(disc->udf_iuvd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum))
+							{
 								disc->udf_iuvd[id] = (struct impUseVolDesc *)gd_ptr;
+								if (strncmp((char *)disc->udf_iuvd[id]->impIdent.ident, UDF_ID_LV_INFO, sizeof(disc->udf_iuvd[id]->impIdent.ident)) == 0)
+								{
+									uis = (struct UDFIdentSuffix *)disc->udf_iuvd[id]->impIdent.identSuffix;
+									if (disc->udf_rev < le16_to_cpu(uis->UDFRevision))
+										disc->udf_rev = disc->udf_write_rev = le16_to_cpu(uis->UDFRevision);
+								}
+							}
 							break;
 
 						case TAG_IDENT_TD:
@@ -728,9 +738,9 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 						disc->udf_lvd[id] = lvd;
 						if (strncmp((char *)disc->udf_lvd[id]->domainIdent.ident, UDF_ID_COMPLIANT, sizeof(disc->udf_lvd[id]->domainIdent.ident)) == 0)
 						{
-							memcpy(&udf_rev_le16, disc->udf_lvd[id]->domainIdent.identSuffix, sizeof(udf_rev_le16));
-							disc->udf_rev = le16_to_cpu(udf_rev_le16);
-							disc->udf_write_rev = disc->udf_rev;
+							dis = (struct domainIdentSuffix *)disc->udf_lvd[id]->domainIdent.identSuffix;
+							if (disc->udf_rev < le16_to_cpu(dis->UDFRevision))
+								disc->udf_rev = disc->udf_write_rev = le16_to_cpu(dis->UDFRevision);
 						}
 					}
 
@@ -968,7 +978,10 @@ static void parse_lvidiu(struct udf_disc *disc)
 	if (disc->udf_rev >= 0x0102)
 	{
 		disc->udf_rev = le16_to_cpu(lvidiu->minUDFReadRev);
-		disc->udf_write_rev = le16_to_cpu(lvidiu->minUDFWriteRev);
+		if (disc->udf_write_rev < le16_to_cpu(lvidiu->minUDFWriteRev))
+			disc->udf_write_rev = le16_to_cpu(lvidiu->minUDFWriteRev);
+		if (disc->udf_write_rev < disc->udf_rev)
+			disc->udf_write_rev = disc->udf_rev;
 	}
 }
 
@@ -1162,6 +1175,7 @@ static void read_stable(int fd, struct udf_disc *disc)
 	uint16_t packet_len, num, j;
 	uint32_t location, length;
 	unsigned char buffer[512];
+	struct UDFIdentSuffix *uis;
 	struct sparablePartitionMap *spm;
 	struct sparingTable *st;
 	struct udf_extent *ext;
@@ -1180,6 +1194,10 @@ static void read_stable(int fd, struct udf_disc *disc)
 	length = le32_to_cpu(spm->sizeSparingTable);
 	packet_len = le16_to_cpu(spm->packetLength);
 
+	uis = (struct UDFIdentSuffix *)spm->partIdent.identSuffix;
+	if (disc->udf_write_rev < le16_to_cpu(uis->UDFRevision))
+		disc->udf_write_rev = le16_to_cpu(uis->UDFRevision);
+
 	for (i = 0; i < count; ++i)
 	{
 		location = le32_to_cpu(spm->locSparingTable[i]);
@@ -1197,6 +1215,10 @@ static void read_stable(int fd, struct udf_disc *disc)
 
 		if (st->sparingIdent.flags != 0 || strncmp((char *)st->sparingIdent.ident, UDF_ID_SPARING, sizeof(st->sparingIdent.ident)) != 0)
 			continue;
+
+		uis = (struct UDFIdentSuffix *)st->sparingIdent.identSuffix;
+		if (disc->udf_write_rev < le16_to_cpu(uis->UDFRevision))
+			disc->udf_write_rev = le16_to_cpu(uis->UDFRevision);
 
 		num = le16_to_cpu(st->reallocationTableLen);
 		st_len = sizeof(*st) + num * sizeof(struct sparingEntry);
@@ -1250,6 +1272,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 	long last;
 	struct partitionDesc *pd;
 	struct virtualPartitionMap *vpm;
+	struct UDFIdentSuffix *uis;
 	long_ad *lad;
 	short_ad *sad;
 	uint32_t j, count;
@@ -1280,6 +1303,10 @@ static void read_vat(int fd, struct udf_disc *disc)
 			fprintf(stderr, "%s: Error: Virtual Partition Map not found, but --vatblock specified\n", appname);
 		return;
 	}
+
+	uis = (struct UDFIdentSuffix *)vpm->partIdent.identSuffix;
+	if (disc->udf_write_rev < le16_to_cpu(uis->UDFRevision))
+		disc->udf_write_rev = le16_to_cpu(uis->UDFRevision);
 
 	pd = find_partition_descriptor(disc, le16_to_cpu(vpm->partitionNum));
 	if (!pd)
@@ -1519,6 +1546,9 @@ static void read_vat(int fd, struct udf_disc *disc)
 				free(vat);
 				break;
 			}
+			uis = (struct UDFIdentSuffix *)vat15->vatIdent.identSuffix;
+			if (disc->udf_write_rev < le16_to_cpu(uis->UDFRevision))
+				disc->udf_write_rev = le16_to_cpu(uis->UDFRevision);
 			disc->vat = (uint32_t *)vat;
 			disc->vat_entries = (vat_length - 36) / 4;
 			if (ea_length)
@@ -1548,6 +1578,9 @@ static void read_vat(int fd, struct udf_disc *disc)
 						}
 						if (le32_to_cpu(ea_attr.attrType) == EXTATTR_IMP_USE && strncmp((const char *)ea_attr.impIdent.ident, UDF_ID_VAT_LVEXTENSION, sizeof(ea_attr.impIdent.ident)) == 0)
 						{
+							uis = (struct UDFIdentSuffix *)ea_attr.impIdent.identSuffix;
+							if (disc->udf_write_rev < le16_to_cpu(uis->UDFRevision))
+								disc->udf_write_rev = le16_to_cpu(uis->UDFRevision);
 							if (ea_attr_length < sizeof(ea_attr) + sizeof(ea_lv) || le32_to_cpu(ea_attr.impUseLength) < sizeof(ea_lv))
 							{
 								fprintf(stderr, "%s: Warning: Logical Volume Extended Information for Virtual Allocation Table is damaged\n", appname);
@@ -1597,7 +1630,10 @@ static void read_vat(int fd, struct udf_disc *disc)
 			if (disc->udf_lvid)
 			{
 				disc->udf_rev = le16_to_cpu(vat20->minUDFReadRev);
-				disc->udf_write_rev = le16_to_cpu(vat20->minUDFWriteRev);
+				if (disc->udf_write_rev < le16_to_cpu(vat20->minUDFWriteRev))
+					disc->udf_write_rev = le16_to_cpu(vat20->minUDFWriteRev);
+				if (disc->udf_write_rev < disc->udf_rev)
+					disc->udf_write_rev = disc->udf_rev;
 				disc->num_files = le32_to_cpu(vat20->numFiles);
 				disc->num_dirs = le32_to_cpu(vat20->numDirs);
 			}
@@ -1718,10 +1754,15 @@ static void read_metadata(int fd, struct udf_disc *disc)
 {
 	struct partitionDesc *pd;
 	struct metadataPartitionMap *mpm;
+	struct UDFIdentSuffix *uis;
 
 	mpm = (struct metadataPartitionMap *)find_partition(disc, GP_PARTITION_MAP_TYPE_2, UDF_ID_METADATA, -1, NULL);
 	if (!mpm)
 		return;
+
+	uis = (struct UDFIdentSuffix *)mpm->partIdent.identSuffix;
+	if (disc->udf_write_rev < le16_to_cpu(uis->UDFRevision))
+		disc->udf_write_rev = le16_to_cpu(uis->UDFRevision);
 
 	pd = find_partition_descriptor(disc, le16_to_cpu(mpm->partitionNum));
 	if (!pd)
@@ -1829,6 +1870,7 @@ static void read_fsd(int fd, struct udf_disc *disc)
 	struct genericPartitionMap *pmap;
 	struct udf_extent *ext;
 	struct partitionDesc *pd;
+	struct domainIdentSuffix *dis;
 	int id;
 
 	if (disc->udf_lvd[0])
@@ -1900,6 +1942,13 @@ static void read_fsd(int fd, struct udf_disc *disc)
 		free(disc->udf_fsd);
 		disc->udf_fsd = NULL;
 		return;
+	}
+
+	if (strncmp((char *)disc->udf_fsd->domainIdent.ident, UDF_ID_COMPLIANT, sizeof(disc->udf_fsd->domainIdent.ident)) == 0)
+	{
+		dis = (struct domainIdentSuffix *)disc->udf_fsd->domainIdent.identSuffix;
+		if (disc->udf_write_rev < le16_to_cpu(dis->UDFRevision))
+			disc->udf_write_rev = le16_to_cpu(dis->UDFRevision);
 	}
 
 	ext = next_extent(disc->head, PSPACE);
