@@ -86,7 +86,7 @@ First part of the \fBudfinfo\fP standard output contains information in
 following table:
 
 .RS
-.TP 1.6i
+.TP 1.7i
 .I filename
 File name of the selected block device or disk file image
 .TP
@@ -153,10 +153,21 @@ UDF integrity of Logical Volume, one of: \fIopened\fP, \fIclosed\fP,
 .I accesstype
 UDF Access Type, one of: \fIoverwritable\fP, \fIrewritable\fP, \fIwriteonce\fP,
 \fIreadonly\fP, \fIpseudo\-overwritable\fP, \fIunknown\fP
+.TP
+.I softwriteprotect
+Status of UDF SoftWriteProtect flag, either \fIyes\fP or \fIno\fP
+(available since udfinfo 2.2)
+.TP
+.I hardwriteprotect
+Status of UDF HardWriteProtect flag, either \fIyes\fP or \fIno\fP
+(available since udfinfo 2.2)
 .RE
 
 When UDF integrity is not \fIclosed\fP it means that the UDF disk was not
 properly unmounted, is in an inconsistent state and needs repairing.
+
+When either \fIsoftwriteprotect\fP or \fIhardwriteprotect\fP flag is set then
+UDF disk should be treated as read-only.
 
 All UDF string identifiers are stored on UDF disk in Unicode, therefore they are
 locale or code page agnostic. Options \fB\-\-locale\fP, \fB\-\-u8\fP,

@@ -171,9 +171,12 @@ int main(int argc, char *argv[])
 	struct logicalVolDesc *lvd;
 	struct primaryVolDesc *pvd;
 	struct partitionDesc *pd;
+	struct domainIdentSuffix *dis;
 	uint32_t serial_num;
 	uint32_t used_blocks;
 	uint32_t behind_blocks;
+	int soft_write_protect;
+	int hard_write_protect;
 	size_t ret;
 	int fd;
 	int fd2;
@@ -351,6 +354,29 @@ int main(int argc, char *argv[])
 	}
 	else
 		printf("accesstype=unknown\n");
+
+	soft_write_protect = hard_write_protect = 0;
+
+	if (disc.udf_fsd)
+	{
+		dis = (struct domainIdentSuffix *)disc.udf_fsd->domainIdent.identSuffix;
+		if (dis->domainFlags & DOMAIN_FLAGS_HARD_WRITE_PROTECT)
+			soft_write_protect = hard_write_protect = 1;
+		else if (dis->domainFlags & DOMAIN_FLAGS_SOFT_WRITE_PROTECT)
+			soft_write_protect = 1;
+	}
+
+	if (lvd)
+	{
+		dis = (struct domainIdentSuffix *)lvd->domainIdent.identSuffix;
+		if (dis->domainFlags & DOMAIN_FLAGS_HARD_WRITE_PROTECT)
+			soft_write_protect = hard_write_protect = 1;
+		else if (dis->domainFlags & DOMAIN_FLAGS_SOFT_WRITE_PROTECT)
+			soft_write_protect = 1;
+	}
+
+	printf("softwriteprotect=%s\n", soft_write_protect ? "yes" : "no");
+	printf("hardwriteprotect=%s\n", hard_write_protect ? "yes" : "no");
 
 	dump_space(&disc);
 
