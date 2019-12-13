@@ -58,8 +58,7 @@ void udf_init_disc(struct udf_disc *disc)
 	memset(disc, 0x00, sizeof(*disc));
 
 	disc->blocksize = 2048;
-	disc->udf_rev = le16_to_cpu(default_lvidiu.minUDFReadRev);
-	disc->flags = FLAG_LOCALE | FLAG_CLOSED | FLAG_EFE;
+	disc->flags = FLAG_LOCALE;
 	disc->blkssz = 512;
 	disc->mode = 0755;
 
@@ -207,6 +206,8 @@ void udf_init_disc(struct udf_disc *disc)
 	disc->head->prev = NULL;
 	disc->head->head = NULL;
 	disc->head->tail = NULL;
+
+	udf_set_version(disc, 0x0201);
 }
 
 int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
@@ -334,22 +335,19 @@ void split_space(struct udf_disc *disc)
 	if (blocks > 257)
 		set_extent(disc, ANCHOR, 256, 1);
 
-	// Second anchor point at sector (End-Of-Volume - 256)
-	if (disc->flags & FLAG_CLOSED)
+	// Second anchor point at sector (End-Of-Volume - 256) or 257 for VAT
+	if ((disc->flags & FLAG_VAT) && (disc->flags & FLAG_CLOSED))
 	{
-		if (disc->flags & FLAG_VAT)
+		if (blocks <= 257 || blocks-257 <= 256)
 		{
-			if (blocks <= 257 || blocks-257 <= 256)
-			{
-				fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
-				exit(1);
-			}
-			set_extent(disc, ANCHOR, 257, 1);
+			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			exit(1);
 		}
-		else if (blocks >= 3072)
-		{
-			set_extent(disc, ANCHOR, blocks-257, 1);
-		}
+		set_extent(disc, ANCHOR, 257, 1);
+	}
+	else if (blocks >= 3072)
+	{
+		set_extent(disc, ANCHOR, blocks-257, 1);
 	}
 
 	// Final anchor point at sector End-Of-Volume/Session for sequentially writable media

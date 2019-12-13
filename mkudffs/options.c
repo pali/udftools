@@ -932,8 +932,8 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			exit(1);
 		}
 		disc->flags |= FLAG_VAT;
-		if (!closed_vat)
-			disc->flags &= ~FLAG_CLOSED;
+		if (closed_vat)
+			disc->flags |= FLAG_CLOSED;
 		add_type1_partition(disc, 0);
 		add_type2_virtual_partition(disc, 0);
 	}
