@@ -180,9 +180,11 @@ Specify permissions in octal mode bits of the root (/) directory. If omitted,
 
 .TP
 .BI \-\-read\-only
-Set \fIUDF Access Type\fP for overwritable media types (\fIhd\fP, \fIdvdram\fP,
-\fIdvdrw\fP) to read-only. This option specify that the whole UDF disk should be
-treated as read-only. (Option available since mkudffs 2.2)
+This option specify that the whole UDF disk should be treated as read-only. It
+sets \fISoftWriteProtect\fP domain flag in \fILogical Volume Descriptor\fP and
+in \fIFile Set Descriptor\fP. Plus for overwritable media types (\fIhd\fP,
+\fIdvdram\fP, \fIdvdrw\fP) set \fIUDF Access Type\fP to read-only. (Option
+available since mkudffs 2.2)
 
 .TP
 .BI \-\-bootarea= " fill "

@@ -103,7 +103,7 @@ void usage(void)
 		"\t--uid=             Uid of the root directory (default: 0)\n"
 		"\t--gid=             Gid of the root directory (default: 0)\n"
 		"\t--mode=            Permissions (octal mode bits) of the root directory (default: 0755)\n"
-		"\t--read-only        Set UDF Access Type for overwritable media types to read-only\n"
+		"\t--read-only        Set UDF disk to read-only mode\n"
 		"\t--bootarea=        UDF boot area (preserve, erase, mbr; default: based on media type)\n"
 		"\t--strategy=        Allocation strategy to use (4, 4096; default: based on media type)\n"
 		"\t--spartable        Use Sparing Table (default: based on media type) and set its count (1 - 4; default: 2)\n"
@@ -126,6 +126,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 {
 	int retval;
 	int i;
+	struct domainIdentSuffix *dis;
 	int media = MEDIA_TYPE_NONE;
 	int read_only = 0;
 	int use_vat = 0;
@@ -910,12 +911,18 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 	if (read_only)
 	{
-		if (le32_to_cpu(disc->udf_pd[0]->accessType) != PD_ACCESS_TYPE_OVERWRITABLE)
-		{
-			fprintf(stderr, "%s: Error: Option --read-only can be used only for overwritable media types\n", appname);
-			exit(1);
-		}
-		disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
+		if (le32_to_cpu(disc->udf_pd[0]->accessType) == PD_ACCESS_TYPE_OVERWRITABLE)
+			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
+
+		dis = (struct domainIdentSuffix *)disc->udf_fsd->domainIdent.identSuffix;
+		dis->domainFlags |= DOMAIN_FLAGS_SOFT_WRITE_PROTECT;
+		dis = (struct domainIdentSuffix *)disc->udf_lvd[0]->domainIdent.identSuffix;
+		dis->domainFlags |= DOMAIN_FLAGS_SOFT_WRITE_PROTECT;
+
+		dis = (struct domainIdentSuffix *)default_fsd.domainIdent.identSuffix;
+		dis->domainFlags |= DOMAIN_FLAGS_SOFT_WRITE_PROTECT;
+		dis = (struct domainIdentSuffix *)default_lvd.domainIdent.identSuffix;
+		dis->domainFlags |= DOMAIN_FLAGS_SOFT_WRITE_PROTECT;
 	}
 
 	if (closed_vat && !use_vat)
