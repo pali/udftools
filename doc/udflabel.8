@@ -63,7 +63,8 @@ Virtual Allocation Table contains Logical Volume Identifier (UDF Label).
 
 .TP
 .B \-\-force
-Force updating UDF disks without write support. Some media, like CD-ROM, DVD-ROM
+Force updating UDF disks without write support or write protected UDF disks. \
+Some UDF disks may have set write protect flag. Some media, like CD-ROM, DVD-ROM
 or BD-ROM are read-only. Other media, like CD-RW or DVD-RW, are write-once. UDF
 is designed also for such media where updating Label or Identifiers is not
 possible. But in some rare cases, it could make sense to try and overwrite the
@@ -71,7 +72,8 @@ existing Label or Identifiers also for UDF filesystem which has Access Type
 either Read-Only or Recordable (Write-Once). This is possible only if underlying
 media supports overwriting. E.g. UDF image of CD-ROM stored on hard disk or
 Read-Only UDF image burned to DVD-RAM or BD-RE discs. Option \fB\-\-force\fP
-ignores UDF Access Type and treats it as Overwritable.
+ignores UDF Access Type and treats it as Overwritable. Also it ignores UDF
+\fISoftWriteProtect\fP and \fIHardWriteProtected\fP flags.
 
 .TP
 .B \-n,\-\-no\-write
@@ -189,6 +191,9 @@ block device does not contain UDF filesystem or updating failed.
 \fBudflabel\fP is not able to set new Label, Logical Volume Identifier and File
 Set Identifier for disks with Virtual Allocation Table (used by Write Once
 media).
+
+\fBudflabel\fP prior to version 2.2 ignored UDF \fISoftWriteProtect\fP and
+\fIHardWriteProtected\fP flags and overwritten such disks without any notice.
 
 \fBudflabel\fP prior to version 2.2 was not able to set a new Label, Logical
 Volume Identifier and File Set Identifier for disks with Metadata Partition

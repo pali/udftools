@@ -186,6 +186,7 @@ int main(int argc, char *argv[])
 	struct partitionDesc *pd;
 	struct logicalVolDesc *lvd;
 	struct impUseVolDescImpUse *iuvdiu;
+	struct domainIdentSuffix *dis;
 	size_t len;
 	int fd;
 	int fd2;
@@ -437,6 +438,40 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "%s: Error: Updating Virtual Allocation Table is not supported yet\n", appname);
 		exit(1);
+	}
+
+	if (disc.udf_lvd[0] && update_lvd)
+	{
+		dis = (struct domainIdentSuffix *)disc.udf_lvd[0]->domainIdent.identSuffix;
+		if (dis->domainFlags & (DOMAIN_FLAGS_SOFT_WRITE_PROTECT|DOMAIN_FLAGS_HARD_WRITE_PROTECT))
+		{
+			if (!force)
+			{
+				fprintf(stderr, "%s: Error: Cannot overwrite write protected Logical Volume Descriptor\n", appname);
+				exit(1);
+			}
+			else
+			{
+				fprintf(stderr, "%s: Warning: Trying to overwrite write protected Logical Volume Descriptor\n", appname);
+			}
+		}
+	}
+
+	if (disc.udf_fsd && update_fsd)
+	{
+		dis = (struct domainIdentSuffix *)disc.udf_fsd->domainIdent.identSuffix;
+		if (dis->domainFlags & (DOMAIN_FLAGS_SOFT_WRITE_PROTECT|DOMAIN_FLAGS_HARD_WRITE_PROTECT))
+		{
+			if (!force)
+			{
+				fprintf(stderr, "%s: Error: Cannot overwrite write protected File Set Descriptor\n", appname);
+				exit(1);
+			}
+			else
+			{
+				fprintf(stderr, "%s: Warning: Trying to overwrite write protected File Set Descriptor\n", appname);
+			}
+		}
 	}
 
 	if (update_pvd)
