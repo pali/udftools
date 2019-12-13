@@ -231,18 +231,12 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 	else
 		disc->udf_rev = udf_rev;
 
-	if (disc->udf_rev >= 0x0200)
-
+	if (udf_rev >= 0x0200)
 	{
 		disc->flags |= FLAG_EFE;
 		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR03);
 	}
-	else if (disc->udf_rev == 0x0150)
-	{
-		disc->flags &= ~FLAG_EFE;
-		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
-	}
-	else // 0x0102 and older
+	else
 	{
 		disc->flags &= ~FLAG_EFE;
 		strcpy((char *)disc->udf_pd[0]->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02);
@@ -257,6 +251,30 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 	uis = (struct UDFIdentSuffix *)disc->udf_stable[0]->sparingIdent.identSuffix;
 	uis->UDFRevision = cpu_to_le16(udf_rev);
 
+	dis = (struct domainIdentSuffix *)default_lvd.domainIdent.identSuffix;
+	dis->UDFRevision = cpu_to_le16(udf_rev);
+	dis = (struct domainIdentSuffix *)default_fsd.domainIdent.identSuffix;
+	dis->UDFRevision = cpu_to_le16(udf_rev);
+	uis = (struct UDFIdentSuffix *)default_iuvd.impIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(udf_rev);
+	uis = (struct UDFIdentSuffix *)default_stable.sparingIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(udf_rev);
+	uis = (struct UDFIdentSuffix *)default_iuea.impIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(udf_rev);
+	uis = (struct UDFIdentSuffix *)default_vat15.vatIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(udf_rev);
+	uis = (struct UDFIdentSuffix *)default_sparmap.partIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(udf_rev);
+	uis = (struct UDFIdentSuffix *)default_virtmap.partIdent.identSuffix;
+	uis->UDFRevision = cpu_to_le16(udf_rev);
+
+	if (udf_rev >= 0x0200)
+	{
+		default_vat20.minUDFReadRev = cpu_to_le16(udf_rev);
+		default_vat20.minUDFWriteRev = cpu_to_le16(udf_rev);
+		default_vat20.maxUDFWriteRev = cpu_to_le16(udf_rev);
+	}
+
 	lvidiu = query_lvidiu(disc);
 	if (udf_rev < 0x0102)
 	{
@@ -265,6 +283,10 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 		lvidiu->minUDFReadRev = cpu_to_le16(0);
 		lvidiu->minUDFWriteRev = cpu_to_le16(0);
 		lvidiu->maxUDFWriteRev = cpu_to_le16(0);
+
+		default_lvidiu.minUDFReadRev = cpu_to_le16(0);
+		default_lvidiu.minUDFWriteRev = cpu_to_le16(0);
+		default_lvidiu.maxUDFWriteRev = cpu_to_le16(0);
 	}
 	else
 	{
@@ -274,6 +296,13 @@ int udf_set_version(struct udf_disc *disc, uint16_t udf_rev)
 			lvidiu->minUDFReadRev = cpu_to_le16(udf_rev);
 		lvidiu->minUDFWriteRev = cpu_to_le16(udf_rev);
 		lvidiu->maxUDFWriteRev = cpu_to_le16(udf_rev);
+
+		if (udf_rev == 0x0260)
+			default_lvidiu.minUDFReadRev = cpu_to_le16(0x0250);
+		else
+			default_lvidiu.minUDFReadRev = cpu_to_le16(udf_rev);
+		default_lvidiu.minUDFWriteRev = cpu_to_le16(udf_rev);
+		default_lvidiu.maxUDFWriteRev = cpu_to_le16(udf_rev);
 	}
 	return 0;
 }
@@ -1128,7 +1157,6 @@ void setup_lvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent
 
 	disc->udf_lvd[0]->integritySeqExt.extLength = cpu_to_le32(lvid->blocks * disc->blocksize);
 	disc->udf_lvd[0]->integritySeqExt.extLocation = cpu_to_le32(lvid->start);
-//	((uint16_t *)disc->udf_lvd[0]->domainIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
 
 	desc = set_desc(mvds, TAG_IDENT_LVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
@@ -1156,12 +1184,6 @@ void setup_pd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_extent 
 	}
 	disc->udf_pd[0]->partitionStartingLocation = cpu_to_le32(ext->start);
 	disc->udf_pd[0]->partitionLength = cpu_to_le32(ext->blocks);
-#if 0
-	if (disc->udf_rev >= 0x0200)
-		strcpy(disc->udf_pd[0]->partitionContents.ident, PARTITION_CONTENTS_NSR03);
-	else
-		strcpy(disc->udf_pd[0]->partitionContents.ident, PARTITION_CONTENTS_NSR02);
-#endif
 
 	desc = set_desc(mvds, TAG_IDENT_PD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
@@ -1215,8 +1237,6 @@ void setup_iuvd(struct udf_disc *disc, struct udf_extent *mvds, struct udf_exten
 {
 	struct udf_desc *desc;
 	int length = sizeof(struct impUseVolDesc);
-
-//	((uint16_t *)disc->udf_iuvd[0]->impIdent.identSuffix)[0] = cpu_to_le16(disc->udf_rev);
 
 	desc = set_desc(mvds, TAG_IDENT_IUVD, offset, 0, NULL);
 	desc->length = desc->data->length = length;
@@ -1345,12 +1365,10 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	struct udf_desc *vtable;
 	struct udf_data *data;
 	uint32_t len, i;
-	struct virtualAllocationTable15 *vat15;
 	struct virtualAllocationTable20 *vat20;
-	struct impUseExtAttr *ea_attr;
+	struct impUseExtAttr *ea;
 	struct LVExtensionEA *ea_lv;
-	struct UDFIdentSuffix *uis;
-	uint8_t buffer[(sizeof(*ea_attr)+sizeof(*ea_lv)+3)/4*4];
+	uint8_t buffer[(sizeof(*ea)+sizeof(*ea_lv)+3)/4*4];
 	uint16_t checksum;
 	uint32_t min_blocks;
 	uint32_t align;
@@ -1401,20 +1419,15 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 		vtable = udf_create(disc, pspace, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
 		disc->vat_entries--; // Remove VAT file itself from VAT table
 		memset(&buffer, 0, sizeof(buffer));
-		ea_attr = (struct impUseExtAttr *)buffer;
-		ea_attr->attrType = cpu_to_le32(EXTATTR_IMP_USE);
-		ea_attr->attrSubtype = EXTATTR_SUBTYPE;
-		ea_attr->attrLength = cpu_to_le32(sizeof(buffer));
-		ea_attr->impUseLength = cpu_to_le32(sizeof(*ea_lv));
-		uis = (struct UDFIdentSuffix *)ea_attr->impIdent.identSuffix;
-		uis->UDFRevision = cpu_to_le16(disc->udf_rev);
-		uis->OSClass = UDF_OS_CLASS_UNIX;
-		uis->OSIdentifier = UDF_OS_ID_LINUX;
-		strcpy((char *)ea_attr->impIdent.ident, UDF_ID_VAT_LVEXTENSION);
-		ea_lv = (struct LVExtensionEA *)&ea_attr->impUse[0];
+		memcpy(&buffer, &default_iuea, sizeof(default_iuea));
+		ea = (struct impUseExtAttr *)buffer;
+		ea->attrLength = cpu_to_le32(sizeof(buffer));
+		ea->impUseLength = cpu_to_le32(sizeof(*ea_lv));
+		strcpy((char *)ea->impIdent.ident, UDF_ID_VAT_LVEXTENSION);
+		ea_lv = (struct LVExtensionEA *)&ea->impUse[0];
 		checksum = 0;
-		for (i = 0; i < sizeof(*ea_attr); ++i)
-			checksum += ((uint8_t *)ea_attr)[i];
+		for (i = 0; i < sizeof(*ea); ++i)
+			checksum += ((uint8_t *)ea)[i];
 		ea_lv->headerChecksum = cpu_to_le16(checksum);
 		if (disc->flags & FLAG_EFE)
 		{
@@ -1434,9 +1447,6 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 		data = alloc_data(disc->vat, disc->vat_entries * sizeof(uint32_t));
 		insert_data(disc, pspace, vtable, data);
 		data = alloc_data(&default_vat15, len);
-		vat15 = data->buffer;
-		uis = (struct UDFIdentSuffix *)vat15->vatIdent.identSuffix;
-		uis->UDFRevision = cpu_to_le16(disc->udf_rev);
 		insert_data(disc, pspace, vtable, data);
 	}
 
@@ -1492,7 +1502,6 @@ void add_type2_sparable_partition(struct udf_disc *disc, uint16_t partitionNum, 
 	struct sparablePartitionMap *pm;
 	int mtl = le32_to_cpu(disc->udf_lvd[0]->mapTableLength);
 	int npm = le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps);
-	struct UDFIdentSuffix *uis;
 
 	disc->udf_lvd[0] = realloc(disc->udf_lvd[0],
 		sizeof(struct logicalVolDesc) + mtl +
@@ -1511,8 +1520,6 @@ void add_type2_sparable_partition(struct udf_disc *disc, uint16_t partitionNum, 
 	disc->udf_lvd[0]->numPartitionMaps = cpu_to_le32(npm + 1);
 	memcpy(pm, &default_sparmap, sizeof(struct sparablePartitionMap));
 	pm->partitionNum = cpu_to_le16(partitionNum);
-	uis = (struct UDFIdentSuffix *)pm->partIdent.identSuffix;
-	uis->UDFRevision = cpu_to_le16(disc->udf_rev);
 	if (packetlen)
 		pm->packetLength = cpu_to_le16(packetlen);
 	pm->numSparingTables = spartable;
@@ -1568,7 +1575,6 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 	struct virtualPartitionMap *pm;
 	int mtl = le32_to_cpu(disc->udf_lvd[0]->mapTableLength);
 	int npm = le32_to_cpu(disc->udf_lvd[0]->numPartitionMaps);
-	struct UDFIdentSuffix *uis;
 
 	disc->udf_lvd[0] = realloc(disc->udf_lvd[0],
 		sizeof(struct logicalVolDesc) + mtl +
@@ -1587,8 +1593,6 @@ void add_type2_virtual_partition(struct udf_disc *disc, uint16_t partitionNum)
 	disc->udf_lvd[0]->numPartitionMaps = cpu_to_le32(npm + 1);
 	memcpy(pm, &default_virtmap, sizeof(struct virtualPartitionMap));
 	pm->partitionNum = cpu_to_le16(partitionNum);
-	uis = (struct UDFIdentSuffix *)pm->partIdent.identSuffix;
-	uis->UDFRevision = cpu_to_le16(disc->udf_rev);
 
 	disc->udf_lvid->numOfPartitions = cpu_to_le32(npm + 1);
 	disc->udf_lvid = realloc(disc->udf_lvid,

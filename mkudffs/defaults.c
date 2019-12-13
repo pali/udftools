@@ -515,6 +515,25 @@ struct extendedFileEntry default_efe =
 	},
 };
 
+struct impUseExtAttr default_iuea =
+{
+	.attrType = constant_cpu_to_le32(EXTATTR_IMP_USE),
+	.attrSubtype = EXTATTR_SUBTYPE,
+	.attrLength = constant_cpu_to_le32(0),
+	.impUseLength = constant_cpu_to_le32(0),
+	.impIdent =
+	{
+		.ident = "",
+		.identSuffix =
+		{
+			0x01,
+			0x02,
+			UDF_OS_CLASS_UNIX,
+			UDF_OS_ID_LINUX
+		},
+	},
+};
+
 struct mbr default_mbr =
 {
 	.boot_code = "",

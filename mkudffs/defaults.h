@@ -45,6 +45,7 @@ extern struct virtualPartitionMap default_virtmap;
 extern struct fileSetDesc default_fsd;
 extern struct fileEntry default_fe;
 extern struct extendedFileEntry default_efe;
+extern struct impUseExtAttr default_iuea;
 
 extern struct mbr default_mbr;
 
