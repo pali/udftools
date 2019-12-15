@@ -99,10 +99,12 @@ void markBlock(enum markAction action, uint32_t blkno) {
  *
  *	Return value: lenAllocDescs if extents found, 0 if not.
  */
+typedef uint32_t __attribute__((may_alias)) uint32_t_a;
 int getExtents(uint32_t requestedLength, short_ad *extents) {
     uint32_t	blkno, lengthFound = 0;
     short_ad	*ext;
-    uint32_t	mask, *bm;
+    uint32_t	mask;
+    uint32_t_a	*bm;
 
     if( medium == CDR ) {
 	/* check space availability */
@@ -119,7 +121,7 @@ int getExtents(uint32_t requestedLength, short_ad *extents) {
     // clear extents
     ext = extents;
     ext->extLength = 0;
-    bm = ((uint32_t*)spaceMap->bitmap) - 1;
+    bm = ((uint32_t_a*)spaceMap->bitmap) - 1;
     mask = 0;
     blkno = 0xFFFFFFFF;
 

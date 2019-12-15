@@ -316,6 +316,7 @@ writeVATtable()
     uint32_t	startBlk;
     short_ad	*ext;
     uint16_t	udf_rev_le16;
+    uint32_t	prevVATlbn_le32;
 
     retries = 0;
 
@@ -326,7 +327,8 @@ writeVATtable()
     memcpy(id->identSuffix, &udf_rev_le16, sizeof(udf_rev_le16));
     id->identSuffix[2] = UDF_OS_CLASS_UNIX;
     id->identSuffix[3] = UDF_OS_ID_LINUX;
-    *(uint32_t*)(id+1) = prevVATlbn;
+    prevVATlbn_le32 = cpu_to_le32(prevVATlbn);
+    memcpy((uint8_t *)id+sizeof(*id), &prevVATlbn_le32, sizeof(prevVATlbn_le32));
 
     fe = makeFileEntry();
     size = (newVATindex + 9) << 2;
