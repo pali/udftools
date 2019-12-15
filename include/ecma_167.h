@@ -51,7 +51,7 @@ typedef struct
 {
 	uint8_t		charSetType;
 	uint8_t		charSetInfo[63];
-} __attribute__ ((packed)) charspec;
+} __attribute__ ((packed, may_alias)) charspec;
 
 /* Character Set Type (ECMA 167r3 1/7.2.1.1) */
 #define CHARSPEC_TYPE_CS0		0x00	/* (1/7.2.2) */
@@ -80,7 +80,7 @@ typedef struct
 	uint8_t		centiseconds;
 	uint8_t		hundredsOfMicroseconds;
 	uint8_t		microseconds;
-} __attribute__ ((packed)) timestamp;
+} __attribute__ ((packed, may_alias)) timestamp;
 
 /* Type and Time Zone (ECMA 167r3 1/7.3.1) */
 #define TIMESTAMP_TYPE_MASK		0xF000
@@ -95,7 +95,7 @@ typedef struct
 	uint8_t		flags;
 	uint8_t		ident[23];
 	uint8_t		identSuffix[8];
-} __attribute__ ((packed)) regid;
+} __attribute__ ((packed, may_alias)) regid;
 
 /* Flags (ECMA 167r3 1/7.4.1) */
 #define ENTITYID_FLAGS_DIRTY		0x00
@@ -109,7 +109,7 @@ struct volStructDesc
 	uint8_t		stdIdent[VSD_STD_ID_LEN];
 	uint8_t		structVersion;
 	uint8_t		structData[2041];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Standard Identifier (EMCA 167r2 2/9.1.2) */
 #define VSD_STD_ID_NSR02		"NSR02"	/* (3/9.1) */
@@ -129,7 +129,7 @@ struct beginningExtendedAreaDesc
 	uint8_t		stdIdent[VSD_STD_ID_LEN];
 	uint8_t		structVersion;
 	uint8_t		structData[2041];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Terminating Extended Area Descriptor (ECMA 167r3 2/9.3) */
 struct terminatingExtendedAreaDesc
@@ -138,7 +138,7 @@ struct terminatingExtendedAreaDesc
 	uint8_t		stdIdent[VSD_STD_ID_LEN];
 	uint8_t		structVersion;
 	uint8_t		structData[2041];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Boot Descriptor (ECMA 167r3 2/9.4) */
 struct bootDesc
@@ -157,7 +157,7 @@ struct bootDesc
 	uint16_t	flags;
 	uint8_t		reserved2[32];
 	uint8_t		bootUse[1906];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Flags (ECMA 167r3 2/9.4.12) */
 #define BOOT_FLAGS_ERASE		0x01
@@ -167,7 +167,7 @@ typedef struct
 {
 	uint32_t	extLength;
 	uint32_t	extLocation;
-} __attribute__ ((packed)) extent_ad;
+} __attribute__ ((packed, may_alias)) extent_ad;
 
 /* Descriptor Tag (ECMA 167r3 3/7.2) */
 typedef struct
@@ -180,7 +180,7 @@ typedef struct
 	uint16_t	descCRC;
 	uint16_t	descCRCLength;
 	uint32_t	tagLocation;
-} __attribute__ ((packed)) tag;
+} __attribute__ ((packed, may_alias)) tag;
 
 /* Tag Identifier (ECMA 167r3 3/7.2.1) */
 #define TAG_IDENT_PVD			0x0001
@@ -201,7 +201,7 @@ struct NSRDesc
 	uint8_t		structVersion;
 	uint8_t		reserved;
 	uint8_t		structData[2040];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Generic Descriptor */
 struct genericDesc
@@ -209,7 +209,7 @@ struct genericDesc
 	tag		descTag;
 	uint32_t	volDescSeqNum;
 	uint8_t		reserved[492];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Primary Volume Descriptor (ECMA 167r3 3/10.1) */
 struct primaryVolDesc
@@ -236,7 +236,7 @@ struct primaryVolDesc
 	uint32_t	predecessorVolDescSeqLocation;
 	uint16_t	flags;
 	uint8_t		reserved[22];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Flags (ECMA 167r3 3/10.1.21) */
 #define PVD_FLAGS_VSID_COMMON		0x0001
@@ -248,7 +248,7 @@ struct anchorVolDescPtr
 	extent_ad	mainVolDescSeqExt;
 	extent_ad	reserveVolDescSeqExt;
 	uint8_t	 	reserved[480];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Volume Descriptor Pointer (ECMA 167r3 3/10.3) */
 struct volDescPtr
@@ -257,7 +257,7 @@ struct volDescPtr
 	uint32_t	volDescSeqNum;
 	extent_ad	nextVolDescSeqExt;
 	uint8_t		reserved[484];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Implementation Use Volume Descriptor (ECMA 167r3 3/10.4) */
 struct impUseVolDesc
@@ -266,7 +266,7 @@ struct impUseVolDesc
 	uint32_t	volDescSeqNum;
 	regid		impIdent;
 	uint8_t		impUse[460];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Partition Descriptor (ECMA 167r3 3/10.5) */
 struct partitionDesc
@@ -283,7 +283,7 @@ struct partitionDesc
 	regid		impIdent;
 	uint8_t		impUse[128];
 	uint8_t		reserved[156];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Partition Flags (ECMA 167r3 3/10.5.3) */
 #define PD_PARTITION_FLAGS_ALLOC	0x0001
@@ -320,7 +320,7 @@ struct logicalVolDesc
 	uint8_t		impUse[128];
 	extent_ad	integritySeqExt;
 	uint8_t		partitionMaps[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Generic Partition Map (ECMA 167r3 3/10.7.1) */
 struct genericPartitionMap
@@ -328,7 +328,7 @@ struct genericPartitionMap
 	uint8_t		partitionMapType;
 	uint8_t		partitionMapLength;
 	uint8_t		partitionMapping[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Partition Map Type (ECMA 167r3 3/10.7.1.1) */
 #define GP_PARTITION_MAP_TYPE_UNDEF	0x00
@@ -342,7 +342,7 @@ struct genericPartitionMap1
 	uint8_t		partitionMapLength;
 	uint16_t	volSeqNum;
 	uint16_t	partitionNum;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Type 2 Partition Map (ECMA 167r3 3/10.7.3) */
 struct genericPartitionMap2
@@ -350,7 +350,7 @@ struct genericPartitionMap2
 	uint8_t		partitionMapType;
 	uint8_t		partitionMapLength; 
 	uint8_t		partitionIdent[62];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Unallocated Space Descriptor (ECMA 167r3 3/10.8) */
 struct unallocSpaceDesc
@@ -359,14 +359,14 @@ struct unallocSpaceDesc
 	uint32_t	volDescSeqNum;
 	uint32_t	numAllocDescs;
 	extent_ad	allocDescs[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Terminating Descriptor (ECMA 167r3 3/10.9) */
 struct terminatingDesc
 {
 	tag		descTag;
 	uint8_t		reserved[496];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Logical Volume Integrity Descriptor (ECMA 167r3 3/10.10) */
 struct logicalVolIntegrityDesc
@@ -382,7 +382,7 @@ struct logicalVolIntegrityDesc
 /*	uint32_t	freeSpaceTable[0]; */
 /*	uint32_t	sizeTable[0]; */
 /*	uint8_t		impUse[0]; */
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Integrity Type (ECMA 167r3 3/10.10.3) */
 #define LVID_INTEGRITY_TYPE_OPEN	0x00000000
@@ -393,14 +393,14 @@ typedef struct
 {
 	uint32_t	logicalBlockNum;
 	uint16_t	partitionReferenceNum;
-} __attribute__ ((packed)) lb_addr;
+} __attribute__ ((packed, may_alias)) lb_addr;
 
 /* Short Allocation Descriptor (ECMA 167r3 4/14.14.1) */
 typedef struct
 {
         uint32_t	extLength;
         uint32_t	extPosition;
-} __attribute__ ((packed)) short_ad;
+} __attribute__ ((packed, may_alias)) short_ad;
 
 /* Long Allocation Descriptor (ECMA 167r3 4/14.14.2) */
 typedef struct
@@ -408,7 +408,7 @@ typedef struct
 	uint32_t	extLength;
 	lb_addr		extLocation;
 	uint8_t		impUse[6];
-} __attribute__ ((packed)) long_ad;
+} __attribute__ ((packed, may_alias)) long_ad;
 
 /* Extended Allocation Descriptor (ECMA 167r3 4/14.14.3) */
 typedef struct
@@ -417,7 +417,7 @@ typedef struct
 	uint32_t	recordedLength;
 	uint32_t	informationLength;
 	lb_addr		extLocation;
-} __attribute__ ((packed)) ext_ad;
+} __attribute__ ((packed, may_alias)) ext_ad;
 
 /* Descriptor Tag (ECMA 167r3 4/7.2 - See 3/7.2) */
 
@@ -456,7 +456,7 @@ struct fileSetDesc
 	long_ad		nextExt;
 	long_ad		streamDirectoryICB;
 	uint8_t		reserved[32];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Partition Header Descriptor (ECMA 167r3 4/14.3) */
 struct partitionHeaderDesc
@@ -467,7 +467,7 @@ struct partitionHeaderDesc
 	short_ad	freedSpaceTable;
 	short_ad	freedSpaceBitmap;
 	uint8_t		reserved[88];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* File Identifier Descriptor (ECMA 167r3 4/14.4) */
 struct fileIdentDesc
@@ -480,7 +480,7 @@ struct fileIdentDesc
 	uint16_t	lengthOfImpUse;
 	uint8_t		impUseAndFileIdent[];
 /*	uint8_t		padding[0]; */
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* File Characteristics (ECMA 167r3 4/14.4.3) */
 #define FID_FILE_CHAR_HIDDEN		0x01
@@ -495,7 +495,7 @@ struct allocExtDesc
 	tag		descTag;
 	uint32_t	previousAllocExtLocation;
 	uint32_t	lengthAllocDescs;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* ICB Tag (ECMA 167r3 4/14.6) */
 typedef struct
@@ -508,7 +508,7 @@ typedef struct
 	uint8_t		fileType;
 	lb_addr		parentICBLocation;
 	uint16_t	flags;
-} __attribute__ ((packed)) icbtag;
+} __attribute__ ((packed, may_alias)) icbtag;
 
 /* Strategy Type (ECMA 167r3 4/14.6.2) */
 #define ICBTAG_STRATEGY_TYPE_UNDEF	0x0000
@@ -557,14 +557,14 @@ struct indirectEntry
 	tag		descTag;
 	icbtag		icbTag;
 	long_ad		indirectICB;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Terminal Entry (ECMA 167r3 4/14.8) */
 struct terminalEntry
 {
 	tag		descTag;
 	icbtag		icbTag;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* File Entry (ECMA 167r3 4/14.9) */
 struct fileEntry
@@ -590,7 +590,7 @@ struct fileEntry
 	uint32_t	lengthExtendedAttr;
 	uint32_t	lengthAllocDescs;
 	uint8_t		extendedAttrAndAllocDescs[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Permissions (ECMA 167r3 4/14.9.5) */
 #define FE_PERM_O_EXEC			0x00000001U
@@ -635,7 +635,7 @@ struct extendedAttrHeaderDesc
 	tag		descTag;
 	uint32_t	impAttrLocation;
 	uint32_t	appAttrLocation;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Generic Format (ECMA 167r3 4/14.10.2) */
 struct genericFormat
@@ -645,7 +645,7 @@ struct genericFormat
 	uint8_t		reserved[3];
 	uint32_t	attrLength;
 	uint8_t		attrData[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Character Set Information (ECMA 167r3 4/14.10.3) */
 struct charSetInfo
@@ -657,7 +657,7 @@ struct charSetInfo
 	uint32_t	escapeSeqLength;
 	uint8_t		charSetType;
 	uint8_t		escapeSeq[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Alternate Permissions (ECMA 167r3 4/14.10.4) */
 struct altPerms
@@ -669,7 +669,7 @@ struct altPerms
 	uint16_t	ownerIdent;
 	uint16_t	groupIdent;
 	uint16_t	permission;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* File Times Extended Attribute (ECMA 167r3 4/14.10.5) */
 struct fileTimesExtAttr
@@ -681,7 +681,7 @@ struct fileTimesExtAttr
 	uint32_t	dataLength;
 	uint32_t	fileTimeExistence;
 	uint8_t		fileTimes;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* FileTimeExistence (ECMA 167r3 4/14.10.5.6) */
 #define FTE_CREATION			0x00000001
@@ -699,7 +699,7 @@ struct infoTimesExtAttr
 	uint32_t	dataLength;
 	uint32_t	infoTimeExistence;
 	uint8_t		infoTimes[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Device Specification (ECMA 167r3 4/14.10.7) */
 struct deviceSpec
@@ -712,7 +712,7 @@ struct deviceSpec
 	uint32_t	majorDeviceIdent;
 	uint32_t	minorDeviceIdent;
 	uint8_t		impUse[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Implementation Use Extended Attr (ECMA 167r3 4/14.10.8) */
 struct impUseExtAttr
@@ -724,7 +724,7 @@ struct impUseExtAttr
 	uint32_t	impUseLength;
 	regid		impIdent;
 	uint8_t		impUse[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Application Use Extended Attribute (ECMA 167r3 4/14.10.9) */
 struct appUseExtAttr
@@ -736,7 +736,7 @@ struct appUseExtAttr
 	uint32_t	appUseLength;
 	regid		appIdent;
 	uint8_t		appUse[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 #define EXTATTR_CHAR_SET		1
 #define EXTATTR_ALT_PERMS		3
@@ -755,7 +755,7 @@ struct unallocSpaceEntry
 	icbtag		icbTag;
 	uint32_t	lengthAllocDescs;
 	uint8_t		allocDescs[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Space Bitmap Descriptor (ECMA 167r3 4/14.12) */
 struct spaceBitmapDesc
@@ -764,7 +764,7 @@ struct spaceBitmapDesc
 	uint32_t	numOfBits;
 	uint32_t	numOfBytes;
 	uint8_t		bitmap[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Partition Integrity Entry (ECMA 167r3 4/14.13) */
 struct partitionIntegrityEntry
@@ -776,7 +776,7 @@ struct partitionIntegrityEntry
 	uint8_t		reserved[175];
 	regid		impIdent;
 	uint8_t		impUse[256];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Short Allocation Descriptor (ECMA 167r3 4/14.14.1) */
 
@@ -797,7 +797,7 @@ struct logicalVolHeaderDesc
 {
 	uint64_t	uniqueID;
 	uint8_t		reserved[24];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Path Component (ECMA 167r3 4/14.16.1) */
 struct pathComponent
@@ -806,7 +806,7 @@ struct pathComponent
 	uint8_t		lengthComponentIdent;
 	uint16_t	componentFileVersionNum;
 	dchars		componentIdent[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* File Entry (ECMA 167r3 4/14.17) */
 struct extendedFileEntry
@@ -836,6 +836,6 @@ struct extendedFileEntry
 	uint32_t	lengthExtendedAttr;
 	uint32_t	lengthAllocDescs;
 	uint8_t		extendedAttrAndAllocDescs[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 #endif /* _ECMA_167_H */

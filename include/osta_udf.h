@@ -84,7 +84,7 @@ struct domainIdentSuffix
 	uint16_t	UDFRevision;
 	uint8_t		domainFlags;
 	uint8_t		reserved[5];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 struct UDFIdentSuffix
 {
@@ -92,19 +92,19 @@ struct UDFIdentSuffix
 	uint8_t		OSClass;
 	uint8_t		OSIdentifier;
 	uint8_t		reserved[4];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 struct impIdentSuffix
 {
 	uint8_t		OSClass;
 	uint8_t		OSIdentifier;
 	uint8_t		impUse[6];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 struct appIdentSuffix
 {
 	uint8_t		impUse[8];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
  
 /* Logical Volume Integrity Descriptor (UDF 2.60 2.2.6) */
 /* Implementation Use (UDF 2.60 2.2.6.4) */
@@ -117,7 +117,7 @@ struct logicalVolIntegrityDescImpUse
 	uint16_t	minUDFWriteRev;
 	uint16_t	maxUDFWriteRev;
 	uint8_t		impUse[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Implementation Use Volume Descriptor (UDF 2.60 2.2.7) */
 /* Implementation Use (UDF 2.60 2.2.7.2) */
@@ -130,7 +130,7 @@ struct impUseVolDescImpUse
 	dstring		LVInfo3[36];
 	regid		impIdent;
 	uint8_t		impUse[128];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 struct udfPartitionMap2
 {
@@ -140,7 +140,7 @@ struct udfPartitionMap2
 	regid		partIdent;
 	uint16_t	volSeqNum;
 	uint16_t	partitionNum;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Virtual Partition Map (UDF 2.60 2.2.8) */
 struct virtualPartitionMap
@@ -152,7 +152,7 @@ struct virtualPartitionMap
 	uint16_t	volSeqNum;
 	uint16_t	partitionNum;
 	uint8_t		reserved2[24];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Sparable Partition Map (UDF 2.60 2.2.9) */
 struct sparablePartitionMap
@@ -168,7 +168,7 @@ struct sparablePartitionMap
 	uint8_t		reserved2[1];
 	uint32_t	sizeSparingTable;
 	uint32_t	locSparingTable[4];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Metadata Partition Map (UDF 2.60 2.2.10) */
 struct metadataPartitionMap
@@ -186,7 +186,7 @@ struct metadataPartitionMap
 	uint16_t	alignUnitSize;
 	uint8_t		flags;
 	uint8_t		reserved2[5];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Virtual Allocation Table (UDF 1.5 2.2.10) */
 struct virtualAllocationTable15
@@ -194,7 +194,7 @@ struct virtualAllocationTable15
 /*	uint32_t	vatEntry[0]; */
 	regid		vatIdent;
 	uint32_t	previousVATICBLoc;
-} __attribute__ ((packed));  
+} __attribute__ ((packed, may_alias));  
 
 #define ICBTAG_FILE_TYPE_VAT15		0x00U
 
@@ -213,7 +213,7 @@ struct virtualAllocationTable20
 	uint16_t	reserved;
 	uint8_t		impUse[];
 /*	uint32_t	vatEntry[0]; */
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 #define ICBTAG_FILE_TYPE_VAT20		0xF8U
 
@@ -222,7 +222,7 @@ struct sparingEntry
 {
 	uint32_t	origLocation;
 	uint32_t	mappedLocation;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 struct sparingTable
 {
@@ -233,7 +233,7 @@ struct sparingTable
 	uint32_t	sequenceNum;
 	struct sparingEntry
 			mapEntry[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Metadata File (and Metadata Mirror File) (UDF 2.60 2.2.13.1) */
 #define ICBTAG_FILE_TYPE_MAIN		0xFA
@@ -245,7 +245,7 @@ struct allocDescImpUse
 {
 	uint16_t	flags;
 	uint8_t		impUse[4];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 #define AD_IU_EXT_ERASED		0x0001
 
@@ -258,7 +258,7 @@ struct freeEaSpace
 {
 	uint16_t	headerChecksum;
 	uint8_t		freeEASpace[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* DVD Copyright Management Information (UDF 2.60 3.3.4.5.1.2) */
 struct DVDCopyrightImpUse 
@@ -267,7 +267,7 @@ struct DVDCopyrightImpUse
 	uint8_t		CGMSInfo;
 	uint8_t		dataType;
 	uint8_t		protectionSystemInfo[4];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Logical Volume Extended Information (UDF 1.50 Errata, DCN 5003, 3.3.4.5.1.3) */
 struct LVExtensionEA
@@ -277,7 +277,7 @@ struct LVExtensionEA
 	uint32_t	numFiles;
 	uint32_t	numDirs;
 	dstring		logicalVolIdent[128];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* Application Use Extended Attribute (UDF 2.60 3.3.4.6) */
 /* FreeAppEASpace (UDF 2.60 3.3.4.6.1) */
@@ -285,7 +285,7 @@ struct freeAppEASpace
 {
 	uint16_t	headerChecksum;
 	uint8_t		freeEASpace[];
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* UDF Defined System Stream (UDF 2.60 3.3.7) */
 #define UDF_ID_UNIQUE_ID		"*UDF Unique ID Mapping Data"

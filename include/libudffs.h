@@ -196,7 +196,7 @@ struct mbr_partition
 	uint8_t				ending_chs[3];
 	uint32_t			starting_lba;
 	uint32_t			size_in_lba;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 #define MBR_BOOT_SIGNATURE		0xAA55
 
@@ -207,7 +207,7 @@ struct mbr
 	uint16_t			unknown;
 	struct mbr_partition		partitions[4];
 	uint16_t			boot_signature;
-} __attribute__ ((packed));
+} __attribute__ ((packed, may_alias));
 
 /* crc.c */
 extern uint16_t udf_crc(uint8_t *, uint32_t, uint16_t);
