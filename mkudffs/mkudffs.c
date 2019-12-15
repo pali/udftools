@@ -739,7 +739,7 @@ void setup_anchor(struct udf_disc *disc)
 			fprintf(stderr, "%s: Error: malloc failed: %s\n", appname, strerror(errno));
 			exit(1);
 		}
-		ext->head->data = (struct udf_data *)&(ext->head)[1];
+		ext->head->data = (struct udf_data *)((uint8_t *)ext->head + sizeof(struct udf_desc));
 		ext->head->data->next = ext->head->data->prev = NULL;
 		ext->head->ident = TAG_IDENT_AVDP;
 		ext->head->offset = 0;
