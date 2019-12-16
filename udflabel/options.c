@@ -84,8 +84,8 @@ static void usage(void)
 		"\n"
 		"Encoding Options:\n"
 		"\t--locale           Identifier options are encoded according to current locale (default)\n"
-		"\t--u8               Identifier options are encoded in 8-bit OSTA Compressed Unicode format\n"
-		"\t--u16              Identifier options are encoded in 16-bit OSTA Compressed Unicode format\n"
+		"\t--u8               Identifier options are encoded in Latin1\n"
+		"\t--u16              Identifier options are encoded in UTF-16BE\n"
 		"\t--utf8             Identifier options are encoded in UTF-8\n"
 	);
 	exit(1);

@@ -115,8 +115,8 @@ void usage(void)
 		"\t--ad=              Allocation descriptor (inicb, short, long; default: inicb)\n"
 		"\t--noefe            Don't Use Extended File Entries (default: use for UDF revision >= 2.00)\n"
 		"\t--locale           String options are encoded according to current locale (default)\n"
-		"\t--u8               String options are encoded in 8-bit OSTA Compressed Unicode format\n"
-		"\t--u16              String options are encoded in 16-bit OSTA Compressed Unicode format\n"
+		"\t--u8               String options are encoded in Latin1\n"
+		"\t--u16              String options are encoded in UTF-16BE\n"
 		"\t--utf8             String options are encoded in UTF-8\n"
 	);
 	exit(1);

@@ -63,14 +63,14 @@ Encode UDF string identifiers on output according to current locale settings
 
 .TP
 .B \-\-u8
-Encode UDF string identifiers on output to 8-bit OSTA Compressed Unicode format,
-equivalent to Latin1 (ISO-8859-1). This will work only for strings which Unicode
-code points are below U+100.
+Encode UDF string identifiers on output to 8-bit OSTA Compressed Unicode format
+without leading Compression ID byte, which is equivalent to Latin1 (ISO-8859-1).
+This will work only for strings which Unicode code points are below U+100.
 
 .TP
 .B \-\-u16
 Encode UDF string identifiers on output to 16-bit OSTA Compressed Unicode
-format, equivalent to UCS-2BE.
+format without leading Compression ID byte, which is equivalent to UTF-16BE.
 
 .TP
 .B \-\-utf8
@@ -194,6 +194,9 @@ Descriptor. Therefore, it cannot be set or changed as opposed to UUID which is
 systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil.exe\fP.
 
 .SH LIMITATIONS
+\fBudfinfo\fP prior to version 2.2 was unable to print Unicode strings with
+code points above U+FFFF correctly.
+
 \fBudfinfo\fP prior to version 2.2 was unable to read Metadata Partition.
 Therefore, determining used and free space blocks, reading File Set Identifier
 and calculating Windows-specific Volume Serial Number did not have to be

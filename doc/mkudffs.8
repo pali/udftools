@@ -302,16 +302,17 @@ available since mkudffs 2.0)
 .TP
 .B \-\-u8
 Treat identifier string options as strings encoded in 8-bit OSTA Compressed
-Unicode format, equivalent to Latin1 (ISO-8859-1). Must be specified as first
-argument.
+Unicode format without leading Compression ID byte, which is equivalent to
+Latin1 (ISO-8859-1). Must be specified as first argument.
 
 .TP
 .B \-\-u16
 Treat identifier string options as strings encoded in 16-bit OSTA Compressed
-Unicode format, equivalent to UCS-2BE. Note that it is not possible to include
-zero byte in command line options, therefore any character which has at least
-one zero byte cannot be supplied (this applies to all Latin1 characters). Must
-be specified as the first argument.
+Unicode format without leading Compression ID byte, which is equivalent to
+UTF-16BE. Note that it is not possible to include zero byte in command line
+options, therefore any character which has at least one zero byte cannot be
+supplied (this applies to all Latin1 characters). Must be specified as the
+first argument.
 
 .TP
 .B \-\-utf8
@@ -439,6 +440,12 @@ For more information about UDF Label and UUID see \fBudflabel\fP(8) section
 support UDF revisions higher than 2.01 for non Write Once media yet. So there is
 no support for Blu-ray discs which needs UDF 2.50 (except for Blu-ray Disc
 Recordable which does not require Metadata partition).
+
+\fBmkudffs\fP prior to version 2.2 was unable to process Unicode strings with
+code points above U+FFFF. When option \fB\-\-utf8\fP was specified then input
+strings were limited to 3-byte UTF-8 sequences and when option \fB\-\-u16\fP
+was specified then input strings were limited just to UCS-2BE strings (subset
+of UTF-16BE).
 
 .SH BUGS
 \fBmkudffs\fP prior to version 1.1 was unable to process non-ASCII characters
