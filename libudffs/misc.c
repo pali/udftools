@@ -175,7 +175,7 @@ ssize_t write_nointr(int fd, const void *buf, size_t count)
 	ssize_t ret;
 
 	do ret = write(fd, buf, count);
-	while (ret < -1 && errno == EINTR);
+	while (ret < 0 && errno == EINTR);
 
 	if (ret >= 0 && errno)
 		errno = 0;
