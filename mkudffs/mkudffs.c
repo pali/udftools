@@ -64,9 +64,9 @@ void udf_init_disc(struct udf_disc *disc)
 
 	if (gettimeofday(&tv, NULL) != 0 || tv.tv_sec == (time_t)-1 || (tm = localtime(&tv.tv_sec)) == NULL || tm->tm_year < 1-1900 || tm->tm_year > 9999-1900)
 	{
-		/* fallback to 1.1.1980 00:00:00 */
+		/* fallback to 1970-01-01 00:00:00 */
 		ts.typeAndTimezone = cpu_to_le16(0x1000);
-		ts.year = cpu_to_le16(1980);
+		ts.year = cpu_to_le16(1970);
 		ts.month = 1;
 		ts.day = 1;
 		ts.hour = 0;
