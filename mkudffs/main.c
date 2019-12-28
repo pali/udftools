@@ -2,7 +2,7 @@
  * main.c
  *
  * Copyright (c) 2001-2002  Ben Fennema
- * Copyright (c) 2014-2018  Pali Rohár <pali.rohar@gmail.com>
+ * Copyright (c) 2014-2019  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
