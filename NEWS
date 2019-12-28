@@ -1,3 +1,20 @@
+Changes in 2.2
+* Allow to build udftools without udev
+* Use standard ISO C99 features instead of GCC extensions
+* Detect optional readline dependency via pkg-config when possible
+* Added support for UTF-16 surrogate pairs
+* udfinfo & udflabel:
+  * Added support for UDF 2.50 and UDF 2.60 revisions
+  * Fixed calculating free space blocks
+  * In read-only mode throw warning when device is busy
+  * Do not fail on disks with too many Sparing Tables
+  * Show and respect UDF write protect flags
+* mkudffs:
+  * Fixed accessing invalid memory on disks with small number of sectors
+  * Added new option --read-only which sets UDF disk to read-only mode
+  * Adjust partition size to work around Windows chkdsk bug
+  * Autodetect media type
+
 Changes in 2.1
 * Fixed compilation with glibc >= 2.25
 * Allow to compile without libreadline
