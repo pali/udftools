@@ -296,8 +296,8 @@ struct freeAppEASpace
 /* UDF Defined Non-System Streams (UDF 2.60 3.3.8) */
 #define UDF_ID_MAC_RESOURCE_FORK_STREAM	"*UDF Macintosh Resource Fork"
 /* #define UDF_ID_OS2_EA		"*UDF OS/2 EA" */
-#define UDF_ID_NT_ACTL			"*UDF NT ACL"
-#define UDF_ID_UNIX_ACTL		"*UDF UNIX ACL"
+#define UDF_ID_NT_ACL			"*UDF NT ACL"
+#define UDF_ID_UNIX_ACL			"*UDF UNIX ACL"
 
 /* Operating System Identifiers (UDF 2.60 6.3) */
 #define UDF_OS_CLASS_UNDEF		0x00U
