@@ -889,18 +889,15 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			exit(1);
 	}
 
-	if (rev)
+	if (disc->udf_rev < 0x0150 && (media == MEDIA_TYPE_DVDRW || media == MEDIA_TYPE_DVDR || media == MEDIA_TYPE_CDRW || media == MEDIA_TYPE_CDR))
 	{
-		if (rev < 0x0150 && (media == MEDIA_TYPE_DVDRW || media == MEDIA_TYPE_DVDR || media == MEDIA_TYPE_CDRW || media == MEDIA_TYPE_CDR))
-		{
-			fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for CD-R/CD-RW/DVD-R/DVD-RW discs\n", appname);
-			exit(1);
-		}
-		if (rev < 0x0250 && media == MEDIA_TYPE_BDR)
-		{
-			fprintf(stderr, "%s: Error: At least UDF revision 2.50 is needed for BD-R discs\n", appname);
-			exit(1);
-		}
+		fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for CD-R/CD-RW/DVD-R/DVD-RW discs\n", appname);
+		exit(1);
+	}
+	if (disc->udf_rev < 0x0250 && media == MEDIA_TYPE_BDR)
+	{
+		fprintf(stderr, "%s: Error: At least UDF revision 2.50 is needed for BD-R discs\n", appname);
+		exit(1);
 	}
 
 	if (no_efe)
@@ -959,7 +956,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	}
 
 	/* TODO: UDF 2.50+ require for non-VAT disks Metadata partition which mkudffs cannot create yet */
-	if (rev > 0x0201 && !(disc->flags & FLAG_VAT))
+	if (disc->udf_rev >= 0x0250 && !(disc->flags & FLAG_VAT))
 	{
 		fprintf(stderr, "%s: Error: UDF revision above 2.01 is not currently supported for specified media type\n", appname);
 		exit(1);
