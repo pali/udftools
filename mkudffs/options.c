@@ -750,7 +750,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 			case 0x13: /* DVD-RW Restricted Overwrite */
 			case 0x14: /* DVD-RW Sequential recording */
+			case 0x17: /* DVD-RW DL */
 			case 0x1A: /* DVD+RW */
+			case 0x2A: /* DVD+RW DL */
 				printf("Detected DVD-RW optical disc\n");
 				media = MEDIA_TYPE_DVDRW;
 				break;
@@ -779,9 +781,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				fprintf(stderr, "%s: Error: Detected write-once optical disc, use --media-type option to specify media type\n", appname);
 				exit(1);
 
-			case 0x17: /* DVD-RW DL */
 			case 0x22: /* DDCD-RW */
-			case 0x2A: /* DVD+RW DL */
 			case 0x43: /* BD-RE */
 			case 0x52: /* HDDVD-RAM */
 			case 0x53: /* HDDVD-RW */
