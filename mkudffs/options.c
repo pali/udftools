@@ -802,6 +802,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		}
 	}
 
+	if (disc->udf_rev <= 0x0200 && use_sparable && !packetlen)
+	{
+		/* UDF 2.00 Errata, DCN-5163, Packet Length for Sparable Partition:
+		 * For UDF 1.50 and 2.00 should be set to fixed value 32. */
+		packetlen = 32;
+	}
+
 	switch (media)
 	{
 		case MEDIA_TYPE_HD:
@@ -826,7 +833,15 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 			use_sparable = 1;
 			if (!packetlen)
-				packetlen = 16;
+			{
+				/* UDF 2.00 Errata, DCN-5163, Packet Length for Sparable Partition:
+				 * For UDF 1.50 and 2.00 should be set to fixed value 32.
+				 * For UDF 2.01 and new should be set to ECC blocking factor (16 for DVD). */
+				if (disc->udf_rev >= 0x0201)
+					packetlen = 16;
+				else
+					packetlen = 32;
+			}
 			break;
 
 		case MEDIA_TYPE_DVDR:
