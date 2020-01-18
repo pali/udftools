@@ -334,7 +334,7 @@ writeVATtable()
     size = (newVATindex + 9) << 2;
     fe->informationLength = cpu_to_le64(size);
     fe->descTag.tagSerialNum = lvid->descTag.tagSerialNum;
-    fe->icbTag.fileType = ICBTAG_FILE_TYPE_UNDEF;
+    fe->icbTag.fileType = ICBTAG_FILE_TYPE_VAT15;
     fe->fileLinkCount = 0;
 
     for( retries = 0; retries < 8; retries++ ) {

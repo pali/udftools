@@ -773,7 +773,7 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 		}
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
 			query_lvidiu(disc)->numDirs = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numDirs)+1);
-		else if (filetype != ICBTAG_FILE_TYPE_STREAMDIR && filetype != ICBTAG_FILE_TYPE_VAT20 && filetype != ICBTAG_FILE_TYPE_UNDEF && !(flags & ICBTAG_FLAG_STREAM))
+		else if (filetype != ICBTAG_FILE_TYPE_STREAMDIR && filetype != ICBTAG_FILE_TYPE_VAT20 && filetype != ICBTAG_FILE_TYPE_VAT15 && !(flags & ICBTAG_FLAG_STREAM))
 			query_lvidiu(disc)->numFiles = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numFiles)+1);
 	}
 	else
@@ -835,7 +835,7 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 		}
 		if (filetype == ICBTAG_FILE_TYPE_DIRECTORY)
 			query_lvidiu(disc)->numDirs = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numDirs)+1);
-		else if (filetype != ICBTAG_FILE_TYPE_STREAMDIR && filetype != ICBTAG_FILE_TYPE_VAT20 && filetype != ICBTAG_FILE_TYPE_UNDEF && !(flags & ICBTAG_FLAG_STREAM))
+		else if (filetype != ICBTAG_FILE_TYPE_STREAMDIR && filetype != ICBTAG_FILE_TYPE_VAT20 && filetype != ICBTAG_FILE_TYPE_VAT15 && !(flags & ICBTAG_FLAG_STREAM))
 			query_lvidiu(disc)->numFiles = cpu_to_le32(le32_to_cpu(query_lvidiu(disc)->numFiles)+1);
 	}
 

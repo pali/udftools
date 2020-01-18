@@ -1414,7 +1414,7 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	}
 	else
 	{
-		vtable = udf_create(disc, pspace, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_UNDEF, 0);
+		vtable = udf_create(disc, pspace, (const dchars *)"\x08" UDF_ID_ALLOC, strlen(UDF_ID_ALLOC)+1, offset, NULL, FID_FILE_CHAR_HIDDEN, ICBTAG_FILE_TYPE_VAT15, 0);
 		disc->vat_entries--; // Remove VAT file itself from VAT table
 		memset(&buffer, 0, sizeof(buffer));
 		memcpy(&buffer, &default_iuea, sizeof(default_iuea));

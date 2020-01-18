@@ -1334,7 +1334,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 		if (le16_to_cpu(fe->descTag.tagIdent) != TAG_IDENT_FE && le16_to_cpu(fe->descTag.tagIdent) != TAG_IDENT_EFE)
 			continue;
 
-		if (fe->icbTag.fileType != ICBTAG_FILE_TYPE_UNDEF && fe->icbTag.fileType != ICBTAG_FILE_TYPE_VAT20)
+		if (fe->icbTag.fileType != ICBTAG_FILE_TYPE_VAT15 && fe->icbTag.fileType != ICBTAG_FILE_TYPE_VAT20)
 			continue;
 
 		if (location + le32_to_cpu(fe->descTag.tagLocation) != i)
@@ -1531,7 +1531,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 			}
 		}
 
-		if (fe->icbTag.fileType == ICBTAG_FILE_TYPE_UNDEF)
+		if (fe->icbTag.fileType == ICBTAG_FILE_TYPE_VAT15)
 		{
 			if (vat_length < 36)
 			{
