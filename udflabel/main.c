@@ -388,7 +388,11 @@ int main(int argc, char *argv[])
 	{
 		case PD_ACCESS_TYPE_OVERWRITABLE:
 		case PD_ACCESS_TYPE_REWRITABLE:
+			break;
+
 		case PD_ACCESS_TYPE_NONE: /* Pseudo OverWrite */
+			if (force)
+				fprintf(stderr, "%s: Warning: Trying to overwrite pseudo-overwrite partition\n", appname);
 			break;
 
 		case PD_ACCESS_TYPE_WRITE_ONCE:
@@ -437,6 +441,13 @@ int main(int argc, char *argv[])
 	if ((le32_to_cpu(pd->accessType) == PD_ACCESS_TYPE_WRITE_ONCE && !force) || (disc.vat && (new_lvid[0] != 0xFF || new_fsid[0] != 0xFF)))
 	{
 		fprintf(stderr, "%s: Error: Updating Virtual Allocation Table is not supported yet\n", appname);
+		exit(1);
+	}
+
+	/* TODO: Pseudo OverWrite mode */
+	if (le32_to_cpu(pd->accessType) == PD_ACCESS_TYPE_NONE && !force)
+	{
+		fprintf(stderr, "%s: Error: Updating pseudo-overwrite partition is not supported yet\n", appname);
 		exit(1);
 	}
 
