@@ -212,8 +212,10 @@ int main(int argc, char *argv[])
 	if (fcntl(2, F_GETFL) < 0 && open("/dev/null", O_WRONLY) < 0)
 		_exit(1);
 
-	setlocale(LC_CTYPE, "");
 	appname = "udflabel";
+
+	if (!setlocale(LC_CTYPE, ""))
+		fprintf(stderr, "%s: Error: Cannot set locale/codeset, fallback to default 7bit C ASCII\n", appname);
 
 	memset(&disc, 0, sizeof(disc));
 

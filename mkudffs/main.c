@@ -346,8 +346,10 @@ int main(int argc, char *argv[])
 	if (fcntl(2, F_GETFL) < 0 && open("/dev/null", O_WRONLY) < 0)
 		_exit(1);
 
-	setlocale(LC_CTYPE, "");
 	appname = "mkudffs";
+
+	if (!setlocale(LC_CTYPE, ""))
+		fprintf(stderr, "%s: Error: Cannot set locale/codeset, fallback to default 7bit C ASCII\n", appname);
 
 	udf_init_disc(&disc);
 	parse_args(argc, argv, &disc, &filename, &create_new_file, &blocksize, &media);

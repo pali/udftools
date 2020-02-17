@@ -181,8 +181,10 @@ int main(int argc, char *argv[])
 	int fd;
 	int fd2;
 
-	setlocale(LC_CTYPE, "");
 	appname = "udfinfo";
+
+	if (!setlocale(LC_CTYPE, ""))
+		fprintf(stderr, "%s: Error: Cannot set locale/codeset, fallback to default 7bit C ASCII\n", appname);
 
 	memset(&disc, 0, sizeof(disc));
 
