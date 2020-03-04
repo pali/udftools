@@ -260,22 +260,19 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 	for (i=0; i<wcslen+1; ++i)
 	{
 		clen = wcrtomb(cbuf, wcs[i], &ps);
+#if WCHAR_MAX >= 0xFFFD
+		if (clen == (size_t)-1 && errno == EILSEQ)
+			clen = wcrtomb(cbuf, 0xFFFD, &ps);
+#endif
+		if (clen == (size_t)-1 && errno == EILSEQ)
+			clen = wcrtomb(cbuf, L'?', &ps);
+		if (clen == (size_t)-1 && errno == EILSEQ)
+			clen = wcrtomb(cbuf, L' ', &ps);
 		if (clen == (size_t)-1)
 		{
-			if (errno == EILSEQ)
-			{
-				if (!mbsinit(&ps))
-					clen = wcrtomb(cbuf, L'\0', &ps);
-				else
-					clen = 1;
-			}
-			if (clen == (size_t)-1 || clen == 0)
-			{
-				fprintf(stderr, "%s: Error: Cannot convert output string to current locale encoding: %s\n", appname, strerror(errno));
-				free(wcs);
-				exit(1);
-			}
-			cbuf[clen-1] = '?';
+			fprintf(stderr, "%s: Error: Cannot convert output string to current locale encoding: %s\n", appname, strerror(errno));
+			free(wcs);
+			exit(1);
 		}
 		if (len+clen > outlen)
 		{
