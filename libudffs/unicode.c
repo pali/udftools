@@ -209,7 +209,7 @@ error_invalid:
 
 size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 {
-	size_t len = 0, i;
+	size_t len, i;
 	size_t wcslen, clen;
 	wchar_t *wcs;
 	mbstate_t ps;
@@ -232,31 +232,32 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 	if (!wcs)
 		return (size_t)-1;
 
+	wcslen = 0;
 	for (i=1; i<inlen;)
 	{
-		wcs[len] = in[i++];
+		wcs[wcslen] = in[i++];
 		if (in[0] == 16)
 		{
-			wcs[len] = (wcs[len] << 8) | in[i++];
+			wcs[wcslen] = (wcs[wcslen] << 8) | in[i++];
 #if WCHAR_MAX >= 0x10FFFF
-			if (wcs[len] >= 0xD800 && wcs[len] <= 0xDBFF && i+1 < inlen)
+			if (wcs[wcslen] >= 0xD800 && wcs[wcslen] <= 0xDBFF && i+1 < inlen)
 			{
 				wchar_t ch = (((wchar_t)in[i] << 8) | in[i+1]);
 				if (ch >= 0xDC00 && ch <= 0xDFFF)
 				{
-					wcs[len] = 0x10000 + ((wcs[len] - 0xD800) << 10) + (ch - 0xDC00);
+					wcs[wcslen] = 0x10000 + ((wcs[wcslen] - 0xD800) << 10) + (ch - 0xDC00);
 					i += 2;
 				}
 			}
 #endif
 		}
-		++len;
+		++wcslen;
 	}
 
 	memset(&ps, 0, sizeof(ps));
 
 	len = 0;
-	for (i=0; wcs[i]; ++i)
+	for (i=0; i<wcslen+1; ++i)
 	{
 		clen = wcrtomb(cbuf, wcs[i], &ps);
 		if (clen == (size_t)-1)
@@ -276,7 +277,7 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 			}
 			cbuf[clen-1] = '?';
 		}
-		if (len+clen+1 > outlen)
+		if (len+clen > outlen)
 		{
 			free(wcs);
 			return (size_t)-1;
@@ -285,31 +286,16 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 		len += clen;
 	}
 
-	if (!mbsinit(&ps))
+	free(wcs);
+
+	/* Last iteration of above loop should have produced null byte */
+	if (clen == 0 || out[len] != 0)
 	{
-		clen = wcrtomb(cbuf, L'\0', &ps);
-		if (clen == (size_t)-1)
-		{
-			fprintf(stderr, "%s: Error: Cannot convert output string to current locale encoding: %s\n", appname, strerror(errno));
-			free(wcs);
-			exit(1);
-		}
-		else if (clen > 0)
-		{
-			if (len+clen+1 > outlen)
-			{
-				free(wcs);
-				return (size_t)-1;
-			}
-			memcpy(out+len, cbuf, clen);
-			len += clen;
-		}
+		fprintf(stderr, "%s: Error: Cannot convert output string to current locale encoding: %s\n", appname, strerror(EINVAL));
+		exit(1);
 	}
 
-	out[len] = 0;
-
-	free(wcs);
-	return len;
+	return len-1;
 }
 
 #if WCHAR_MAX > 0x10FFFF
