@@ -257,6 +257,7 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 	memset(&ps, 0, sizeof(ps));
 
 	len = 0;
+	clen = 0;
 	for (i=0; i<wcslen+1; ++i)
 	{
 		clen = wcrtomb(cbuf, wcs[i], &ps);
