@@ -213,7 +213,7 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 	size_t wcslen, clen;
 	wchar_t *wcs;
 	mbstate_t ps;
-	char cbuf[MB_LEN_MAX+1]; /* +1 for '?' */
+	char cbuf[MB_LEN_MAX];
 
 	if (outlen == 0)
 		return (size_t)-1;
@@ -265,17 +265,16 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 			{
 				if (!mbsinit(&ps))
 					clen = wcrtomb(cbuf, L'\0', &ps);
-				if (clen == (size_t)-1 || clen == 0)
+				else
 					clen = 1;
-				cbuf[clen-1] = '?';
-				clen = 1;
 			}
-			else
+			if (clen == (size_t)-1 || clen == 0)
 			{
 				fprintf(stderr, "%s: Error: Cannot convert output string to current locale encoding: %s\n", appname, strerror(errno));
 				free(wcs);
 				exit(1);
 			}
+			cbuf[clen-1] = '?';
 		}
 		if (len+clen+1 > outlen)
 		{
