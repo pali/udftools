@@ -543,9 +543,9 @@ struct mbr default_mbr =
 	{
 		{
 			.boot_indicator = MBR_PARTITION_NOT_BOOTABLE,
-			.starting_chs = { 0, 0, 0 },
+			.starting_chs = { 0, 1, 0 },
 			.partition_type = MBR_PARTITION_TYPE_IFS,
-			.ending_chs = { 0, 0, 0 },
+			.ending_chs = { 0, 1, 0 },
 			.starting_lba = constant_cpu_to_le32(0),
 			.size_in_lba = constant_cpu_to_le32(0),
 		},
