@@ -287,7 +287,7 @@ size_t decode_locale(const dchars *in, char *out, size_t inlen, size_t outlen)
 	free(wcs);
 
 	/* Last iteration of above loop should have produced null byte */
-	if (clen == 0 || out[len] != 0)
+	if (clen == 0 || len == 0 || out[len-1] != 0)
 	{
 		fprintf(stderr, "%s: Error: Cannot convert output string to current locale encoding: %s\n", appname, strerror(EINVAL));
 		exit(1);
