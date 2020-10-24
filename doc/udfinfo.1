@@ -64,8 +64,9 @@ Encode UDF string identifiers on output according to current locale settings
 .TP
 .B \-\-u8
 Encode UDF string identifiers on output to 8-bit OSTA Compressed Unicode format
-without leading Compression ID byte, which is equivalent to Latin1 (ISO-8859-1).
-This will work only for strings which Unicode code points are below U+100.
+without leading Compression ID byte, which is equivalent to Latin1 (ISO-8859-1)
+encoding. This will work only for strings which all Unicode code points are
+below U+100.
 
 .TP
 .B \-\-u16
@@ -144,7 +145,7 @@ UDF revision needed for reading UDF disk
 UDF revision needed for writing or modifying UDF disk
 .TP
 .I vatblock
-UDF block location of the Virtual Allocation Table (visible only when available)
+Block location of the UDF Virtual Allocation Table (visible only when available)
 .TP
 .I integrity
 UDF integrity of Logical Volume, one of: \fIopened\fP, \fIclosed\fP,
@@ -197,7 +198,7 @@ systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil.exe\fP.
 \fBudfinfo\fP prior to version 2.2 was unable to print Unicode strings with
 code points above U+FFFF correctly.
 
-\fBudfinfo\fP prior to version 2.2 was unable to read Metadata Partition.
+\fBudfinfo\fP prior to version 2.2 was unable to read Metadata Partition. \
 Therefore, determining used and free space blocks, reading File Set Identifier
 and calculating Windows-specific Volume Serial Number did not have to be
 available or correctly calculated for disks with UDF revisions higher than 2.01
