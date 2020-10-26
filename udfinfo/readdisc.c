@@ -143,7 +143,7 @@ static int read_vrs(int fd, struct udf_disc *disc, int *bea, int *nsr, int *tea)
 	}
 
 	if (i == 64)
-		fprintf(stderr, "%s: Warning: Too many Volume Sequence Descriptors in Volume Recognition Sequence, stopping scanning\n", appname);
+		fprintf(stderr, "%s: Warning: Too many Volume Structure Descriptors in Volume Recognition Sequence, stopping scanning\n", appname);
 
 	if (*nsr == -1)
 		return -2;
