@@ -38,5 +38,6 @@ void parse_args(int, char *[], struct udf_disc *, char **);
 
 #define OPT_BLK_SIZE	0x2000
 #define OPT_VAT_BLOCK	0x2001
+#define OPT_START_BLOCK	0x2002
 
 #endif /* OPTIONS_H */

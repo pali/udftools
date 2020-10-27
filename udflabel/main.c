@@ -226,6 +226,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	disc.start_block = (uint32_t)-1;
 	disc.flags = FLAG_LOCALE;
 	disc.tail = disc.head;
 	disc.head->space_type = USPACE;

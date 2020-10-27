@@ -40,6 +40,7 @@
 static struct option long_options[] = {
 	{ "help", no_argument, NULL, OPT_HELP },
 	{ "blocksize", required_argument, NULL, OPT_BLK_SIZE },
+	{ "startblock", required_argument, NULL, OPT_START_BLOCK },
 	{ "vatblock", required_argument, NULL, OPT_VAT_BLOCK },
 	{ "force", no_argument, NULL, OPT_FORCE },
 	{ "no-write", no_argument, NULL, OPT_NO_WRITE },
@@ -70,6 +71,7 @@ static void usage(void)
 		"\n"
 		"Block Options:\n"
 		"\t--blocksize=, -b   Size of blocks in bytes (512, 1024, 2048, 4096, 8192, 16384, 32768; default: detect)\n"
+		"\t--startblock=      Block location where the UDF filesystem starts (default: last session from TOC or 0)\n"
 		"\t--vatblock=        Block location of the Virtual Allocation Table (default: detect)\n"
 		"\t--force            Force updating UDF disks without write support (useful only for disk images)\n"
 		"\t--no-write, -n     Not really, do not write to device, just simulate\n"
@@ -176,6 +178,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, 
 				if (failed || disc->blocksize < 512 || disc->blocksize > 32768 || (disc->blocksize & (disc->blocksize - 1)))
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --blocksize\n", appname);
+					exit(1);
+				}
+				break;
+			case OPT_START_BLOCK:
+				disc->start_block = strtou32(optarg, 0, &failed);
+				if (failed)
+				{
+					fprintf(stderr, "%s: Error: Invalid value for option --startblock\n", appname);
 					exit(1);
 				}
 				break;

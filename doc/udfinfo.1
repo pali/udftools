@@ -41,6 +41,28 @@ device logical (sector) size. If omitted, \fBudfinfo\fP tries to autodetect
 block size. First it tries logical (sector) size and then all valid block sizes.
 
 .TP
+.BI \-\-startblock= " start\-block "
+Specify the block location where the UDF filesystem starts. It is used for
+calculating the block location of the Volume Recognition Sequence (32 kB after
+the start block) and the first Anchor Volume Descriptor Pointer (256 blocks
+after the start block).
+
+Normally start block is \fI0\fP, but for Multisession UDF optical discs it is
+the block location where the last session of Multisession UDF disc starts.
+
+If omitted, \fBudfinfo\fP for optical disc tries to detect start block of the
+last session from disc Table Of Contents. Otherwise value \fI0\fP is used.
+
+For accessing some previous session of Multisession UDF optical disc, it is
+required to specify correct block where that previous session starts.
+
+For Multisession UDF disc images stored in file there is no way to detect where
+the last session starts and therefore it is necessary to specify the correct
+start block location manually from the original optical disc Table Of Contents.
+
+(Option available since udfinfo 2.3)
+
+.TP
 .BI \-\-vatblock= " vat\-block "
 Specify the block location of the Virtual Allocation Table. Virtual Allocation
 Table is present only on UDF disks with Virtual Partition Map and must be at the
@@ -144,6 +166,9 @@ UDF revision needed for reading UDF disk
 .I udfwriterev
 UDF revision needed for writing or modifying UDF disk
 .TP
+.I startblock
+Block location where the UDF filesystem starts (visible only when non-zero)
+.TP
 .I vatblock
 Block location of the UDF Virtual Allocation Table (visible only when available)
 .TP
@@ -195,6 +220,10 @@ Descriptor. Therefore, it cannot be set or changed as opposed to UUID which is
 systems by applications like \fBvol\fP, \fBdir\fP or \fBfsutil.exe\fP.
 
 .SH LIMITATIONS
+\fBudfinfo\fP prior to version 2.3 was unable to handle Multisession UDF discs
+correctly. It always printed only information about the first session (the
+oldest one) and not about the last session (the most recent).
+
 \fBudfinfo\fP prior to version 2.2 was unable to print Unicode strings with
 code points above U+FFFF correctly.
 

@@ -195,6 +195,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	disc.start_block = (uint32_t)-1;
 	disc.flags = FLAG_LOCALE;
 	disc.tail = disc.head;
 	disc.head->space_type = USPACE;
@@ -308,6 +309,9 @@ int main(int argc, char *argv[])
 	printf("numdirs=%"PRIu32"\n", disc.num_dirs);
 	printf("udfrev=%"PRIx16".%02"PRIx16"\n", disc.udf_rev >> 8, disc.udf_rev & 0xFF);
 	printf("udfwriterev=%"PRIx16".%02"PRIx16"\n", disc.udf_write_rev >> 8, disc.udf_write_rev & 0xFF);
+
+	if (disc.start_block && disc.start_block != (uint32_t)-1)
+		printf("startblock=%"PRIu32"\n", disc.start_block);
 
 	if (disc.vat_block)
 		printf("vatblock=%"PRIu32"\n", disc.vat_block);

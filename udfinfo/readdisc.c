@@ -89,7 +89,7 @@ static int read_vrs(int fd, struct udf_disc *disc, int *bea, int *nsr, int *tea)
 	{
 		if (32768 + i*vsd_len >= 256*disc->blocksize)
 			break;
-		if (read_offset(fd, disc, &vsd, 32768 + i*vsd_len, sizeof(vsd), 0) < 0)
+		if (read_offset(fd, disc, &vsd, disc->start_block*disc->blocksize + 32768 + i*vsd_len, sizeof(vsd), 0) < 0)
 			break;
 		if (!vsd.stdIdent[0])
 			break;
@@ -175,9 +175,9 @@ static void setup_vrs(struct udf_disc *disc, int bea, int nsr, int tea)
 		max = bea;
 
 	if (disc->blocksize >= 2048)
-		ext = set_extent(disc, VRS, 32768 / disc->blocksize, max+1);
+		ext = set_extent(disc, VRS, disc->start_block + 32768 / disc->blocksize, max+1);
 	else
-		ext = set_extent(disc, VRS, 32768 / disc->blocksize, ((2048 * (max+1)) + disc->blocksize - 1) / disc->blocksize);
+		ext = set_extent(disc, VRS, disc->start_block + 32768 / disc->blocksize, ((2048 * (max+1)) + disc->blocksize - 1) / disc->blocksize);
 
 	if (disc->blocksize >= 2048)
 	{
@@ -227,7 +227,7 @@ static int read_anchor_i(int fd, struct udf_disc *disc, int i, uint32_t location
 
 static int read_anchor_first(int fd, struct udf_disc *disc)
 {
-	return read_anchor_i(fd, disc, 0, 256);
+	return read_anchor_i(fd, disc, 0, disc->start_block + 256);
 }
 
 static int read_anchor_second(int fd, struct udf_disc *disc)
@@ -268,23 +268,23 @@ static int read_anchor_512(int fd, struct udf_disc *disc)
 {
 	int ret;
 
-	ret = read_anchor_i(fd, disc, 0, 512);
+	ret = read_anchor_i(fd, disc, 0, disc->start_block + 512);
 	if (ret == 0)
 		fprintf(stderr, "%s: Warning: First, second and third Anchor Volume Descriptor Pointer not found, but found on sector 512, using it\n", appname);
 
 	return ret;
 }
 
-static int detect_vrs_and_anchor(int fd, struct udf_disc *disc, int id, int *found_vrs, int *vsd_2048_valid, int *bea, int *nsr, int *tea)
+static int detect_vrs_and_anchor(int fd, struct udf_disc *disc, int id, int *found_vrs, int *vsd_len2048_off0_valid, int *bea, int *nsr, int *tea)
 {
 	int ret;
 
-	if (disc->blocksize <= 2048 && *vsd_2048_valid == 0)
+	if (disc->blocksize <= 2048 && disc->start_block == 0 && *vsd_len2048_off0_valid == 0)
 		return -2;
 
 	setup_blocks(disc);
 
-	if (disc->blocksize > 2048 || *vsd_2048_valid == -1)
+	if (disc->blocksize > 2048 || disc->start_block != 0 || *vsd_len2048_off0_valid == -1)
 	{
 		free(disc->udf_vrs[0]);
 		free(disc->udf_vrs[1]);
@@ -296,15 +296,15 @@ static int detect_vrs_and_anchor(int fd, struct udf_disc *disc, int id, int *fou
 		ret = read_vrs(fd, disc, bea, nsr, tea);
 		if (ret == -2)
 		{
-			if (disc->blocksize <= 2048)
-				*vsd_2048_valid = 0;
+			if (disc->blocksize <= 2048 && disc->start_block == 0)
+				*vsd_len2048_off0_valid = 0;
 			return -3;
 		}
 		else if (ret < 0)
 			return ret;
 
-		if (disc->blocksize <= 2048)
-			*vsd_2048_valid = 1;
+		if (disc->blocksize <= 2048 && disc->start_block == 0)
+			*vsd_len2048_off0_valid = 1;
 
 		*found_vrs = 1;
 	}
@@ -326,8 +326,19 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	int ret, ret2;
 	int bea, nsr, tea;
 	int bea_2048 = -1, nsr_2048 = -1, tea_2048 = -1;
-	int vsd_2048_valid = -1;
+	int vsd_len2048_off0_valid = -1;
 	int found_vrs = 0;
+	struct stat st;
+	struct cdrom_multisession multisession;
+
+	if (disc->start_block == (uint32_t)-1) {
+		memset(&multisession, 0, sizeof(multisession));
+		multisession.addr_format = CDROM_LBA;
+		if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, CDROMMULTISESSION, &multisession) == 0 && multisession.xa_flag)
+			disc->start_block = (uint64_t)multisession.addr.lba * (disc->blkssz ? disc->blkssz : 2048) / (disc->blocksize ? disc->blocksize : 2048);
+		else
+			disc->start_block = 0;
+	}
 
 	if (disc->blocksize)
 	{
@@ -395,16 +406,16 @@ static int detect_udf(int fd, struct udf_disc *disc)
 
 	for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 	{
-		if (disc->blocksize <= 2048 && vsd_2048_valid)
+		if (disc->blocksize <= 2048 && disc->start_block == 0 && vsd_len2048_off0_valid)
 		{
 			bea = bea_2048;
 			nsr = nsr_2048;
 			tea = tea_2048;
 		}
 
-		ret = detect_vrs_and_anchor(fd, disc, 0, &found_vrs, &vsd_2048_valid, &bea, &nsr, &tea);
+		ret = detect_vrs_and_anchor(fd, disc, 0, &found_vrs, &vsd_len2048_off0_valid, &bea, &nsr, &tea);
 
-		if (disc->blocksize <= 2048 && vsd_2048_valid)
+		if (disc->blocksize <= 2048 && disc->start_block == 0 && vsd_len2048_off0_valid)
 		{
 			bea_2048 = bea;
 			nsr_2048 = nsr;
@@ -427,7 +438,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	{
 		for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 		{
-			ret = detect_vrs_and_anchor(fd, disc, 1, &found_vrs, &vsd_2048_valid, &bea, &nsr, &tea);
+			ret = detect_vrs_and_anchor(fd, disc, 1, &found_vrs, &vsd_len2048_off0_valid, &bea, &nsr, &tea);
 			if (ret == -3 || ret == -2)
 				continue;
 			else if (ret < 0)
@@ -440,7 +451,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 		{
 			for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 			{
-				ret = detect_vrs_and_anchor(fd, disc, 2, &found_vrs, &vsd_2048_valid, &bea, &nsr, &tea);
+				ret = detect_vrs_and_anchor(fd, disc, 2, &found_vrs, &vsd_len2048_off0_valid, &bea, &nsr, &tea);
 				if (ret == -3 || ret == -2)
 					continue;
 				else if (ret < 0)

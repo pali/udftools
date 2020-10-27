@@ -140,6 +140,8 @@ struct udf_disc
 
 	struct sparingTable		*udf_stable[4];
 
+	uint32_t			start_block;
+
 	uint32_t			vat_block;
 	uint32_t			*vat;
 	uint64_t			vat_entries;
