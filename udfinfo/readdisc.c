@@ -1331,7 +1331,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 	if (disc->vat_block)
 		vat_block = disc->vat_block;
 	else if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, CDROM_LAST_WRITTEN, &last) == 0)
-		vat_block = last;
+		vat_block = (uint64_t)last * (disc->blkssz ? disc->blkssz : 2048) / (disc->blocksize ? disc->blocksize : 2048);
 	else
 		vat_block = disc->blocks - 1;
 
