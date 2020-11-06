@@ -477,7 +477,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	if (disc->blkssz && disc->blkssz != disc->blocksize)
 		fprintf(stderr, "%s: Warning: Disk logical sector size (%u) does not match UDF block size (%"PRIu32")\n", appname, disc->blkssz, disc->blocksize);
 
-	if (disc->blocksize <= 2048)
+	if (disc->blocksize <= 2048 && disc->start_block == 0 && vsd_len2048_off0_valid)
 	{
 		bea = bea_2048;
 		nsr = nsr_2048;
