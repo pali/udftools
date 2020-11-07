@@ -312,6 +312,8 @@ int main(int argc, char *argv[])
 
 	if (disc.start_block && disc.start_block != (uint32_t)-1)
 		printf("startblock=%"PRIu32"\n", disc.start_block);
+	if (disc.last_block && disc.last_block != disc.blocks-1)
+		printf("lastblock=%"PRIu32"\n", disc.last_block);
 
 	if (disc.vat_block)
 		printf("vatblock=%"PRIu32"\n", disc.vat_block);

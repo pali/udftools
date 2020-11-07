@@ -32,6 +32,7 @@ static struct option long_options[] = {
 	{ "help", no_argument, NULL, OPT_HELP },
 	{ "blocksize", required_argument, NULL, OPT_BLK_SIZE },
 	{ "startblock", required_argument, NULL, OPT_START_BLOCK },
+	{ "lastblock", required_argument, NULL, OPT_LAST_BLOCK },
 	{ "vatblock", required_argument, NULL, OPT_VAT_BLOCK },
 	{ "locale", no_argument, NULL, OPT_LOCALE },
 	{ "u8", no_argument, NULL, OPT_UNICODE8 },
@@ -44,7 +45,7 @@ static void usage(void)
 {
 	fprintf(stderr, "udfinfo from " PACKAGE_NAME " " PACKAGE_VERSION "\n"
 		"Usage:\n"
-		"\tudfinfo [--locale|--u8|--u16|--utf8] [-b|--blocksize=block-size] [--startblock=block] [--vatblock=block] device\n"
+		"\tudfinfo [--locale|--u8|--u16|--utf8] [-b|--blocksize=block-size] [--startblock=block] [--lastblock=block] [--vatblock=block] device\n"
 	);
 	exit(1);
 }
@@ -76,6 +77,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename)
 				if (failed)
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --startblock\n", appname);
+					exit(1);
+				}
+				break;
+			case OPT_LAST_BLOCK:
+				disc->last_block = strtou32(optarg, 0, &failed);
+				if (failed)
+				{
+					fprintf(stderr, "%s: Error: Invalid value for option --lastblock\n", appname);
 					exit(1);
 				}
 				break;

@@ -54,11 +54,32 @@ If omitted, \fBudfinfo\fP for optical disc tries to detect start block of the
 last session from disc Table Of Contents. Otherwise value \fI0\fP is used.
 
 For accessing some previous session of Multisession UDF optical disc, it is
-required to specify correct block where that previous session starts.
+required to specify correct block where that previous session starts. And also
+to specify where that session ends via \fB\-\-lastblock\fP option.
 
 For Multisession UDF disc images stored in file there is no way to detect where
 the last session starts and therefore it is necessary to specify the correct
 start block location manually from the original optical disc Table Of Contents.
+
+(Option available since udfinfo 2.3)
+
+.TP
+.BI \-\-lastblock= " last\-block "
+Specify the block location where the UDF filesystem ends. It is used for
+calculating the block location of second and third Anchor Volume Descriptor
+Pointer (256 blocks prior the last block and the last block itself).
+
+Normally last block is \fInumber of disk blocks minus one\fP, but for
+Multisession UDF optical discs when reading different session than the last one
+(specified by \fB\-\-startblock\fP) it is the block location where the specified
+session ends.
+
+If omitted, \fBudfinfo\fP for optical disc tried to detect the last recorded
+block with fallback to the last block of device or disk file image.
+
+For accessing some previous session of Multisession UDF optical disc, it is
+required to specify correct value for both \fB\-\-startblock\fP and
+\fB\-\-lastblock\fP options.
 
 (Option available since udfinfo 2.3)
 
@@ -69,9 +90,10 @@ Table is present only on UDF disks with Virtual Partition Map and must be at the
 last written/recorded disk block.
 
 If omitted, \fBudfinfo\fP for optical disc tries to detect the last recorded
-block with fallback to the last block of block device or disk file image. In
-most cases, this fallback does not have to work and for disk file images with
-Virtual Allocation Table is necessary to specify the correct location.
+block with fallback to the last block of block device or disk file image or
+block specified by \fB\-\-lastblock\fP. In most cases, this fallback does not
+have to work and for disk file images with Virtual Allocation Table it is
+necessary to specify the correct location.
 
 Virtual Allocation Table contains locations of UDF disk blocks needed to read
 data storage, determinate used and free space blocks, read File Set Identifier
@@ -167,7 +189,12 @@ UDF revision needed for reading UDF disk
 UDF revision needed for writing or modifying UDF disk
 .TP
 .I startblock
-Block location where the UDF filesystem starts (visible only when non-zero)
+Block location where the UDF filesystem starts (visible only when non-zero,
+available since udfinfo 2.3)
+.TP
+.I lastblock
+Block location where the UDF filesystem ends (visible only when it is not same
+as the last block on disk, available since udfinfo 2.3)
 .TP
 .I vatblock
 Block location of the UDF Virtual Allocation Table (visible only when available)

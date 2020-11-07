@@ -151,7 +151,7 @@ static int read_vrs(int fd, struct udf_disc *disc, int *bea, int *nsr, int *tea)
 	return 0;
 }
 
-static void setup_blocks(struct udf_disc *disc)
+static void setup_blocks(struct udf_disc *disc, uint64_t start, uint64_t last)
 {
 	uint64_t blocks = disc->blksize / disc->blocksize;
 
@@ -161,6 +161,14 @@ static void setup_blocks(struct udf_disc *disc)
 		disc->blocks = (uint32_t)blocks;
 
 	disc->head->blocks = disc->blocks;
+
+	if (start)
+		disc->start_block = start / disc->blocksize;
+
+	if (last == (uint64_t)-1)
+		disc->last_block = disc->blocks - 1;
+	else if (last)
+		disc->last_block = last / disc->blocksize;
 }
 
 static void setup_vrs(struct udf_disc *disc, int bea, int nsr, int tea)
@@ -233,16 +241,22 @@ static int read_anchor_first(int fd, struct udf_disc *disc)
 static int read_anchor_second(int fd, struct udf_disc *disc)
 {
 	int ret1, ret2;
+	uint32_t last_block;
 
-	if (disc->blocks > 257 && (off_t)(disc->blocks - 257) * disc->blocksize > (off_t)32768 + disc->blocksize && disc->blocks - 257 != 256)
-		ret1 = read_anchor_i(fd, disc, 1, disc->blocks - 257);
+	if (disc->last_block < disc->blocks)
+		last_block = disc->last_block;
+	else
+		last_block = disc->blocks - 1;
+
+	if (last_block > 256 && (off_t)(last_block - 256) * disc->blocksize > (off_t)32768 + disc->blocksize && last_block - 256 != 256)
+		ret1 = read_anchor_i(fd, disc, 1, last_block - 256);
 	else
 		ret1 = -2;
 	if (ret1 == -1)
 		return -1;
 
-	if ((off_t)(disc->blocks - 1) * disc->blocksize > (off_t)32768 + disc->blocksize && disc->blocks - 1 != 256)
-		ret2 = read_anchor_i(fd, disc, 2, disc->blocks - 1);
+	if ((off_t)last_block * disc->blocksize > (off_t)32768 + disc->blocksize && last_block != 256)
+		ret2 = read_anchor_i(fd, disc, 2, last_block);
 	else
 		ret2 = -2;
 	if (ret2 == -1)
@@ -275,14 +289,14 @@ static int read_anchor_512(int fd, struct udf_disc *disc)
 	return ret;
 }
 
-static int detect_vrs_and_anchor(int fd, struct udf_disc *disc, int id, int *found_vrs, int *vsd_len2048_off0_valid, int *bea, int *nsr, int *tea)
+static int detect_vrs_and_anchor(int fd, struct udf_disc *disc, uint64_t start, uint64_t last, int id, int *found_vrs, int *vsd_len2048_off0_valid, int *bea, int *nsr, int *tea)
 {
 	int ret;
 
 	if (disc->blocksize <= 2048 && disc->start_block == 0 && *vsd_len2048_off0_valid == 0)
 		return -2;
 
-	setup_blocks(disc);
+	setup_blocks(disc, start, last);
 
 	if (disc->blocksize > 2048 || disc->start_block != 0 || *vsd_len2048_off0_valid == -1)
 	{
@@ -328,16 +342,30 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	int bea_2048 = -1, nsr_2048 = -1, tea_2048 = -1;
 	int vsd_len2048_off0_valid = -1;
 	int found_vrs = 0;
+	uint64_t start = 0;
+	uint64_t last = 0;
+	long last_written;
 	struct stat st;
 	struct cdrom_multisession multisession;
 
-	if (disc->start_block == (uint32_t)-1) {
+	if (disc->start_block == (uint32_t)-1)
+	{
 		memset(&multisession, 0, sizeof(multisession));
 		multisession.addr_format = CDROM_LBA;
 		if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, CDROMMULTISESSION, &multisession) == 0 && multisession.xa_flag)
-			disc->start_block = (uint64_t)multisession.addr.lba * (disc->blkssz ? disc->blkssz : 2048) / (disc->blocksize ? disc->blocksize : 2048);
-		else
+			start = multisession.addr.lba * (disc->blkssz ? disc->blkssz : 2048);
+		if (!start)
 			disc->start_block = 0;
+	}
+
+	if (!disc->last_block)
+	{
+		if (disc->vat_block)
+			disc->last_block = disc->vat_block;
+		else if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, CDROM_LAST_WRITTEN, &last_written) == 0)
+			last = last_written * (disc->blkssz ? disc->blkssz : 2048);
+		else
+			last = (uint64_t)-1;
 	}
 
 	if (disc->blocksize)
@@ -345,7 +373,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 		if (disc->blksize / disc->blocksize > UINT32_MAX)
 			fprintf(stderr, "%s: Warning: Disk is too big (%"PRIu64"), using only %"PRIu32" blocks\n", appname, disc->blksize / disc->blocksize, UINT32_MAX);
 
-		setup_blocks(disc);
+		setup_blocks(disc, start, last);
 
 		ret = read_vrs(fd, disc, &bea, &nsr, &tea);
 		if (ret < 0)
@@ -378,7 +406,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	else if (disc->blkssz)
 	{
 		disc->blocksize = disc->blkssz;
-		setup_blocks(disc);
+		setup_blocks(disc, start, last);
 		ret = read_vrs(fd, disc, &bea, &nsr, &tea);
 		if (ret != -2)
 		{
@@ -413,7 +441,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 			tea = tea_2048;
 		}
 
-		ret = detect_vrs_and_anchor(fd, disc, 0, &found_vrs, &vsd_len2048_off0_valid, &bea, &nsr, &tea);
+		ret = detect_vrs_and_anchor(fd, disc, start, last, 0, &found_vrs, &vsd_len2048_off0_valid, &bea, &nsr, &tea);
 
 		if (disc->blocksize <= 2048 && disc->start_block == 0 && vsd_len2048_off0_valid)
 		{
@@ -438,7 +466,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 	{
 		for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 		{
-			ret = detect_vrs_and_anchor(fd, disc, 1, &found_vrs, &vsd_len2048_off0_valid, &bea, &nsr, &tea);
+			ret = detect_vrs_and_anchor(fd, disc, start, last, 1, &found_vrs, &vsd_len2048_off0_valid, &bea, &nsr, &tea);
 			if (ret == -3 || ret == -2)
 				continue;
 			else if (ret < 0)
@@ -451,7 +479,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 		{
 			for (disc->blocksize = 512; disc->blocksize <= 32768; disc->blocksize *= 2)
 			{
-				ret = detect_vrs_and_anchor(fd, disc, 2, &found_vrs, &vsd_len2048_off0_valid, &bea, &nsr, &tea);
+				ret = detect_vrs_and_anchor(fd, disc, start, last, 2, &found_vrs, &vsd_len2048_off0_valid, &bea, &nsr, &tea);
 				if (ret == -3 || ret == -2)
 					continue;
 				else if (ret < 0)
@@ -1280,7 +1308,6 @@ static void read_stable(int fd, struct udf_disc *disc)
 
 static void read_vat(int fd, struct udf_disc *disc)
 {
-	long last;
 	struct partitionDesc *pd;
 	struct virtualPartitionMap *vpm;
 	struct UDFIdentSuffix *uis;
@@ -1295,7 +1322,6 @@ static void read_vat(int fd, struct udf_disc *disc)
 	uint32_t ea_length, ea_offset;
 	uint32_t ea_attr_length, ea_attr_offset;
 	uint64_t unique_id;
-	struct stat st;
 	struct fileEntry *fe;
 	struct extendedFileEntry *efe;
 	struct virtualAllocationTable15 *vat15;
@@ -1330,10 +1356,8 @@ static void read_vat(int fd, struct udf_disc *disc)
 
 	if (disc->vat_block)
 		vat_block = disc->vat_block;
-	else if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, CDROM_LAST_WRITTEN, &last) == 0)
-		vat_block = (uint64_t)last * (disc->blkssz ? disc->blkssz : 2048) / (disc->blocksize ? disc->blocksize : 2048);
 	else
-		vat_block = disc->blocks - 1;
+		vat_block = disc->last_block;
 
 	for (i = vat_block + 3; i > 0 && i > vat_block - 32; --i)
 	{

@@ -47,5 +47,6 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, dstring *, dst
 #define OPT_FSID	0x2006
 #define OPT_FULLVSID	0x2007
 #define OPT_START_BLOCK	0x2008
+#define OPT_LAST_BLOCK	0x2009
 
 #endif /* OPTIONS_H */
