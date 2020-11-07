@@ -554,7 +554,9 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 	uint16_t type;
 	size_t gd_length;
 	struct genericDesc *gd_ptr;
+	struct primaryVolDesc *pvd_ptr;
 	struct partitionDesc *pd_ptr;
+	struct impUseVolDesc *iuvd_ptr;
 	struct udf_extent *ext;
 	struct volDescPtr *vdp;
 	struct logicalVolDesc *lvd;
@@ -671,8 +673,12 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					switch (type)
 					{
 						case TAG_IDENT_PVD:
-							if (!disc->udf_pvd[id] || le32_to_cpu(disc->udf_pvd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum))
-								disc->udf_pvd[id] = (struct primaryVolDesc *)gd_ptr;
+							pvd_ptr = (struct primaryVolDesc *)gd_ptr;
+							/* Take all PVDs with the smallest primaryVolDescNum and then choose first with the highest volDescSeqNum */
+							if (!disc->udf_pvd[id] || le32_to_cpu(disc->udf_pvd[id]->primaryVolDescNum) > le32_to_cpu(pvd_ptr->primaryVolDescNum) ||
+							    (le32_to_cpu(disc->udf_pvd[id]->primaryVolDescNum) == le32_to_cpu(pvd_ptr->primaryVolDescNum) &&
+							     le32_to_cpu(disc->udf_pvd[id]->volDescSeqNum) < le32_to_cpu(pvd_ptr->volDescSeqNum)))
+								disc->udf_pvd[id] = pvd_ptr;
 							break;
 
 						case TAG_IDENT_PD:
@@ -694,11 +700,12 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 							break;
 
 						case TAG_IDENT_IUVD:
-							if (!disc->udf_iuvd[id] || le32_to_cpu(disc->udf_iuvd[id]->volDescSeqNum) < le32_to_cpu(gd_ptr->volDescSeqNum))
+							iuvd_ptr = (struct impUseVolDesc *)gd_ptr;
+							if (strncmp((char *)iuvd_ptr->impIdent.ident, UDF_ID_LV_INFO, sizeof(iuvd_ptr->impIdent.ident)) == 0)
 							{
-								disc->udf_iuvd[id] = (struct impUseVolDesc *)gd_ptr;
-								if (strncmp((char *)disc->udf_iuvd[id]->impIdent.ident, UDF_ID_LV_INFO, sizeof(disc->udf_iuvd[id]->impIdent.ident)) == 0)
+								if (!disc->udf_iuvd[id] || le32_to_cpu(disc->udf_iuvd[id]->volDescSeqNum) < le32_to_cpu(iuvd_ptr->volDescSeqNum))
 								{
+									disc->udf_iuvd[id] = iuvd_ptr;
 									uis = (struct UDFIdentSuffix *)disc->udf_iuvd[id]->impIdent.identSuffix;
 									if (disc->udf_rev < le16_to_cpu(uis->UDFRevision))
 										disc->udf_rev = disc->udf_write_rev = le16_to_cpu(uis->UDFRevision);
@@ -777,19 +784,19 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 					if (gd_length > disc->blocksize)
 						i += (gd_length + (disc->blocksize-1)) / disc->blocksize - 1;
 
-					if (!disc->udf_lvd[id] || le32_to_cpu(disc->udf_lvd[id]->volDescSeqNum) < le32_to_cpu(lvd->volDescSeqNum))
+					if (strncmp((char *)lvd->domainIdent.ident, UDF_ID_COMPLIANT, sizeof(lvd->domainIdent.ident)) == 0)
 					{
-						disc->udf_lvd[id] = lvd;
-						if (strncmp((char *)disc->udf_lvd[id]->domainIdent.ident, UDF_ID_COMPLIANT, sizeof(disc->udf_lvd[id]->domainIdent.ident)) == 0)
+						if (!disc->udf_lvd[id] || le32_to_cpu(disc->udf_lvd[id]->volDescSeqNum) < le32_to_cpu(lvd->volDescSeqNum))
 						{
-							dis = (struct domainIdentSuffix *)disc->udf_lvd[id]->domainIdent.identSuffix;
+							disc->udf_lvd[id] = lvd;
+							dis = (struct domainIdentSuffix *)lvd->domainIdent.identSuffix;
 							if (disc->udf_rev < le16_to_cpu(dis->UDFRevision))
 								disc->udf_rev = disc->udf_write_rev = le16_to_cpu(dis->UDFRevision);
 						}
-					}
 
-					if (le32_to_cpu(lvd->logicalBlockSize) != disc->blocksize)
-						fprintf(stderr, "%s: Warning: blocksize in Logical Volume Descriptor is different as expected\n", appname);
+						if (le32_to_cpu(lvd->logicalBlockSize) != disc->blocksize)
+							fprintf(stderr, "%s: Warning: blocksize in Logical Volume Descriptor is different as expected\n", appname);
+					}
 
 					break;
 
@@ -1982,12 +1989,17 @@ static void read_fsd(int fd, struct udf_disc *disc)
 		return;
 	}
 
-	if (strncmp((char *)disc->udf_fsd->domainIdent.ident, UDF_ID_COMPLIANT, sizeof(disc->udf_fsd->domainIdent.ident)) == 0)
+	if (strncmp((char *)disc->udf_fsd->domainIdent.ident, UDF_ID_COMPLIANT, sizeof(disc->udf_fsd->domainIdent.ident)) != 0)
 	{
-		dis = (struct domainIdentSuffix *)disc->udf_fsd->domainIdent.identSuffix;
-		if (disc->udf_write_rev < le16_to_cpu(dis->UDFRevision))
-			disc->udf_write_rev = le16_to_cpu(dis->UDFRevision);
+		fprintf(stderr, "%s: Warning: Unsupported File Set Descriptor\n", appname);
+		free(disc->udf_fsd);
+		disc->udf_fsd = NULL;
+		return;
 	}
+
+	dis = (struct domainIdentSuffix *)disc->udf_fsd->domainIdent.identSuffix;
+	if (disc->udf_write_rev < le16_to_cpu(dis->UDFRevision))
+		disc->udf_write_rev = le16_to_cpu(dis->UDFRevision);
 
 	ext = next_extent(disc->head, PSPACE);
 	if (ext)

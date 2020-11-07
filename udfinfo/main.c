@@ -118,14 +118,14 @@ static uint32_t compute_behind_blocks(struct udf_disc *disc)
 		return 0;
 }
 
-static void print_dstring(struct udf_disc *disc, const char *name, const dstring *string, size_t len)
+static void print_dstring(struct udf_disc *disc, const char *name, const charspec *charset, const dstring *string, size_t len)
 {
 	char buf[256];
 	size_t i;
 
 	fputs(name, stdout);
 	putchar('=');
-	if (string)
+	if (string && charset && charset->charSetType == UDF_CHAR_SET_TYPE && strncmp((const char *)charset->charSetInfo, UDF_CHAR_SET_INFO, sizeof(charset->charSetInfo)) == 0)
 	{
 		len = decode_string(disc, string, buf, len, sizeof(buf));
 		if (len != (size_t)-1)
@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
 
 	serial_num = compute_windows_serial_num(&disc);
 
-	if (pvd)
+	if (pvd && pvd->descCharSet.charSetType == UDF_CHAR_SET_TYPE && strncmp((const char *)pvd->descCharSet.charSetInfo, UDF_CHAR_SET_INFO, sizeof(pvd->descCharSet.charSetInfo)) == 0)
 	{
 		ret = gen_uuid_from_vol_set_ident(uuid, pvd->volSetIdent, sizeof(pvd->volSetIdent));
 		if (ret < 8)
@@ -292,13 +292,13 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: Warning: Logical Volume is in inconsistent state\n", appname);
 
 	printf("filename=%s\n", filename);
-	print_dstring(&disc, "label", lvd ? lvd->logicalVolIdent : NULL, sizeof(lvd->logicalVolIdent));
+	print_dstring(&disc, "label", lvd ? &lvd->descCharSet : NULL, lvd ? lvd->logicalVolIdent : NULL, sizeof(lvd->logicalVolIdent));
 	printf("uuid=%s\n", uuid);
-	print_dstring(&disc, "lvid", lvd ? lvd->logicalVolIdent : NULL, sizeof(lvd->logicalVolIdent));
-	print_dstring(&disc, "vid", pvd ? pvd->volIdent : NULL, sizeof(pvd->volIdent));
-	print_dstring(&disc, "vsid", vsid, sizeof(vsid));
-	print_dstring(&disc, "fsid", disc.udf_fsd ? disc.udf_fsd->fileSetIdent : NULL, sizeof(disc.udf_fsd->fileSetIdent));
-	print_dstring(&disc, "fullvsid", pvd ? pvd->volSetIdent : NULL, sizeof(pvd->volSetIdent));
+	print_dstring(&disc, "lvid", lvd ? &lvd->descCharSet : NULL, lvd ? lvd->logicalVolIdent : NULL, sizeof(lvd->logicalVolIdent));
+	print_dstring(&disc, "vid", pvd ? &pvd->descCharSet : NULL, pvd ? pvd->volIdent : NULL, sizeof(pvd->volIdent));
+	print_dstring(&disc, "vsid", pvd ? &pvd->descCharSet : NULL, vsid, sizeof(vsid));
+	print_dstring(&disc, "fsid", disc.udf_fsd ? &disc.udf_fsd->fileSetCharSet : NULL, disc.udf_fsd ? disc.udf_fsd->fileSetIdent : NULL, sizeof(disc.udf_fsd->fileSetIdent));
+	print_dstring(&disc, "fullvsid", pvd ? &pvd->descCharSet : NULL, pvd ? pvd->volSetIdent : NULL, sizeof(pvd->volSetIdent));
 	printf("winserialnum=0x%08"PRIx32"\n", serial_num);
 	printf("blocksize=%"PRIu32"\n", disc.blocksize);
 	printf("blocks=%"PRIu32"\n", disc.blocks);
