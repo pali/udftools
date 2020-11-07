@@ -351,6 +351,12 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
+		if (lvd->descCharSet.charSetType != UDF_CHAR_SET_TYPE || strncmp((const char *)lvd->descCharSet.charSetInfo, UDF_CHAR_SET_INFO, sizeof(lvd->descCharSet.charSetInfo)) != 0)
+		{
+			fprintf(stderr, "%s: Error: Label is not encoded in OSTA Unicode dstring\n", appname);
+			exit(1);
+		}
+
 		len = decode_string(&disc, lvd->logicalVolIdent, buf, sizeof(lvd->logicalVolIdent), sizeof(buf));
 		if (len == (size_t)-1)
 		{
@@ -506,6 +512,12 @@ int main(int argc, char *argv[])
 	{
 		if (!new_uuid[0] || new_vsid[0] == 0xFF)
 		{
+			if (disc.udf_pvd[0]->descCharSet.charSetType != UDF_CHAR_SET_TYPE || strncmp((const char *)disc.udf_pvd[0]->descCharSet.charSetInfo, UDF_CHAR_SET_INFO, sizeof(disc.udf_pvd[0]->descCharSet.charSetInfo)) != 0)
+			{
+				fprintf(stderr, "%s: Error: Volume Set Identifier is not encoded in OSTA Unicode dstring\n", appname);
+				fprintf(stderr, "%s: Error: In this case it is needed to specify both --vsid and --uuid\n", appname);
+				exit(1);
+			}
 			memset(buf, 0, sizeof(buf));
 			len = gen_uuid_from_vol_set_ident(buf, disc.udf_pvd[0]->volSetIdent, sizeof(disc.udf_pvd[0]->volSetIdent));
 			if (len < 16)
@@ -599,12 +611,27 @@ int main(int argc, char *argv[])
 		memset(buf, 0, sizeof(buf));
 		decode_string(&disc, new_lvid, buf, sizeof(new_lvid), sizeof(buf));
 		printf("Using new Logical Volume Identifier: %s\n", buf);
+		memset(&disc.udf_lvd[0]->descCharSet, 0, sizeof(disc.udf_lvd[0]->descCharSet));
+		memset(&disc.udf_lvd[1]->descCharSet, 0, sizeof(disc.udf_lvd[1]->descCharSet));
+		disc.udf_lvd[0]->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
+		disc.udf_lvd[1]->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)disc.udf_lvd[0]->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
+		strcpy((char *)disc.udf_lvd[1]->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 		memcpy(disc.udf_lvd[0]->logicalVolIdent, new_lvid, sizeof(new_lvid));
 		memcpy(disc.udf_lvd[1]->logicalVolIdent, new_lvid, sizeof(new_lvid));
 		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[0]->impUse;
+		memset(&iuvdiu->LVICharset, 0, sizeof(iuvdiu->LVICharset));
+		iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)iuvdiu->LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
 		memcpy(iuvdiu->logicalVolIdent, new_lvid, sizeof(new_lvid));
 		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[1]->impUse;
+		memset(&iuvdiu->LVICharset, 0, sizeof(iuvdiu->LVICharset));
+		iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)iuvdiu->LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
 		memcpy(iuvdiu->logicalVolIdent, new_lvid, sizeof(new_lvid));
+		memset(&disc.udf_fsd->logicalVolIdentCharSet, 0, sizeof(disc.udf_fsd->logicalVolIdentCharSet));
+		disc.udf_fsd->logicalVolIdentCharSet.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)disc.udf_fsd->logicalVolIdentCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 		memcpy(disc.udf_fsd->logicalVolIdent, new_lvid, sizeof(new_lvid));
 	}
 
@@ -613,6 +640,12 @@ int main(int argc, char *argv[])
 		memset(buf, 0, sizeof(buf));
 		decode_string(&disc, new_vid, buf, sizeof(new_vid), sizeof(buf));
 		printf("Using new Volume Identifier: %s\n", buf);
+		memset(&disc.udf_pvd[0]->descCharSet, 0, sizeof(disc.udf_pvd[0]->descCharSet));
+		memset(&disc.udf_pvd[1]->descCharSet, 0, sizeof(disc.udf_pvd[1]->descCharSet));
+		disc.udf_pvd[0]->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
+		disc.udf_pvd[1]->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)disc.udf_pvd[0]->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
+		strcpy((char *)disc.udf_pvd[1]->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 		memcpy(disc.udf_pvd[0]->volIdent, new_vid, sizeof(new_vid));
 		memcpy(disc.udf_pvd[1]->volIdent, new_vid, sizeof(new_vid));
 	}
@@ -622,6 +655,9 @@ int main(int argc, char *argv[])
 		memset(buf, 0, sizeof(buf));
 		decode_string(&disc, new_fsid, buf, sizeof(new_fsid), sizeof(buf));
 		printf("Using new File Set Identifier: %s\n", buf);
+		memset(&disc.udf_fsd->fileSetCharSet, 0, sizeof(disc.udf_fsd->fileSetCharSet));
+		disc.udf_fsd->fileSetCharSet.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)disc.udf_fsd->fileSetCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 		memcpy(disc.udf_fsd->fileSetIdent, new_fsid, sizeof(new_fsid));
 	}
 
@@ -655,6 +691,13 @@ int main(int argc, char *argv[])
 		memset(buf, 0, sizeof(buf));
 		decode_string(&disc, new_fullvsid, buf, sizeof(new_fullvsid), sizeof(buf));
 		printf("Using new full Volume Set Identifier: %s\n", buf);
+
+		memset(&disc.udf_pvd[0]->descCharSet, 0, sizeof(disc.udf_pvd[0]->descCharSet));
+		memset(&disc.udf_pvd[1]->descCharSet, 0, sizeof(disc.udf_pvd[1]->descCharSet));
+		disc.udf_pvd[0]->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
+		disc.udf_pvd[1]->descCharSet.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)disc.udf_pvd[0]->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
+		strcpy((char *)disc.udf_pvd[1]->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 
 		memcpy(disc.udf_pvd[0]->volSetIdent, new_fullvsid, sizeof(new_fullvsid));
 		memcpy(disc.udf_pvd[1]->volSetIdent, new_fullvsid, sizeof(new_fullvsid));
