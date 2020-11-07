@@ -262,6 +262,11 @@ static int read_anchor_second(int fd, struct udf_disc *disc)
 	if (ret2 == -1)
 		return -1;
 
+	if (disc->udf_anchor[0] && disc->udf_anchor[1] && disc->udf_anchor[0]->mainVolDescSeqExt.extLocation != disc->udf_anchor[1]->mainVolDescSeqExt.extLocation)
+		fprintf(stderr, "%s: Warning: First and second Anchor Volume Descriptor Pointer contain different location of Main Volume Descriptor Sequence, maybe wrong --startblock or --lastblock?\n", appname);
+	if (disc->udf_anchor[0] && disc->udf_anchor[2] && disc->udf_anchor[0]->mainVolDescSeqExt.extLocation != disc->udf_anchor[2]->mainVolDescSeqExt.extLocation)
+		fprintf(stderr, "%s: Warning: First and third Anchor Volume Descriptor Pointer contain different location of Main Volume Descriptor Sequence, maybe wrong --startblock or --lastblock?\n", appname);
+
 	if (disc->udf_anchor[0])
 		return 0;
 
