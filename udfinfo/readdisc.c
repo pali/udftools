@@ -1132,9 +1132,7 @@ static uint32_t find_block_position(struct udf_disc *disc, struct genericPartiti
 		*partition = le16_to_cpu(upm2->partitionNum);
 		if (strncmp((char *)upm2->partIdent.ident, UDF_ID_VIRTUAL, sizeof(upm2->partIdent.ident)) == 0)
 		{
-			if (!disc->vat)
-				return UINT32_MAX;
-			else if (block < disc->vat_entries)
+			if (disc->vat && block < disc->vat_entries)
 				return le32_to_cpu(disc->vat[block]);
 			else
 				return block;
