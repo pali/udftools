@@ -336,15 +336,19 @@ void split_space(struct udf_disc *disc)
 	if (blocks > 257)
 		set_extent(disc, ANCHOR, 256, 1);
 
-	// Second anchor point at sector (End-Of-Volume - 256) or 257 for VAT
+	// Second anchor point at sector (End-Of-Volume - 256)
 	if ((disc->flags & FLAG_VAT) && (disc->flags & FLAG_CLOSED))
 	{
-		if (blocks <= 257 || blocks-257 <= 256)
+		// On closed VAT media it is written after the previous anchor (after sector 256) and VAT block is later written to End-Of-Volume sector (anchor + 256)
+		// Sector following VAT block, which is (start + 256 + 1) must be aligned, so calculate start properly
+		value = disc->sizing[PSPACE_SIZE].align;
+		start = (257 + 1 + value-1) / value * value - 1 + 256%value;
+		if (blocks <= start || blocks - start <= 256)
 		{
 			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 			exit(1);
 		}
-		set_extent(disc, ANCHOR, 257, 1);
+		set_extent(disc, ANCHOR, start, 1);
 	}
 	// Unclosed VAT media must not contain second anchor point and for space effectivity it is not written also on small disks
 	else if (!(disc->flags & FLAG_VAT) && blocks >= 3072)
@@ -352,7 +356,7 @@ void split_space(struct udf_disc *disc)
 		set_extent(disc, ANCHOR, blocks-257, 1);
 	}
 
-	// Final anchor point at sector End-Of-Volume/Session for sequentially writable media
+	// Final anchor point at sector End-Of-Volume/Session for other then sequentially writable media (non-VAT)
 	if (!(disc->flags & FLAG_VAT))
 		set_extent(disc, ANCHOR, blocks-1, 1);
 
@@ -1389,12 +1393,17 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	if (disc->flags & FLAG_CLOSED)
 	{
 		anchor = prev_extent(disc->tail, ANCHOR);
-		if (pspace->start - anchor->start > 256)
+		if (pspace->start + offset > anchor->start + 256)
 		{
-			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
+			fprintf(stderr, "%s: Error: Too many blocks on device\n", appname);
 			exit(1);
 		}
 		offset = 256 - (pspace->start - anchor->start);
+		if ((offset + 1) % align != 0)
+		{
+			fprintf(stderr, "%s: Error: Second Anchor Volume Descriptor Pointer is not aligned\n", appname);
+			exit(1);
+		}
 	}
 
 	if (disc->udf_rev >= 0x0200)
