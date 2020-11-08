@@ -320,10 +320,11 @@ void split_space(struct udf_disc *disc)
 	uint32_t i, value;
 
 	// OS boot area
+	start = 0;
 	if (disc->flags & FLAG_BOOTAREA_MBR)
-		set_extent(disc, MBR, 0, 1);
-	else
-		set_extent(disc, RESERVED, 0, 32768 / disc->blocksize);
+		set_extent(disc, MBR, start++, 1);
+	if (32768 / disc->blocksize > start)
+		set_extent(disc, RESERVED, start, 32768 / disc->blocksize - start);
 
 	// Volume Recognition Sequence
 	if (disc->blocksize >= 2048)
