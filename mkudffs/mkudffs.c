@@ -346,7 +346,8 @@ void split_space(struct udf_disc *disc)
 		}
 		set_extent(disc, ANCHOR, 257, 1);
 	}
-	else if (blocks >= 3072)
+	// Unclosed VAT media must not contain second anchor point and for space effectivity it is not written also on small disks
+	else if (!(disc->flags & FLAG_VAT) && blocks >= 3072)
 	{
 		set_extent(disc, ANCHOR, blocks-257, 1);
 	}
