@@ -47,7 +47,7 @@ int default_media[] = {
 struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 {
 //			align,	numSize,denomSize,minSize
-	{ // Media 0 = HD, CDROM, DVDROM, DVDRAM
+	{ // Media 0 = HD, CDROM, CDR, DVDROM, DVDRAM
 		{	1,	0,	1,	16	}, // VDS_SIZE		Volume Descriptor Set
 		{	1,	0,	1,	1	}, // LVID_SIZE		Logical Volume Integrity Descriptor
 		{	1,	0,	1,	0	}, // STABLE_SIZE	Sparing Table
@@ -68,7 +68,7 @@ struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE] =
 		{	32,	0,	1,	1024	},
 		{	32,	0,	1,	0	},
 	},
-	{ // Media 3 = CDR, BD-R
+	{ // Media 3 = BDR
 		{	32,	0,	1,	16	},
 		{	32,	0,	1,	1	},
 		{	32,	0,	1,	0	},

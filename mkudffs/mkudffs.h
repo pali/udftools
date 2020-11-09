@@ -33,12 +33,12 @@
 
 #define DEFAULT_HD	0
 #define DEFAULT_CD	0
+#define DEFAULT_CDR	0
 #define DEFAULT_DVD	0
 #define DEFAULT_DVDRAM	0
 #define DEFAULT_WORM	1
 #define DEFAULT_MO	1
 #define DEFAULT_CDRW	2
-#define DEFAULT_CDR	3
 #define DEFAULT_BDR	3
 #define DEFAULT_DVDRW	4
 #define DEFAULT_DVDR	5
