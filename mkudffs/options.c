@@ -138,6 +138,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	uint32_t spartable = 2;
 	uint32_t sparspace = 0;
 	uint16_t packetlen = 0;
+	uint16_t sparable_packetlen = 0;
 	int failed;
 
 	while ((retval = getopt_long(argc, argv, "l:u:b:m:r:nh", long_options, NULL)) != EOF)
@@ -533,11 +534,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					fprintf(stderr, "%s: Error: Option --media-type must be specified before option --udfrev\n", appname);
 					exit(1);
 				}
-				if (packetlen)
-				{
-					fprintf(stderr, "%s: Error: Option --media-type must be specified before option --packetlen\n", appname);
-					exit(1);
-				}
 				if (!strcmp(optarg, "hd"))
 				{
 					media = MEDIA_TYPE_HD;
@@ -802,53 +798,28 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		}
 	}
 
-	if (disc->udf_rev <= 0x0200 && use_sparable && !packetlen)
-	{
-		/* UDF 2.00 Errata, DCN-5163, Packet Length for Sparable Partition:
-		 * For UDF 1.50 and 2.00 should be set to fixed value 32. */
-		packetlen = 32;
-	}
-
 	switch (media)
 	{
 		case MEDIA_TYPE_HD:
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
-			if (!packetlen)
-				packetlen = 1;
 			break;
 
 		case MEDIA_TYPE_DVD:
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
-			if (!packetlen)
-				packetlen = 16;
 			break;
 
 		case MEDIA_TYPE_DVDRAM:
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
-			if (!packetlen)
-				packetlen = 16;
 			break;
 
 		case MEDIA_TYPE_DVDRW:
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE);
 			use_sparable = 1;
-			if (!packetlen)
-			{
-				/* UDF 2.00 Errata, DCN-5163, Packet Length for Sparable Partition:
-				 * For UDF 1.50 and 2.00 should be set to fixed value 32.
-				 * For UDF 2.01 and new should be set to ECC blocking factor (16 for DVD). */
-				if (disc->udf_rev >= 0x0201)
-					packetlen = 16;
-				else
-					packetlen = 32;
-			}
 			break;
 
 		case MEDIA_TYPE_DVDR:
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
 			use_vat = 1;
-			if (!packetlen)
-				packetlen = 16;
 			break;
 
 		case MEDIA_TYPE_WORM:
@@ -856,8 +827,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			disc->flags |= FLAG_BLANK_TERMINAL;
 			if (!strategy)
 				strategy = 4096;
-			if (!packetlen)
-				packetlen = 1;
 			break;
 
 		case MEDIA_TYPE_MO:
@@ -865,29 +834,21 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			disc->flags |= FLAG_BLANK_TERMINAL;
 			if (!strategy)
 				strategy = 4096;
-			if (!packetlen)
-				packetlen = 1;
 			break;
 
 		case MEDIA_TYPE_CDRW:
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 			use_sparable = 1;
-			if (!packetlen)
-				packetlen = 32;
 			break;
 
 		case MEDIA_TYPE_CDR:
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
 			disc->flags |= FLAG_MIN_300_BLOCKS;
 			use_vat = 1;
-			if (!packetlen)
-				packetlen = 32;
 			break;
 
 		case MEDIA_TYPE_CD:
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY);
-			if (!packetlen)
-				packetlen = 32;
 			break;
 
 		case MEDIA_TYPE_BDR:
@@ -895,8 +856,6 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			use_vat = 1;
 			if (!rev)
 				udf_set_version(disc, 0x0250);
-			if (!packetlen)
-				packetlen = 32;
 			break;
 
 		default:
@@ -963,7 +922,15 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for Sparing Table\n", appname);
 			exit(1);
 		}
-		add_type2_sparable_partition(disc, 0, spartable, packetlen);
+		if (packetlen)
+			sparable_packetlen = packetlen;
+		else if (disc->udf_rev <= 0x0200)
+			/* UDF 2.00 Errata, DCN-5163, Packet Length for Sparable Partition:
+			 * For UDF 1.50 and 2.00 should be set to fixed value 32. */
+			sparable_packetlen = 32;
+		else
+			sparable_packetlen = default_sizing[default_media[media]][STABLE_SIZE].align;
+		add_type2_sparable_partition(disc, 0, spartable, sparable_packetlen);
 	}
 	else
 	{
@@ -994,9 +961,10 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 	for (i=0; i<UDF_ALLOC_TYPE_SIZE; i++)
 	{
-		disc->sizing[i].align = packetlen;
 		if (disc->sizing[i].denomSize == 0)
 			disc->sizing[i] = default_sizing[default_media[media]][i];
+		if (packetlen)
+			disc->sizing[i].align = packetlen;
 	}
 
 	if (use_sparable)
