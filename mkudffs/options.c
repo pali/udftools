@@ -660,7 +660,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		int fd;
 		long last;
 		struct stat st;
-		unsigned int mmc_profile;
+		int mmc_profile;
 
 		mmc_profile = -1;
 
@@ -674,15 +674,15 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		{
 			struct cdrom_generic_command cgc;
 			struct request_sense sense;
-			unsigned char features[8];
-			unsigned char discinfo[36];
+			struct feature_header features;
+			disc_information discinfo;
 
 			memset(&cgc, 0, sizeof(cgc));
 			memset(&sense, 0, sizeof(sense));
 			memset(&features, 0, sizeof(features));
 			cgc.cmd[0] = GPCMD_GET_CONFIGURATION;
 			cgc.cmd[8] = sizeof(features);
-			cgc.buffer = features;
+			cgc.buffer = (unsigned char *)&features;
 			cgc.buflen = sizeof(features);
 			cgc.sense = &sense;
 			cgc.data_direction = CGC_DATA_READ;
@@ -691,7 +691,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 			if (ioctl(fd, CDROM_SEND_PACKET, &cgc) >= 0)
 			{
-				mmc_profile = features[6] << 8 | features[7];
+				mmc_profile = be16_to_cpu(features.curr_profile);
 			}
 			else
 			{
@@ -699,9 +699,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				memset(&sense, 0, sizeof(sense));
 				memset(&discinfo, 0, sizeof(discinfo));
 				cgc.cmd[0] = GPCMD_READ_DISC_INFO;
-				cgc.cmd[8] = sizeof(discinfo);
-				cgc.buffer = discinfo;
-				cgc.buflen = sizeof(discinfo);
+				cgc.cmd[8] = sizeof(discinfo.disc_information_length);
+				cgc.buffer = (unsigned char *)&discinfo.disc_information_length;
+				cgc.buflen = sizeof(discinfo.disc_information_length);
 				cgc.sense = &sense;
 				cgc.data_direction = CGC_DATA_READ;
 				cgc.quiet = 1;
@@ -709,16 +709,27 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 				if (ioctl(fd, CDROM_SEND_PACKET, &cgc) == 0)
 				{
-					if (discinfo[2] & 16) /* Erasable bit set = CD-RW */
-						mmc_profile = 0x0A;
-					else if ((discinfo[2] & 3) == 2) /* Complete disk status = CD-ROM */
-						mmc_profile = 0x08;
-					else
-						mmc_profile = 0x09;
+					/* Not all drives have the same disc_info length, so requeue
+					 * packet with the length the drive tells us it can supply */
+					cgc.buffer = (unsigned char *)&discinfo;
+					cgc.buflen = be16_to_cpu(discinfo.disc_information_length) + sizeof(discinfo.disc_information_length);
+					if (cgc.buflen > sizeof(discinfo))
+						cgc.buflen = sizeof(discinfo);
+					cgc.cmd[8] = cgc.buflen;
+
+					if (ioctl(fd, CDROM_SEND_PACKET, &cgc) == 0)
+					{
+						if (discinfo.erasable) /* Erasable bit set = CD-RW */
+							mmc_profile = 0x0A;
+						else if (discinfo.disc_status == 2) /* Complete disc status = CD-ROM */
+							mmc_profile = 0x08;
+						else /* All other disc statuses means that medium is recordable = CD-R */
+							mmc_profile = 0x09;
+					}
 				}
 				else
 				{
-					mmc_profile = 0x00;
+					mmc_profile = 0x00; /* Unknown optical disc */
 				}
 			}
 		}
@@ -728,13 +739,14 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 		switch (mmc_profile)
 		{
-			case 0x03: /* Magneto-Optical with sector erase */
+			case 0x03: /* Magneto-Optical Erasable */
 			case 0x05: /* Advance Storage Magneto-Optical */
 				printf("Detected Magneto-Optical disc\n");
 				media = MEDIA_TYPE_MO;
 				break;
 
 			case 0x0A: /* CD-RW */
+			case 0x22: /* DDCD-RW */
 				printf("Detected CD-RW optical disc\n");
 				media = MEDIA_TYPE_CDRW;
 				break;
@@ -745,7 +757,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				break;
 
 			case 0x13: /* DVD-RW Restricted Overwrite */
-			case 0x14: /* DVD-RW Sequential recording */
+			case 0x14: /* DVD-RW Sequential Recording */
 			case 0x17: /* DVD-RW DL */
 			case 0x1A: /* DVD+RW */
 			case 0x2A: /* DVD+RW DL */
@@ -761,7 +773,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				fprintf(stderr, "%s: Error: Detected read-only optical disc, use --media-type option to specify media type\n", appname);
 				exit(1);
 
-			case 0x04: /* Magneto-Optical write once */
+			case 0x04: /* Magneto-Optical Write Once */
 			case 0x09: /* CD-R */
 			case 0x11: /* DVD-R */
 			case 0x15: /* DVD-R DL Sequential Recording */
@@ -770,14 +782,13 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			case 0x1B: /* DVD+R */
 			case 0x21: /* DDCD-R */
 			case 0x2B: /* DVD+R DL */
-			case 0x41: /* BD-R SRM */
-			case 0x42: /* BD-R RRM */
+			case 0x41: /* BD-R Sequential Recording Mode */
+			case 0x42: /* BD-R Random Recording Mode */
 			case 0x51: /* HDDVD-R */
 			case 0x58: /* HDDVD-R DL */
 				fprintf(stderr, "%s: Error: Detected write-once optical disc, use --media-type option to specify media type\n", appname);
 				exit(1);
 
-			case 0x22: /* DDCD-RW */
 			case 0x43: /* BD-RE */
 			case 0x52: /* HDDVD-RAM */
 			case 0x53: /* HDDVD-RW */
