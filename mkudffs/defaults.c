@@ -206,7 +206,7 @@ struct impUseVolDesc default_iuvd =
 		.tagSerialNum = constant_cpu_to_le16(1),
 		.descCRC = constant_cpu_to_le16(sizeof(struct impUseVolDesc) - sizeof(tag)),
 	},
-	.volDescSeqNum = constant_cpu_to_le32(4),
+	.volDescSeqNum = constant_cpu_to_le32(5),
 	.impIdent =
 	{
 		.ident = UDF_ID_LV_INFO,
@@ -229,7 +229,7 @@ struct partitionDesc default_pd =
 		.tagSerialNum = constant_cpu_to_le16(1),
 		.descCRC = constant_cpu_to_le16(sizeof(struct partitionDesc) - sizeof(tag)),
 	},
-	.volDescSeqNum = constant_cpu_to_le32(5),
+	.volDescSeqNum = constant_cpu_to_le32(3),
 	.partitionFlags = constant_cpu_to_le16(0x0001),
 	.partitionContents =
 	{
@@ -256,7 +256,7 @@ struct unallocSpaceDesc default_usd =
 		.tagSerialNum = constant_cpu_to_le16(1),
 		.descCRC = constant_cpu_to_le16(sizeof(struct unallocSpaceDesc) - sizeof(tag)),
 	},
-	.volDescSeqNum = constant_cpu_to_le32(6),
+	.volDescSeqNum = constant_cpu_to_le32(4),
 };
 
 struct terminatingDesc default_td =
