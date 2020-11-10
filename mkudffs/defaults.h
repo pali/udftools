@@ -29,7 +29,6 @@ extern struct udf_sizing default_sizing[][UDF_ALLOC_TYPE_SIZE];
 
 extern struct primaryVolDesc default_pvd;
 extern struct logicalVolDesc default_lvd;
-extern struct volDescPtr default_vdp;
 extern struct impUseVolDescImpUse default_iuvdiu;
 extern struct impUseVolDesc default_iuvd;
 extern struct partitionDesc default_pd;

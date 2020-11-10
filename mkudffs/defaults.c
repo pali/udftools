@@ -179,18 +179,6 @@ struct logicalVolDesc default_lvd =
 	}
 };
 
-struct volDescPtr default_vdp =
-{
-	.descTag =
-	{
-		.tagIdent = constant_cpu_to_le16(TAG_IDENT_VDP),
-		.descVersion = constant_cpu_to_le16(3),
-		.tagSerialNum = constant_cpu_to_le16(1),
-		.descCRC = constant_cpu_to_le16(sizeof(struct volDescPtr) - sizeof(tag)),
-	},
-	.volDescSeqNum = constant_cpu_to_le32(3),
-};
-
 struct impUseVolDescImpUse default_iuvdiu =
 {
 	.LVICharset =
