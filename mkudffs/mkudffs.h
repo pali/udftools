@@ -28,7 +28,7 @@
 #include "osta_udf.h"
 #include "libudffs.h"
 
-#define UDF_ID_APPLICATION		"*Linux mkudffs"
+#define UDF_ID_APPLICATION		"*Linux mkudffs " PACKAGE_VERSION
 
 #define DEFAULT_HD	0
 #define DEFAULT_CD	0
