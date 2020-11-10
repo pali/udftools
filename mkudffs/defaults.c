@@ -364,7 +364,7 @@ struct virtualAllocationTable15 default_vat15 =
 
 struct virtualAllocationTable20 default_vat20 =
 {
-	.lengthHeader = constant_cpu_to_le16(152),
+	.lengthHeader = constant_cpu_to_le16(sizeof(struct virtualAllocationTable20)),
 	.lengthImpUse = constant_cpu_to_le16(0),
 	.logicalVolIdent = "\x08" "LinuxUDF",
 	.previousVATICBLoc = constant_cpu_to_le32(0xFFFFFFFF),
