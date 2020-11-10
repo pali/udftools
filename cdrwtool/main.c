@@ -189,6 +189,8 @@ int quick_setup(int fd, struct cdrw_disc *disc, const char *device)
 			memcpy(&disc->udf_disc.sizing[i], &default_sizing[DEFAULT_CDRW][i], sizeof(default_sizing[DEFAULT_CDRW][i]));
 	}
 
+	strcpy((char *)disc->udf_disc.udf_pvd[0]->appIdent.ident, "*Linux cdrwtool " PACKAGE_VERSION);
+
 	split_space(&disc->udf_disc);
 
 	setup_vrs(&disc->udf_disc);
@@ -222,6 +224,8 @@ int mkudf_session(int fd, struct cdrw_disc *disc)
 		if (disc->udf_disc.sizing[i].denomSize == 0)
 			memcpy(&disc->udf_disc.sizing[i], &default_sizing[DEFAULT_CDRW][i], sizeof(default_sizing[DEFAULT_CDRW][i]));
 	}
+
+	strcpy((char *)disc->udf_disc.udf_pvd[0]->appIdent.ident, "*Linux cdrwtool " PACKAGE_VERSION);
 
 	split_space(&disc->udf_disc);
 
