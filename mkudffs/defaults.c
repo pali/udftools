@@ -123,11 +123,6 @@ struct primaryVolDesc default_pvd =
 	.appIdent =
 	{
 		.ident = UDF_ID_APPLICATION,
-		.identSuffix =
-		{
-			UDF_OS_CLASS_UNIX,
-			UDF_OS_ID_LINUX,
-		},
 	},
 	.impIdent =
 	{
