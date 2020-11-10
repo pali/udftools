@@ -107,8 +107,8 @@ struct primaryVolDesc default_pvd =
 	.maxVolSeqNum = constant_cpu_to_le16(1),
 	.interchangeLvl = constant_cpu_to_le16(3),
 	.maxInterchangeLvl = constant_cpu_to_le16(3),
-	.charSetList = constant_cpu_to_le32(CS0),
-	.maxCharSetList = constant_cpu_to_le32(CS0),
+	.charSetList = constant_cpu_to_le32(1 << UDF_CHAR_SET_TYPE),
+	.maxCharSetList = constant_cpu_to_le32(1 << UDF_CHAR_SET_TYPE),
 	.volSetIdent = "\x08" "0000000000000000LinuxUDF",
 	.descCharSet =
 	{
@@ -420,8 +420,8 @@ struct fileSetDesc default_fsd =
 	},
 	.interchangeLvl = constant_cpu_to_le16(3),
 	.maxInterchangeLvl = constant_cpu_to_le16(3),
-	.charSetList = constant_cpu_to_le32(CS0),
-	.maxCharSetList = constant_cpu_to_le32(CS0),
+	.charSetList = constant_cpu_to_le32(1 << UDF_CHAR_SET_TYPE),
+	.maxCharSetList = constant_cpu_to_le32(1 << UDF_CHAR_SET_TYPE),
 	.logicalVolIdentCharSet =
 	{
 		.charSetType = UDF_CHAR_SET_TYPE,

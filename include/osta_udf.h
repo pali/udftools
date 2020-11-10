@@ -44,7 +44,7 @@
 #define _OSTA_UDF_H 1
 
 /* OSTA CS0 Charspec (UDF 2.60 2.1.2) */
-#define UDF_CHAR_SET_TYPE		0
+#define UDF_CHAR_SET_TYPE		CHARSPEC_TYPE_CS0
 #define UDF_CHAR_SET_INFO		"OSTA Compressed Unicode"
 
 /* Entity Identifier (UDF 2.60 2.1.5) */
