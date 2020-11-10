@@ -171,7 +171,7 @@ int quick_setup(int fd, struct cdrw_disc *disc, const char *device)
 		printf("Formatting track\n");
 		if ((ret = format_disc(fd, disc)))
 			return ret;
-		add_type2_sparable_partition(&disc->udf_disc, 0, 2, 0);
+		add_type2_sparable_partition(&disc->udf_disc, 0, 2, 32);
 		disc->udf_disc.udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 	}
 	else
@@ -215,7 +215,7 @@ int mkudf_session(int fd, struct cdrw_disc *disc)
 
 	disc->udf_disc.head->blocks = disc->offset;
 	disc->udf_disc.blocks = disc->udf_disc.head->blocks;
-	add_type2_sparable_partition(&disc->udf_disc, 0, 2, 0);
+	add_type2_sparable_partition(&disc->udf_disc, 0, 2, 32);
 	disc->udf_disc.udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
 
 	disc->udf_disc.flags |= FLAG_UNALLOC_BITMAP;
