@@ -29,6 +29,7 @@
 #include "libudffs.h"
 
 #define UDF_ID_APPLICATION		"*Linux mkudffs " PACKAGE_VERSION
+#define UDF_ID_DEVELOPER		"*Linux UDFFS"
 
 #define DEFAULT_HD	0
 #define DEFAULT_CD	0
