@@ -230,7 +230,7 @@ struct partitionDesc default_pd =
 		.descCRC = constant_cpu_to_le16(sizeof(struct partitionDesc) - sizeof(tag)),
 	},
 	.volDescSeqNum = constant_cpu_to_le32(3),
-	.partitionFlags = constant_cpu_to_le16(0x0001),
+	.partitionFlags = constant_cpu_to_le16(PD_PARTITION_FLAGS_ALLOC),
 	.partitionContents =
 	{
 		.ident = PD_PARTITION_CONTENTS_NSR03,
