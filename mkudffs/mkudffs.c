@@ -904,7 +904,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
-			use->icbTag.strategyType = cpu_to_le16(4096);
+			use->icbTag.strategyType = cpu_to_le16(ICBTAG_STRATEGY_TYPE_4096);
 			use->icbTag.strategyParameter = cpu_to_le16(1);
 			use->icbTag.numEntries = cpu_to_le16(2);
 		}
@@ -933,7 +933,7 @@ int setup_space(struct udf_disc *disc, struct udf_extent *pspace, uint32_t offse
 				tdesc = set_desc(pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
 				te = (struct terminalEntry *)tdesc->data->buffer;
 				te->icbTag.priorRecordedNumDirectEntries = cpu_to_le32(1);
-				te->icbTag.strategyType = cpu_to_le16(4096);
+				te->icbTag.strategyType = cpu_to_le16(ICBTAG_STRATEGY_TYPE_4096);
 				te->icbTag.strategyParameter = cpu_to_le16(1);
 				te->icbTag.numEntries = cpu_to_le16(2);
 				te->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(desc->offset);
@@ -1021,7 +1021,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 			tdesc = set_desc(pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
 			te = (struct terminalEntry *)tdesc->data->buffer;
 			te->icbTag.priorRecordedNumDirectEntries = cpu_to_le32(1);
-			te->icbTag.strategyType = cpu_to_le16(4096);
+			te->icbTag.strategyType = cpu_to_le16(ICBTAG_STRATEGY_TYPE_4096);
 			te->icbTag.strategyParameter = cpu_to_le16(1);
 			te->icbTag.numEntries = cpu_to_le16(2);
 			te->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(desc->offset);
@@ -1085,7 +1085,7 @@ int setup_root(struct udf_disc *disc, struct udf_extent *pspace)
 			tdesc = set_desc(pspace, TAG_IDENT_TE, offset+1, sizeof(struct terminalEntry), NULL);
 			te = (struct terminalEntry *)tdesc->data->buffer;
 			te->icbTag.priorRecordedNumDirectEntries = cpu_to_le32(1);
-			te->icbTag.strategyType = cpu_to_le16(4096);
+			te->icbTag.strategyType = cpu_to_le16(ICBTAG_STRATEGY_TYPE_4096);
 			te->icbTag.strategyParameter = cpu_to_le16(1);
 			te->icbTag.numEntries = cpu_to_le16(2);
 			te->icbTag.parentICBLocation.logicalBlockNum = cpu_to_le32(desc->offset);

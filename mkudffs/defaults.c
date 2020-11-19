@@ -442,7 +442,7 @@ struct fileEntry default_fe =
 	},
 	.icbTag =
 	{
-		.strategyType = constant_cpu_to_le16(4),
+		.strategyType = constant_cpu_to_le16(ICBTAG_STRATEGY_TYPE_4),
 		.strategyParameter = constant_cpu_to_le16(0),
 		.numEntries = constant_cpu_to_le16(1),
 		.fileType = 0,
@@ -475,7 +475,7 @@ struct extendedFileEntry default_efe =
 	},
 	.icbTag =
 	{
-		.strategyType = constant_cpu_to_le16(4),
+		.strategyType = constant_cpu_to_le16(ICBTAG_STRATEGY_TYPE_4),
 		.strategyParameter = constant_cpu_to_le16(0),
 		.numEntries = constant_cpu_to_le16(1),
 		.fileType = 0,

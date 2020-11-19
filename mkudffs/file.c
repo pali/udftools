@@ -739,7 +739,7 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 		}
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
-			efe->icbTag.strategyType = cpu_to_le16(4096);
+			efe->icbTag.strategyType = cpu_to_le16(ICBTAG_STRATEGY_TYPE_4096);
 			efe->icbTag.strategyParameter = cpu_to_le16(1);
 			efe->icbTag.numEntries = cpu_to_le16(2);
 		}
@@ -801,7 +801,7 @@ struct udf_desc *udf_create(struct udf_disc *disc, struct udf_extent *pspace, co
 		}
 		if (disc->flags & FLAG_STRATEGY4096)
 		{
-			fe->icbTag.strategyType = cpu_to_le16(4096);
+			fe->icbTag.strategyType = cpu_to_le16(ICBTAG_STRATEGY_TYPE_4096);
 			fe->icbTag.strategyParameter = cpu_to_le16(1);
 			fe->icbTag.numEntries = cpu_to_le16(2);
 		}

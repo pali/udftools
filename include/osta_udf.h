@@ -248,6 +248,9 @@ struct allocDescImpUse
 
 #define AD_IU_EXT_ERASED		0x0001
 
+/* Strategy Type (UDF 2.60 6.6) */
+#define ICBTAG_STRATEGY_TYPE_4096	4096
+
 /* Real-Time Files (UDF 2.60 6.11) */
 #define ICBTAG_FILE_TYPE_REALTIME	0xF9U
 
