@@ -312,6 +312,7 @@ void split_space(struct udf_disc *disc)
 {
 	uint32_t sizes[UDF_ALLOC_TYPE_SIZE];
 	uint32_t offsets[UDF_ALLOC_TYPE_SIZE];
+	uint32_t start_block = disc->start_block;
 	uint32_t blocks = disc->blocks;
 	uint32_t start, size, start2, size2;
 	struct sparablePartitionMap *spm;
@@ -319,22 +320,34 @@ void split_space(struct udf_disc *disc)
 	uint32_t accessType;
 	uint32_t i, value;
 
+	if (start_block >= blocks)
+	{
+		fprintf(stderr, "%s: Error: Start block %"PRIu32" is beyond end of disk\n", appname, disc->start_block);
+		exit(1);
+	}
+
+	blocks -= start_block;
+
+	// Add temporary area to prevent usage of blocks prior start block, it will be later removed
+	if (start_block)
+		set_extent(disc, RESERVED, 0, start_block);
+
 	// OS boot area
 	start = 0;
 	if (disc->flags & FLAG_BOOTAREA_MBR)
-		set_extent(disc, MBR, start++, 1);
+		set_extent(disc, MBR, start_block + start++, 1);
 	if (32768 / disc->blocksize > start)
-		set_extent(disc, RESERVED, start, 32768 / disc->blocksize - start);
+		set_extent(disc, RESERVED, start_block + start, 32768 / disc->blocksize - start);
 
 	// Volume Recognition Sequence
 	if (disc->blocksize >= 2048)
-		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, 4); // 3 sectors for VSD + one empty sector
+		set_extent(disc, VRS, start_block + (2048 * 16) / disc->blocksize, 4); // 3 sectors for VSD + one empty sector
 	else
-		set_extent(disc, VRS, (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize) / disc->blocksize); // 3 VSD in more sectors + one empty sector
+		set_extent(disc, VRS, start_block + (2048 * 16) / disc->blocksize, ((2048 * 3) + disc->blocksize) / disc->blocksize); // 3 VSD in more sectors + one empty sector
 
 	// First Anchor Point at sector 256
 	if (blocks > 257)
-		set_extent(disc, ANCHOR, 256, 1);
+		set_extent(disc, ANCHOR, start_block + 256, 1);
 
 	// Second anchor point at sector (End-Of-Volume - 256)
 	if ((disc->flags & FLAG_VAT) && (disc->flags & FLAG_CLOSED))
@@ -342,7 +355,7 @@ void split_space(struct udf_disc *disc)
 		// On closed VAT media it is written after the previous anchor (after sector 256) and VAT block is later written to End-Of-Volume sector (anchor + 256)
 		// Sector following VAT block, which is (start + 256 + 1) must be aligned, so calculate start properly
 		value = disc->sizing[PSPACE_SIZE].align;
-		start = (257 + 1 + value-1) / value * value - 1 + 256%value;
+		start = (start_block + 257 + 1 + value-1) / value * value - 1 + 256%value;
 		if (blocks <= start || blocks - start <= 256)
 		{
 			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
@@ -353,12 +366,12 @@ void split_space(struct udf_disc *disc)
 	// Unclosed VAT media must not contain second anchor point and for space effectivity it is not written also on small disks
 	else if (!(disc->flags & FLAG_VAT) && blocks >= 3072)
 	{
-		set_extent(disc, ANCHOR, blocks-257, 1);
+		set_extent(disc, ANCHOR, start_block + blocks-257, 1);
 	}
 
 	// Final anchor point at sector End-Of-Volume/Session for other then sequentially writable media (non-VAT)
 	if (!(disc->flags & FLAG_VAT))
-		set_extent(disc, ANCHOR, blocks-1, 1);
+		set_extent(disc, ANCHOR, start_block + blocks-1, 1);
 
 	// Calculate minimal size for Sparing Table needed for Sparing Space
 	if ((spm = find_type2_sparable_partition(disc, 0)) && disc->sizing[STABLE_SIZE].minSize == 0)
@@ -380,9 +393,9 @@ void split_space(struct udf_disc *disc)
 		sizes[VDS_SIZE] = 6;
 
 	if (!(disc->flags & FLAG_VAT) && blocks < 770)
-		start = 0;
+		start = (start_block + offsets[VDS_SIZE]-1) / offsets[VDS_SIZE] * offsets[VDS_SIZE];
 	else
-		start = 96;
+		start = (start_block + 96) / offsets[VDS_SIZE] * offsets[VDS_SIZE];
 	start = find_next_extent_size(disc, start, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 	if (!start)
 	{
@@ -393,7 +406,7 @@ void split_space(struct udf_disc *disc)
 
 	if (disc->flags & FLAG_VAT)
 	{
-		start = find_next_extent_size(disc, (256-sizes[VDS_SIZE])/offsets[VDS_SIZE]*offsets[VDS_SIZE], USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+		start = find_next_extent_size(disc, (start_block+256-sizes[VDS_SIZE])/offsets[VDS_SIZE]*offsets[VDS_SIZE], USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 		if (!start)
 		{
 			fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
@@ -404,7 +417,7 @@ void split_space(struct udf_disc *disc)
 	else if (blocks > 257)
 	{
 		if (blocks >= 3072)
-			start = find_next_extent_size(disc, (blocks-257+97)/32*32, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
+			start = find_next_extent_size(disc, (start_block+blocks-257+97)/32*32, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 		else
 			start = prev_extent_size(disc->tail, USPACE, sizes[VDS_SIZE], offsets[VDS_SIZE]);
 		if (!start)
@@ -419,9 +432,9 @@ void split_space(struct udf_disc *disc)
 	if (start < 256 || blocks >= 770)
 	{
 		if (!(disc->flags & FLAG_VAT) && blocks < 770)
-			start = 0;
+			start = (start_block + offsets[LVID_SIZE]-1) / offsets[LVID_SIZE] * offsets[LVID_SIZE];
 		else
-			start = 128;
+			start = (start_block + 128) / offsets[LVID_SIZE] * offsets[LVID_SIZE];
 		start = find_next_extent_size(disc, start, USPACE, sizes[LVID_SIZE], offsets[LVID_SIZE]);
 		if (!start)
 		{
@@ -466,7 +479,7 @@ void split_space(struct udf_disc *disc)
 		if (i != 0 && ((disc->flags & FLAG_VAT) || blocks >= 770))
 			break;
 		if (i == 0)
-			ext = next_extent(find_extent(disc, 256), USPACE);
+			ext = next_extent(find_extent(disc, start_block + 256), USPACE);
 		else if (i == 1)
 			ext = prev_extent(disc->tail, USPACE);
 		else
@@ -544,6 +557,10 @@ void split_space(struct udf_disc *disc)
 		}
 		set_extent(disc, LVID, start, sizes[LVID_SIZE]);
 	}
+
+	// Now remove temporary area prior start block
+	if (start_block)
+		remove_extent(disc, find_extent(disc, 0));
 }
 
 void dump_space(struct udf_disc *disc)
@@ -611,7 +628,7 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	if (!mbr->disk_signature)
 		mbr->disk_signature = cpu_to_le32(randu32());
 
-	lba_blocks = ((uint64_t)disc->blocks * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
+	lba_blocks = ((uint64_t)(disc->blocks - disc->start_block) * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
 
 	if (fd >= 0 && fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, HDIO_GETGEO, &geometry) == 0)
 	{
@@ -715,12 +732,12 @@ void setup_anchor(struct udf_disc *disc)
 	mlen = ext->blocks * disc->blocksize;
 
 	ext = next_extent(disc->head, RVDS);
-	if (!ext && disc->blocks > 257)
+	if (!ext && disc->blocks - disc->start_block > 257)
 	{
 		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
 	}
-	if (disc->blocks > 257)
+	if (disc->blocks - disc->start_block > 257)
 	{
 		rloc = ext->start;
 		rlen = ext->blocks * disc->blocksize;
@@ -1112,7 +1129,7 @@ void setup_vds(struct udf_disc *disc)
 	stable[0] = next_extent(disc->head, STABLE);
 	sspace = next_extent(disc->head, SSPACE);
 
-	if (!mvds || (!rvds && disc->blocks > 257) || !lvid)
+	if (!mvds || (!rvds && disc->blocks - disc->start_block > 257) || !lvid)
 	{
 		fprintf(stderr, "%s: Error: Not enough blocks on device\n", appname);
 		exit(1);
@@ -1385,7 +1402,7 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	if (disc->flags & FLAG_MIN_300_BLOCKS)
 	{
 		// On optical TAO discs one track has minimal size of 300 sectors
-		min_offset = (300 + align-1) / align * align - 1;
+		min_offset = (disc->start_block + 300 + align-1) / align * align - 1;
 		if (pspace->start + offset < min_offset)
 			offset = min_offset - pspace->start;
 	}

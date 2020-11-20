@@ -74,6 +74,7 @@ static struct option long_options[] = {
 	{ "u8", no_argument, NULL, OPT_UNICODE8 },
 	{ "u16", no_argument, NULL, OPT_UNICODE16 },
 	{ "utf8", no_argument, NULL, OPT_UTF8 },
+	{ "startblock", required_argument, NULL, OPT_START_BLOCK },
 	{ "closed", no_argument, NULL, OPT_CLOSED },
 	{ "new-file", no_argument, NULL, OPT_NEW_FILE },
 	{ "no-write", no_argument, NULL, OPT_NO_WRITE },
@@ -110,6 +111,7 @@ void usage(void)
 		"\t--sparspace=       Number of entries in Sparing Table (default: 1024, but based on media type)\n"
 		"\t--packetlen=       Packet length in number of blocks used for alignment (default: based on media type)\n"
 		"\t--vat              Use Virtual Allocation Table (default: based on media type)\n"
+		"\t--startblock=      Block location where the UDF filesystem starts (default: 0)\n"
 		"\t--closed           Close disc with Virtual Allocation Table (default: do not close)\n"
 		"\t--space=           Space (freedbitmap, freedtable, unallocbitmap, unalloctable; default: unallocbitmap)\n"
 		"\t--ad=              Allocation descriptor (inicb, short, long; default: inicb)\n"
@@ -244,6 +246,16 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				if (strcmp(argv[1], "--locale") != 0)
 				{
 					fprintf(stderr, "%s: Error: Option --locale must be specified as first argument\n", appname);
+					exit(1);
+				}
+				break;
+			}
+			case OPT_START_BLOCK:
+			{
+				disc->start_block = strtou32(optarg, 0, &failed);
+				if (failed)
+				{
+					fprintf(stderr, "%s: Error: Invalid value for option --startblock\n", appname);
 					exit(1);
 				}
 				break;

@@ -223,6 +223,7 @@ struct udf_extent *prev_extent(struct udf_extent *, enum udf_space_type);
 uint32_t prev_extent_size(struct udf_extent *, enum udf_space_type, uint32_t, uint32_t);
 struct udf_extent *find_extent(struct udf_disc *, uint32_t);
 struct udf_extent *set_extent(struct udf_disc *, enum udf_space_type, uint32_t,uint32_t);
+void remove_extent(struct udf_disc *, struct udf_extent *);
 struct udf_desc *next_desc(struct udf_desc *, uint16_t);
 struct udf_desc *find_desc(struct udf_extent *, uint32_t);
 struct udf_desc *set_desc(struct udf_extent *, uint16_t, uint32_t, uint32_t, struct udf_data *);

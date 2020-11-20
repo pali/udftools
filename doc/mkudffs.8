@@ -247,6 +247,35 @@ Enable usage of Virtual Allocation Table (VAT). If omitted, usage depends on
 the media type. (Option available since mkudffs 2.0)
 
 .TP
+.BI \-\-startblock= " start\-block "
+Specify the block location where the UDF filesystem starts.
+
+Normally start block is \fI0\fP, but when creating second or higher session for
+Multisession UDF optical disc it is the block location where that new session
+starts.
+
+When updating existing Multisession UDF image file, \fBmkudffs\fP overwrites
+only data blocks for a new session at start block position in the image file.
+
+When creating a new UDF image file, \fBmkudffs\fP stores only data blocks for a
+new session at beginning of the image file. Therefore data for start block would
+be written to the zero block instead of the start block. Such image without
+leading blocks (where are located previous sessions) is suitable for burning a
+new session to the optical disc. But it cannot be read or detected by any UDF
+tool until leading zero blocks (or previous sessions) are prepended to the image
+file.
+
+For calculating position where a new session of particular optical disc should
+start is required to use software which would be used for burning newly created
+image. So for example, if for burning is used \fBwodim\fP(1) then second value
+on output from \fB\%wodim\% \-msinfo\fP call is start block. Accordingly for
+\fBcdrecord\fP(1) call \fB\%cdrecord\% \-msinfo\fP or for \fBcdrdao\fP(1) call
+\fB\%cdrdao\% msinfo\fP or for \fBxorriso\fP(1) call
+\fB\%xorriso\% \-as\% cdrecord\% dev=/dev/cdrw\% \-msinfo\fP.
+
+(Option available since mkudffs 2.3)
+
+.TP
 .B \-\-closed
 Close disc with Virtual Allocation Table. AVDP is written also to the end of
 the disc. By default, the disc with Virtual Allocation Table is not closed.

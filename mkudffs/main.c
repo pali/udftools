@@ -330,6 +330,7 @@ static int write_func(struct udf_disc *disc, struct udf_extent *ext)
 int main(int argc, char *argv[])
 {
 	struct udf_disc	disc;
+	struct udf_extent *ext;
 	struct stat stat;
 	char *filename;
 	char buf[128*3];
@@ -440,7 +441,7 @@ int main(int argc, char *argv[])
 
 	if (!(disc.flags & FLAG_BOOTAREA_MASK))
 	{
-		if (media != MEDIA_TYPE_HD)
+		if (media != MEDIA_TYPE_HD || disc.start_block)
 			disc.flags |= FLAG_BOOTAREA_PRESERVE;
 		else if (fd >= 0 && is_removable_disk(fd) == 0 && is_whole_disk(fd) == 1)
 			disc.flags |= FLAG_BOOTAREA_MBR;
@@ -461,6 +462,9 @@ int main(int argc, char *argv[])
 	printf("blocksize=%"PRIu32"\n", disc.blocksize);
 	printf("blocks=%"PRIu32"\n", disc.blocks);
 	printf("udfrev=%"PRIx16".%02"PRIx16"\n", disc.udf_rev >> 8, disc.udf_rev & 0xFF);
+
+	if (disc.start_block)
+		printf("startblock=%"PRIu32"\n", disc.start_block);
 
 	split_space(&disc);
 
@@ -494,6 +498,13 @@ int main(int argc, char *argv[])
 		{
 			fprintf(stderr, "%s: Error: Cannot create new image file '%s': %s\n", appname, filename, strerror(errno));
 			exit(1);
+		}
+
+		// If creating new disk image file then shift all blocks to the beginning of the file
+		if (disc.start_block)
+		{
+			for (ext = disc.head; ext != NULL; ext = ext->next)
+				ext->start -= disc.start_block;
 		}
 	}
 

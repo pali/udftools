@@ -392,6 +392,24 @@ struct udf_extent *set_extent(struct udf_disc *disc, enum udf_space_type type, u
 }
 
 /**
+ * @brief remove extent from the blocks list
+ * @param disc the udf_disc containing the blocks
+ * @param ext the udf_extent to remove
+ */
+void remove_extent(struct udf_disc *disc, struct udf_extent *ext)
+{
+	if (disc->head == ext)
+		disc->head = ext->next;
+	if (disc->tail == ext)
+		disc->tail = ext->prev;
+	if (ext->prev)
+		ext->prev->next = ext->next;
+	if (ext->next)
+		ext->next->prev = ext->prev;
+	free(ext);
+}
+
+/**
  * @brief find the next udf_descriptor of a given tag ident on a udf_descriptor list
  * @param start_desc the starting udf_descriptor for the search
  * @param ident the tag ident of udf_descriptor to search for
