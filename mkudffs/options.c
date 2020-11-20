@@ -75,6 +75,7 @@ static struct option long_options[] = {
 	{ "u16", no_argument, NULL, OPT_UNICODE16 },
 	{ "utf8", no_argument, NULL, OPT_UTF8 },
 	{ "startblock", required_argument, NULL, OPT_START_BLOCK },
+	{ "minblocks", required_argument, NULL, OPT_MIN_BLOCKS },
 	{ "closed", no_argument, NULL, OPT_CLOSED },
 	{ "new-file", no_argument, NULL, OPT_NEW_FILE },
 	{ "no-write", no_argument, NULL, OPT_NO_WRITE },
@@ -112,6 +113,7 @@ void usage(void)
 		"\t--packetlen=       Packet length in number of blocks used for alignment (default: based on media type)\n"
 		"\t--vat              Use Virtual Allocation Table (default: based on media type)\n"
 		"\t--startblock=      Block location where the UDF filesystem starts (default: 0)\n"
+		"\t--minblocks=       Minimal number of blocks to write on disc with VAT (default: based on media type)\n"
 		"\t--closed           Close disc with Virtual Allocation Table (default: do not close)\n"
 		"\t--space=           Space (freedbitmap, freedtable, unallocbitmap, unalloctable; default: unallocbitmap)\n"
 		"\t--ad=              Allocation descriptor (inicb, short, long; default: inicb)\n"
@@ -256,6 +258,17 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				if (failed)
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --startblock\n", appname);
+					exit(1);
+				}
+				break;
+			}
+			case OPT_MIN_BLOCKS:
+			{
+				/* At this time disc->last_block contains --minblock value */
+				disc->last_block = strtou32(optarg, 0, &failed);
+				if (failed)
+				{
+					fprintf(stderr, "%s: Error: Invalid value for option --minblocks\n", appname);
 					exit(1);
 				}
 				break;
@@ -866,8 +879,10 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 
 		case MEDIA_TYPE_CDR:
 			disc->udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE);
-			disc->flags |= FLAG_MIN_300_BLOCKS;
 			use_vat = 1;
+			/* At this time disc->last_block contains --minblock value */
+			if (!disc->last_block)
+				disc->last_block = 300 * 2048 / disc->blocksize; /* On optical TAO discs one track has minimal size of 300 sectors which are 2048 bytes long */
 			break;
 
 		case MEDIA_TYPE_CD:
@@ -925,8 +940,17 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		exit(1);
 	}
 
+	if (disc->last_block && !use_vat)
+	{
+		fprintf(stderr, "%s: Error: Option --minblocks cannot be used without --vat or --media-type cdr/dvdr/bdr\n", appname);
+		exit(1);
+	}
+
 	if (use_vat)
 	{
+		/* disc->last_block contains --minblocks value, convert it to real minimal last block value */
+		if (disc->last_block)
+			disc->last_block = disc->start_block + disc->last_block - 1;
 		if (disc->udf_rev < 0x0150)
 		{
 			fprintf(stderr, "%s: Error: At least UDF revision 1.50 is needed for VAT\n", appname);

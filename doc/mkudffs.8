@@ -276,6 +276,24 @@ on output from \fB\%wodim\% \-msinfo\fP call is start block. Accordingly for
 (Option available since mkudffs 2.3)
 
 .TP
+.BI \-\-minblocks= " min\-num\-of\-blocks "
+Specify minimal number of blocks to write on disc with Virtual Allocation Table.
+
+This option affects block position where is written Virtual Allocation Table.
+And in case option \fB\-\-closed\fP is used then also it affects block position
+of the second Anchor Volume Descriptor Pointer.
+
+Default value for \fIcdr\fP media type is 300. This is safe default to allow
+burning CD-R disc image in Track-at-Once mode. This mode requires to burn image
+with minimal size of 300 sectors. Burning CD-R discs in other modes (e.g. \
+Disc-at-Once or Packet-Writing) may allow to allow to use also smaller disc
+images.
+
+For all other media types there is no default minimal limit.
+
+(Option available since mkudffs 2.3)
+
+.TP
 .B \-\-closed
 Close disc with Virtual Allocation Table. AVDP is written also to the end of
 the disc. By default, the disc with Virtual Allocation Table is not closed.

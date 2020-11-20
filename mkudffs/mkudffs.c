@@ -313,6 +313,7 @@ void split_space(struct udf_disc *disc)
 	uint32_t sizes[UDF_ALLOC_TYPE_SIZE];
 	uint32_t offsets[UDF_ALLOC_TYPE_SIZE];
 	uint32_t start_block = disc->start_block;
+	uint32_t last_block = disc->last_block;
 	uint32_t blocks = disc->blocks;
 	uint32_t start, size, start2, size2;
 	struct sparablePartitionMap *spm;
@@ -323,6 +324,12 @@ void split_space(struct udf_disc *disc)
 	if (start_block >= blocks)
 	{
 		fprintf(stderr, "%s: Error: Start block %"PRIu32" is beyond end of disk\n", appname, disc->start_block);
+		exit(1);
+	}
+
+	if (last_block && last_block >= blocks)
+	{
+		fprintf(stderr, "%s: Error: Last block %"PRIu32" is beyond end of disk\n", appname, disc->last_block);
 		exit(1);
 	}
 
@@ -1399,10 +1406,10 @@ void setup_vat(struct udf_disc *disc, struct udf_extent *pspace)
 	offset = pspace->tail->offset + (pspace->tail->length + disc->blocksize-1) / disc->blocksize;
 	offset = (offset+1 + align-1) / align * align - 1;
 
-	if (disc->flags & FLAG_MIN_300_BLOCKS)
+	if (disc->last_block)
 	{
-		// On optical TAO discs one track has minimal size of 300 sectors
-		min_offset = (disc->start_block + 300 + align-1) / align * align - 1;
+		/* disc->last_block contains minimal last block value, so align it for VAT */
+		min_offset = (disc->last_block+1 + align-1) / align * align - 1;
 		if (pspace->start + offset < min_offset)
 			offset = min_offset - pspace->start;
 	}
