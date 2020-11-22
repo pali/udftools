@@ -141,6 +141,27 @@ static void print_dstring(struct udf_disc *disc, const char *name, const charspe
 	putchar('\n');
 }
 
+static void print_astring(struct udf_disc *disc, const char *name, const uint8_t *astring, size_t len)
+{
+	dstring string[256];
+
+	if (astring && len+2 > sizeof(string))
+	{
+		fprintf(stderr, "%s: Error: too small string buffer for %s\n", appname, name);
+		exit(1);
+	}
+
+	if (astring)
+	{
+		/* Convert 7bit ASCII string into OSTA UNICODE 8bit dstring */
+		string[0] = 0x08;
+		string[len+1] = strnlen((const char *)astring, len) + 1;
+		memcpy(string+1, astring, len);
+	}
+
+	print_dstring(disc, name, &(const charspec){ UDF_CHAR_SET_TYPE, UDF_CHAR_SET_INFO }, astring ? string : NULL, len+2);
+}
+
 static const char *udf_space_type_str[UDF_SPACE_TYPE_SIZE] = { "RESERVED", "VRS", "ANCHOR", "MVDS", "RVDS", "LVID", "STABLE", "SSPACE", "PSPACE", "USPACE", "BAD", "MBR" };
 
 static void dump_space(struct udf_disc *disc)
@@ -171,6 +192,7 @@ int main(int argc, char *argv[])
 	struct logicalVolDesc *lvd;
 	struct primaryVolDesc *pvd;
 	struct partitionDesc *pd;
+	struct impUseVolDescImpUse *iuvdiu;
 	struct domainIdentSuffix *dis;
 	uint32_t serial_num;
 	uint32_t used_blocks;
@@ -250,6 +272,13 @@ int main(int argc, char *argv[])
 	else
 		pd = NULL;
 
+	if (disc.udf_iuvd[0])
+		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[0]->impUse;
+	else if (disc.udf_iuvd[1])
+		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[1]->impUse;
+	else
+		iuvdiu = NULL;
+
 	if (disc.total_space_blocks < disc.free_space_blocks)
 		used_blocks = disc.total_space_blocks;
 	else
@@ -299,6 +328,11 @@ int main(int argc, char *argv[])
 	print_dstring(&disc, "vsid", pvd ? &pvd->descCharSet : NULL, vsid, sizeof(vsid));
 	print_dstring(&disc, "fsid", disc.udf_fsd ? &disc.udf_fsd->fileSetCharSet : NULL, disc.udf_fsd ? disc.udf_fsd->fileSetIdent : NULL, sizeof(disc.udf_fsd->fileSetIdent));
 	print_dstring(&disc, "fullvsid", pvd ? &pvd->descCharSet : NULL, pvd ? pvd->volSetIdent : NULL, sizeof(pvd->volSetIdent));
+	print_dstring(&disc, "owner", iuvdiu ? &iuvdiu->LVICharset : NULL, iuvdiu ? iuvdiu->LVInfo1 : NULL, sizeof(iuvdiu->LVInfo1));
+	print_dstring(&disc, "organization", iuvdiu ? &iuvdiu->LVICharset : NULL, iuvdiu ? iuvdiu->LVInfo2 : NULL, sizeof(iuvdiu->LVInfo2));
+	print_dstring(&disc, "contact", iuvdiu ? &iuvdiu->LVICharset : NULL, iuvdiu ? iuvdiu->LVInfo3 : NULL, sizeof(iuvdiu->LVInfo3));
+	print_astring(&disc, "appid", pvd ? pvd->appIdent.ident : NULL, sizeof(pvd->appIdent.ident));
+	print_astring(&disc, "impid", pvd ? pvd->impIdent.ident : NULL, sizeof(pvd->impIdent.ident));
 	printf("winserialnum=0x%08"PRIx32"\n", serial_num);
 	printf("blocksize=%"PRIu32"\n", disc.blocksize);
 	printf("blocks=%"PRIu32"\n", disc.blocks);

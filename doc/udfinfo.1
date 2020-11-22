@@ -158,6 +158,32 @@ UDF File Set Identifier stored in UDF File Set Descriptor
 .I fullvsid
 UDF Volume Set Identifier stored in UDF Primary Volume Descriptor
 .TP
+.I owner
+UDF Logical Volume Info1 stored in UDF Implementation Use Volume Descriptor,
+represents Owner name, person creating the medium or filesystem
+(available since udfinfo 2.3)
+.TP
+.I organization
+UDF Logical Volume Info2 stored in UDF Implementation Use Volume Descriptor,
+represents Organization name responsible for creating the medium or filesystem
+(available since udfinfo 2.3)
+.TP
+.I contact
+UDF Logical Volume Info3 stored in UDF Implementation Use Volume Descriptor,
+represents Contact information for the medium or filesystem
+(available since udfinfo 2.3)
+.TP
+.I appid
+UDF Application Identifier stored in UDF Primary Volume Descriptor, identifies
+application that created medium or filesystem
+(available since udfinfo 2.3)
+.TP
+.I impid
+UDF Developer Identifier stored in UDF Implementation Identifier of UDF Primary
+Volume Descriptor, uniquely identifies the implementation which created medium
+or filesystem
+(available since udfinfo 2.3)
+.TP
 .I winserialnum
 Windows-specific Volume Serial Number
 .TP
