@@ -51,6 +51,11 @@ static struct option long_options[] = {
 	{ "vsid", required_argument, NULL, OPT_VSID },
 	{ "fsid", required_argument, NULL, OPT_FSID },
 	{ "fullvsid", required_argument, NULL, OPT_FULLVSID },
+	{ "owner", required_argument, NULL, OPT_OWNER },
+	{ "organization", required_argument, NULL, OPT_ORG },
+	{ "contact", required_argument, NULL, OPT_CONTACT },
+	{ "appid", required_argument, NULL, OPT_APPID },
+	{ "impid", required_argument, NULL, OPT_IMPID },
 	{ "locale", no_argument, NULL, OPT_LOCALE },
 	{ "u8", no_argument, NULL, OPT_UNICODE8 },
 	{ "u16", no_argument, NULL, OPT_UNICODE16 },
@@ -85,6 +90,11 @@ static void usage(void)
 		"\t--vsid=            New 17.-127. character of Volume Set Identifier\n"
 		"\t--fsid=            New File Set Identifier\n"
 		"\t--fullvsid=        New full Volume Set Identifier, overwrite --uuid and --vsid\n"
+		"\t--owner=           New Owner name\n"
+		"\t--organization=    New Organization name\n"
+		"\t--contact=         New Contact information\n"
+		"\t--appid=           New Application Identifier\n"
+		"\t--impid=           New Developer Identifier for Implementation Identifier\n"
 		"\n"
 		"Encoding Options:\n"
 		"\t--locale           Identifier options are encoded according to current locale (default)\n"
@@ -160,7 +170,7 @@ static void process_vid_lvid_arg(struct udf_disc *disc, int option, const char *
 	}
 }
 
-void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, int *force, dstring *new_lvid, dstring *new_vid, dstring *new_fsid, dstring *new_fullvsid, char *new_uuid, dstring *new_vsid)
+void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, int *force, dstring *new_lvid, dstring *new_vid, dstring *new_fsid, dstring *new_fullvsid, char *new_uuid, dstring *new_vsid, dstring *new_owner, dstring *new_org, dstring *new_contact, char *new_appid, char *new_impid)
 {
 	int failed;
 	int ret;
@@ -246,6 +256,58 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, 
 				{
 					fprintf(stderr, "%s: Error: Option --fsid is too long\n", appname);
 					exit(1);
+				}
+				break;
+			case OPT_OWNER:
+				if (encode_string(disc, new_owner, optarg, 36) == (size_t)-1)
+				{
+					fprintf(stderr, "%s: Error: Option --owner is too long\n", appname);
+					exit(1);
+				}
+				break;
+			case OPT_ORG:
+				if (encode_string(disc, new_org, optarg, 36) == (size_t)-1)
+				{
+					fprintf(stderr, "%s: Error: Option --organization is too long\n", appname);
+					exit(1);
+				}
+				break;
+			case OPT_CONTACT:
+				if (encode_string(disc, new_contact, optarg, 36) == (size_t)-1)
+				{
+					fprintf(stderr, "%s: Error: Option --contact is too long\n", appname);
+					exit(1);
+				}
+				break;
+			case OPT_APPID:
+			case OPT_IMPID:
+				len = strlen(optarg);
+				if (len > 23)
+				{
+					fprintf(stderr, "%s: Error: Option --%s is too long\n", appname, ret == OPT_APPID ? "appid" : "impid");
+					exit(1);
+				}
+				if (len > 0)
+				{
+					if (len < 2)
+					{
+						fprintf(stderr, "%s: Error: Option --%s is too short\n", appname, ret == OPT_APPID ? "appid" : "impid");
+						exit(1);
+					}
+					if (optarg[0] != '*')
+					{
+						fprintf(stderr, "%s: Error: Option --%s does not start with '*'\n", appname, ret == OPT_APPID ? "appid" : "impid");
+						exit(1);
+					}
+				}
+				memcpy(ret == OPT_APPID ? new_appid : new_impid, optarg, len < 23 ? len+1 : 23);
+				for (; len > 0; len--)
+				{
+					if ((unsigned char)optarg[len-1] > 127)
+					{
+						fprintf(stderr, "%s: Error: Option --%s is not 7bit ASCII string\n", appname, ret == OPT_APPID ? "appid" : "impid");
+						exit(1);
+					}
 				}
 				break;
 			case OPT_UNICODE8:

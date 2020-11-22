@@ -155,6 +155,38 @@ Specify the new File Set Identifier.
 Specify the new Volume Set identifier. Overwrite previous \fB\-\-uuid\fP and
 \fB\-\-vsid\fP options. See section \fBUDF LABEL AND UUID\fP.
 
+.TP
+.BI \-\-owner= " new\-owner\-name "
+Specify the new Owner name, person who created the medium or filesystem. It is
+stored in UDF Logical Volume Info1, part of UDF Implementation Use Volume
+Descriptor. (Option available since udflabel 2.3)
+
+.TP
+.BI \-\-organization= " new\-organization\-name "
+Specify the new Organization name responsible for creating the medium or
+filesystem. It is stored in UDF Logical Volume Info2, part of UDF Implementation
+Use Volume Descriptor. (Option available since udflabel 2.3)
+
+.TP
+.BI \-\-contact= " new\-contact\-information "
+Specify the new Contact information for the medium or filesystem. It is stored
+in UDF Logical Volume Info3, part of UDF Implementation Use Volume Descriptor. \
+(Option available since udflabel 2.3)
+
+.TP
+.BI \-\-appid= " new\-application\-identifier "
+Specify the new Application Identifier which identifies application that created
+medium or filesystem. It is stored in UDF Primary Volume Descriptor. This
+identifier can be empty or must start with \fI*\fP and contain only 7bit ASCII
+characters. (Option available since udflabel 2.3)
+
+.TP
+.BI \-\-impid= " new\-developer\-identifier "
+Specify the new Developer Identifier for Implementation Identifier. It is unique
+identification of the implementation which created medium or filesystem. It is
+stored in UDF Primary Volume Descriptor. This identifier must start with \fI*\fP
+and contain only 7bit ASCII characters. (Option available since udflabel 2.3)
+
 .SS ENCODING OPTIONS
 .TP
 .B \-\-locale

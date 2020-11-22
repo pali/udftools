@@ -198,6 +198,11 @@ int main(int argc, char *argv[])
 	dstring new_fullvsid[128];
 	char new_uuid[17];
 	dstring new_vsid[128];
+	dstring new_owner[36];
+	dstring new_org[36];
+	dstring new_contact[36];
+	char new_appid[23];
+	char new_impid[23];
 	int force = 0;
 	int update = 0;
 	int update_pvd = 0;
@@ -236,6 +241,11 @@ int main(int argc, char *argv[])
 	memset(new_fsid, 0, sizeof(new_fsid));
 	memset(new_fullvsid, 0, sizeof(new_fullvsid));
 	memset(new_vsid, 0, sizeof(new_vsid));
+	memset(new_owner, 0, sizeof(new_owner));
+	memset(new_org, 0, sizeof(new_org));
+	memset(new_contact, 0, sizeof(new_contact));
+	memset(new_appid, 0, sizeof(new_appid));
+	memset(new_impid, 0, sizeof(new_impid));
 
 	new_lvid[0] = 0xFF;
 	new_vid[0] = 0xFF;
@@ -243,8 +253,13 @@ int main(int argc, char *argv[])
 	new_fullvsid[0] = 0xFF;
 	new_uuid[0] = 0;
 	new_vsid[0] = 0xFF;
+	new_owner[0] = 0xFF;
+	new_org[0] = 0xFF;
+	new_contact[0] = 0xFF;
+	new_appid[0] = (char)-1;
+	new_impid[0] = (char)-1;
 
-	parse_args(argc, argv, &disc, &filename, &force, new_lvid, new_vid, new_fsid, new_fullvsid, new_uuid, new_vsid);
+	parse_args(argc, argv, &disc, &filename, &force, new_lvid, new_vid, new_fsid, new_fullvsid, new_uuid, new_vsid, new_owner, new_org, new_contact, new_appid, new_impid);
 
 	if (disc.flags & FLAG_NO_WRITE)
 		printf("Note: Not writing to device, just simulating\n");
@@ -262,7 +277,10 @@ int main(int argc, char *argv[])
 	if (new_fsid[0] != 0xFF)
 		update_fsd = 1;
 
-	if (new_uuid[0] || new_vsid[0] != 0xFF || new_fullvsid[0] != 0xFF)
+	if (new_owner[0] != 0xFF || new_org[0] != 0xFF || new_contact[0] != 0xFF)
+		update_iuvd = 1;
+
+	if (new_uuid[0] || new_vsid[0] != 0xFF || new_fullvsid[0] != 0xFF || new_appid[0] != (char)-1 || new_impid[0] != (char)-1)
 		update_pvd = 1;
 
 	if (update_pvd || update_lvd || update_iuvd || update_fsd)
@@ -659,6 +677,74 @@ int main(int argc, char *argv[])
 		disc.udf_fsd->fileSetCharSet.charSetType = UDF_CHAR_SET_TYPE;
 		strcpy((char *)disc.udf_fsd->fileSetCharSet.charSetInfo, UDF_CHAR_SET_INFO);
 		memcpy(disc.udf_fsd->fileSetIdent, new_fsid, sizeof(new_fsid));
+	}
+
+	if (new_owner[0] != 0xFF)
+	{
+		memset(buf, 0, sizeof(buf));
+		decode_string(&disc, new_owner, buf, sizeof(new_owner), sizeof(buf));
+		printf("Using new Owner name: %s\n", buf);
+		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[0]->impUse;
+		memset(&iuvdiu->LVICharset, 0, sizeof(iuvdiu->LVICharset));
+		iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)iuvdiu->LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
+		memcpy(iuvdiu->LVInfo1, new_owner, sizeof(new_owner));
+		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[1]->impUse;
+		memset(&iuvdiu->LVICharset, 0, sizeof(iuvdiu->LVICharset));
+		iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)iuvdiu->LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
+		memcpy(iuvdiu->LVInfo1, new_owner, sizeof(new_owner));
+	}
+
+	if (new_org[0] != 0xFF)
+	{
+		memset(buf, 0, sizeof(buf));
+		decode_string(&disc, new_org, buf, sizeof(new_org), sizeof(buf));
+		printf("Using new Oranization name: %s\n", buf);
+		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[0]->impUse;
+		memset(&iuvdiu->LVICharset, 0, sizeof(iuvdiu->LVICharset));
+		iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)iuvdiu->LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
+		memcpy(iuvdiu->LVInfo2, new_org, sizeof(new_org));
+		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[1]->impUse;
+		memset(&iuvdiu->LVICharset, 0, sizeof(iuvdiu->LVICharset));
+		iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)iuvdiu->LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
+		memcpy(iuvdiu->LVInfo2, new_org, sizeof(new_org));
+	}
+
+	if (new_contact[0] != 0xFF)
+	{
+		memset(buf, 0, sizeof(buf));
+		decode_string(&disc, new_contact, buf, sizeof(new_contact), sizeof(buf));
+		printf("Using new Contact information: %s\n", buf);
+		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[0]->impUse;
+		memset(&iuvdiu->LVICharset, 0, sizeof(iuvdiu->LVICharset));
+		iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)iuvdiu->LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
+		memcpy(iuvdiu->LVInfo3, new_contact, sizeof(new_contact));
+		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[1]->impUse;
+		memset(&iuvdiu->LVICharset, 0, sizeof(iuvdiu->LVICharset));
+		iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
+		strcpy((char *)iuvdiu->LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
+		memcpy(iuvdiu->LVInfo3, new_contact, sizeof(new_contact));
+	}
+
+	if (new_appid[0] != (char)-1)
+	{
+		printf("Using new Application Identifier: %.*s\n", (int)sizeof(new_appid), new_appid);
+		memset(&disc.udf_pvd[0]->appIdent, 0, sizeof(disc.udf_pvd[0]->appIdent));
+		memset(&disc.udf_pvd[1]->appIdent, 0, sizeof(disc.udf_pvd[1]->appIdent));
+		memcpy(disc.udf_pvd[0]->appIdent.ident, new_appid, sizeof(new_appid));
+		memcpy(disc.udf_pvd[1]->appIdent.ident, new_appid, sizeof(new_appid));
+	}
+
+	if (new_impid[0] != (char)-1)
+	{
+		printf("Using new Implementation Identifier: %.*s\n", (int)sizeof(new_impid), new_impid);
+		/* Do not erase identSuffix which contains Operating System Class and Id */
+		memcpy(disc.udf_pvd[0]->impIdent.ident, new_impid, sizeof(new_impid));
+		memcpy(disc.udf_pvd[1]->impIdent.ident, new_impid, sizeof(new_impid));
 	}
 
 	if (new_fullvsid[0] != 0xFF)

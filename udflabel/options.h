@@ -21,7 +21,7 @@
 
 struct udf_disc;
 
-void parse_args(int, char *[], struct udf_disc *, char **, int *, dstring *, dstring *, dstring *, dstring *, char *, dstring *);
+void parse_args(int, char *[], struct udf_disc *, char **, int *, dstring *, dstring *, dstring *, dstring *, char *, dstring *, dstring *, dstring *, dstring *, char *, char *);
 
 /*
  * Command line option token values.
@@ -48,5 +48,10 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, dstring *, dst
 #define OPT_FULLVSID	0x2007
 #define OPT_START_BLOCK	0x2008
 #define OPT_LAST_BLOCK	0x2009
+#define OPT_OWNER	0x200A
+#define OPT_ORG		0x200B
+#define OPT_CONTACT	0x200C
+#define OPT_APPID	0x200D
+#define OPT_IMPID	0x200E
 
 #endif /* OPTIONS_H */
