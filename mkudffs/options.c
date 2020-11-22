@@ -57,6 +57,9 @@ static struct option long_options[] = {
 	{ "vsid", required_argument, NULL, OPT_VSID },
 	{ "fsid", required_argument, NULL, OPT_FSID },
 	{ "fullvsid", required_argument, NULL, OPT_FULLVSID },
+	{ "owner", required_argument, NULL, OPT_OWNER },
+	{ "organization", required_argument, NULL, OPT_ORG },
+	{ "contact", required_argument, NULL, OPT_CONTACT },
 	{ "uid", required_argument, NULL, OPT_UID },
 	{ "gid", required_argument, NULL, OPT_GID },
 	{ "mode", required_argument, NULL, OPT_MODE },
@@ -102,6 +105,9 @@ void usage(void)
 		"\t--vsid=            17.-127. character of Volume Set Identifier (default: LinuxUDF)\n"
 		"\t--fsid=            File Set Identifier (default: LinuxUDF)\n"
 		"\t--fullvsid=        Full Volume Set Identifier, overwrite --uuid and --vsid\n"
+		"\t--owner=           Owner name, person creating the medium or filesystem (default: empty)\n"
+		"\t--organization=    Organization name responsible for creating the medium or filesystem (default: empty)\n"
+		"\t--contact=         Contact information for the medium or filesystem (default: empty)\n"
 		"\t--uid=             Uid of the root directory (default: 0)\n"
 		"\t--gid=             Gid of the root directory (default: 0)\n"
 		"\t--mode=            Permissions (octal mode bits) of the root directory (default: 0755)\n"
@@ -424,6 +430,36 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				if (encode_string(disc, disc->udf_fsd->fileSetIdent, optarg, 32) == (size_t)-1)
 				{
 					fprintf(stderr, "%s: Error: Option --fsid is too long\n", appname);
+					exit(1);
+				}
+				break;
+			}
+			case OPT_OWNER:
+			{
+				struct impUseVolDescImpUse *iuvdiu = (struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse;
+				if (encode_string(disc, iuvdiu->LVInfo1, optarg, sizeof(iuvdiu->LVInfo1)) == (size_t)-1)
+				{
+					fprintf(stderr, "%s: Error: Option --owner is too long\n", appname);
+					exit(1);
+				}
+				break;
+			}
+			case OPT_ORG:
+			{
+				struct impUseVolDescImpUse *iuvdiu = (struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse;
+				if (encode_string(disc, iuvdiu->LVInfo2, optarg, sizeof(iuvdiu->LVInfo2)) == (size_t)-1)
+				{
+					fprintf(stderr, "%s: Error: Option --organization is too long\n", appname);
+					exit(1);
+				}
+				break;
+			}
+			case OPT_CONTACT:
+			{
+				struct impUseVolDescImpUse *iuvdiu = (struct impUseVolDescImpUse *)disc->udf_iuvd[0]->impUse;
+				if (encode_string(disc, iuvdiu->LVInfo3, optarg, sizeof(iuvdiu->LVInfo3)) == (size_t)-1)
+				{
+					fprintf(stderr, "%s: Error: Option --contact is too long\n", appname);
 					exit(1);
 				}
 				break;

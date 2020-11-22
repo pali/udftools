@@ -162,6 +162,24 @@ Specify the full \fIVolume Set Identifier\fP. Overwrite previous \fB\-\-uuid\fP
 and \fB\-\-vsid\fP options. (Option available since mkudffs 1.1)
 
 .TP
+.BI \-\-owner= " owner\-name "
+Specify the Owner name, person creating the medium or filesystem. It is stored
+in UDF Logical Volume Info1, part of UDF Implementation Use Volume Descriptor. \
+(Option available since mkudffs 2.3)
+
+.TP
+.BI \-\-organization= " organization\-name "
+Specify the Organization name responsible for creating the medium or
+filesystem. It is stored in UDF Logical Volume Info2, part of UDF Implementation
+Use Volume Descriptor. (Option available since mkudffs 2.3)
+
+.TP
+.BI \-\-contact= " contact\-information "
+Specify the Contact information for the medium or filesystem. It is stored
+in UDF Logical Volume Info3, part of UDF Implementation Use Volume Descriptor. \
+(Option available since mkudffs 2.3)
+
+.TP
 .BI \-\-uid= " uid "
 Specify the uid of the root (/) directory. If omitted, \fBmkudffs\fP uid is
 \fI0\fP. Special value \fI\-1\fP means invalid or not specified uid. (Option

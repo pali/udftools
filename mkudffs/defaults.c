@@ -182,9 +182,9 @@ struct impUseVolDescImpUse default_iuvdiu =
 		.charSetInfo = UDF_CHAR_SET_INFO
 	},
 	.logicalVolIdent = "\x08" "LinuxUDF",
-	.LVInfo1 = "\x08" "Linux mkudffs " PACKAGE_VERSION,
-	.LVInfo2 = "\x08" "Linux udftools " PACKAGE_VERSION,
-	.LVInfo3 = "\x08" PACKAGE_URL,
+	.LVInfo1 = "\x00" "",
+	.LVInfo2 = "\x00" "",
+	.LVInfo3 = "\x00" "",
 	.impIdent =
 	{
 		.ident = UDF_ID_DEVELOPER,
