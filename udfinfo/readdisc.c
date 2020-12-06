@@ -358,7 +358,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 		memset(&multisession, 0, sizeof(multisession));
 		multisession.addr_format = CDROM_LBA;
 		if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, CDROMMULTISESSION, &multisession) == 0 && multisession.xa_flag)
-			start = multisession.addr.lba * (disc->blkssz ? disc->blkssz : 2048);
+			start = (uint64_t)multisession.addr.lba * (disc->blkssz ? disc->blkssz : 2048);
 		if (!start)
 			disc->start_block = 0;
 	}
@@ -368,7 +368,7 @@ static int detect_udf(int fd, struct udf_disc *disc)
 		if (disc->vat_block)
 			disc->last_block = disc->vat_block;
 		else if (fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, CDROM_LAST_WRITTEN, &last_written) == 0)
-			last = last_written * (disc->blkssz ? disc->blkssz : 2048);
+			last = (uint64_t)last_written * (disc->blkssz ? disc->blkssz : 2048);
 		else
 			last = (uint64_t)-1;
 	}
