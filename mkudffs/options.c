@@ -970,6 +970,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 		dis->domainFlags |= DOMAIN_FLAGS_SOFT_WRITE_PROTECT;
 	}
 
+	if (disc->start_block && (disc->flags & FLAG_BOOTAREA_MBR))
+	{
+		fprintf(stderr, "%s: Error: Option --startblock cannot be used together with option --bootarea=mbr\n", appname);
+		exit(1);
+	}
+
 	if (closed_vat && !use_vat)
 	{
 		fprintf(stderr, "%s: Error: Option --closed cannot be used without --vat or --media-type cdr/dvdr/bdr\n", appname);

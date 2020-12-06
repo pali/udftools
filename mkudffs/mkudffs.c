@@ -635,7 +635,13 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	if (!mbr->disk_signature)
 		mbr->disk_signature = cpu_to_le32(randu32());
 
-	lba_blocks = ((uint64_t)(disc->blocks - disc->start_block) * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
+	if (disc->start_block)
+	{
+		fprintf(stderr, "%s: Error: MBR was requested on non-zero sector\n", appname);
+		exit(1);
+	}
+
+	lba_blocks = ((uint64_t)disc->blocks * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
 
 	if (fd >= 0 && fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, HDIO_GETGEO, &geometry) == 0)
 	{
