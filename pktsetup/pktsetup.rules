@@ -1,3 +1,25 @@
-# Create and remove packet writing device for each optical block device
-ACTION=="add", SUBSYSTEM=="block", ENV{ID_CDROM}=="1", RUN+="/usr/sbin/pktsetup %E{MAJOR}:%E{MINOR}"
-ACTION=="remove", SUBSYSTEM=="block", ENV{ID_CDROM}=="1", RUN+="/usr/sbin/pktsetup -d %E{MAJOR}:%E{MINOR}"
+SUBSYSTEM!="block", GOTO="pktsetup_end"
+ENV{ID_CDROM}!="1", GOTO="pktsetup_end"
+
+# Remove packet writing mapping when optical drive was removed or when media was removed or eject was requested
+ACTION=="remove", GOTO="pktsetup_remove"
+ENV{ID_CDROM_MEDIA}!="?*", GOTO="pktsetup_remove"
+ENV{DISK_EJECT_REQUEST}=="1", GOTO="pktsetup_remove"
+
+# Kernel pktcdvd.ko driver supports write operations only for CD-RW, DVD+RW, DVD-RW and DVD-RAM
+ENV{ID_CDROM_MEDIA_CD_RW}=="1", GOTO="pktsetup_add"
+ENV{ID_CDROM_MEDIA_DVD_PLUS_RW}=="1", GOTO="pktsetup_add"
+ENV{ID_CDROM_MEDIA_DVD_RW}=="1", GOTO="pktsetup_add"
+ENV{ID_CDROM_MEDIA_DVD_RAM}=="1", GOTO="pktsetup_add"
+
+GOTO="pktsetup_end"
+
+LABEL="pktsetup_add"
+RUN+="/usr/sbin/pktsetup -i %E{MAJOR}:%E{MINOR}"
+GOTO="pktsetup_end"
+
+LABEL="pktsetup_remove"
+RUN+="/usr/sbin/pktsetup -i -d %E{MAJOR}:%E{MINOR}"
+GOTO="pktsetup_end"
+
+LABEL="pktsetup_end"
