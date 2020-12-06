@@ -224,6 +224,11 @@ put MBR table with one partition which starts at sector 0 (includes MBR itself)
 and spans whole disk device, needed only for non-removable hard disks used on
 Microsoft Windows systems (default for \fIhd\fP media type on non-removable hard
 disk without partitions), see section \fBWHOLE DISK VS PARTITION\fP
+.TP
+.IB mbr: "sec-size"
+same as \fImbr\fP but explicitly set MBR sector size to \fIsec-size\fP value,
+default \fIsec-size\fP is device logical block (sector) size with fallback to
+size \fI512\fP bytes
 .RE
 
 .RS

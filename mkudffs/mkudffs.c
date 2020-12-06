@@ -59,7 +59,6 @@ void udf_init_disc(struct udf_disc *disc)
 
 	disc->blocksize = 2048;
 	disc->flags = FLAG_LOCALE;
-	disc->blkssz = 512;
 	disc->mode = 0755;
 
 	if (gettimeofday(&tv, NULL) != 0 || tv.tv_sec == (time_t)-1 || (tm = localtime(&tv.tv_sec)) == NULL || tm->tm_year < 1-1900 || tm->tm_year > 9999-1900)
@@ -618,6 +617,7 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 	struct hd_geometry geometry;
 	unsigned int heads, sectors;
 	struct mbr_partition *mbr_partition;
+	unsigned int blkssz = disc->blkssz ? disc->blkssz : 512;
 	int fd = disc->write_data ? (*(int *)disc->write_data) : -1;
 
 	memcpy(mbr, &default_mbr, sizeof(struct mbr));
@@ -641,7 +641,7 @@ static void fill_mbr(struct udf_disc *disc, struct mbr *mbr, uint32_t start)
 		exit(1);
 	}
 
-	lba_blocks = ((uint64_t)disc->blocks * disc->blocksize + disc->blkssz - 1) / disc->blkssz;
+	lba_blocks = ((uint64_t)disc->blocks * disc->blocksize + blkssz - 1) / blkssz;
 
 	if (fd >= 0 && fstat(fd, &st) == 0 && S_ISBLK(st.st_mode) && ioctl(fd, HDIO_GETGEO, &geometry) == 0)
 	{

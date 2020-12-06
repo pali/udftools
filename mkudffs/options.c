@@ -518,6 +518,16 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 					disc->flags |= FLAG_BOOTAREA_ERASE;
 				else if (!strcmp(optarg, "mbr"))
 					disc->flags |= FLAG_BOOTAREA_MBR;
+				else if (!strncmp(optarg, "mbr:", 4))
+				{
+					disc->flags |= FLAG_BOOTAREA_MBR;
+					disc->blkssz = strtou16(optarg+4, 0, &failed);
+					if (failed || disc->blkssz < 512 || disc->blkssz > 32768 || (disc->blkssz & (disc->blkssz - 1)))
+					{
+						fprintf(stderr, "%s: Error: Invalid value for option --bootarea=mbr:\n", appname);
+						exit(1);
+					}
+				}
 				else
 				{
 					fprintf(stderr, "%s: Error: Invalid value for option --bootarea\n", appname);
