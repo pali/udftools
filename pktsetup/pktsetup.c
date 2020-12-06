@@ -145,11 +145,11 @@ static int usage(void)
 	printf("  pktsetup -d /dev/pktcdvd0          tear down device\n");
 	printf("For pktcdvd >= 0.2.0:\n");
 #endif
-	printf("  pktsetup [dev_name] /dev/cdrom     setup device\n");
-	printf("  pktsetup [dev_name] major:minor    setup device\n");
-	printf("  pktsetup -d dev_name               tear down device\n");
-	printf("  pktsetup -d major:minor            tear down device\n");
-	printf("  pktsetup -s                        show device mappings\n");
+	printf("  pktsetup [-i] [dev_name] /dev/cdrom     setup device\n");
+	printf("  pktsetup [-i] [dev_name] major:minor    setup device\n");
+	printf("  pktsetup [-i] -d dev_name               tear down device\n");
+	printf("  pktsetup [-i] -d major:minor            tear down device\n");
+	printf("  pktsetup -s                             show device mappings\n");
 	return 1;
 }
 
@@ -268,7 +268,7 @@ static dev_t find_pkdev_for_dev(int ctl_fd, dev_t blk_dev)
 	return 0;
 }
 
-static int setup_dev_chardev(char *pkt_device, char *device, int rem)
+static int setup_dev_chardev(char *pkt_device, char *device, int rem, int ign)
 {
 	struct pkt_ctrl_command c;
 	struct stat stat_buf;
@@ -319,6 +319,10 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 			fprintf(stderr, "pktsetup: Error: Device node '%s' already in use\n", pkt_device);
 			goto out_close;
 		}
+		if (ign && find_pkdev_for_dev(ctl_fd, c.dev)) {
+			ret = 0;
+			goto out_close;
+		}
 		if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
 			fprintf(stderr, "pktsetup: Error: Can't setup packet device for cd-rom device '%s': %s\n", device, strerror(errno));
 			goto out_close;
@@ -342,6 +346,10 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 		} else if (sscanf(pkt_device, "%d:%d", &major, &minor) == 2) {
 			remove_node = 0;
 		} else {
+			if (ign) {
+				ret = 0;
+				goto out_close;
+			}
 			fprintf(stderr, "pktsetup: Error: Can't find major/minor numbers for packet device '%s'\n", pkt_device);
 			goto out_close;
 		}
@@ -354,8 +362,13 @@ static int setup_dev_chardev(char *pkt_device, char *device, int rem)
 				goto out_error;
 			remove_node = 0;
 			c.pkt_dev = find_pkdev_for_dev(ctl_fd, MKDEV(major, minor));
-			if (!c.pkt_dev)
+			if (!c.pkt_dev) {
+				if (ign) {
+					ret = 0;
+					goto out_close;
+				}
 				goto out_error;
+			}
 			if (ioctl(ctl_fd, PACKET_CTRL_CMD, &c) < 0) {
 				cur_errno = errno;
 out_error:
@@ -421,17 +434,20 @@ out_close:
 
 int main(int argc, char **argv)
 {
-	int rem = 0, c, old_api;
+	int rem = 0, ign = 0, c, old_api;
 	char *pkt_device;
 	char *device;
 
 	if (argc == 1)
 		return usage();
 
-	while ((c = getopt(argc, argv, "ds?")) != EOF) {
+	while ((c = getopt(argc, argv, "dis?")) != EOF) {
 		switch (c) {
 			case 'd':
 				rem = 1;
+				break;
+			case 'i':
+				ign = 1;
 				break;
 			case 's':
 				return show_mappings();
@@ -456,5 +472,5 @@ int main(int argc, char **argv)
 	if (old_api)
 		return setup_dev(pkt_device, device, rem);
 	else
-		return setup_dev_chardev(pkt_device, device, rem);
+		return setup_dev_chardev(pkt_device, device, rem, ign);
 }
