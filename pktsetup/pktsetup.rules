@@ -1,3 +1,4 @@
+# Skip non-optical drives
 SUBSYSTEM!="block", GOTO="pktsetup_end"
 ENV{ID_CDROM}!="1", GOTO="pktsetup_end"
 
@@ -7,19 +8,25 @@ ENV{ID_CDROM_MEDIA}!="?*", GOTO="pktsetup_remove"
 ENV{DISK_EJECT_REQUEST}=="1", GOTO="pktsetup_remove"
 
 # Kernel pktcdvd.ko driver supports write operations only for CD-RW, DVD+RW, DVD-RW and DVD-RAM
-ENV{ID_CDROM_MEDIA_CD_RW}=="1", GOTO="pktsetup_add"
-ENV{ID_CDROM_MEDIA_DVD_PLUS_RW}=="1", GOTO="pktsetup_add"
-ENV{ID_CDROM_MEDIA_DVD_RW}=="1", GOTO="pktsetup_add"
-ENV{ID_CDROM_MEDIA_DVD_RAM}=="1", GOTO="pktsetup_add"
+ENV{ID_CDROM_MEDIA_CD_RW}=="1", GOTO="pktsetup_check"
+ENV{ID_CDROM_MEDIA_DVD_PLUS_RW}=="1", GOTO="pktsetup_check"
+ENV{ID_CDROM_MEDIA_DVD_RW}=="1", GOTO="pktsetup_check"
+ENV{ID_CDROM_MEDIA_DVD_RAM}=="1", GOTO="pktsetup_check"
 
-GOTO="pktsetup_end"
+# Remove packet writing mapping for other unsupported media types
+GOTO="pktsetup_remove"
+
+LABEL="pktsetup_check"
+PROGRAM="/usr/sbin/pktcdvd-check -q $devnode", GOTO="pktsetup_add"
+# Remove packet writing mapping for media which does not pass pktcdvd check
+GOTO="pktsetup_remove"
 
 LABEL="pktsetup_add"
-RUN+="/usr/sbin/pktsetup -i %E{MAJOR}:%E{MINOR}"
+RUN+="/usr/sbin/pktsetup -i $major:$minor"
 GOTO="pktsetup_end"
 
 LABEL="pktsetup_remove"
-RUN+="/usr/sbin/pktsetup -i -d %E{MAJOR}:%E{MINOR}"
+RUN+="/usr/sbin/pktsetup -i -d $major:$minor"
 GOTO="pktsetup_end"
 
 LABEL="pktsetup_end"

@@ -1,5 +1,6 @@
-sbin_PROGRAMS = pktsetup
+sbin_PROGRAMS = pktsetup pktcdvd-check
 pktsetup_SOURCES = pktsetup.c
+pktcdvd_check_SOURCES = pktcdvd-check.c
 EXTRA_DIST = pktsetup.rules
 
 if UDEVDIR
