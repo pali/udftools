@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
 	int quiet;
 	char *device;
 	struct stat st;
+	int capability;
 	int mmc_profile;
 	unsigned char inquiry[36];
 	disc_information discinfo;
@@ -88,6 +89,22 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	/* CDROM_GET_CAPABILITY is not supported by pktcdvd devices therefore this prevent marking pktcdvd devices as compatible */
+	capability = ioctl(fd, CDROM_GET_CAPABILITY, NULL);
+	if (capability < 0) {
+		if (!quiet)
+			fprintf(stderr, "Error: Filepath '%s' is not optical device\n", device);
+		close(fd);
+		return 1;
+	}
+
+	if (!(capability & CDC_GENERIC_PACKET)) {
+		if (!quiet)
+			printf("Optical device '%s' does not support sending generic packets\n", device);
+		close(fd);
+		return 1;
+	}
+
 	memset(&cgc, 0, sizeof(cgc));
 	memset(&sense, 0, sizeof(sense));
 	memset(&features, 0, sizeof(features));
@@ -102,23 +119,15 @@ int main(int argc, char *argv[]) {
 
 	ret = ioctl(fd, CDROM_SEND_PACKET, &cgc);
 	if (ret != 0) {
-		if (!quiet) {
-			/* Devices which do not support CDROM_SEND_PACKET returns one of these errno codes */
-			if (errno == EINVAL || errno == ENOTTY || errno == ENOSYS)
-				fprintf(stderr, "Error: Filepath '%s' is not optical device\n", device);
-			else if (errno == EIO)
-				fprintf(stderr, "Error: INQUIRY with size %hhu on device '%s' failed: %s (0x%02X,0x%02X,0x%02X)\n", cgc.cmd[4], device, strerror(errno), sense.sense_key, sense.asc, sense.ascq);
-			else
-				fprintf(stderr, "Error: Cannot send INQUIRY to device '%s': %s\n", device, strerror(errno));
-		}
+		if (!quiet)
+			fprintf(stderr, "Error: INQUIRY with size %hhu on device '%s' failed: %s (0x%02X,0x%02X,0x%02X)\n", cgc.cmd[4], device, strerror(errno), sense.sense_key, sense.asc, sense.ascq);
 		close(fd);
 		return 1;
 	}
 
-	/* INQUIRY via CDROM_SEND_PACKET is supported by every kernel SCSI device (also emulated), including SATA and USB hard disks, so exclude non-optical device types */
-	if ((inquiry[0] & 0x1F) != 0x04 && (inquiry[0] & 0x1F) != 0x05) {
+	if ((inquiry[0] & 0x1F) != 0x05) {
 		if (!quiet)
-			fprintf(stderr, "Error: Filepath '%s' is not optical device\n", device);
+			printf("Optical device '%s' is not MMC-compatible\n", device);
 		close(fd);
 		return 1;
 	}
