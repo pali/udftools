@@ -760,7 +760,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 			cgc.quiet = 1;
 			cgc.timeout = 500;
 
-			if (ioctl(fd, CDROM_SEND_PACKET, &cgc) >= 0)
+			if (ioctl(fd, CDROM_SEND_PACKET, &cgc) == 0)
 			{
 				mmc_profile = be16_to_cpu(features.curr_profile);
 			}
