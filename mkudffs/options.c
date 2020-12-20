@@ -867,9 +867,12 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				fprintf(stderr, "%s: Error: Detected unsupported optical disc, use --media-type option to specify media type\n", appname);
 				exit(1);
 
-			case 0x00: /* Unknown */
-			case 0x01: /* Non-removable */
-			case 0x02: /* Removable */
+			case 0x01: /* Non-removable Re-writable disk, Random Writable */
+			case 0x02: /* Removable Re-writable disk, Random Writable */
+				printf("Detected optical disc with random access write support\n");
+				media = MEDIA_TYPE_HD; /* hd media type is the best match for random access write support */
+				break;
+
 			default:
 				fprintf(stderr, "%s: Error: Detected unknown optical disc, use --media-type option to specify media type\n", appname);
 				exit(1);
