@@ -37,6 +37,12 @@
  * the device for completion.
  */
 #define USE_IMMED 1
+/*
+ * With FORMAT UNIT Format Code 1 on 12x CD-RW, LG BD-RE BH16NS40 gets stuck
+ * if not the Immed bit is set. So even when setting USE_IMMED to 0, better
+ * let this macro stay 1, in order to prevent such a mishap.
+ */
+#define USE_IMMED_WITH_FORMAT_1 1
 
 #define PAGE_CURRENT	0
 #define PAGE_CHANGE	1
@@ -203,7 +209,7 @@ int sync_cache(int);
 int write_blocks(int, unsigned char *, int, int);
 int write_file(int, struct cdrw_disc *);
 int blank_disc(int, int);
-int format_disc(int, struct cdrw_disc *);
+int format_disc(int, struct cdrw_disc *, write_params_t *);
 int read_disc_info(int, disc_info_t *);
 int read_track_info(int, track_info_t *, int);
 int reserve_track(int, struct cdrw_disc *);

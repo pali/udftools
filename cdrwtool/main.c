@@ -117,7 +117,8 @@ int write_func(struct udf_disc *disc, struct udf_extent *ext)
 	return 0;
 }
 
-int quick_setup(int fd, struct cdrw_disc *disc, const char *device)
+int quick_setup(int fd, struct cdrw_disc *disc, const char *device,
+		write_params_t *w)
 {
 	disc_info_t di;
 	track_info_t ti;
@@ -169,7 +170,7 @@ int quick_setup(int fd, struct cdrw_disc *disc, const char *device)
 		if (!disc->offset)
 			disc->offset = blocks;
 		printf("Formatting track\n");
-		if ((ret = format_disc(fd, disc)))
+		if ((ret = format_disc(fd, disc, w)))
 			return ret;
 		add_type2_sparable_partition(&disc->udf_disc, 0, 2, 32);
 		disc->udf_disc.udf_pd[0]->accessType = cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE);
@@ -332,7 +333,7 @@ int main(int argc, char *argv[])
 
 	if (disc.quick_setup)
 	{
-		ret = quick_setup(fd, &disc, filename);
+		ret = quick_setup(fd, &disc, filename, &w);
 		cdrom_close(fd);
 		return ret;
 	}
@@ -346,7 +347,7 @@ int main(int argc, char *argv[])
 
 	if (disc.format)
 	{
-		ret = format_disc(fd, &disc);
+		ret = format_disc(fd, &disc, &w);
 		cdrom_close(fd);
 		return ret;
 	}

@@ -425,7 +425,52 @@ int blank_disc(int fd, int type)
 	return wait_for_unit_ready(fd, "BLANK", WAIT_BLANK);
 }
 
-int format_disc(int fd, struct cdrw_disc *disc)
+/*
+ * Format Code 1, Type 10h CD-RW/DVD-RW Full Format,
+ * as of MMC-4 to at least MMC-6
+ */
+int format_disc_code1(int fd, struct cdrw_disc *disc, write_params_t *w)
+{
+	struct cdrom_generic_command cgc;
+	unsigned char buffer[16];
+	int ret;
+
+	memset(&cgc, 0, sizeof(cgc));
+	memset(buffer, 0, sizeof(buffer));
+
+	cgc.cmd[0] = GPCMD_FORMAT_UNIT;
+	cgc.cmd[1] = 1 << 4 | 1;
+	cgc.buflen = 16;
+
+	/* format list header */
+	buffer[0] = 0;
+	buffer[1] = 0;		/* FOV: 0 (use defaults) */
+	buffer[1] |= ((USE_IMMED || USE_IMMED_WITH_FORMAT_1) << 1);
+	buffer[2] = 0;
+	buffer[3] = 8;
+
+	/* format descriptor */
+	buffer[4] = (disc->offset >> 24) & 0xff; /* Number of Blocks */
+	buffer[5] = (disc->offset >> 16) & 0xff;
+	buffer[6] = (disc->offset >>  8) & 0xff;
+	buffer[7] = disc->offset & 0xff;
+	buffer[8] = 0x10 << 2;	/* Format Type 10h , Format Sub-type 0 */
+
+	/* Fixed Packet Size as used in Mode Page 5 */
+	buffer[9] = (w->packet_size >> 16) & 0xff;
+	buffer[10] = (w->packet_size >> 8) & 0xff;
+	buffer[11] = w->packet_size & 0xff;
+
+	if ((ret = wait_cmd(fd, &cgc, buffer, CGC_DATA_WRITE, WAIT_BLANK)) < 0)
+	{
+		perror("format disc");
+		return ret;
+	}
+	return wait_for_unit_ready(fd, "FORMAT UNIT 1", WAIT_BLANK);
+}
+
+/* Legacy Format Code 7 as of MMC-1 to MMC-3, deprecated in MMC-4 */
+int format_disc_code7(int fd, struct cdrw_disc *disc)
 {
 	struct cdrom_generic_command cgc;
 	unsigned char buffer[16];
@@ -466,6 +511,14 @@ int format_disc(int fd, struct cdrw_disc *disc)
 	}
 
 	return wait_for_unit_ready(fd, "FORMAT UNIT 7", WAIT_BLANK);
+}
+
+int format_disc(int fd, struct cdrw_disc *disc, write_params_t *w)
+{
+	if (format_disc_code1(fd, disc, w) == 0)
+		return 0;
+	printf("Re-trying formatting with legacy code 7\n");
+	return format_disc_code7(fd, disc);
 }
 
 int read_disc_info(int fd, disc_info_t *di)
