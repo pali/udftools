@@ -36,7 +36,7 @@
  * the drive has verified the command -- this can be used for polling
  * the device for completion.
  */
-#define USE_IMMED 0
+#define USE_IMMED 1
 
 #define PAGE_CURRENT	0
 #define PAGE_CHANGE	1

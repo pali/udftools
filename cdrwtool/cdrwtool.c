@@ -30,6 +30,7 @@
 #include <getopt.h>
 #include <signal.h>
 #include <limits.h>
+#include <errno.h>
 
 #include <sys/ioctl.h>
 #include <asm/param.h>
@@ -38,8 +39,6 @@
 
 #include "cdrwtool.h"
 #include "../mkudffs/mkudffs.h"
-
-static int progress;
 
 int msf_to_lba(int m, int s, int f)
 {
@@ -73,80 +72,87 @@ void dump_sense(unsigned char *cdb, struct request_sense *sense)
 	}
 }
 
-int wait_cmd(int fd, struct cdrom_generic_command *cgc, unsigned char *buf,
-			 int dir, int timeout)
+int wait_cmd_sense(int fd, struct cdrom_generic_command *cgc,
+		   unsigned char *buf, int dir, int timeout,
+		   struct request_sense *sense)
 {
-	struct request_sense sense;
 	int ret;
 
 	if (timeout <= 0)
 		timeout = 500;
 
-	memset(&sense, 0, sizeof(sense));
+	memset(sense, 0, sizeof(*sense));
 
 	cgc->buffer = buf;
 	cgc->data_direction = dir;
-	cgc->sense = &sense;
+	cgc->sense = sense;
 	cgc->timeout = timeout;
 
 	ret = ioctl(fd, CDROM_SEND_PACKET, cgc);
-	if (ret)
+	if (ret && cgc->cmd[0] != GPCMD_TEST_UNIT_READY)
 	{
-		perror("wait_cmd");
+		perror("wait_cmd_sense");
 		dump_sense(cgc->cmd, cgc->sense);
 	}
 	return ret;
 }
 
-int sigfd;
-
-void sig_progress(int sig)
+int wait_cmd(int fd, struct cdrom_generic_command *cgc, unsigned char *buf,
+	     int dir, int timeout)
 {
-	struct cdrom_generic_command cgc;
 	struct request_sense sense;
-	static int did = 0;
 	int ret;
 
-	if (sig != SIGALRM)
-		return;
-
-	memset(&cgc, 0, sizeof(cgc));
-	memset(&sense, 0, sizeof(sense));
-
-	cgc.sense = &sense;
-	ret = wait_cmd(sigfd, &cgc, NULL, CGC_DATA_NONE, WAIT_PC);
-
-	if ((ret || !(sense.sks[0] & 0x80)) && !did) {
-		printf("Progress indicator not implemented on this drive\n");
-		printf("Don't access drive until operation has completed\n");
-		progress = 101;
-		return;
-	}
-
-	progress = ((sense.sks[1] << 8 | sense.sks[2]) * 100) / 0xffff;
-	did = 1;
-
-	printf("%02d%% complete\n", progress);
-	if (progress == 99) {
-		progress = 101;
-		return;
-	}
-	alarm(2);
+	ret = wait_cmd_sense(fd, cgc, buf, dir, timeout, &sense);
+	cgc->sense = NULL; /* invalidate pointer to local variable */
+	return ret;
 }
 
-void print_completion_info(int fd)
+static int wait_for_unit_ready(int fd, char *what, int timeout)
 {
-	sigfd = fd;
-	/* we can only poll sense for non-blocking commands */
-#if USE_IMMED == 0
-	return;
-#else
-	progress = 0;
-	signal(SIGALRM, sig_progress);
-	alarm(5);
-	while (progress < 100)
+	int ret, progress, reported = 0;
+	int interval_elapsed = 0, total_elapsed = 0, interval_length = 5;
+	unsigned char buffer[16];
+	struct cdrom_generic_command cgc;
+	struct request_sense sense;
+
+	memset(&cgc, 0, sizeof(cgc));
+	memset(buffer, 0, sizeof(buffer));
+
+	while (total_elapsed < timeout / HZ) {
+		cgc.cmd[0] = GPCMD_TEST_UNIT_READY;
+		ret = wait_cmd_sense(fd, &cgc, buffer, CGC_DATA_NONE,
+				     WAIT_BLANK, &sense);
+		if (ret == 0 || sense.sense_key == 0) {
+			if (reported)
+				printf("100%% complete and done\n");
+			return 0;
+		}
+		if (sense.sense_key != 2 || sense.asc != 4 ||
+		    sense.ascq == 2) {
+			dump_sense(cgc.cmd, &sense);
+			fprintf(stderr,
+				"ERROR: Drive reports error after %s\n",
+				what);
+			errno = EIO;
+			return -1;
+		}
 		sleep(1);
-#endif
+		interval_elapsed++;
+		total_elapsed++;
+		if (interval_elapsed >= interval_length) {
+			progress = ((sense.sks[1] << 8 | sense.sks[2]) * 100) /
+				   0xffff;
+			printf("%02d%% complete\n", progress);
+			interval_elapsed = 0;
+			reported = 1;
+		}
+	}
+	fprintf(stderr,
+		"ERROR: Drive not ready more than %d seconds after %s\n",
+		timeout / HZ, what);
+	errno = EIO;
+	return -1;
 }
 
 /* buffer must already have been filled by mode_sense */
@@ -416,8 +422,7 @@ int blank_disc(int fd, int type)
 		 return ret;
 	}
 
-	print_completion_info(fd);
-	return 0;
+	return wait_for_unit_ready(fd, "BLANK", WAIT_BLANK);
 }
 
 int format_disc(int fd, struct cdrw_disc *disc)
@@ -460,8 +465,7 @@ int format_disc(int fd, struct cdrw_disc *disc)
 		return ret;
 	}
 
-	print_completion_info(fd);
-	return 0;
+	return wait_for_unit_ready(fd, "FORMAT UNIT 7", WAIT_BLANK);
 }
 
 int read_disc_info(int fd, disc_info_t *di)
@@ -553,8 +557,7 @@ int close_track(int fd, unsigned int track)
 		perror("close track");
 		return ret;
 	}
-	print_completion_info(fd);
-	return 0;
+	return wait_for_unit_ready(fd, "CLOSE TRACK", WAIT_BLANK);
 }
 
 int close_session(int fd, unsigned int track)
@@ -574,8 +577,7 @@ int close_session(int fd, unsigned int track)
 		perror("close session");
 		return ret;
 	}
-	print_completion_info(fd);
-	return 0;
+	return wait_for_unit_ready(fd, "CLOSE SESSION", WAIT_BLANK);
 }
 
 int read_buffer_cap(int fd, struct cdrw_disc *disc)
