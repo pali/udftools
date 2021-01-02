@@ -716,7 +716,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 	if (optind < argc)
 	{
 		disc->blocks = strtou32(argv[optind++], 0, &failed);
-		if (failed)
+		if (failed || disc->blocks == 0)
 		{
 			fprintf(stderr, "%s: Error: Invalid value for block-count\n", appname);
 			exit(1);

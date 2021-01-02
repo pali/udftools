@@ -390,6 +390,12 @@ int main(int argc, char *argv[])
 	}
 
 	disc.blocks = get_blocks(fd, disc.blocksize, disc.blocks);
+	if (disc.blocks == 0)
+	{
+		fprintf(stderr, "%s: Error: Device '%s' is empty\n", appname, filename);
+		exit(1);
+	}
+
 	disc.head->blocks = disc.blocks;
 	disc.write = write_func;
 	disc.write_data = &fd;
