@@ -235,7 +235,7 @@ int main(int argc, char *argv[]) {
 	if (mmc_profile == 0x0A || mmc_profile == -1) {
 		if (!discinfo.erasable) {
 			if (!quiet)
-				printf("%s device '%s' %sis not formatted to erasable mode\n", (mmc_profile == -1) ? "Optical" : "CD-RW", device, (mmc_profile == -1) ? "is not CD-RW or " : "");
+				printf("%s device '%s' %sis not erasable or the drive is not capable of writing the media\n", (mmc_profile == -1) ? "Optical" : "CD-RW", device, (mmc_profile == -1) ? "is not CD-RW or " : "");
 			return 1;
 		}
 		if (discinfo.disc_type != 0x20 && discinfo.disc_type != 0x00) {
