@@ -181,7 +181,6 @@ static void write_desc(int fd, struct udf_disc *disc, enum udf_space_type type, 
 int main(int argc, char *argv[])
 {
 	struct udf_disc disc;
-	struct stat stat;
 	char *filename;
 	struct partitionDesc *pd;
 	struct logicalVolDesc *lvd;
@@ -189,7 +188,7 @@ int main(int argc, char *argv[])
 	struct domainIdentSuffix *dis;
 	size_t len;
 	int fd;
-	int fd2;
+	int flags;
 	int i;
 	char buf[256];
 	dstring new_lvid[128];
@@ -286,65 +285,30 @@ int main(int argc, char *argv[])
 	if (update_pvd || update_lvd || update_iuvd || update_fsd)
 		update = 1;
 
-	fd = open(filename, O_RDONLY);
-	if (fd < 0)
+	if (update && !(disc.flags & FLAG_NO_WRITE))
+		flags = O_RDWR | O_EXCL;
+	else
+		flags = O_RDONLY | O_EXCL;
+
+	fd = open(filename, flags);
+	if (fd < 0 && errno == EBUSY)
 	{
-		fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(errno));
-		exit(1);
-	}
-
-	if (fstat(fd, &stat) != 0)
-	{
-		fprintf(stderr, "%s: Error: Cannot stat device '%s': %s\n", appname, filename, strerror(errno));
-		exit(1);
-	}
-
-	if (update)
-	{
-		int flags2;
-		char filename2[64];
-		const char *error;
-
-		if (!(disc.flags & FLAG_NO_WRITE))
-			flags2 = O_RDWR;
-		else
-			flags2 = O_RDONLY;
-
-		if (snprintf(filename2, sizeof(filename2), "/proc/self/fd/%d", fd) >= (int)sizeof(filename2))
+		if (update)
 		{
-			fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(ENAMETOOLONG));
+			fprintf(stderr, "%s: Error: Cannot open device '%s': Device is busy, maybe mounted?\n", appname, filename);
 			exit(1);
 		}
-
-		// Re-open block device with O_EXCL mode which fails when device is already mounted
-		if (S_ISBLK(stat.st_mode))
-			flags2 |= O_EXCL;
-
-		fd2 = open(filename2, flags2);
-		if (fd2 < 0)
-		{
-			// Fallback to orignal filename when /proc is not available, but this introduce race condition between stat and open
-			if (errno == ENOENT)
-				fd2 = open(filename, flags2);
-			if (fd2 < 0)
-			{
-				error = (errno != EBUSY) ? strerror(errno) : "Device is busy, maybe mounted?";
-				fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, error);
-				exit(1);
-			}
-		}
-
-		close(fd);
-		fd = fd2;
+		flags &= ~O_EXCL;
+		fd = open(filename, flags);
 	}
-	else if (S_ISBLK(stat.st_mode))
+	if (fd < 0)
 	{
-		fd2 = open(filename, O_RDONLY|O_EXCL);
-		if (fd2 >= 0)
-			close(fd2);
-		else if (errno == EBUSY)
-			fprintf(stderr, "%s: Warning: Device '%s' is busy, %s may report bogus information\n", appname, filename, appname);
+		fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, (errno != EBUSY) ? strerror(errno) : "Device is busy, maybe mounted?");
+		exit(1);
 	}
+
+	if (!(flags & O_EXCL))
+		fprintf(stderr, "%s: Warning: Device '%s' is busy, %s may report bogus information\n", appname, filename, appname);
 
 	disc.blksize = get_size(fd);
 	disc.blkssz = get_sector_size(fd);
