@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
 
 	memset(&cgc, 0, sizeof(cgc));
 	memset(&sense, 0, sizeof(sense));
-	memset(&features, 0, sizeof(features));
+	memset(&inquiry, 0, sizeof(inquiry));
 	cgc.cmd[0] = GPCMD_INQUIRY;
 	cgc.cmd[4] = sizeof(inquiry);
 	cgc.buffer = inquiry;
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
 
 	memset(&cgc, 0, sizeof(cgc));
 	memset(&sense, 0, sizeof(sense));
-	memset(&discinfo, 0, sizeof(discinfo));
+	memset(&trackinfo, 0, sizeof(trackinfo));
 	cgc.cmd[0] = GPCMD_READ_TRACK_RZONE_INFO;
 	cgc.cmd[1] = 1; /* type: 1 */
 	cgc.cmd[5] = 1; /* track: 1 */
