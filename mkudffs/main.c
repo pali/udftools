@@ -332,10 +332,10 @@ int main(int argc, char *argv[])
 {
 	struct udf_disc	disc;
 	struct udf_extent *ext;
-	struct stat stat;
 	char *filename;
 	char buf[128*3];
 	int fd;
+	int flags;
 	int create_new_file = 0;
 	int blocksize = -1;
 	int media;
@@ -359,12 +359,17 @@ int main(int argc, char *argv[])
 	if (disc.flags & FLAG_NO_WRITE)
 		printf("Note: Not writing to device, just simulating\n");
 
-	fd = open(filename, O_RDONLY);
+	if (!(disc.flags & FLAG_NO_WRITE))
+		flags = O_RDWR | O_EXCL;
+	else
+		flags = O_RDONLY | O_EXCL;
+
+	fd = open(filename, flags);
 	if (fd < 0)
 	{
 		if (errno != ENOENT)
 		{
-			fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(errno));
+			fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, (errno != EBUSY) ? strerror(errno) : "Device is mounted or mkudffs is already running");
 			exit(1);
 		}
 
@@ -373,57 +378,6 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "%s: Error: Cannot create new image file '%s': block-count was not specified\n", appname, filename);
 			exit(1);
 		}
-	}
-	else
-	{
-		int fd2;
-		int flags2;
-		char filename2[64];
-		const char *error;
-
-		if (create_new_file)
-		{
-			fprintf(stderr, "%s: Error: Cannot create new image file '%s': %s\n", appname, filename, strerror(EEXIST));
-			exit(1);
-		}
-
-		if (fstat(fd, &stat) != 0)
-		{
-			fprintf(stderr, "%s: Error: Cannot stat device '%s': %s\n", appname, filename, strerror(errno));
-			exit(1);
-		}
-
-		if (!(disc.flags & FLAG_NO_WRITE))
-			flags2 = O_RDWR;
-		else
-			flags2 = O_RDONLY;
-
-		if (snprintf(filename2, sizeof(filename2), "/proc/self/fd/%d", fd) >= (int)sizeof(filename2))
-		{
-			fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, strerror(ENAMETOOLONG));
-			exit(1);
-		}
-
-		// Re-open block device with O_EXCL mode which fails when device is already mounted
-		if (S_ISBLK(stat.st_mode))
-			flags2 |= O_EXCL;
-
-		fd2 = open(filename2, flags2);
-		if (fd2 < 0)
-		{
-			// Fallback to orignal filename when /proc is not available, but this introduce race condition between stat and open
-			if (errno == ENOENT)
-				fd2 = open(filename, flags2);
-			if (fd2 < 0)
-			{
-				error = (errno != EBUSY) ? strerror(errno) : "Device is mounted or mkudffs is already running";
-				fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, error);
-				exit(1);
-			}
-		}
-
-		close(fd);
-		fd = fd2;
 	}
 
 	if (fd >= 0)
