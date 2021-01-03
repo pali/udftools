@@ -135,11 +135,31 @@ variable and fixed packet sizes respectively.
 .IP "\fB\-o \fIoffset\fP"
 Set write offset.
 
+.SH BUGS
+Many modern drives refuse on the preparations to format new,
+blanked, or appendable CD-RW media. This causes a message like
+.IP
+.B Command failed: 55 ... - sense ...
+.PP
+The remedy is to use a CD-capable burn program for writing a session
+and closing the medium. For example by using any of "cdrecord", 
+"wodim", "cdrskin", or "xorriso -as cdrecord" as content of
+variable \fBprog\fP in:
+.PP
+.in +4n
+.EX
+prog="xorriso -as cdrecord"
+drive="/dev/sr0"
+dd if=/dev/zero bs=1M count=10 | $prog -v -eject dev="$drive" -
+.EE
+.in
+
 .SH AUTHORS
 .nf
 Jens Axboe <axboe@suse.de>
 Ben Fennema
 Some additions by Richard Atterer <atterer@debian.org>
+BUGS note about closing medium by Thomas Schmitt <scdbackup@gmx.net>
 .fi
 
 .SH AVAILABILITY
@@ -148,4 +168,5 @@ is part of the udftools package and is available from
 https://github.com/pali/udftools/.
 
 .SH "SEE ALSO"
-.BR pktsetup (8)
+\fBpktsetup\fP(8), \fBcdrecord\fP(1), \fBwodim\fP(1), \fBcdrskin\fP(1),
+\fBxorriso\fP(1)
