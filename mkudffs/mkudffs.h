@@ -2,7 +2,7 @@
  * mkudffs.h
  *
  * Copyright (c) 2001-2002  Ben Fennema
- * Copyright (c) 2016-2018  Pali Rohár <pali.rohar@gmail.com>
+ * Copyright (c) 2016-2021  Pali Rohár <pali.rohar@gmail.com>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
