@@ -1,3 +1,28 @@
+Changes in 2.3
+* mkudffs:
+  * Added support for creating Multisession UDF disc images via new --startblock option
+  * Added new options for specifying owner, organization and contact information
+  * Added new option --bootarea=mbr:sec-size to allow specifying MBR sector size
+  * Added udftools version string into Application Identifier
+  * Fixed default value of Packet Length in Sparable Partition for UDF 1.50 and 2.00 rev to 32 blocks
+  * Fixed detecting all 33 types of optical discs defined in all versions of SCSI MMC specifications
+  * Fixed filling CHS sector number into MBR partition table
+  * Fixed alignment of VAT block for CD-R, DVD-R and BD-R disc
+  * Fixed alignment for CD-R discs
+  * Fixed generating unclosed CD-R image with blocks more than 3072
+* udfinfo & udflabel:
+  * Added support for Multisession UDF optical discs via new --startblock and --lastblock options
+  * Added support for showing and changing owner, organization, contact, appid and impid UDF identifiers
+  * Added more checks to validation of UDF structures
+  * Throw error when trying to modify UDF disc with unsupported Pseudo OverWrite partition
+* pktsetup:
+  * Added new option -i to ignore errors when device is already mapped or unmapped
+  * Added new tool pktcdvd-check which checks if optical disc can be used by kernel pktcdvd.ko driver for write operations
+  * Update udev rule to map only optical discs which are supported for write operation (check done by pktcdvd-check tool)
+* cdrwtool:
+  * Fixed formatting of CD-RW disc in modern optical drives according to MMC-6 standard (via Format Code 1)
+  * Fixed support for progress bar
+
 Changes in 2.2
 * Allow to build udftools without udev
 * Use standard ISO C99 features instead of GCC extensions
