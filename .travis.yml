@@ -394,6 +394,42 @@ matrix:
           packages:
             - libreadline-dev
     - compiler: gcc
+      dist: bionic
+      env: PLATFORM=x86
+           DIST=bionic
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: bionic
+      env: PLATFORM=x86_64
+           DIST=bionic
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: gcc
+      dist: focal
+      env: PLATFORM=x86
+           DIST=focal
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: focal
+      env: PLATFORM=x86_64
+           DIST=focal
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: gcc
       dist: precise
       env: PLATFORM=x86
            DIST=precise
@@ -453,6 +489,46 @@ matrix:
         apt:
           packages:
             - libreadline-dev
+    - compiler: gcc
+      dist: bionic
+      env: PLATFORM=x86
+           DIST=bionic
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: bionic
+      env: PLATFORM=x86_64
+           DIST=bionic
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: gcc
+      dist: focal
+      env: PLATFORM=x86
+           DIST=focal
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: gcc
+      dist: focal
+      env: PLATFORM=x86_64
+           DIST=focal
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
     - compiler: clang
       dist: precise
       env: PLATFORM=x86
@@ -508,6 +584,42 @@ matrix:
           packages:
             - libreadline-dev
     - compiler: clang
+      dist: bionic
+      env: PLATFORM=x86
+           DIST=bionic
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: bionic
+      env: PLATFORM=x86_64
+           DIST=bionic
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: clang
+      dist: focal
+      env: PLATFORM=x86
+           DIST=focal
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: focal
+      env: PLATFORM=x86_64
+           DIST=focal
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: clang
       dist: precise
       env: PLATFORM=x86
            DIST=precise
@@ -562,6 +674,46 @@ matrix:
       dist: xenial
       env: PLATFORM=x86_64
            DIST=xenial
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: clang
+      dist: bionic
+      env: PLATFORM=x86
+           DIST=bionic
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: bionic
+      env: PLATFORM=x86_64
+           DIST=bionic
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+    - compiler: clang
+      dist: focal
+      env: PLATFORM=x86
+           DIST=focal
+           NOOPT=1
+      addons:
+        apt:
+          packages:
+            - libreadline-dev:i386
+            - libc6-dev:i386
+            - gcc-multilib
+    - compiler: clang
+      dist: focal
+      env: PLATFORM=x86_64
+           DIST=focal
            NOOPT=1
       addons:
         apt:
@@ -589,6 +741,24 @@ matrix:
       dist: xenial
       env: PLATFORM=x86_64
            DIST=xenial
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - tcc
+    - compiler: tcc
+      dist: bionic
+      env: PLATFORM=x86_64
+           DIST=bionic
+      addons:
+        apt:
+          packages:
+            - libreadline-dev
+            - tcc
+    - compiler: tcc
+      dist: focal
+      env: PLATFORM=x86_64
+           DIST=focal
       addons:
         apt:
           packages:
