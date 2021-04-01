@@ -449,7 +449,7 @@ struct udf_desc *find_desc(struct udf_extent *ext, uint32_t offset)
 /**
  * @brief allocate a new udf_descriptor having a udf_data item and insert it
  *        into the udf_descriptor list of a udf_extent ordered by block number
- * @oaram ext the udf_extent containing the udf_descriptor list head
+ * @param ext the udf_extent containing the udf_descriptor list head
  * @param ident the tag ident of the new udf_descriptor
  * @param offset the first block the new descriptor describes
  * @param length the length of the udf_data item payload in bytes
