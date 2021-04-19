@@ -797,6 +797,10 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 						else /* All other disc statuses means that medium is recordable = CD-R */
 							mmc_profile = 0x09;
 					}
+					else
+					{
+						mmc_profile = 0x00; /* Unknown optical disc */
+					}
 				}
 				else
 				{
