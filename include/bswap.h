@@ -28,17 +28,17 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#define constant_swab16(x) \
+#define constant_swap16(x) \
 	((uint16_t)((((uint16_t)(x) & 0x00FFU) << 8) | \
 		  (((uint16_t)(x) & 0xFF00U) >> 8)))
  
-#define constant_swab32(x) \
+#define constant_swap32(x) \
 	((uint32_t)((((uint32_t)(x) & 0x000000FFU) << 24) | \
 		  (((uint32_t)(x) & 0x0000FF00U) <<  8) | \
 		  (((uint32_t)(x) & 0x00FF0000U) >>  8) | \
 		  (((uint32_t)(x) & 0xFF000000U) >> 24)))
 
-#define constant_swab64(x) \
+#define constant_swap64(x) \
 	((uint64_t)((((uint64_t)(x) & 0x00000000000000FFULL) << 56) | \
 		  (((uint64_t)(x) & 0x000000000000FF00ULL) << 40) | \
 		  (((uint64_t)(x) & 0x0000000000FF0000ULL) << 24) | \
@@ -48,13 +48,13 @@
 		  (((uint64_t)(x) & 0x00FF000000000000ULL) >> 40) | \
 		  (((uint64_t)(x) & 0xFF00000000000000ULL) >> 56)))
 
-static inline uint16_t swab16(uint16_t x)
+static inline uint16_t swap16(uint16_t x)
 {
 	return ((uint16_t)((((uint16_t)(x) & 0x00FFU) << 8) | \
 			   (((uint16_t)(x) & 0xFF00U) >> 8)));
 }
  
-static inline uint32_t swab32(uint32_t x)
+static inline uint32_t swap32(uint32_t x)
 {
 	return ((uint32_t)((((uint32_t)(x) & 0x000000FFU) << 24) | \
 			   (((uint32_t)(x) & 0x0000FF00U) <<  8) | \
@@ -62,7 +62,7 @@ static inline uint32_t swab32(uint32_t x)
 			   (((uint32_t)(x) & 0xFF000000U) >> 24)));
 }
 
-static inline uint64_t swab64(uint64_t x)
+static inline uint64_t swap64(uint64_t x)
 {
 	return ((uint64_t)((((uint64_t)(x) & 0x00000000000000FFULL) << 56) | \
 			   (((uint64_t)(x) & 0x000000000000FF00ULL) << 40) | \
@@ -74,17 +74,17 @@ static inline uint64_t swab64(uint64_t x)
 			   (((uint64_t)(x) & 0xFF00000000000000ULL) >> 56)));
 }
 
-#define constant_swab16p(x) \
+#define constant_swap16p(x) \
 	((uint16_t)(((*(uint16_t *)(x) & 0x00FFU) << 8) | \
 		  ((*(uint16_t *)(x) & 0xFF00U) >> 8)))
 
-#define constant_swab32p(x) \
+#define constant_swap32p(x) \
 	((uint32_t)(((*(uint32_t *)(x) & 0x000000FFU) << 24) | \
 		  ((*(uint32_t *)(x) & 0x0000FF00U) <<  8) | \
 		  ((*(uint32_t *)(x) & 0x00FF0000U) >>  8) | \
 		  ((*(uint32_t *)(x) & 0xFF000000U) >> 24)))
 
-#define constant_swab64p(x) \
+#define constant_swap64p(x) \
 	((uint64_t)(((*(uint64_t *)(x) & 0x00000000000000FFULL) << 56) | \
 		  ((*(uint64_t *)(x) & 0x000000000000FF00ULL) << 40) | \
 		  ((*(uint64_t *)(x) & 0x0000000000FF0000ULL) << 24) | \
@@ -95,13 +95,13 @@ static inline uint64_t swab64(uint64_t x)
 		  ((*(uint64_t *)(x) & 0xFF00000000000000ULL) >> 56)))
 
 
-static inline uint16_t swab16p(uint16_t *x)
+static inline uint16_t swap16p(uint16_t *x)
 {
 	return ((uint16_t)(((*(uint16_t *)(x) & 0x00FFU) << 8) | \
 			   ((*(uint16_t *)(x) & 0xFF00U) >> 8)));
 }
 
-static inline uint32_t swab32p(uint32_t *x)
+static inline uint32_t swap32p(uint32_t *x)
 {
 	return ((uint32_t)(((*(uint32_t *)(x) & 0x000000FFU) << 24) | \
 			   ((*(uint32_t *)(x) & 0x0000FF00U) <<  8) | \
@@ -109,7 +109,7 @@ static inline uint32_t swab32p(uint32_t *x)
 			   ((*(uint32_t *)(x) & 0xFF000000U) >> 24)));
 }
 
-static inline uint64_t swab64p(uint64_t *x)
+static inline uint64_t swap64p(uint64_t *x)
 {
 	return ((uint64_t)(((*(uint64_t *)(x) & 0x00000000000000FFULL) << 56) | \
 			   ((*(uint64_t *)(x) & 0x000000000000FF00ULL) << 40) | \
@@ -124,37 +124,37 @@ static inline uint64_t swab64p(uint64_t *x)
 #ifdef WORDS_BIGENDIAN
 
 #define le16_to_cpu(x) (__builtin_constant_p(x) ? \
-			constant_swab16(x) : \
-			swab16(x))
+			constant_swap16(x) : \
+			swap16(x))
  
 #define le32_to_cpu(x) (__builtin_constant_p(x) ? \
-			constant_swab32(x) : \
-			swab32(x))
+			constant_swap32(x) : \
+			swap32(x))
 
 #define le64_to_cpu(x) (__builtin_constant_p(x) ? \
-			constant_swab64(x) : \
-			swab64(x))
+			constant_swap64(x) : \
+			swap64(x))
 
 
-#define constant_le16_to_cpu(x) constant_swab16((x))
-#define constant_le32_to_cpu(x) constant_swab32((x))
-#define constant_le64_to_cpu(x) constant_swab64((x))
+#define constant_le16_to_cpu(x) constant_swap16((x))
+#define constant_le32_to_cpu(x) constant_swap32((x))
+#define constant_le64_to_cpu(x) constant_swap64((x))
 
 #define le16_to_cpup(x) (__builtin_constant_p(x) ? \
-			constant_swab16p(x) : \
-			swab16p(x))
+			constant_swap16p(x) : \
+			swap16p(x))
 
 #define le32_to_cpup(x) (__builtin_constant_p(x) ? \
-			constant_swab32p(x) : \
-			swab32p(x))
+			constant_swap32p(x) : \
+			swap32p(x))
 
 #define le64_to_cpup(x) (__builtin_constant_p(x) ? \
-			constant_swab64p(x) : \
-			swab64p(x))
+			constant_swap64p(x) : \
+			swap64p(x))
 
-#define constant_le16_to_cpup(x) constant_swab16p((x))
-#define constant_le32_to_cpup(x) constant_swab32p((x))
-#define constant_le64_to_cpup(x) constant_swab64p((x))
+#define constant_le16_to_cpup(x) constant_swap16p((x))
+#define constant_le32_to_cpup(x) constant_swap32p((x))
+#define constant_le64_to_cpup(x) constant_swap64p((x))
 
 #define be16_to_cpu(x) ((uint16_t)(x))
 #define be32_to_cpu(x) ((uint32_t)(x))
@@ -191,37 +191,37 @@ static inline uint64_t swab64p(uint64_t *x)
 #define constant_le64_to_cpup(x) (*(uint64_t *)(x))
 
 #define be16_to_cpu(x) (__builtin_constant_p(x) ? \
-			constant_swab16(x) : \
-			swab16(x))
+			constant_swap16(x) : \
+			swap16(x))
  
 #define be32_to_cpu(x) (__builtin_constant_p(x) ? \
-			constant_swab32(x) : \
-			swab32(x))
+			constant_swap32(x) : \
+			swap32(x))
 
 #define be64_to_cpu(x) (__builtin_constant_p(x) ? \
-			constant_swab64(x) : \
-			swab64(x))
+			constant_swap64(x) : \
+			swap64(x))
 
 
-#define constant_be16_to_cpu(x) constant_swab16((x))
-#define constant_be32_to_cpu(x) constant_swab32((x))
-#define constant_be64_to_cpu(x) constant_swab64((x))
+#define constant_be16_to_cpu(x) constant_swap16((x))
+#define constant_be32_to_cpu(x) constant_swap32((x))
+#define constant_be64_to_cpu(x) constant_swap64((x))
 
 #define be16_to_cpup(x) (__builtin_constant_p(x) ? \
-			constant_swab16p(x) : \
-			swab16p(x))
+			constant_swap16p(x) : \
+			swap16p(x))
 
 #define be32_to_cpup(x) (__builtin_constant_p(x) ? \
-			constant_swab32p(x) : \
-			swab32p(x))
+			constant_swap32p(x) : \
+			swap32p(x))
 
 #define be64_to_cpup(x) (__builtin_constant_p(x) ? \
-			constant_swab64p(x) : \
-			swab64p(x))
+			constant_swap64p(x) : \
+			swap64p(x))
 
-#define constant_be16_to_cpup(x) constant_swab16p((x))
-#define constant_be32_to_cpup(x) constant_swab32p((x))
-#define constant_be64_to_cpup(x) constant_swab64p((x))
+#define constant_be16_to_cpup(x) constant_swap16p((x))
+#define constant_be32_to_cpup(x) constant_swap32p((x))
+#define constant_be64_to_cpup(x) constant_swap64p((x))
 
 #endif /* WORDS_BIGENDIAN */
 
