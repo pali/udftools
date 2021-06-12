@@ -93,6 +93,7 @@ void
 initialise(char *devicename) 
 {
     uint32_t			i, len, blkno, lastblk, size;
+    int				inMainSeq;
     long_ad			*fsdAd;
     short_ad			*adSpaceMap;
     struct sparablePartitionMap *spm;
@@ -158,17 +159,17 @@ initialise(char *devicename)
     /* read Volume Descriptor Sequence */
     blkno = extentMainVolDescSeq.extLocation;
     len = extentMainVolDescSeq.extLength;
+    inMainSeq = 1;
 
     for( i = 0; i < len; blkno++, i += 2048 ) {
-	int	inMainSeq = 1;
-
 	if( (p = readTaggedBlock(blkno, ABSOLUTE)) == NULL ) {
 	    if( !inMainSeq ) 
 		fail("Volume Descriptor Sequences read failure\n");
-	    blkno = extentRsrvVolDescSeq.extLocation;
+	    blkno = extentRsrvVolDescSeq.extLocation - 1;
 	    len = extentRsrvVolDescSeq.extLength;
 	    inMainSeq = 0;
-	    i = 0;
+	    i = (uint32_t) -2048;
+	    continue;
 	}
 	switch( p->descTag.tagIdent ) {
 	case TAG_IDENT_PVD:
