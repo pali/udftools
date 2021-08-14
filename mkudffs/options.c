@@ -385,7 +385,7 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **device, in
 				}
 				for (i = 0; i < 16; ++i)
 				{
-					if (!isxdigit(optarg[i]) || (!isdigit(optarg[i]) && !islower(optarg[i])))
+					if (!isxdigit((unsigned char)optarg[i]) || (!isdigit((unsigned char)optarg[i]) && !islower((unsigned char)optarg[i])))
 					{
 						fprintf(stderr, "%s: Error: Option --uuid is not in lowercase hexadecimal digit format\n", appname);
 						exit(1);
