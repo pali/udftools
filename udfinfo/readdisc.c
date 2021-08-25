@@ -35,12 +35,12 @@
 #include "libudffs.h"
 #include "readdisc.h"
 
-static int read_offset(int fd, struct udf_disc *disc, void *buf, off_t offset, size_t count, int warn_beyond)
+static int read_offset(int fd, struct udf_disc *disc, void *buf, loff_t offset, size_t count, int warn_beyond)
 {
-	off_t off;
+    loff_t off;
 	ssize_t ret;
 
-	if (offset + (off_t)count > (off_t)disc->blocks * disc->blocksize)
+    if (offset + (loff_t)count > (loff_t)disc->blocks * disc->blocksize)
 	{
 		if (warn_beyond)
 			fprintf(stderr, "%s: Warning: Trying to read beyond end of disk\n", appname);
@@ -48,12 +48,12 @@ static int read_offset(int fd, struct udf_disc *disc, void *buf, off_t offset, s
 	}
 
 	off = lseek(fd, offset, SEEK_SET);
-	if (off != (off_t)-1 && off != offset)
+    if (off != (loff_t)-1 && off != offset)
 	{
 		errno = EIO;
-		off = (off_t)-1;
+        off = (loff_t)-1;
 	}
-	if (off == (off_t)-1)
+    if (off == (loff_t)-1)
 	{
 		fprintf(stderr, "%s: Warning: lseek failed: %s\n", appname, strerror(errno));
 		return -1;
@@ -210,7 +210,7 @@ static int read_anchor_i(int fd, struct udf_disc *disc, int i, uint32_t location
 	struct anchorVolDescPtr avdp;
 	struct udf_extent *ext;
 
-	if (read_offset(fd, disc, &avdp, (off_t)location * disc->blocksize, sizeof(avdp), 1) < 0)
+    if (read_offset(fd, disc, &avdp, (loff_t)location * disc->blocksize, sizeof(avdp), 1) < 0)
 		return -2;
 
 	if (le32_to_cpu(avdp.descTag.tagLocation) != location)
@@ -248,14 +248,14 @@ static int read_anchor_second(int fd, struct udf_disc *disc)
 	else
 		last_block = disc->blocks - 1;
 
-	if (last_block > 256 && (off_t)(last_block - 256) * disc->blocksize > (off_t)32768 + disc->blocksize && last_block - 256 != 256)
+    if (last_block > 256 && (loff_t)(last_block - 256) * disc->blocksize > (loff_t)32768 + disc->blocksize && last_block - 256 != 256)
 		ret1 = read_anchor_i(fd, disc, 1, last_block - 256);
 	else
 		ret1 = -2;
 	if (ret1 == -1)
 		return -1;
 
-	if ((off_t)last_block * disc->blocksize > (off_t)32768 + disc->blocksize && last_block != 256)
+    if ((loff_t)last_block * disc->blocksize > (loff_t)32768 + disc->blocksize && last_block != 256)
 		ret2 = read_anchor_i(fd, disc, 2, last_block);
 	else
 		ret2 = -2;
@@ -639,7 +639,7 @@ static int scan_vds(int fd, struct udf_disc *disc, enum udf_space_type vds_type)
 				break;
 			}
 
-			if (read_offset(fd, disc, &buffer, ((off_t)location+i) * disc->blocksize, sizeof(buffer), 1) < 0)
+            if (read_offset(fd, disc, &buffer, ((loff_t)location+i) * disc->blocksize, sizeof(buffer), 1) < 0)
 				return -3;
 
 			gd_ptr = (struct genericDesc *)&buffer;
@@ -912,7 +912,7 @@ static void scan_lvis(int fd, struct udf_disc *disc)
 			break;
 		}
 
-		if (read_offset(fd, disc, &buffer, (off_t)location * disc->blocksize, sizeof(buffer), 1) < 0)
+        if (read_offset(fd, disc, &buffer, (loff_t)location * disc->blocksize, sizeof(buffer), 1) < 0)
 			return;
 
 		descTag = (tag *)&buffer;
@@ -1251,7 +1251,7 @@ static void read_stable(int fd, struct udf_disc *disc)
 	{
 		location = le32_to_cpu(spm->locSparingTable[i]);
 
-		if (read_offset(fd, disc, &buffer, (off_t)location * disc->blocksize, sizeof(buffer), 1) < 0)
+        if (read_offset(fd, disc, &buffer, (loff_t)location * disc->blocksize, sizeof(buffer), 1) < 0)
 			return;
 
 		st = (struct sparingTable *)&buffer;
@@ -1371,7 +1371,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 
 	for (i = vat_block + 3; i > 0 && i > vat_block - 32; --i)
 	{
-		if (read_offset(fd, disc, &buffer, (off_t)i * disc->blocksize, sizeof(buffer), 0) < 0)
+        if (read_offset(fd, disc, &buffer, (loff_t)i * disc->blocksize, sizeof(buffer), 0) < 0)
 			continue;
 
 		fe = (struct fileEntry *)&buffer;
@@ -1427,7 +1427,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 			break;
 		}
 
-		if (read_offset(fd, disc, descs, (off_t)i * disc->blocksize + offset, length, 1) < 0)
+        if (read_offset(fd, disc, descs, (loff_t)i * disc->blocksize + offset, length, 1) < 0)
 		{
 			free(descs);
 			break;
@@ -1557,7 +1557,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 					}
 				}
 
-				if (read_offset(fd, disc, vat + vat_offset, (off_t)(ext_location + ext_position) * disc->blocksize, ext_length, 1) != 0)
+                if (read_offset(fd, disc, vat + vat_offset, (loff_t)(ext_location + ext_position) * disc->blocksize, ext_length, 1) != 0)
 				{
 					fprintf(stderr, "%s: Error: Virtual Allocation Table is damaged\n", appname);
 					count = 0;
@@ -1600,7 +1600,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 			{
 				if (sizeof(ea_hdr) > ea_length)
 					fprintf(stderr, "%s: Warning: Extended Attributes for Virtual Allocation Table are damaged\n", appname);
-				else if (read_offset(fd, disc, &ea_hdr, (off_t)i * disc->blocksize + ea_offset, sizeof(ea_hdr), 1) != 0)
+                else if (read_offset(fd, disc, &ea_hdr, (loff_t)i * disc->blocksize + ea_offset, sizeof(ea_hdr), 1) != 0)
 					fprintf(stderr, "%s: Warning: Extended Attributes for Virtual Allocation Table are damaged\n", appname);
 				else
 				{
@@ -1608,7 +1608,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 					ea_attr_offset = le32_to_cpu(ea_hdr.impAttrLocation);
 					while (ea_attr_offset < ea_length)
 					{
-						if (read_offset(fd, disc, &ea_attr, (off_t)i * disc->blocksize + ea_offset + ea_attr_offset, sizeof(ea_attr), 1) != 0)
+                        if (read_offset(fd, disc, &ea_attr, (loff_t)i * disc->blocksize + ea_offset + ea_attr_offset, sizeof(ea_attr), 1) != 0)
 						{
 							fprintf(stderr, "%s: Warning: Extended Attributes for Virtual Allocation Table are damaged\n", appname);
 							break;
@@ -1631,7 +1631,7 @@ static void read_vat(int fd, struct udf_disc *disc)
 								fprintf(stderr, "%s: Warning: Logical Volume Extended Information for Virtual Allocation Table is damaged\n", appname);
 								break;
 							}
-							if (read_offset(fd, disc, &ea_lv, (off_t)i * disc->blocksize + ea_offset + ea_attr_offset + sizeof(ea_attr), sizeof(ea_lv), 1) != 0)
+                            if (read_offset(fd, disc, &ea_lv, (loff_t)i * disc->blocksize + ea_offset + ea_attr_offset + sizeof(ea_attr), sizeof(ea_lv), 1) != 0)
 							{
 								fprintf(stderr, "%s: Warning: Logical Volume Extended Information for Virtual Allocation Table is damaged\n", appname);
 								break;
@@ -1714,7 +1714,7 @@ static void read_metadata_file(int fd, struct udf_disc *disc, uint32_t start, ui
 	uint32_t ea_length, ea_offset;
 	unsigned char buffer[512];
 
-	if (read_offset(fd, disc, &buffer, (off_t)(start + location) * disc->blocksize, sizeof(buffer), 1) < 0)
+    if (read_offset(fd, disc, &buffer, (loff_t)(start + location) * disc->blocksize, sizeof(buffer), 1) < 0)
 	{
 		fprintf(stderr, "%s: Warning: Cannot read Metadata %sFile\n", appname, (mirror ? "Mirror " : ""));
 		return;
@@ -1784,7 +1784,7 @@ static void read_metadata_file(int fd, struct udf_disc *disc, uint32_t start, ui
 		return;
 	}
 
-	if (read_offset(fd, disc, sad, (off_t)(start + location) * disc->blocksize + offset, length, 1) < 0)
+    if (read_offset(fd, disc, sad, (loff_t)(start + location) * disc->blocksize + offset, length, 1) < 0)
 	{
 		fprintf(stderr, "%s: Warning: Cannot read Allocation Descriptors for Metadata %sFile\n", appname, (mirror ? "Mirror " : ""));
 		free(sad);
@@ -1966,7 +1966,7 @@ static void read_fsd(int fd, struct udf_disc *disc)
 		return;
 	}
 
-	if (read_offset(fd, disc, disc->udf_fsd, (off_t)location * disc->blocksize, length, 1) < 0)
+    if (read_offset(fd, disc, disc->udf_fsd, (loff_t)location * disc->blocksize, length, 1) < 0)
 	{
 		free(disc->udf_fsd);
 		disc->udf_fsd = NULL;
@@ -2074,7 +2074,7 @@ static uint32_t count_bitmap_blocks(int fd, struct udf_disc *disc, struct generi
 
 	location = le32_to_cpu(pd->partitionStartingLocation) + position;
 
-	if (read_offset(fd, disc, &sbd, (off_t)location * disc->blocksize, sizeof(sbd), 1) < 0)
+    if (read_offset(fd, disc, &sbd, (loff_t)location * disc->blocksize, sizeof(sbd), 1) < 0)
 		return 0;
 
 	bits = le32_to_cpu(sbd.numOfBits);
@@ -2164,7 +2164,7 @@ static uint32_t count_table_blocks(int fd, struct udf_disc *disc, struct generic
 
 	location = le32_to_cpu(pd->partitionStartingLocation) + position;
 
-	if (read_offset(fd, disc, &buffer, (off_t)location * disc->blocksize, sizeof(buffer), 1) < 0)
+    if (read_offset(fd, disc, &buffer, (loff_t)location * disc->blocksize, sizeof(buffer), 1) < 0)
 		return 0;
 
 	use = (struct unallocSpaceEntry *)&buffer;
