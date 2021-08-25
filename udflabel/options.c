@@ -130,7 +130,7 @@ static void process_uuid_arg(const char *arg, char *new_uuid)
 
 	for (i = 0; i < 16; ++i)
 	{
-		if (!isxdigit(arg[i]) || (!isdigit(arg[i]) && !islower(arg[i])))
+		if (!isxdigit((unsigned char)arg[i]) || (!isdigit((unsigned char)arg[i]) && !islower((unsigned char)arg[i])))
 		{
 			fprintf(stderr, "%s: Error: Option --uuid is not in lowercase hexadecimal digit format\n", appname);
 			exit(1);

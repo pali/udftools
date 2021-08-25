@@ -98,7 +98,7 @@ uint32_t strtou32(const char *str, int base, int *failed)
 	errno = 0;
 	ret = strtoll(str, &endptr, base);
 	/* strto* skips leading whitespaces, so detect them via isspace */
-	*failed = (!*str || isspace(*str) || *endptr || errno || ret < 0 || ret > UINT32_MAX) ? 1 : 0;
+	*failed = (!*str || isspace((unsigned char)*str) || *endptr || errno || ret < 0 || ret > UINT32_MAX) ? 1 : 0;
 	return ret;
 }
 

@@ -583,7 +583,7 @@ readSingleBlock(uint32_t pbn)
 	    return blockBuffer;
     } else {
 	off = lseek(device, 2048 * pbn, SEEK_SET);
-	if( off != (off_t)-1 )
+	if( off == (off_t)-1 )
 	    return NULL;
 	len = read(device, blockBuffer, 2048);
 	if( len != 2048 )

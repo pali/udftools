@@ -26,7 +26,7 @@ uint32_t newVATentry() {
 	sizeVAT += 2048;
 	vat = realloc(vat, sizeVAT);
 	if( vat == NULL )
-	    printf("VAT reallocation failed\n");
+	    fail("VAT reallocation failed\n");
     }
     /* could go through VAT and try to find unused 0xFFFFFFFF entry rather than alloc new one at the end */
     vat[newVATindex] = getNWA() - pd->partitionStartingLocation;
