@@ -2251,7 +2251,7 @@ static uint32_t count_free_partition_blocks(int fd, struct udf_disc *disc, struc
 	struct partitionHeaderDesc *phd;
 	char *ident;
 
-	/* Use only main partition maps which span whole parition descriptor, so only Type 1 and Type 2 Sparable */
+	/* Use only main partition maps which span whole partition descriptor, so only Type 1 and Type 2 Sparable */
 	partition = -1;
 	pmap = find_partition(disc, GP_PARTITION_MAP_TYPE_1, NULL, le16_to_cpu(pd->partitionNumber), &partition);
 	if (!pmap)

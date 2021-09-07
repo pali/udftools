@@ -46,7 +46,7 @@
  * store information about files such as allocation descriptors. The
  * structure of the ICB hierarchy can be quite complex for write-once
  * media which use various strategies of linked lists to preserve multiple
- * historial file versions. Strategy type 4 is normally used on rewritable
+ * historical file versions. Strategy type 4 is normally used on rewritable
  * media where an ICB containing 'direct entries' can be updated as needed.
  *
  * Every file has a file entry/extended file entry (tag:FE/EFE) udf_descriptor
@@ -176,7 +176,7 @@ tag udf_query_tag(struct udf_disc *disc, uint16_t Ident, uint16_t SerialNum, uin
  * @param desc the file tag:FE/EFE udf_descriptor (for offset)
  * @param parent the directory tag:FE/EFE udf_descriptor
  * @param data the udf_data item containing the FID
- * @return the block number of the on-disc tag:FID udf_desciptor
+ * @return the block number of the on-disc tag:FID udf_descriptor
  */
 int insert_desc(struct udf_disc *disc, struct udf_extent *pspace, struct udf_desc *desc, struct udf_desc *parent, struct udf_data *data)
 {

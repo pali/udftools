@@ -67,7 +67,7 @@ Changes in 2.0
 * For UDF uuid is used same algorithm as in util-linux v2.30
 * Fixed Unicode encode/decode functions to correctly process OSTA Unicode d-string and d-characters
 * Corrections and updates in man pages, mkudffs now contains lot of compatibility information
-* New tool udfinfo which shows various information about UDF (incuding label, uuid, free space)
+* New tool udfinfo which shows various information about UDF (including label, uuid, free space)
 * New tool udflabel which shows or changes UDF label or UDF uuid
 * cdrwtool:
   * Set default UDF revision to 1.50

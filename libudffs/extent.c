@@ -54,7 +54,7 @@
  * A volume-set is multiple related physical volumes, usually with a robotic
  * media changer. Blocks anywhere in a volume set are described by an 48-bit
  * long_ad which contains a volume identifier as well as a location
- * in the volume space of the identifed volume. Block numbers in volume space
+ * in the volume space of the identified volume. Block numbers in volume space
  * start at zero and are relative to the first block of the media.
  *
  * Partition space is the set of all blocks contained in a logical partition.
@@ -78,7 +78,7 @@
  * Descriptors like the primary volume descriptor which are shared with other
  * standards such as ECMA-119/ISO-9660 begin with a one byte type identifier.
  * Other descriptors which are specific to ECMA-167 and UDF begin with a 16-byte
- * tag which starts with a two byte tag identifer and contains additional
+ * tag which starts with a two byte tag identifier and contains additional
  * information such as a CRC field which is pertinent to udf_extents.
  *
  * A udf_extent is an in-memory structure used to organize UDF filesystem level

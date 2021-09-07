@@ -288,7 +288,7 @@ initialise(char *devicename)
 	    memcpy(fsd, p, 512);
 	    break;
 	default:
-	    printf("Unxpected tag id %d, where File Set Desc(256) expected\n", p->descTag.tagIdent);
+	    printf("Unexpected tag id %d, where File Set Desc(256) expected\n", p->descTag.tagIdent);
 	}
     }
 
@@ -357,7 +357,7 @@ initialise(char *devicename)
 	    }
 	    break;
 	default:
-	    printf("Unxpected tag %X in Integrity Sequence; blk %d\n", p->descTag.tagIdent, blkno);
+	    printf("Unexpected tag %X in Integrity Sequence; blk %d\n", p->descTag.tagIdent, blkno);
 	    blkno = lastblk;
 	    break;
 	}

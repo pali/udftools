@@ -253,7 +253,7 @@ struct cdrom_capabilities {		/* CD Cap / mech status */
     u_char	res_3_67	: 2;	/* Reserved			     */
 
     u_char	audio_play	: 1;	/* Supports Audio play operation     */
-    u_char	composite	: 1;	/* Deliveres composite A/V stream    */
+    u_char	composite	: 1;	/* Delivers composite A/V stream    */
     u_char	digital_port_2	: 1;	/* Supports digital output on port 2 */
     u_char	digital_port_1	: 1;	/* Supports digital output on port 1 */
     u_char	mode_2_form_1	: 1;	/* Reads Mode-2 form 1 media (XA)    */
@@ -264,7 +264,7 @@ struct cdrom_capabilities {		/* CD Cap / mech status */
     u_char	cd_da_supported	: 1;	/* Reads audio data with READ CD cmd */
     u_char	cd_da_accurate	: 1;	/* READ CD data stream is accurate   */
     u_char	rw_supported	: 1;	/* Reads R-W sub channel information */
-    u_char	rw_deint_corr	: 1;	/* Reads de-interleved R-W sub chan  */
+    u_char	rw_deint_corr	: 1;	/* Reads de-interleaved R-W sub chan  */
     u_char	c2_pointers	: 1;	/* Supports C2 error pointers	     */
     u_char	ISRC		: 1;	/* Reads ISRC information	     */
     u_char	UPC		: 1;	/* Reads media catalog number (UPC)  */

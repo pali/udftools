@@ -22,7 +22,7 @@ uint64_t  CDRuniqueID;			// from VAT FE
 
 uint32_t newVATentry() {
 
-    if( newVATindex + 10 > (sizeVAT >> 2) ) {		// ensure enough spave for regid and prevVATlbn
+    if( newVATindex + 10 > (sizeVAT >> 2) ) {		// ensure enough space for regid and prevVATlbn
 	sizeVAT += 2048;
 	vat = realloc(vat, sizeVAT);
 	if( vat == NULL )

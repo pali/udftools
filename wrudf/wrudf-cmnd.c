@@ -696,7 +696,7 @@ makeDir(Directory *dir, char* name )
  *	or just a single component eg. . or / or wrudf.c
  *
  *	All but the last component must be existing directories and curDir points to
- *	the last directopry in that chain, eg. udf, otherwise result DIR_INVALID.
+ *	the last directory in that chain, eg. udf, otherwise result DIR_INVALID.
  *
  *	When the last component does not exist, return result DOES_NOT_EXIST.
  *	name --> last component eg. wrudf.h or iso

@@ -664,7 +664,7 @@ int main(int argc, char *argv[])
 	{
 		memset(buf, 0, sizeof(buf));
 		decode_string(&disc, new_org, buf, sizeof(new_org), sizeof(buf));
-		printf("Using new Oranization name: %s\n", buf);
+		printf("Using new Organization name: %s\n", buf);
 		iuvdiu = (struct impUseVolDescImpUse *)disc.udf_iuvd[0]->impUse;
 		memset(&iuvdiu->LVICharset, 0, sizeof(iuvdiu->LVICharset));
 		iuvdiu->LVICharset.charSetType = UDF_CHAR_SET_TYPE;
