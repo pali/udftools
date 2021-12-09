@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include "wrudf.h"
 
@@ -1018,7 +1019,7 @@ int lscCommand(void) {
 
 	fe = readTaggedBlock( fid->icb.extLocation.logicalBlockNum, fid->icb.extLocation.partitionReferenceNum);
 
-	printf("%s %6d:%c%c%c%c%c %6d:%c%c%c%c%c other:%c%c%c%c%c links:%2d info:%12d %s\n",
+	printf("%s %6d:%c%c%c%c%c %6d:%c%c%c%c%c other:%c%c%c%c%c links:%2d info:%12"PRIu64" %s\n",
 	    fe->icbTag.fileType == ICBTAG_FILE_TYPE_DIRECTORY ? "DIR" : "   ", 
 	    fe->uid, 
 	    fe->permissions & FE_PERM_U_READ ? 'r' : '-',
@@ -1037,7 +1038,7 @@ int lscCommand(void) {
 	    fe->permissions & FE_PERM_O_EXEC ? 'x' : '-',
 	    fe->permissions & FE_PERM_O_CHATTR ? 'a' : '-',
 	    fe->permissions & FE_PERM_O_DELETE ? 'd' : '-',
-	    fe->fileLinkCount, (uint32_t)fe->informationLength, filename);
+	    fe->fileLinkCount, (uint64_t)fe->informationLength, filename);
     }
     return CMND_OK;
 }
