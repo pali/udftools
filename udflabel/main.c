@@ -202,6 +202,7 @@ int main(int argc, char *argv[])
 	dstring new_contact[36];
 	char new_appid[23];
 	char new_impid[23];
+	int mark_ro = 0;
 	int force = 0;
 	int update = 0;
 	int update_pvd = 0;
@@ -258,10 +259,16 @@ int main(int argc, char *argv[])
 	new_appid[0] = (char)-1;
 	new_impid[0] = (char)-1;
 
-	parse_args(argc, argv, &disc, &filename, &force, new_lvid, new_vid, new_fsid, new_fullvsid, new_uuid, new_vsid, new_owner, new_org, new_contact, new_appid, new_impid);
+	parse_args(argc, argv, &disc, &filename, &force, new_lvid, new_vid, new_fsid, new_fullvsid, new_uuid, new_vsid, new_owner, new_org, new_contact, new_appid, new_impid, &mark_ro);
 
 	if (disc.flags & FLAG_NO_WRITE)
 		printf("Note: Not writing to device, just simulating\n");
+
+	if (mark_ro != 0)
+	{
+		update_lvd = 1;
+		update_fsd = 1;
+	}
 
 	if (new_lvid[0] != 0xFF)
 	{
@@ -751,6 +758,19 @@ int main(int argc, char *argv[])
 
 		memcpy(disc.udf_pvd[0]->volSetIdent, new_fullvsid, sizeof(new_fullvsid));
 		memcpy(disc.udf_pvd[1]->volSetIdent, new_fullvsid, sizeof(new_fullvsid));
+	}
+
+	if (mark_ro != 0)
+	{
+		printf("Setting FSD SOFT_WRITE_PROTECT Flag...\n");
+		dis = (struct domainIdentSuffix *)disc.udf_fsd->domainIdent.identSuffix;
+		dis->domainFlags |= DOMAIN_FLAGS_SOFT_WRITE_PROTECT;
+
+		printf("Setting LVID SOFT_WRITE_PROTECT Flag...\n");
+		dis = (struct domainIdentSuffix *)disc.udf_lvd[0]->domainIdent.identSuffix;
+		dis->domainFlags |= DOMAIN_FLAGS_SOFT_WRITE_PROTECT;
+		dis = (struct domainIdentSuffix *)disc.udf_lvd[1]->domainIdent.identSuffix;
+		dis->domainFlags |= DOMAIN_FLAGS_SOFT_WRITE_PROTECT;
 	}
 
 	if (update_pvd)

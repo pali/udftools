@@ -21,7 +21,7 @@
 
 struct udf_disc;
 
-void parse_args(int, char *[], struct udf_disc *, char **, int *, dstring *, dstring *, dstring *, dstring *, char *, dstring *, dstring *, dstring *, dstring *, char *, char *);
+void parse_args(int, char *[], struct udf_disc *, char **, int *, dstring *, dstring *, dstring *, dstring *, char *, dstring *, dstring *, dstring *, dstring *, char *, char *, int *);
 
 /*
  * Command line option token values.
@@ -37,6 +37,7 @@ void parse_args(int, char *[], struct udf_disc *, char **, int *, dstring *, dst
 #define OPT_UTF8	0x1004
 #define OPT_FORCE	0x1005
 #define OPT_NO_WRITE	0x1006
+#define OPT_MARK_RO	0x1007
 
 #define OPT_BLK_SIZE	0x2000
 #define OPT_VAT_BLOCK	0x2001

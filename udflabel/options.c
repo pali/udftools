@@ -60,6 +60,7 @@ static struct option long_options[] = {
 	{ "u8", no_argument, NULL, OPT_UNICODE8 },
 	{ "u16", no_argument, NULL, OPT_UNICODE16 },
 	{ "utf8", no_argument, NULL, OPT_UTF8 },
+	{ "mark-ro", no_argument, NULL, OPT_MARK_RO },
 	{ 0, 0, NULL, 0 },
 };
 
@@ -101,6 +102,9 @@ static void usage(void)
 		"\t--u8               Identifier options are encoded in Latin1\n"
 		"\t--u16              Identifier options are encoded in UTF-16BE\n"
 		"\t--utf8             Identifier options are encoded in UTF-8\n"
+		"\n"
+		"Experimental Options:\n"
+		"\t--mark-ro          Set target to read-only mode\n"
 	);
 	exit(1);
 }
@@ -170,7 +174,7 @@ static void process_vid_lvid_arg(struct udf_disc *disc, int option, const char *
 	}
 }
 
-void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, int *force, dstring *new_lvid, dstring *new_vid, dstring *new_fsid, dstring *new_fullvsid, char *new_uuid, dstring *new_vsid, dstring *new_owner, dstring *new_org, dstring *new_contact, char *new_appid, char *new_impid)
+void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, int *force, dstring *new_lvid, dstring *new_vid, dstring *new_fsid, dstring *new_fullvsid, char *new_uuid, dstring *new_vsid, dstring *new_owner, dstring *new_org, dstring *new_contact, char *new_appid, char *new_impid, int *mark_ro)
 {
 	int failed;
 	int ret;
@@ -345,6 +349,9 @@ void parse_args(int argc, char *argv[], struct udf_disc *disc, char **filename, 
 					fprintf(stderr, "%s: Error: Option --locale must be specified as first argument\n", appname);
 					exit(1);
 				}
+				break;
+			case OPT_MARK_RO:
+				*mark_ro = 1;
 				break;
 			default:
 				usage();
