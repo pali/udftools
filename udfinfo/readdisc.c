@@ -2398,3 +2398,49 @@ int read_disc(int fd, struct udf_disc *disc)
 
 	return 0;
 }
+
+uint64_t get_size(int fd)
+{
+	struct stat st;
+	uint64_t size;
+	off_t offset;
+
+	if (fstat(fd, &st) == 0)
+	{
+		if (S_ISBLK(st.st_mode) && ioctl(fd, BLKGETSIZE64, &size) == 0)
+			return size;
+		else if (S_ISREG(st.st_mode))
+			return st.st_size;
+	}
+
+	offset = lseek(fd, 0, SEEK_END);
+	if (offset == (off_t)-1)
+	{
+		fprintf(stderr, "%s: Error: Cannot detect size of disk: %s\n", appname, strerror(errno));
+		exit(1);
+	}
+
+	if (lseek(fd, 0, SEEK_SET) != 0)
+	{
+		fprintf(stderr, "%s: Error: Cannot seek to start of disk: %s\n", appname, strerror(errno));
+		exit(1);
+	}
+
+	return offset;
+}
+
+int get_sector_size(int fd)
+{
+	int size;
+
+	if (ioctl(fd, BLKSSZGET, &size) != 0)
+		return 0;
+
+	if (size < 512 || size > 32768 || (size & (size - 1)))
+	{
+		fprintf(stderr, "%s: Warning: Disk logical sector size (%d) is not suitable for UDF\n", appname, size);
+		return 0;
+	}
+
+	return size;
+}

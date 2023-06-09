@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017  Pali Rohár <pali.rohar@gmail.com>
+ * Copyright (C) 2023  Johannes Truschnigg <johannes@truschnigg.info>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,15 +17,20 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef READDISC_H
-#define READDISC_H
+#ifndef UPDATEDISC_H
+#define UPDATEDISC_H
 
-#include <linux/fs.h>
+uint16_t compute_crc(void *, size_t);
+uint8_t compute_checksum(tag *);
+int check_desc(void *, size_t);
+void update_desc(void *, size_t);
+void write_desc(int, struct udf_disc *, enum udf_space_type, uint16_t, void *);
+int open_existing_disc(struct udf_disc *, char *, int, int, char *);
+int verify_lvd(struct udf_disc *, char *);
+int verify_fsd(struct udf_disc *, char *);
+int check_wr_lvd(struct udf_disc *, char *, int);
+int check_wr_fsd(struct udf_disc *, char *, int);
+int sync_device(struct udf_disc *, int, char *, char *);
+int check_access_type(struct udf_disc *, struct partitionDesc *, char *, int, int);
 
-struct udf_disc;
-
-uint64_t get_size(int);
-int get_sector_size(int);
-int read_disc(int, struct udf_disc *);
-
-#endif /* READDISC_H */
+#endif /* UPDATEDISC_H */

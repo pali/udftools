@@ -36,156 +36,16 @@
 
 #include "libudffs.h"
 #include "options.h"
+#include "../udftune/updatedisc.h"
 #include "../udfinfo/readdisc.h"
-
-static uint64_t get_size(int fd)
-{
-	struct stat st;
-	uint64_t size;
-	off_t offset;
-
-	if (fstat(fd, &st) == 0)
-	{
-		if (S_ISBLK(st.st_mode) && ioctl(fd, BLKGETSIZE64, &size) == 0)
-			return size;
-		else if (S_ISREG(st.st_mode))
-			return st.st_size;
-	}
-
-	offset = lseek(fd, 0, SEEK_END);
-	if (offset == (off_t)-1)
-	{
-		fprintf(stderr, "%s: Error: Cannot detect size of disk: %s\n", appname, strerror(errno));
-		exit(1);
-	}
-
-	if (lseek(fd, 0, SEEK_SET) != 0)
-	{
-		fprintf(stderr, "%s: Error: Cannot seek to start of disk: %s\n", appname, strerror(errno));
-		exit(1);
-	}
-
-	return offset;
-}
-
-static int get_sector_size(int fd)
-{
-	int size;
-
-	if (ioctl(fd, BLKSSZGET, &size) != 0)
-		return 0;
-
-	if (size < 512 || size > 32768 || (size & (size - 1)))
-	{
-		fprintf(stderr, "%s: Warning: Disk logical sector size (%d) is not suitable for UDF\n", appname, size);
-		return 0;
-	}
-
-	return size;
-}
-
-static uint16_t compute_crc(void *desc, size_t length)
-{
-	return udf_crc((uint8_t *)desc + sizeof(tag), length - sizeof(tag), 0);
-}
-
-static uint8_t compute_checksum(tag *tag)
-{
-	uint8_t i, checksum = 0;
-	for (i = 0; i < 16; i++)
-	{
-		if (i == 4)
-			continue;
-		checksum += ((uint8_t *)tag)[i];
-	}
-	return checksum;
-}
-
-static int check_desc(void *desc, size_t length)
-{
-	tag *tag = desc;
-	uint16_t crc_length = le16_to_cpu(tag->descCRCLength);
-	if (crc_length > length - sizeof(*tag))
-		return 0;
-	if (compute_checksum(tag) != tag->tagChecksum)
-		return 0;
-	if (compute_crc(desc, sizeof(*tag) + crc_length) != le16_to_cpu(tag->descCRC))
-		return 0;
-	return 1;
-}
-
-static void update_desc(void *desc, size_t length)
-{
-	tag *tag = desc;
-	if (length > le16_to_cpu(tag->descCRCLength) + sizeof(*tag))
-		length = le16_to_cpu(tag->descCRCLength) + sizeof(*tag);
-	tag->descCRC = cpu_to_le16(compute_crc(desc, length));
-	tag->tagChecksum = compute_checksum(tag);
-}
-
-static void write_desc(int fd, struct udf_disc *disc, enum udf_space_type type, uint16_t ident, void *buffer)
-{
-	struct udf_extent *ext;
-	struct udf_desc *desc;
-	off_t off;
-	off_t offset;
-	ssize_t ret;
-
-	ext = disc->head;
-	while ((ext = next_extent(ext, type)))
-	{
-		desc = ext->head;
-		while ((desc = next_desc(desc, ident)))
-		{
-			if (!desc->data || desc->data->buffer != buffer)
-				continue;
-
-			printf("  ... at block %"PRIu32"\n", ext->start + desc->offset);
-
-			offset = (off_t)disc->blocksize * (ext->start + desc->offset);
-			off = lseek(fd, offset, SEEK_SET);
-			if (off != (off_t)-1 && off != offset)
-			{
-				errno = EIO;
-				off = (off_t)-1;
-			}
-			if (off == (off_t)-1)
-			{
-				fprintf(stderr, "%s: Error: lseek failed: %s\n", appname, strerror(errno));
-				return;
-			}
-
-			if (!(disc->flags & FLAG_NO_WRITE))
-			{
-				ret = write_nointr(fd, desc->data->buffer, desc->data->length);
-				if (ret >= 0 && (size_t)ret != desc->data->length)
-				{
-					errno = EIO;
-					ret = -1;
-				}
-				if (ret < 0)
-				{
-					fprintf(stderr, "%s: Error: write failed: %s\n", appname, strerror(errno));
-					return;
-				}
-			}
-
-			return;
-		}
-	}
-
-	fprintf(stderr, "%s: Error: Cannot find needed block for write\n", appname);
-	return;
-}
 
 int main(int argc, char *argv[])
 {
 	struct udf_disc disc;
 	char *filename;
 	struct partitionDesc *pd;
-	struct logicalVolDesc *lvd;
 	struct impUseVolDescImpUse *iuvdiu;
-	struct domainIdentSuffix *dis;
+	struct logicalVolDesc *lvd;
 	size_t len;
 	int fd;
 	int flags;
@@ -208,6 +68,7 @@ int main(int argc, char *argv[])
 	int update_lvd = 0;
 	int update_iuvd = 0;
 	int update_fsd = 0;
+	int update_vid = 0;
 
 	if (fcntl(0, F_GETFL) < 0 && open("/dev/null", O_RDONLY) < 0)
 		_exit(1);
@@ -260,9 +121,6 @@ int main(int argc, char *argv[])
 
 	parse_args(argc, argv, &disc, &filename, &force, new_lvid, new_vid, new_fsid, new_fullvsid, new_uuid, new_vsid, new_owner, new_org, new_contact, new_appid, new_impid);
 
-	if (disc.flags & FLAG_NO_WRITE)
-		printf("Note: Not writing to device, just simulating\n");
-
 	if (new_lvid[0] != 0xFF)
 	{
 		update_lvd = 1;
@@ -270,8 +128,11 @@ int main(int argc, char *argv[])
 		update_fsd = 1;
 	}
 
-	if (new_vid[0] != 0xFF)
+	if (new_fullvsid[0] != 0xFF || new_vid[0] != 0xFF)
+	{
+		update_vid = 1;
 		update_pvd = 1;
+	}
 
 	if (new_fsid[0] != 0xFF)
 		update_fsd = 1;
@@ -279,10 +140,10 @@ int main(int argc, char *argv[])
 	if (new_owner[0] != 0xFF || new_org[0] != 0xFF || new_contact[0] != 0xFF)
 		update_iuvd = 1;
 
-	if (new_uuid[0] || new_vsid[0] != 0xFF || new_fullvsid[0] != 0xFF || new_appid[0] != (char)-1 || new_impid[0] != (char)-1)
+	if (new_uuid[0] || new_vsid[0] != 0xFF || new_appid[0] != (char)-1 || new_impid[0] != (char)-1)
 		update_pvd = 1;
 
-	if (update_pvd || update_lvd || update_iuvd || update_fsd)
+	if (update_pvd || update_lvd || update_iuvd || update_fsd || update_vid)
 		update = 1;
 
 	if (update && !(disc.flags & FLAG_NO_WRITE))
@@ -290,35 +151,12 @@ int main(int argc, char *argv[])
 	else
 		flags = O_RDONLY | O_EXCL;
 
-	fd = open(filename, flags);
-	if (fd < 0 && errno == EBUSY)
-	{
-		if (update)
-		{
-			fprintf(stderr, "%s: Error: Cannot open device '%s': Device is busy, maybe mounted?\n", appname, filename);
-			exit(1);
-		}
-		flags &= ~O_EXCL;
-		fd = open(filename, flags);
-	}
+	fd = open_existing_disc(&disc, filename, flags, update, buf);
 	if (fd < 0)
-	{
-		fprintf(stderr, "%s: Error: Cannot open device '%s': %s\n", appname, filename, (errno != EBUSY) ? strerror(errno) : "Device is busy, maybe mounted?");
 		exit(1);
-	}
 
-	if (!(flags & O_EXCL))
-		fprintf(stderr, "%s: Warning: Device '%s' is busy, %s may report bogus information\n", appname, filename, appname);
-
-	disc.blksize = get_size(fd);
-	disc.blkssz = get_sector_size(fd);
-
-	if (read_disc(fd, &disc) < 0)
-	{
-		fprintf(stderr, "%s: Error: Cannot process device '%s' as UDF disk\n", appname, filename);
-		exit(1);
-	}
-
+	/* mimick the behavior of e2label(8) et al. when no change is
+	 * requested, i.e. print the current label to stdout, then exit. */
 	if (!update)
 	{
 		close(fd);
@@ -330,39 +168,25 @@ int main(int argc, char *argv[])
 		else
 		{
 			fprintf(stderr, "%s: Error: Logical Volume Descriptor is needed for label\n", appname);
-			exit(1);
+			return -1;
 		}
 
 		if (lvd->descCharSet.charSetType != UDF_CHAR_SET_TYPE || strncmp((const char *)lvd->descCharSet.charSetInfo, UDF_CHAR_SET_INFO, sizeof(lvd->descCharSet.charSetInfo)) != 0)
 		{
 			fprintf(stderr, "%s: Error: Label is not encoded in OSTA Unicode dstring\n", appname);
-			exit(1);
+			return -1;
 		}
 
 		len = decode_string(&disc, lvd->logicalVolIdent, buf, sizeof(lvd->logicalVolIdent), sizeof(buf));
 		if (len == (size_t)-1)
 		{
 			fprintf(stderr, "%s: Error: Cannot decode label from OSTA Unicode dstring\n", appname);
-			exit(1);
+			return -1;
 		}
 
 		fwrite(buf, len, 1, stdout);
 		putchar('\n');
-		return 0;
-	}
-
-	printf("Updating device: %s\n", filename);
-
-	if (!disc.udf_lvid || le32_to_cpu(disc.udf_lvid->integrityType) != LVID_INTEGRITY_TYPE_CLOSE)
-	{
-		fprintf(stderr, "%s: Error: Logical Volume is in inconsistent state\n", appname);
-		exit(1);
-	}
-
-	if (disc.udf_write_rev > 0x0260)
-	{
-		fprintf(stderr, "%s: Error: Minimal UDF Write Revision is %"PRIx16".%02"PRIx16", but udflabel supports only 2.60\n", appname, disc.udf_write_rev >> 8, disc.udf_write_rev & 0xFF);
-		exit(1);
+		exit(0);
 	}
 
 	if (disc.udf_pd[0])
@@ -375,58 +199,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	switch (le32_to_cpu(pd->accessType))
-	{
-		case PD_ACCESS_TYPE_OVERWRITABLE:
-		case PD_ACCESS_TYPE_REWRITABLE:
-			break;
-
-		case PD_ACCESS_TYPE_NONE: /* Pseudo OverWrite */
-			if (force)
-				fprintf(stderr, "%s: Warning: Trying to overwrite pseudo-overwrite partition\n", appname);
-			break;
-
-		case PD_ACCESS_TYPE_WRITE_ONCE:
-			if (!force && (new_fullvsid[0] != 0xFF || new_vid[0] != 0xFF))
-			{
-				fprintf(stderr, "%s: Error: Cannot update --vid, --vsid, --uuid or --fullvid on writeonce partition\n", appname);
-				exit(1);
-			}
-			else if (!force && !disc.vat_block)
-			{
-				fprintf(stderr, "%s: Error: Cannot update writeonce partition without Virtual Allocation Table\n", appname);
-				exit(1);
-			}
-			else if (force)
-			{
-				fprintf(stderr, "%s: Warning: Trying to overwrite writeonce partition\n", appname);
-			}
-			break;
-
-		case PD_ACCESS_TYPE_READ_ONLY:
-			if (!force)
-			{
-				fprintf(stderr, "%s: Error: Cannot overwrite readonly partition\n", appname);
-				exit(1);
-			}
-			else
-			{
-				fprintf(stderr, "%s: Warning: Trying to overwrite readonly partition\n", appname);
-			}
-			break;
-
-		default:
-			if (!force)
-			{
-				fprintf(stderr, "%s: Error: Partition Access Type is unknown\n", appname);
-				exit(1);
-			}
-			else
-			{
-				fprintf(stderr, "%s: Warning: Trying to overwrite partition with unknown access type\n", appname);
-			}
-			break;
-	}
+	if (!check_access_type(&disc, pd, (char *)appname, force, update_vid))
+		exit(1);
 
 	/* TODO: VAT mode */
 	if ((le32_to_cpu(pd->accessType) == PD_ACCESS_TYPE_WRITE_ONCE && !force) || (disc.vat && (new_lvid[0] != 0xFF || new_fsid[0] != 0xFF)))
@@ -444,36 +218,12 @@ int main(int argc, char *argv[])
 
 	if (disc.udf_lvd[0] && update_lvd)
 	{
-		dis = (struct domainIdentSuffix *)disc.udf_lvd[0]->domainIdent.identSuffix;
-		if (dis->domainFlags & (DOMAIN_FLAGS_SOFT_WRITE_PROTECT|DOMAIN_FLAGS_HARD_WRITE_PROTECT))
-		{
-			if (!force)
-			{
-				fprintf(stderr, "%s: Error: Cannot overwrite write protected Logical Volume Descriptor\n", appname);
-				exit(1);
-			}
-			else
-			{
-				fprintf(stderr, "%s: Warning: Trying to overwrite write protected Logical Volume Descriptor\n", appname);
-			}
-		}
+		if (!check_wr_lvd(&disc, (char *)appname, force)) exit(1);
 	}
 
 	if (disc.udf_fsd && update_fsd)
 	{
-		dis = (struct domainIdentSuffix *)disc.udf_fsd->domainIdent.identSuffix;
-		if (dis->domainFlags & (DOMAIN_FLAGS_SOFT_WRITE_PROTECT|DOMAIN_FLAGS_HARD_WRITE_PROTECT))
-		{
-			if (!force)
-			{
-				fprintf(stderr, "%s: Error: Cannot overwrite write protected File Set Descriptor\n", appname);
-				exit(1);
-			}
-			else
-			{
-				fprintf(stderr, "%s: Warning: Trying to overwrite write protected File Set Descriptor\n", appname);
-			}
-		}
+		if (!check_wr_fsd(&disc, (char *)appname, force)) exit(1);
 	}
 
 	if (update_pvd)
@@ -553,16 +303,8 @@ int main(int argc, char *argv[])
 
 	if (update_lvd)
 	{
-		if (!disc.udf_lvd[0] || !check_desc(disc.udf_lvd[0], sizeof(*disc.udf_lvd[0]) + le32_to_cpu(disc.udf_lvd[0]->mapTableLength)))
-		{
-			fprintf(stderr, "%s: Error: Main Logical Volume Descriptor is damaged\n", appname);
+		if (!verify_lvd(&disc, (char *)appname))
 			exit(1);
-		}
-		if (!disc.udf_lvd[1] || !check_desc(disc.udf_lvd[1], sizeof(*disc.udf_lvd[1]) + le32_to_cpu(disc.udf_lvd[1]->mapTableLength)))
-		{
-			fprintf(stderr, "%s: Error: Reserve Logical Volume Descriptor is damaged\n", appname);
-			exit(1);
-		}
 	}
 
 	if (update_iuvd)
@@ -581,11 +323,8 @@ int main(int argc, char *argv[])
 
 	if (update_fsd)
 	{
-		if (!disc.udf_fsd || !check_desc(disc.udf_fsd, sizeof(*disc.udf_fsd)))
-		{
-			fprintf(stderr, "%s: Error: File Set Descriptor is damaged\n", appname);
+		if (!verify_fsd(&disc, (char *)appname))
 			exit(1);
-		}
 	}
 
 	if (new_lvid[0] != 0xFF)
@@ -815,22 +554,6 @@ int main(int argc, char *argv[])
 		write_desc(fd, &disc, RVDS, TAG_IDENT_IUVD, disc.udf_iuvd[1]);
 	}
 
-	printf("Synchronizing...\n");
-	if (!(disc.flags & FLAG_NO_WRITE))
-	{
-		if (fsync(fd) != 0)
-		{
-			fprintf(stderr, "%s: Error: Synchronization to device '%s' failed: %s\n", appname, filename, strerror(errno));
-			exit(1);
-		}
-	}
-
-	if (close(fd) != 0 && errno != EINTR)
-	{
-		fprintf(stderr, "%s: Error: Closing device '%s' failed: %s\n", appname, filename, strerror(errno));
-		exit(1);
-	}
-
-	printf("Done\n");
+	if (!sync_device(&disc, fd, (char *)appname, (char *)filename)) return 1;
 	return 0;
 }
