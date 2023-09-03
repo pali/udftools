@@ -1,0 +1,87 @@
+'\" t -*- coding: UTF-8 -*-
+.\" Copyright (C) 2017-2021  Pali Rohár <pali.rohar@gmail.com>
+.\" Copyright (C) 2023  Johannes Truschnigg <johannes@truschnigg.info>
+.\"
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License along
+.\" with this program; if not, write to the Free Software Foundation, Inc.,
+.\" 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+.\"
+.TH UDFTUNE 8 "udftools" "Commands"
+
+.SH NAME
+udftune \(em modify UDF filesystem characteristics
+
+.SH SYNOPSIS
+.BI "udftune [block\-options] [filesystem\-options] " device
+
+.SH DESCRIPTION
+\fBudftune\fP is a UDF-specific utility to modify various aspects of filesystem
+metadata, in the spirit of \fBtune2fs\fP(8) and similar tools for other
+filesystems.  Its current implementation can mark an existing UDF device/image
+read-only, or to reverse that and mark it read-write.
+
+.SH OPTIONS
+
+.SS "GENERAL OPTIONS"
+.TP
+.B \-h,\-\-help
+Display the usage and the list of options.
+
+.SS "BLOCK OPTIONS"
+.TP
+.BI \-b,\-\-blocksize= " block\-size "
+
+.TP
+.BI \-\-startblock= " start\-block "
+
+.TP
+.BI \-\-lastblock= " last\-block "
+
+.TP
+.BI \-\-vatblock= " vat\-block "
+
+.TP
+.B \-\-force
+
+.TP
+.B \-n,\-\-no\-write
+
+For a comprehensive overview of the block-related options listed above, please
+refer to \fBudflabel\fP(8).
+
+.SS "FILESYSTEM OPTIONS"
+.TP
+.BI \-\-mark-ro
+Mark the UDF filesystem on \fIdevice\fP ro (read-only) in its FSD and LVD.
+
+.TP
+.BI \-\-mark-rw
+Mark the UDF filesystem on \fIdevice\fP rw (read+write) in its FSD and LVD.
+
+.SH "EXIT STATUS"
+\fBudftune\fP returns 0 if successful, non-zero if there are problems like
+if the block device does not contain a UDF filesystem, or updating failed.
+
+.SH AUTHOR
+.nf
+Johannes Truschnigg <johannes@truschnigg.info>
+Pali Rohár <pali.rohar@gmail.com>
+.fi
+
+.SH AVAILABILITY
+\fBudftune\fP is part of the udftools package since after version 2.3 and is
+available from https://github.com/pali/udftools/.
+
+.SH "SEE ALSO"
+\fBmkudffs\fP(8), \fBpktsetup\fP(8), \fBcdrwtool\fP(1), \fBudfinfo\fP(1),
+\fBwrudf\fP(1)
