@@ -41,6 +41,6 @@ AC_SUBST(LTLIBOBJS)
 
 AM_CONDITIONAL(USE_READLINE, test "$readline_found" = "yes")
 
-AC_CONFIG_FILES(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile udfinfo/Makefile udflabel/Makefile wrudf/Makefile doc/Makefile)
+AC_CONFIG_FILES(Makefile libudffs/Makefile mkudffs/Makefile cdrwtool/Makefile pktsetup/Makefile udffsck/Makefile udfinfo/Makefile udflabel/Makefile udftune/Makefile wrudf/Makefile doc/Makefile)
 
 AC_OUTPUT

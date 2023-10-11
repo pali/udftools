@@ -600,7 +600,8 @@ freeBlock(uint32_t lbn, uint16_t part)
     struct packetbuf	*b;
     uint32_t			blkno;
 
-    if( medium == CDR ) return;
+    if( medium == CDR )
+	return;
 
     blkno = lbn + ( part == 0xFFFF ? 0 : pd->partitionStartingLocation );
     b = findBuf(blkno);

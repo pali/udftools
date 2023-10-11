@@ -483,7 +483,8 @@ get_configuration(int fd, u_char* buffer, int size, u_char feature)
     tmp_be16 = cpu_to_be16(8);
     memcpy(&pc.cmd[7], &tmp_be16, sizeof(tmp_be16));	// only to see how much will be returned
     pc.buffer=(void*)buffer;
-    if( size < 8 ) return -EINVAL;
+    if( size < 8 )
+	return -EINVAL;
     pc.buflen = 8;
     rv = ioctl(fd, CDROM_SEND_PACKET, &pc);
 
